@@ -283,6 +283,37 @@ watchdog, qualification9/96, authority and cleanup limits remain fixed. General
 copy exhaustion recovery, persistent exec/writable descriptors, packages and
 Zsh/TTY/ISO are still R1 work. This remains the process/system-shell foundation.
 
+## AF09 offline home preparation
+
+[Issue3](https://github.com/gonz0w/Aether/issues/3) owns live integration. The
+[AF09 preparation contract](../userland/docs/proposals/FS-HOME-PREP.md) defines
+the separate AF09 engine, explicit FILE helper, guarded owner inputs and two
+independent read-only reader images. It preserves the old AF07/AF08 paths and
+pins. These commands require the exact private qualification receipts, retained
+SDK/OpenZFS/runtime dependencies and applicable standards inputs. They are not
+replayable from the public source alone; missing inputs remain blocked coverage.
+From the system root, use current passing receipt paths and unused outputs:
+
+```sh
+python3 -B scripts/fs_home_launch.py --checked PRODUCER_RECEIPT --probe-checked HELPER_CLOCK_RECEIPT --output .deps/fs-launch-af09-NAME
+python3 -B scripts/fs_home_inputs.py --engine .deps/fs-launch-af09-NAME --engine-seal ENGINE_SEAL --producer-receipt PRODUCER_RECEIPT --owner-receipt OWNER_RECEIPT --output .deps/fs-owner-af09-NAME
+python3 -B sys-init/scripts/qualify-home-owner.py --inputs .deps/fs-owner-af09-NAME --seal INPUTS_SEAL --prepare
+```
+
+The new qualifier prepares only; it has no guest execution option. Exact source,
+tool, receipt, artifact and current kernel parser identities must agree before
+preparation succeeds. The bounded native reader controller is
+[home-readback.rs](../user/storage/session/home-readback.rs); it consumes32 opaque
+digest rows after successful reader retirement and preserves three-generation
+read-only grant, stale-handle and reclaim checks. Host/controller evidence is not
+guest execution or persistent home qualification. Only concrete reviewed prepared
+artifacts can support a later fresh disposition in
+[issue4](https://github.com/gonz0w/Aether/issues/4); earlier approvals are consumed.
+The three preparation CLIs provide ASCII help/version on stdout and JSON results
+on stdout, with escaped diagnostics on stderr:0 success,1 operational failure,
+2 blocked prerequisite and64 invalid usage. Keep a failed run's compact receipt,
+correct its prerequisite and select a new unused output; never rewrite old results.
+
 ## Fresh AF07 inputs and guarded qualification —2026-10-23
 
 The [private selection](native-af07-inputs-v1.json) selects a freshly compiled

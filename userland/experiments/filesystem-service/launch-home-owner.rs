@@ -105,6 +105,7 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         || state.engine_error != 0
         || !home.valid()
         || home.phase != 0
+        || cfg!(fs_home_probe_three) && home.mutation_attempts != 3
         || home.flags != CALLBACK | ENTRY | ACCEPTED | CLOSE_ATTEMPTED | ORDERED | ACTIVATION
         || service.ready != 1
         || service.requests == 0

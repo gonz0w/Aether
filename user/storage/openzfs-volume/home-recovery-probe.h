@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+#ifndef AETHER_HOME_RECOVERY_PROBE_H
+#define AETHER_HOME_RECOVERY_PROBE_H
+#include <stdint.h>
+#include <sys/spa.h>
+/* Private fixed AF09 read-only oracle. The initial thread exclusively borrows
+ * a live fresh read-only SPA; no concurrent/reentrant mutation, export or
+ * teardown. digest32 is live/disjoint writable storage for32 bytes, retained by
+ * the caller. No pointer escapes. Output is zero on failure. utc_min is
+ * inclusive and utc_max exclusive, seconds from the selected enforced
+ * RuntimeUtc window. Success checks the fixed namespace/data and returns
+ * canonical preserved- metadata SHA256. A prospective qualifier must compare
+ * all32 digest bytes from pristine and recovery readers; this function does not
+ * authorize reclamation, make a durability claim or emit output. Compile
+ * instead of separate zpl-read.c.
+ */
+int aether_home_readback(spa_t *, int recovered, uint64_t utc_min,
+                         uint64_t utc_max, unsigned char digest32[32]);
+#endif

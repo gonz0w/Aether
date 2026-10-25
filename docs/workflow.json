@@ -398,6 +398,21 @@
       "reference": "userland/docs/proposals/FS-CWD.md",
       "manual": "excluded-internal",
       "reason": "Private offline AF08 directory/FILE03 build and input checks; no guest or released/default-pin update. Installed/manual/independent acceptance remains separate."
+    },
+    "scripts/fs_home_launch.py": {
+      "reference": "userland/docs/proposals/FS-HOME-PREP.md",
+      "manual": "excluded-internal",
+      "reason": "Explicit AF09 offline composition with current producer and helper/clock receipts, actual origins and kernel loader admission. No guest, default-pin update or release acceptance."
+    },
+    "scripts/fs_home_inputs.py": {
+      "reference": "userland/docs/proposals/FS-HOME-PREP.md",
+      "manual": "excluded-internal",
+      "reason": "Explicit AF09 owner/shell/helper reconstruction, measured fit and current kernel parser admission; no guest, default-pin update or persistence acceptance."
+    },
+    "scripts/check_fs_home_prep.py": {
+      "reference": "userland/docs/proposals/FS-HOME-PREP.md",
+      "manual": "excluded-internal",
+      "reason": "Bounded offline preparation guards and typed independent reader checks with compact retained attempts; no guest or persistence acceptance."
     }
   },
   "launch_profiles": {
@@ -426,7 +441,19 @@
       "oracle": "All discovered Zig and Python tests and offline checks pass; no zero-test or missing-tool success",
       "gaps": "Models do not establish native isolation; no bounded parser fuzz runner yet",
       "budget_seconds": 300,
-      "owner": "Aether maintainer; implementing contributor retains and triages each run"
+      "owner": "Aether maintainer; implementing contributor retains and triages each run",
+      "historical_af09_host_gate": {
+        "issue": "https://github.com/gonz0w/Aether/issues/2",
+        "date": "2026-10-25",
+        "attempt": "private attempt05",
+        "status": "passed; one-run exception consumed",
+        "aggregate_seconds": 900,
+        "elapsed_seconds": 530.184,
+        "python_tests": 976,
+        "child_seconds": 180,
+        "diagnostic_bytes_per_stream": 4194304,
+        "scope": "Private complete unfiltered gate, final source/tools/accepted legacy pair,9115 inputs/six artifacts/owned cleanup; no guest. Attempts01-04 remain failed. Not public replay or standing permission; budget_seconds remains300."
+      }
     },
     {
       "id": "AT-BOOT-SMP",
@@ -2333,30 +2360,30 @@
       "reference": "userland/docs/proposals/FS-HOME-PREP.md",
       "owner": "Aether-userland",
       "budget_seconds": 300,
-      "command": "Planned, from system root: PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-probe.py. Offline explicit FILE helper and fixed launch count selection only.",
+      "command": "From system root: PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-probe.py. Offline explicit FILE helper and selected launch count only.",
       "invariants": "Existing native guard and authoritative descriptor map, one fixed16-byte home write and immutable receipt, root write denied before effect, exact final carried attempts3 with foundation default unchanged; no new client/workspace/ledger or libc activation.",
-      "oracle": "Actual adapter/helper and selected/unselected launch methods; failures, named compiling controls, old modes and strict C/Rust target builds; results pending.",
-      "gaps": "No linked engine/image or guest/authority/settlement/recovery/Zsh qualification."
+      "oracle": "Actual adapter/helper and selected/unselected launch methods; failures, named compiling controls, old modes and strict C/Rust target builds; Private qualification is summarized in FS-HOME-PREP; issue3 owns public integration.",
+      "gaps": "No guest, native settlement/recovery, installed home, Zsh or release qualification; offline engine/images are separate evidence. Exact private receipts, SDK/dependencies and standards are unavailable in a public-only checkout; missing inputs are blocked, not passes."
     },
     {
       "id": "AT-FS-HOME-PREP",
       "reference": "userland/docs/proposals/FS-HOME-PREP.md",
       "owner": "Aether/sys-init/Aether-userland",
       "budget_seconds": 300,
-      "command": "Planned, from system root: PYTHONOPTIMIZE=1 python3 -B scripts/check_fs_home_prep.py. Offline preparation/intake/reader/oracle host checks; no guest.",
+      "command": "From system root: PYTHONOPTIMIZE=1 python3 -B scripts/check_fs_home_prep.py. Offline preparation/intake/reader/oracle host checks; no guest.",
       "invariants": "Distinct AF09 associations and exact member/source/flags/carrier/origins, old seals unchanged; actual original read-only home/probe oracle, unknown evidence never successful, fixed budgets and cleanup.",
-      "oracle": "Actual intake/loader and C oracle with typed host doubles, malformed inputs/TLS/WX/reader metadata/payload/EOF and compiling omissions; no synthetic transcript promoted to native evidence. Results pending.",
-      "gaps": "No physical/native execution, independent cold SDK build, full system peak/recovery/durability or release assurance."
+      "oracle": "Actual intake/loader and C oracle with typed host doubles, malformed inputs/TLS/WX/reader metadata/payload/EOF and compiling omissions; no synthetic transcript promoted to native evidence. Private qualification is summarized in FS-HOME-PREP; issue3 owns public integration.",
+      "gaps": "No physical/native execution, independent cold SDK build, full system peak/recovery/durability or release assurance. Exact private receipts, SDK/dependencies and standards are unavailable in a public-only checkout; missing inputs are blocked, not passes."
     },
     {
       "id": "AT-FS-HOME-IMAGES",
       "reference": "userland/docs/proposals/FS-HOME-PREP.md",
       "owner": "Aether/sys-init/Aether-userland",
       "budget_seconds": 1800,
-      "command": "Planned offline target preparation: scripts/fs_home_launch.py --checked RECEIPT --output .deps/fs-launch-af09-NAME; scripts/fs_home_inputs.py with explicit engine/seal/producer/owner receipts; sys-init/scripts/qualify-home-owner.py --inputs DIR --seal SHA --prepare. No guest.",
+      "command": "Offline target preparation: scripts/fs_home_launch.py --checked RECEIPT --probe-checked HELPER_CLOCK_RECEIPT --output .deps/fs-launch-af09-NAME; scripts/fs_home_inputs.py with explicit engine/seal/producer/owner receipts; sys-init/scripts/qualify-home-owner.py --inputs DIR --seal SHA --prepare. No guest.",
       "invariants": "Actual complete engine/owner/shell/helper and independent baseline/recovery reader images with exact envelopes/resource geometry, source freeze, no old-profile fallback, one current dependency/pending set and compact owned cleanup.",
-      "oracle": "Strict link/origin/relocation/real parser/fit checks and fresh final broad host integration checkpoint; exact artifacts/inputs/limits in prepared receipt for later disposition. Results pending.",
-      "gaps": "Guest execution requires a fresh scoped disposition after concrete reviewed artifacts; no previous authorization renewed."
+      "oracle": "Strict link/origin/relocation/real parser/fit checks and fresh final broad host integration checkpoint; exact artifacts/inputs/limits in prepared receipt for later disposition. Private qualification is summarized in FS-HOME-PREP; issue3 owns public integration.",
+      "gaps": "Guest execution requires a fresh scoped disposition after concrete reviewed artifacts; no previous authorization renewed. Exact private receipts, SDK/dependencies and standards are unavailable in a public-only checkout; missing inputs are blocked, not passes."
     },
     {
       "id": "AT-GITHUB-SOURCE-CI",

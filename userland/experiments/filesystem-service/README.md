@@ -1,3 +1,29 @@
+## AF09 offline composition
+
+[Issue3](https://github.com/gonz0w/Aether/issues/3) owns live integration;
+[FS-HOME-PREP](../../docs/proposals/FS-HOME-PREP.md) holds the durable engine,
+fixed FILE helper, guarded-input and independent-reader contract, exact commands
+and dated private qualification summary. These checks require the exact private
+qualification receipts, SDK/OpenZFS/runtime dependencies and applicable standards
+inputs. They are not replayable from the public source alone.
+
+From `userland/`, run
+`PYTHONOPTIMIZE=1 python3 -B experiments/filesystem-service/check-home-probe.py`
+for the actual guard/map helper, selected final attempt count and bounded UTC
+checks. From the system root, run
+`PYTHONOPTIMIZE=1 python3 -B scripts/check_fs_home_prep.py` for preparation guards
+and the typed independent read-only oracle. Compact reports retain source/tool
+identities, child outcomes and owned cleanup. These host/target checks start no guest.
+
+The root `scripts/fs_home_launch.py` and `scripts/fs_home_inputs.py` commands consume
+explicit current receipts and unused dependency directories. The component
+`sys-init/scripts/qualify-home-owner.py --inputs DIR --seal SHA --prepare` prepares
+exact prospective images; it has no execution option. These three CLIs retain
+ASCII help/version, stdout JSON, escaped stderr diagnostics and0/1/2/64
+success/failure/prerequisite/usage exits. Keep failed receipts, correct prerequisites
+and select new unused outputs. Issue4 owns fresh native disposition and issue56
+separately tracks guarded legacy coverage; old profiles/seals remain distinct.
+
 ## Native home producer candidate
 
 From `userland/`, run

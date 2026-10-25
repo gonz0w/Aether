@@ -12,12 +12,23 @@
 #undef aether_zpl_directory
 #undef aether_utc_read
 #include "zpl-context.h"
-static unsigned home_mode;
+static unsigned home_mode, home_clock_after;
+static uint64_t home_seconds, home_nanos;
+static int home_clock_script;
+void home_clock(uint64_t seconds, uint64_t nanos, unsigned after);
+void home_clock(uint64_t seconds, uint64_t nanos, unsigned after)
+{
+    home_seconds = seconds;
+    home_nanos = nanos;
+    home_clock_after = after;
+    home_clock_script = 1;
+}
 void home_reset(unsigned value)
 {
     mixed_reset(0);
     metadata_reset(0);
     home_mode = value;
+    home_clock_script = 0;
 }
 unsigned home_count(unsigned index) { return mixed_count(index); }
 int aether_zpl_mkdir(aether_zpl_view *view, uint64_t parent,
@@ -33,6 +44,14 @@ int aether_zpl_mkdir(aether_zpl_view *view, uint64_t parent,
         *node = (aether_zpl_node){0};
         *out = (aether_zpl_write_result){0};
         return EEXIST;
+    }
+    /* The original typed graph fixture accepts one constant timestamp. Verify
+     * the actual entry-supplied scripted UTC, then adapt only that host model.
+     */
+    if (home_clock_script && calls >= home_clock_after) {
+        REQUIRE(seconds == home_seconds && nanos == home_nanos);
+        seconds = 1791290040;
+        nanos = 123;
     }
     return fixture_mkdir(view, parent, generation, name, length, uid, gid,
                          seconds, nanos, node, out);
@@ -72,6 +91,11 @@ int aether_zpl_create(aether_zpl_view *view, uint64_t parent,
         out->state = 9;
         return EIO;
     }
+    if (home_clock_script && calls >= home_clock_after) {
+        REQUIRE(seconds == home_seconds && nanos == home_nanos);
+        seconds = 1791290040;
+        nanos = 123;
+    }
     return fixture_create(view, parent, generation, name, length, uid, gid,
                           seconds, nanos, node, out);
 }
@@ -104,7 +128,12 @@ int aether_utc_read(struct timespec *out)
     if ((home_mode == 7 && !calls) || (home_mode == 8 && calls == 1) ||
         (home_mode == 13 && calls == 2))
         return EIO;
-    return fixture_utc(out);
+    int result = fixture_utc(out);
+    if (!result && home_clock_script && calls >= home_clock_after) {
+        out->tv_sec = (time_t)home_seconds;
+        out->tv_nsec = (long)home_nanos;
+    }
+    return result;
 }
 int aether_zpl_context(aether_zpl_view *view, uint64_t root,
                        uint64_t root_generation, uint64_t object,

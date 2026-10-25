@@ -8,6 +8,8 @@ const WRITER: u64 = 0x20002;
 unsafe extern "C" {
     fn home_reset(mode: u32);
     fn home_count(index: u32) -> u32;
+    #[cfg(fs_home_probe_three)]
+    fn home_clock(seconds: u64, nanos: u64, after: u32);
     fn home_validate(result: *const HomeResult, protocol: *mut i32) -> i32;
 }
 #[derive(Default)]
@@ -19,6 +21,8 @@ struct State {
     close_errors: [i64; 2],
     published: usize,
     publish_error: i64,
+    #[cfg(fs_home_probe_three)]
+    advance_clock_on_ready: bool,
     fail_after: Option<usize>,
 }
 std::thread_local! { static STATE: RefCell<State> = RefCell::new(State::default()); }
@@ -27,6 +31,11 @@ pub unsafe fn trap(op: u64, endpoint: u64, pointer: u64, length: u64) -> i64 {
         let mut s = s.borrow_mut();
         match op {
             0x20004 => {
+                #[cfg(fs_home_probe_three)]
+                if s.advance_clock_on_ready {
+                    // SAFETY: host-only UTC fixture setter, no live context mutation.
+                    unsafe { home_clock(1791290100, 0, 0) };
+                }
                 s.published += 1;
                 s.publish_error
             }
@@ -560,4 +569,82 @@ fn rust_and_c_enforce_service_progress_states_without_erasing_committed_txg_zero
         );
         validate_with_c(&out, 1, 1);
     }
+}
+
+#[cfg(fs_home_probe_three)]
+#[test]
+fn selected_clock_accepts_only_the_half_open_window_before_first_effect() {
+    for (seconds, allowed) in [
+        (1791290039, false),
+        (1791290040, true),
+        (1791290099, true),
+        (1791290100, false),
+    ] {
+        reset(0);
+        command(4, None);
+        // SAFETY: serial host fixture setter before entry owns any context.
+        unsafe { home_clock(seconds, 999999999, 0) };
+        let mut out = HomeResult::initial();
+        let code = invoke(&mut out);
+        if allowed {
+            assert_eq!(code, 0, "HOME_CLOCK_WINDOW");
+            assert_eq!(out.mutation_attempts, 2);
+        } else {
+            assert_eq!(
+                (
+                    code,
+                    out.phase,
+                    out.error_kind,
+                    out.mutation_attempts,
+                    out.mkdir.provider
+                ),
+                (5, 4, 11, 0, 0),
+                "HOME_CLOCK_WINDOW"
+            );
+            assert_eq!(count(2), 0);
+            STATE.with(|s| assert_eq!(s.borrow().published, 0));
+        }
+    }
+}
+#[cfg(fs_home_probe_three)]
+#[test]
+fn selected_clock_rechecks_second_bootstrap_readiness_and_request_mutation() {
+    for (after, phase, attempts) in [(1, 6, 1), (2, 0, 2)] {
+        reset(0);
+        command(4, None);
+        // SAFETY: serial typed host UTC; the existing provider attempt count
+        // selects a later observation without a production clock counter.
+        unsafe { home_clock(1791290100, 0, after) };
+        let mut out = HomeResult::initial();
+        assert_eq!(invoke(&mut out), 5, "HOME_CLOCK_RECHECK");
+        assert_eq!(
+            (out.phase, out.mutation_attempts),
+            (phase, attempts),
+            "HOME_CLOCK_RECHECK"
+        );
+        assert_ne!(out.flags & ORDERED, 0);
+        STATE.with(|s| assert_eq!(s.borrow().published, 0));
+        if after == 1 {
+            assert_eq!((out.create.provider, out.create.error_kind), (0, 11));
+        } else {
+            assert_eq!((out.service.stop, out.service.error), (2, -5));
+        }
+    }
+    reset(0);
+    command(7, Some(b"late"));
+    command(4, None);
+    STATE.with(|s| s.borrow_mut().advance_clock_on_ready = true);
+    let mut out = HomeResult::initial();
+    assert_eq!(invoke(&mut out), 0);
+    assert_eq!(
+        (out.mutation_attempts, count(2), out.service.requests),
+        (2, 2, 2),
+        "HOME_CLOCK_REQUEST_BEFORE_EFFECT"
+    );
+    STATE.with(|s| {
+        let s = s.borrow();
+        assert_eq!(s.published, 1);
+        let reply = (&s.output[128..192]).try_into().unwrap();
+        assert_eq!(word(reply, 1) as i64, -5);
+    });
 }
