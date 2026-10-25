@@ -17,6 +17,10 @@ uses available local policy; affected normative work requires the owner and exac
 private inputs. Aggregates that require those inputs remain blocked without them.
 
 
+Current consumer contracts: [boot-session filesystem lifetime](docs/proposals/FS-SERVICE-LIFETIME.md)
+and [first Zsh closure](docs/ZSH-CONSUMER.md). Their linked GitHub issues own live
+selection and status; the records distinguish host proofs from native readiness.
+
 2026-10-22 UL-007/081/082: [real TLS shell relink](docs/proposals/FS-FORK-TLS.md) corrects
 stage81's missing PT_TLS defect. A checked initialized four-byte C17 TLS object
 survives the full link; Aether's unchanged actual ELF parser accepts the279568-byte

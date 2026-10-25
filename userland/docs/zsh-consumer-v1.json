@@ -1,0 +1,216 @@
+{
+  "schema": "aether-zsh-consumer-v1",
+  "issue": "https://github.com/gonz0w/Aether/issues/7",
+  "status": "authenticated-source-and-proposed-native-closure; no-native-qualification",
+  "sources": [
+    {
+      "name": "zsh",
+      "version": "5.9.2",
+      "archive": "https://www.zsh.org/pub/zsh-5.9.2.tar.xz",
+      "sha256": "36fa734374b44783582cec09bcd67822e2f992c779ec1624ab5596df078d2f81",
+      "signature": "https://www.zsh.org/pub/zsh-5.9.2.tar.xz.asc",
+      "key": "https://www.zsh.org/pub/zsh-keyring.asc",
+      "primary_signer": "7CA7ECAAF06216B90F894146ACF8146CAE8CBBC4",
+      "licence": "LICENCE",
+      "licence_sha256": "d06fdf3ef9b1ec69d6b9e170b0a9516fbad3523261ff1668bde3bfea6e0ef5f5"
+    },
+    {
+      "name": "ncurses",
+      "version": "6.6",
+      "archive": "https://invisible-island.net/archives/ncurses/ncurses-6.6.tar.gz",
+      "sha256": "355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11",
+      "signature": "https://invisible-island.net/archives/ncurses/ncurses-6.6.tar.gz.asc",
+      "key": "https://invisible-island.net/public/dickey@invisible-island.net-rsa3072.asc",
+      "primary_signer": "19882D92DDA4C400C22C0D56CC2AF4472167BE03",
+      "licence": "COPYING",
+      "licence_sha256": "708999f95527e1ffa670c6fce288c6c600cb477dd04afcc1171422b3dd4ee226"
+    }
+  ],
+  "verification": {
+    "before_consumption": "Verify exact archive SHA256 and detached signature with isolated keyring; require the listed primary signer. Reject changed bytes, other signers or invalid/missing signatures before extraction/configure.",
+    "zsh_checksum_source": "https://www.zsh.org/pub/SHA256SUM",
+    "ncurses_checksum_source": "Computed from archive after successful upstream signature verification.",
+    "identity_limit": "Fingerprints associated through official HTTPS publication; no independent web-of-trust identity assurance.",
+    "extraction": "Reject absolute paths, traversal and non-data members; require expected release root and bounded member/count/expanded sizes."
+  },
+  "zsh": {
+    "configure": [
+      "--disable-dynamic",
+      "--enable-multibyte",
+      "--with-term-lib=tinfo",
+      "--disable-pcre",
+      "--disable-gdbm",
+      "--disable-cap",
+      "--enable-etcdir=no"
+    ],
+    "target_only": "--enable-libc-musl only with actual pinned Aether musl",
+    "static_modules": [
+      "zsh/main",
+      "zsh/zle",
+      "zsh/complete",
+      "zsh/compctl"
+    ],
+    "module_rule": "After configure, preserve zsh/main fields except clear functions. Select zle/complete/compctl link=static auto=no load=yes. Set every other row link=no auto=no load=no. All rows end with unquoted functions=. Do this before first make; use make prep if changing an already-built configuration.",
+    "functions": "none installed; no compinit corpus, plugins or startup scripts",
+    "launch": [
+      "zsh",
+      "-f",
+      "-i"
+    ],
+    "global_startup": "--enable-etcdir=no; no per-file global startup overrides",
+    "environment": "Exact finite fixture HOME/PATH/cwd/TERM and real UTF-8 locale; no inherited TERMINFO/TERMINFO_DIRS/TERMCAP/TERMPATH or loader/module paths.",
+    "optional_curses_selection": "zsh_cv_ignore_ncurses=yes: disable optional full-curses discovery; pass the exact authenticated build libtinfo.a path in LIBS. Actual termcap function checks remain enabled. This selects an omitted feature, not API success."
+  },
+  "ncurses": {
+    "configure": [
+      "--disable-widec",
+      "--with-normal",
+      "--without-shared",
+      "--without-debug",
+      "--with-termlib=tinfo",
+      "--with-ticlib",
+      "--without-progs",
+      "--without-tests",
+      "--without-cxx",
+      "--without-cxx-binding",
+      "--without-ada",
+      "--disable-termcap",
+      "--disable-home-terminfo",
+      "--without-manpages"
+    ],
+    "selected_library": "static libtinfo.a; termcap compatibility API, compiled terminfo reader",
+    "not_selected": [
+      "full ncurses",
+      "menu",
+      "form",
+      "panel",
+      "C++",
+      "Ada",
+      "target tic",
+      "shared libraries",
+      "runtime text termcap parsing"
+    ],
+    "database": "One frontend-compatible TERM entry and transitive use= closure, compiled by host tic from the same authenticated release. Frontend/entry selection and inherited notices must be reviewed before native execution.",
+    "search": "Disable home lookup; set explicit target terminfo directory; sanitize environment. No database-free fallback."
+  },
+  "native_requirements": [
+    {
+      "feature": "startup / libc / descriptors",
+      "source": [
+        "zsh:Src/init.c:286",
+        "zsh:Src/init.c:628",
+        "zsh:Src/init.c:1094",
+        "zsh:Src/init.c:1327",
+        "zsh:Src/init.c:1719"
+      ],
+      "requirements": "isatty, ttyname/open or actual read-write TTY fd duplication, fcntl F_GETFL/F_GETFD/F_SETFD and CLOEXEC, libc allocation/stdio/errno/environment/identity lookup/locale; truthful lookup failure; no invented account database. Independent stdin/stdout/stderr bindings and terminal handle authority.",
+      "owner": "#6 / #8",
+      "oracle": "Interactive ZLE is truly active, no surprise startup reads; fd alias/close semantics and denied authority observable."
+    },
+    {
+      "feature": "ZLE editing",
+      "source": [
+        "zsh:Src/Zle/zle_main.c:240",
+        "zsh:Src/Zle/zle_main.c:281",
+        "zsh:Src/Zle/zle_main.c:589",
+        "zsh:Src/Zle/zle_main.c:848",
+        "zsh:Src/utils.c:1751",
+        "zsh:Src/utils.c:1779",
+        "zsh:Src/utils.c:1888"
+      ],
+      "requirements": "Real tcgetattr/tcsetattr(TCSADRAIN); ICANON/ECHO and selected signal/control/input/output flags, VMIN/VTIME; poll/select/read with EOF, EAGAIN, EINTR and deadlines; winsize; terminal restoration. ZLE mode is specific termios transformation, not unconditional generic raw.",
+      "owner": "#6 / #8",
+      "oracle": "Cursor editing/backspace, fragmented escape sequences, timeout, EOF/disconnect, resize and exit restoration with no echoed duplicate input."
+    },
+    {
+      "feature": "terminal rendering",
+      "source": [
+        "zsh:Src/init.c:791",
+        "zsh:Src/Zle/zle_refresh.c:2453",
+        "ncurses:ncurses/tinfo/lib_termcap.c:83",
+        "ncurses:ncurses/tinfo/read_entry.c:588",
+        "ncurses:ncurses/tinfo/db_iterator.c:315"
+      ],
+      "requirements": "tgetent/tgetflag/tgetnum/tgetstr, tgoto/tputs and output callback; authenticated selected compiled terminfo readable via bounded FS authority; controlled lookup paths; padding/delay path requires honest timing if selected capabilities use it.",
+      "owner": "#6 / #9 / #10",
+      "oracle": "Selected TERM capabilities match frontend; missing/unknown TERM explicit fallback or failure, no fabricated full-screen capability."
+    },
+    {
+      "feature": "basic command/file completion",
+      "source": [
+        "zsh:Src/Zle/compctl.c:2187",
+        "zsh:Src/Zle/compctl.c:2195",
+        "zsh:Src/Zle/compctl.c:2228",
+        "zsh:Src/Zle/compctl.c:2264"
+      ],
+      "requirements": "cwd, path resolution, opendir/readdir/closedir, stat and access; PATH command enumeration and bounded directory data. Namespace visibility and execute authorization remain distinct.",
+      "owner": "#9 / #10 / #12",
+      "oracle": "One granted filename completes; denied directory/foreign scope does not leak names; type/permission and nonexistent path results truthful."
+    },
+    {
+      "feature": "UTF-8 editing",
+      "source": [
+        "zsh:Src/Zle/zle_main.c:1014",
+        "zsh:Src/Zle/zle_refresh.c:656",
+        "zsh:Src/zsh.h:3301",
+        "zsh:configure.ac:2289"
+      ],
+      "requirements": "setlocale, mbrtowc/wcrtomb, isw*/tow*, wide string/memory functions and width calculation. Explicit --enable-multibyte bypasses automatic completeness inference: verify target symbols and semantics. Select real UTF-8 locale and compatible terminal width behavior.",
+      "owner": "#6 / #8",
+      "oracle": "Fragmented multibyte input, delete/backspace one codepoint, combining/wide character redisplay, invalid sequence and bounded incomplete-sequence timeout."
+    },
+    {
+      "feature": "external commands / pipelines / substitution",
+      "source": [
+        "zsh:Src/exec.c:330",
+        "zsh:Src/exec.c:489",
+        "zsh:Src/exec.c:588",
+        "zsh:Src/exec.c:2805",
+        "zsh:Src/exec.c:5127"
+      ],
+      "requirements": "fork, argv/env execve, pipes/dup/fcntl/close, wait; authorized immutable executable acquisition and correct denied/notfound/ENOEXEC handling. Script fallback attempts /bin/sh; missing interpreter is a real failure, not automatic authority.",
+      "owner": "#8 / #12 / #9 / #10",
+      "oracle": "One pinned helper status and descriptor inheritance, then finite pipeline/substitution/redirection tiers; rejected exec leaves prompt and resources intact."
+    },
+    {
+      "feature": "foreground jobs / control signals",
+      "source": [
+        "zsh:Src/signals.c:111",
+        "zsh:Src/signals.c:179",
+        "zsh:Src/signals.c:231",
+        "zsh:Src/signals.c:285",
+        "zsh:Src/jobs.c:270",
+        "zsh:Src/utils.c:4738",
+        "zsh:Src/utils.c:4780"
+      ],
+      "requirements": "sigaction, masks/sigsuspend, SIGCHLD, wait stopped/continued status, process groups, tcgetpgrp/tcsetpgrp, group-scoped kill, Ctrl-C/Z foreground routing and SIGTTIN/TTOU; real elapsed-time APIs for selected waits/jobs, never diagnostic fixed UTC.",
+      "owner": "#6 / #8",
+      "oracle": "Foreground helper Ctrl-C, stopped helper Ctrl-Z/jobs/bg/fg, exact statuses and foreground restoration; denied foreign/stale group; bounded cleanup."
+    }
+  ],
+  "inspected_source_sha256": {
+    "zsh:LICENCE": "d06fdf3ef9b1ec69d6b9e170b0a9516fbad3523261ff1668bde3bfea6e0ef5f5",
+    "zsh:configure.ac": "fba88a4fd590f54df6ea02c01e87caa831716a670f4d59019d0a8af72f800856",
+    "zsh:Src/Zle/zle.mdd": "ef7d6acdd9fa63c237e6f6e5f12ff4d34cea0fc3ee0ecb3cb6e38a7f3813e056",
+    "zsh:Src/Zle/complete.mdd": "61065fba10e98cc516d1402ad820b67233ade5f982e66202509b01487e492d01",
+    "zsh:Src/Zle/compctl.mdd": "650fe58245b2364d4b7e803f33701d669352f75a27721b6289f2af29d215948e",
+    "zsh:Src/init.c": "e3e80519c550c3695541a5025ff5df69e954678e64b9dbd14373f5b17d559438",
+    "zsh:Src/utils.c": "54ee6616f88da238a2549092e36330553ff58e05cdf127f76f5b38f92374d868",
+    "zsh:Src/exec.c": "989efb3a21ed259f16c24f773d964fafe614994abf516a1f6f49f51072296184",
+    "zsh:Src/signals.c": "dfde213dc981aa4f5b08a1b6975f8c3db73b5f568e76adfcbbbc4df995c58c51",
+    "zsh:Src/jobs.c": "1c44ee368bc0d9755dd98c27ee5ed0d86e98b35ab94919c9e895cd4e0d1d425b",
+    "zsh:Src/Zle/zle_main.c": "3876c485ffd8f956afeaf7de481c2fc6c82d902108911923c5b58cbb50b7bc18",
+    "zsh:Src/Zle/zle_refresh.c": "b72cfa51df36cb0ceea34d27bd1eca8b69e26fccdef8103a7ec534df08d5ae91",
+    "zsh:Src/Zle/compctl.c": "26d19d61f43db6a8cab613aa2cc61b1e728c11e8ea7839735b4d8b6bda80faf1",
+    "zsh:Src/zsh.h": "f93a47d2b5f1ed5ffc67138ce65ae64a3d50e2d9392f7f44bf2b2430fd88a97b",
+    "ncurses:COPYING": "708999f95527e1ffa670c6fce288c6c600cb477dd04afcc1171422b3dd4ee226",
+    "ncurses:INSTALL": "df6b24999aaeb8099b1ef22e55b2e0dde86120a133f026a4b22bf32a48cee585",
+    "ncurses:configure": "8aa32ee5c1edcbc458b51a96534c34cd6cd6dc42f3778d5e52033507a819fbf5",
+    "ncurses:ncurses/modules": "acfbb9c5be81f67b96ed0bae404e93bc1bc1dda23c4350ef59b4910990cd0063",
+    "ncurses:ncurses/tinfo/lib_termcap.c": "96445e2a692b38c6329df6e98f9b307646b564a8b02c62faf58de9b53c93a64a",
+    "ncurses:ncurses/tinfo/lib_tputs.c": "84630b7fa34f7902f4baa24cf0f482f4338a9a147e14e0ead277429bc8d6d12b",
+    "ncurses:ncurses/tinfo/read_entry.c": "161ede223dbabeb8137c4ddcbca7f6fe8d4edea2f4d0bcb9132c6f0c990cbd56",
+    "ncurses:ncurses/tinfo/db_iterator.c": "b822256e5f9a806c0e608bf608f5f0e271ce38897bffa28e9beb764b537b76ca",
+    "ncurses:misc/terminfo.src": "75673b421c25032306f7cdf26df57978c86ed9cf3d3fb16a6479233775f4f961"
+  }
+}

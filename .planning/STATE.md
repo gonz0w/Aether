@@ -24,6 +24,11 @@ implementation from historical queues.
   [The dated witness](../userland/docs/proposals/FS-HOME-PREP.md#bounded-native-witness-2026-10-25)
   describes the private experiment's scope; GitHub owns live selection and status.
 
+- Zsh source/configuration handoff: [issue7](https://github.com/gonz0w/Aether/issues/7)
+  and [consumer contract](../userland/docs/ZSH-CONSUMER.md). Filesystem runtime
+  follow-ups: [admission cutpoint](https://github.com/gonz0w/Aether/issues/60) and
+  [elapsed drain deadline](https://github.com/gonz0w/Aether/issues/61).
+
 ## Historical records
 
 Component STATE/BACKLOG/PRIORITY files and legacy work records preserve stable

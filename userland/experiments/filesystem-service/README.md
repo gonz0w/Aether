@@ -1,3 +1,14 @@
+## Boot-session lifetime contract
+
+[FS-SERVICE-LIFETIME](../../docs/proposals/FS-SERVICE-LIFETIME.md) specifies one
+Owner/source connection across two work phases and a controlled idle boundary.
+`service-lifetime-tests.rs` exercises actual library paths with host storage and
+channels. Its build selection, bounds and proof limits are in that contract.
+[Issue9](https://github.com/gonz0w/Aether/issues/9) owns the contract;
+[issue60](https://github.com/gonz0w/Aether/issues/60) and
+[issue61](https://github.com/gonz0w/Aether/issues/61) own the unimplemented runtime
+admission cutpoint and elapsed deadline. No native drain is claimed by host tests.
+
 ## AF09 offline composition
 
 [Issue3](https://github.com/gonz0w/Aether/issues/3) owns live integration;
