@@ -1861,6 +1861,40 @@
       ],
       "reviewer": null,
       "exclusion": "Only a dated private qualification summary is public. Raw receipts, prepared images, SDK/dependencies and standards inputs are unavailable; missing required inputs remain blocked coverage. Issue3 owns integration; no guest, recovery or release acceptance."
+    },
+    {
+      "id": "UD-filesystem-service-lifetime",
+      "surface": "Boot-session filesystem lifetime contract and actual-code host controls; native drain/deadline gaps remain open",
+      "kind": "subsystem",
+      "owner": "Aether-userland/sys-init",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-SERVICE-LIFETIME.md",
+        "experiments/filesystem-service/service-lifetime-tests.rs"
+      ],
+      "evidence": [
+        "docs/proposals/FS-SERVICE-LIFETIME.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-zsh-consumer",
+      "surface": "Authenticated Zsh/ncurses source and minimal module/terminfo closure; no native shell qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/ZSH-CONSUMER.md",
+        "docs/zsh-consumer-v1.json"
+      ],
+      "evidence": [
+        "docs/ZSH-CONSUMER.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
     }
   ]
 }

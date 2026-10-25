@@ -2394,6 +2394,26 @@
       "invariants": "Read-only token, immutable action/tool pins, no secrets or privileged issue execution; complete Temper bundle and public-path exclusions checked; pure models execute nonzero cases.",
       "oracle": "Successful actual hosted jobs on exact public source; method identities, syntax checks and named nonzero model tests. This job does not run the private standards or quality inventory gates.",
       "gaps": "Private standards and copied tooling deliberately excluded by owner. Full workflow/quality, AT-HOST300 and native/whole-system/release qualification remain separate and require their own inputs."
+    },
+    {
+      "id": "AT-FS-SERVICE-LIFETIME",
+      "reference": "userland/docs/proposals/FS-SERVICE-LIFETIME.md",
+      "owner": "Aether-userland/sys-init",
+      "budget_seconds": 300,
+      "command": "Host Rust 1.98.0 test build of service-lifetime-tests.rs against actual metadata/policy/service/client/activation crates with fs_home_native and the referenced explicit flags; run --test-threads=1.",
+      "invariants": "One Owner/source/client across two phases and controlled idle; unchanged cumulative 96 requests/9 mutation attempts, grant/epoch and checked disconnect; unknown outcomes never replayed.",
+      "oracle": "Seven actual-code host methods, two readiness denials, strict compile/Clippy and Rustfmt. Runtime cutpoint/deadline and native export/park are not modelled by substitutes.",
+      "gaps": "No operational Runtime drain, elapsed deadline, native timing/durability or ISO qualification. Private tools/receipts unavailable publicly."
+    },
+    {
+      "id": "AT-ZSH-CLOSURE",
+      "reference": "userland/docs/ZSH-CONSUMER.md",
+      "owner": "Aether-userland",
+      "budget_seconds": 300,
+      "command": "Authenticated source/configuration audit and isolated reference build sequence in the reference; exact source pins in userland/docs/zsh-consumer-v1.json. No guest.",
+      "invariants": "Pinned upstream signatures/checksums, explicit static module allowlist and local libtinfo; no optional function corpus, forced target API success or host-as-native claims.",
+      "oracle": "Source-derived requirement matrix plus final module/config/link inspection and separate handoff review; preserve every failed attempt and clean owned outputs.",
+      "gaps": "Actual Aether ELF/API/TTY/process, frontend/terminfo selection, code/memory fit and assembled ISO qualification remain separate."
     }
   ]
 }
