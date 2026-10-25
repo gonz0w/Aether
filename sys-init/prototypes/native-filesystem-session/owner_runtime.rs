@@ -14,10 +14,52 @@ use filesystem_remote_descriptors::{CopyAttempt, NativeIdentity, Process};
 use filesystem_service::channel::{Framed, Io};
 use fork_gate::Owner;
 use fork_streams::{Caller, Outcome, SessionPipe, State};
-use owner_control::Control;
+use owner_control::{Control, Deadline, Observation};
 use owner_dispatch::{Completion, Event};
 pub type Channel<K> = Framed<Endpoints<K>>;
-type Gate<K> = Owner<Channel<K>, State>;
+type Gate<K> = Owner<Framed<DrainIo<K>>, State>;
+/// Only the sole source gets phase state; child Peers retain their old transport.
+struct DrainIo<K: Control> {
+    endpoints: Endpoints<K>,
+    observer: K,
+    deadline: Option<Deadline>,
+    sequence: u64,
+}
+impl<K: Control> DrainIo<K> {
+    fn arm(&mut self, deadline: Deadline) -> core::result::Result<(), FsError> {
+        if self.deadline.is_some() || self.endpoints.cleanup().is_some() {
+            return Err(FsError::Invalid);
+        }
+        self.deadline = Some(deadline);
+        Ok(())
+    }
+}
+impl<K: Control> Io for DrainIo<K> {
+    #[inline(always)]
+    fn transfer(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
+        if let Some(deadline) = self.deadline {
+            match deadline.check(self.observer.observe_events()) {
+                Ok(sequence) => self.sequence = sequence,
+                Err(error) => return error,
+            }
+        }
+        self.endpoints.transfer(writing, bytes)
+    }
+    fn wait(&mut self, writing: bool) -> i64 {
+        if let Some(deadline) = self.deadline {
+            // Preserve the pre-transfer sequence, including an intervening event.
+            match deadline.check(self.observer.park_events(self.sequence, Some(deadline))) {
+                Ok(_) => 0,
+                Err(error) => error,
+            }
+        } else {
+            self.endpoints.wait(writing)
+        }
+    }
+    fn close(&mut self) -> [i64; 2] {
+        self.endpoints.close()
+    }
+}
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     Native(i64),
@@ -168,6 +210,12 @@ impl<K: Control> Runtime<K> {
                     cleanup: channel.close(),
                 }
             })?;
+        let channel = Framed(DrainIo {
+            endpoints: channel.0,
+            observer: kernel.clone(),
+            deadline: None,
+            sequence: 0,
+        });
         let pointer = slot.as_mut_ptr();
         // SAFETY: exclusive aligned MaybeUninit storage. Only the uninitialized
         // gate field is borrowed. No enclosing Runtime reference exists yet.
@@ -226,7 +274,7 @@ impl<K: Control> Runtime<K> {
     }
     fn park(&mut self, sequence: u64) -> Result<()> {
         self.step()?;
-        zero(self.kernel.ctl(0x2a001, 0xe002, sequence).0)
+        zero(self.kernel.park_events(sequence, None).0)
     }
     fn allocate_pair(&mut self) -> Result<[u64; 4]> {
         pairs(&mut self.kernel, 0xd001)
@@ -368,9 +416,13 @@ impl<K: Control> Runtime<K> {
         };
         Ok(())
     }
-    fn stopped(&mut self, index: usize) -> Result<()> {
-        if self.records[index].identity.is_none() || self.terminal(index)? {
+    fn stopped(&mut self, index: usize, deadline: Deadline) -> Result<()> {
+        if self.records[index].identity.is_none() {
             return Ok(());
+        }
+        self.drain_checkpoint(deadline)?;
+        if self.terminal(index)? {
+            return self.drain_checkpoint(deadline);
         }
         zero(
             self.kernel
@@ -378,12 +430,29 @@ impl<K: Control> Runtime<K> {
                 .0,
         )?;
         loop {
-            let sequence = self.observe()?;
+            let sequence = drain_observe(&mut self.kernel, &mut self.remaining, deadline)
+                .map_err(Error::Native)?;
             if self.terminal(index)? {
-                return Ok(());
+                return self.drain_checkpoint(deadline);
             }
-            self.park(sequence)?;
+            drain_park(&mut self.kernel, &mut self.remaining, sequence, deadline)
+                .map_err(Error::Native)?;
         }
+    }
+    fn drain_checkpoint(&mut self, deadline: Deadline) -> Result<()> {
+        drain_observe(&mut self.kernel, &mut self.remaining, deadline)
+            .map(|_| ())
+            .map_err(Error::Native)
+    }
+    fn begin_drain(&mut self) -> Result<Deadline> {
+        self.step()?;
+        let observed = Observation::checked(self.kernel.observe_events()).map_err(Error::Native)?;
+        let deadline = Deadline::after(observed.tick, 500).map_err(Error::Native)?;
+        self.gate
+            .admit(|files, _| files.configure_channel(|channel| channel.0.arm(deadline)))
+            .map_err(|_| Error::Gate)?
+            .map_err(|_| Error::Source)?;
+        Ok(deadline)
     }
     #[inline(never)]
     fn copy(&mut self, mut plan: Plan, workspace: &mut [u8; 4096]) -> Result<()> {
@@ -683,11 +752,11 @@ impl<K: Control> Runtime<K> {
     #[inline(never)]
     fn run_inner(&mut self, workspace: &mut [u8; 4096]) -> Result<()> {
         self.launch_parent(workspace)?;
-        self.run_session(workspace)?;
-        self.shutdown()
+        let deadline = self.run_session(workspace)?;
+        self.shutdown(deadline)
     }
     #[inline(always)]
-    fn run_session(&mut self, workspace: &mut [u8; 4096]) -> Result<()> {
+    fn run_session(&mut self, workspace: &mut [u8; 4096]) -> Result<Deadline> {
         loop {
             let observed = self.observe()?;
             let mut progress = self.poll(0, workspace)?;
@@ -695,8 +764,9 @@ impl<K: Control> Runtime<K> {
             // this cycle. Pending frames have no effects; only confirmed child
             // terminal may clear their slots and stream holders below.
             if self.records[0].terminal.is_some() {
-                self.settle_after_parent_terminal()?;
-                break;
+                let deadline = self.begin_drain()?;
+                self.settle_after_parent_terminal(deadline)?;
+                return Ok(deadline);
             }
             for index in 1..4 {
                 progress |= self.poll(index, workspace)?;
@@ -709,24 +779,27 @@ impl<K: Control> Runtime<K> {
                 self.park(observed)?;
             }
         }
-        Ok(())
     }
     // Keep terminal-only settlement scratch off the active dispatch call chain.
     #[inline(never)]
-    fn settle_after_parent_terminal(&mut self) -> Result<()> {
+    fn settle_after_parent_terminal(&mut self, deadline: Deadline) -> Result<()> {
         for index in 1..4 {
             if self.records[index].identity.is_some() {
-                self.stopped(index)?;
+                self.stopped(index, deadline)?;
                 if !self.records[index].collected {
                     self.children
                         .abandon_after_parent_terminal(child(self.records[index].id()?)?)
                         .map_err(|_| Error::Protocol)?;
                     self.records[index].collected = true;
                 }
+                self.drain_checkpoint(deadline)?;
                 self.reclaim(index)?;
+                self.drain_checkpoint(deadline)?;
             }
         }
+        self.drain_checkpoint(deadline)?;
         self.reclaim(0)?;
+        self.drain_checkpoint(deadline)?;
         self.gate
             .admit(|_, streams| streams.retire_idle([false; 4]))
             .map_err(|_| Error::Gate)?;
@@ -734,21 +807,17 @@ impl<K: Control> Runtime<K> {
     }
     // Keep terminal source-close scratch off the live polling call chain.
     #[inline(never)]
-    fn shutdown(&mut self) -> Result<()> {
+    fn shutdown(&mut self, deadline: Deadline) -> Result<()> {
+        self.drain_checkpoint(deadline)?;
         let engine = self.engine;
         let outcome = self
             .gate
             .admit(|files, _| {
                 files.disconnect_checked(|channel| {
                     loop {
-                        if self.remaining == 0 {
-                            return Err(FsError::Transport(-110));
-                        }
-                        self.remaining -= 1;
-                        let sequence = self.kernel.ctl(0x2a000, 0xe002, 0);
-                        if sequence.0 != 0 {
-                            return Err(FsError::Transport(sequence.0));
-                        }
+                        let sequence =
+                            drain_observe(&mut self.kernel, &mut self.remaining, deadline)
+                                .map_err(FsError::Transport)?;
                         let state = self.kernel.ctl(0x20001, engine, 0);
                         if state.0 > 0 {
                             if state.0 != 1 || state.2 != 1 {
@@ -759,30 +828,54 @@ impl<K: Control> Runtime<K> {
                         if state.0 < 0 {
                             return Err(FsError::Transport(state.0));
                         }
-                        let raw = self.kernel.ctl(0x2a001, 0xe002, sequence.1).0;
-                        if raw != 0 {
-                            return Err(FsError::Transport(raw));
-                        }
+                        drain_park(&mut self.kernel, &mut self.remaining, sequence, deadline)
+                            .map_err(FsError::Transport)?;
                     }
+                    drain_observe(&mut self.kernel, &mut self.remaining, deadline)
+                        .map_err(FsError::Transport)?;
                     let mut byte = [0];
                     if channel.0.transfer(false, &mut byte) != 0
                         || channel.0.transfer(true, &mut byte) != -32
                     {
                         return Err(FsError::Protocol);
                     }
+                    drain_observe(&mut self.kernel, &mut self.remaining, deadline)
+                        .map_err(FsError::Transport)?;
                     Ok(())
                 })
             })
             .map_err(|_| Error::Gate)?
             .map_err(|_| Error::Source)?;
         require(outcome == [0; 2])?;
+        self.drain_checkpoint(deadline)?;
         zero(self.kernel.ctl(0x20002, engine, 0).0)?;
         require(self.kernel.ctl(0x20001, engine, 0).0 == -9)?;
         self.engine = 0;
+        self.drain_checkpoint(deadline)?;
         zero(self.kernel.ctl(0x26002, 0xf001, 0).0)?;
+        self.drain_checkpoint(deadline)?;
         self.kernel.ctl(0x2a002, 0xf002, 0);
         Err(Error::ReturnedHalt)
     }
+}
+fn drain_observe(
+    kernel: &mut impl Control,
+    remaining: &mut u32,
+    deadline: Deadline,
+) -> core::result::Result<u64, i64> {
+    spend(remaining)?;
+    deadline.check(kernel.observe_events())
+}
+fn drain_park(
+    kernel: &mut impl Control,
+    remaining: &mut u32,
+    sequence: u64,
+    deadline: Deadline,
+) -> core::result::Result<(), i64> {
+    spend(remaining)?;
+    deadline
+        .check(kernel.park_events(sequence, Some(deadline)))
+        .map(|_| ())
 }
 fn pairs(kernel: &mut impl Control, factory: u64) -> Result<[u64; 4]> {
     let req = kernel.ctl(0x24000, factory, 0);
@@ -855,15 +948,15 @@ fn pause(
     remaining: &mut u32,
 ) -> core::result::Result<(), i64> {
     spend(remaining)?;
-    let raw = kernel.ctl(0x2a001, 0xe002, sequence).0;
+    let raw = kernel.park_events(sequence, None).0;
     if raw == 0 { Ok(()) } else { Err(raw) }
 }
 /// One complete immutable-helper exec under the already closed route gate.
 /// Actual source/frame/native observations remain distinct; no retry on error.
 #[inline(never)]
-fn execute<K: Control>(
+fn execute<K: Control, T: filesystem_service::Channel>(
     kernel: &mut K,
-    files: &mut filesystem_remote_descriptors::ProcessFiles<Channel<K>>,
+    files: &mut filesystem_remote_descriptors::ProcessFiles<T>,
     streams: &mut State,
     peer: &mut Peer<Channel<K>>,
     record: &mut Instance,

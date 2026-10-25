@@ -2424,6 +2424,16 @@
       "invariants": "Parent poll/terminal cutpoint before child dispatch; existing gate/ledgers retain failure obligations and stop/abandon/reclaim settlement, then final idle retirement. No new fields, authority, ABI or resource limits.",
       "oracle": "Queued FILE/exec/fork/stream consume no child bytes or allocate; pending no-effect work settles only after confirmed terminal; failed close/reclaim/nonterminal stop/partial exchange/unknown outcomes cannot export. Named old-poll and missing-retire controls plus exact complete owner code/resident/conservative-stack measurement.",
       "gaps": "No native Runtime enforcement, peak stack, elapsed drain deadline or assembled Zsh/ISO acceptance. Private SDK/style/evidence unavailable publicly; legacy guarded coverage remains issue56."
+    },
+    {
+      "id": "AT-FS-DRAIN-DEADLINE",
+      "reference": "userland/docs/proposals/FS-SERVICE-LIFETIME.md",
+      "owner": "sys-init/Aether-userland",
+      "budget_seconds": 300,
+      "command": "From system root: PYTHONOPTIMIZE=1 python3 -B sys-init/scripts/check-home-owner.py with exact private prerequisites. Actual component check body, typed Native host-trap/loan/omission controls and complete current/AF07/AF08 offline fit; no guest.",
+      "invariants": "One checked 500-delivered-tick source-only deadline at authenticated parent terminal; pre-transfer event sequence retained on EAGAIN; no per-wake/frame/child renewal. Keep source obligations/settled facts accurate on expiry and attempt both owned closes.",
+      "oracle": "Actual Runtime/source transfer/stop/disconnect/export/progress races, RDX-zero omission, callback loan/retired-source and trap guards, strict host/native builds, original maintained nested suites and fixed-limit complete-owner measurements. Existing actual kernel-body event/deadline/authority controls are host evidence.",
+      "gaps": "No native IRQ/wall-clock/peak/drain enforcement, healthy-session timeout policy, operational reopen or Zsh/ISO qualification. Private inputs/receipts remain local; issue64 owns matched native gate."
     }
   ]
 }

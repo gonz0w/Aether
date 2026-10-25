@@ -21,6 +21,10 @@ struct Seen {
     bad_launch: bool,
     bad_close: bool,
     ready_seen: bool,
+    tick: u64,
+    transfer_ticks: u64,
+    export_pending: bool,
+    parks: Vec<(u64, u64)>,
 }
 #[derive(Clone)]
 struct Mock(Rc<RefCell<Seen>>);
@@ -30,6 +34,9 @@ impl Kernel for Mock {
         let mut s = self.0.borrow_mut();
         s.events
             .push((if writing { 0x24002 } else { 0x24001 }, endpoint));
+        if endpoint == 100 || endpoint == 101 {
+            s.tick += s.transfer_ticks;
+        }
         if writing {
             if endpoint == 101 {
                 if s.at == 128 {
@@ -61,6 +68,13 @@ impl Kernel for Mock {
     }
 }
 impl Control for Mock {
+    fn park_events(&mut self, sequence: u64, deadline: Option<owner_control::Deadline>) -> Status {
+        let mut s = self.0.borrow_mut();
+        s.parks
+            .push((sequence, deadline.map_or(0, owner_control::Deadline::get)));
+        s.tick += 200;
+        (0, 77, s.tick)
+    }
     fn exec(&mut self, _: u64, _: u64, _: &[u8; 272]) -> i64 {
         panic!("no exec in immediate fixture")
     }
@@ -82,7 +96,7 @@ impl Control for Mock {
             }
             0x20001 if s.reaped.contains(&handle) => (-9, 0, 0),
             0x20001 if handle == 0xb0000101 => {
-                if s.at == 128 {
+                if s.at == 128 && !s.export_pending {
                     (1, 1, 1)
                 } else {
                     s.engine_state
@@ -100,7 +114,7 @@ impl Control for Mock {
                 s.reaped.push(handle);
                 (0, 0, 0)
             }
-            0x2a000 => (0, 77, 0),
+            0x2a000 => (0, 77, s.tick),
             0x1fffe | 0x26002 | 0x2a002 => (0, 0, 0),
             _ => panic!("unexpected native operation {op:x}"),
         }
@@ -179,8 +193,8 @@ fn concrete_owner_orders_startup_settlement_export_proof_and_native_reclaim() {
             assert_eq!(u64::from_le_bytes(s.requests[8..16].try_into().unwrap()), 4);
             assert_eq!(s.reaped, [0xb0000102, 0xb0000101]);
             assert_eq!(
-                &events[events.len() - 2..],
-                &[(0x26002, 0xf001), (0x2a002, 0xf002)]
+                &events[events.len() - 3..],
+                &[(0x26002, 0xf001), (0x2a000, 0xe002), (0x2a002, 0xf002)]
             );
         } else {
             assert!(result.is_err());
@@ -201,6 +215,7 @@ fn concrete_owner_orders_startup_settlement_export_proof_and_native_reclaim() {
             assert!(position((0x24003, 100)) < position((0x24003, 101)));
         }
     }
+    disconnect_exchange_and_export_wait_share_the_fixed_drain_deadline();
 }
 
 #[test]
@@ -254,4 +269,49 @@ fn failed_initial_launch_is_not_replayed_or_reported_reclaimed() {
     assert!(kernel.0.borrow().reaped.is_empty());
     // SAFETY: successful initialization, owner borrow ends, sole drop.
     unsafe { slot.assume_init_drop() };
+}
+
+fn disconnect_exchange_and_export_wait_share_the_fixed_drain_deadline() {
+    for export in [false, true] {
+        let kernel = setup();
+        let mut slot = MaybeUninit::uninit();
+        let channel = Framed(Endpoints::new(kernel.clone(), 100, 101).ok().unwrap());
+        let owner =
+            Runtime::connect_in_place(&mut slot, kernel.clone(), 0xb0000101, channel, 77, 10000)
+                .ok()
+                .unwrap();
+        if export {
+            kernel.0.borrow_mut().export_pending = true;
+        } else {
+            kernel.0.borrow_mut().transfer_ticks = 150;
+        }
+        assert!(
+            owner.run(&mut [0; 4096]).is_err(),
+            "DRAIN_DISCONNECT_EXPORT_TIMEOUT"
+        );
+        let s = kernel.0.borrow();
+        assert_eq!(s.reaped, [0xb0000102]);
+        assert!(!s.events.iter().any(|(op, _)| *op == 0x2a002));
+        assert_eq!(
+            s.events
+                .iter()
+                .filter(|&&(op, h)| op == 0x24003 && (h == 100 || h == 101))
+                .count(),
+            2,
+            "DRAIN_TIMEOUT_CLOSES"
+        );
+        if export {
+            assert_eq!(
+                s.parks,
+                [(77, 500), (77, 500), (77, 500)],
+                "DRAIN_EXPORT_FIXED_DEADLINE"
+            );
+        }
+        let events = s.events.clone();
+        drop(s);
+        assert_eq!(owner.run(&mut [0; 4096]), Err(Error::Protocol));
+        assert_eq!(kernel.0.borrow().events, events);
+        // SAFETY: initialized final slot; failure is retained and both closes attempted.
+        unsafe { slot.assume_init_drop() };
+    }
 }

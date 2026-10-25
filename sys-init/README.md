@@ -19,8 +19,10 @@ private inputs. Aggregates that require those inputs remain blocked without them
 The [boot-session filesystem lifetime contract](../userland/docs/proposals/FS-SERVICE-LIFETIME.md)
 describes the parent-terminal admission cutpoint, confirmed stop/holder/reclaim
 settlement and focused actual-Runtime controls. [Issue60](https://github.com/gonz0w/Aether/issues/60)
-owns this change; [issue61](https://github.com/gonz0w/Aether/issues/61) retains the
-elapsed-deadline work. Host tests and offline owner fit do not qualify native drain.
+records admission; [issue61](https://github.com/gonz0w/Aether/issues/61) records one
+fixed delivered-tick deadline through source I/O and teardown. Matched native
+qualification remains [issue64](https://github.com/gonz0w/Aether/issues/64); host
+controls and offline owner fit do not qualify native timing.
 
 
 The init and service lifecycle project for the Aether operating-system effort, alongside the [Aether kernel](../README.md) and [pkg-mgr](../pkg-mgr/README.md).
