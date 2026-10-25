@@ -1,0 +1,194 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 7, 2026
+.Dt SYS-INIT-TEST-NATIVE-INIT 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-test-native-init
+.Nd consume experimental sys-init artifacts in an isolated Aether test workspace
+.Sh SYNOPSIS
+.Nm python3
+.Ar tests/native-init.py
+.br
+.Fl Fl producer Ar directory
+.br
+.Fl Fl summary-pin Ar digest
+.br
+.Fl Fl work Ar directory
+.br
+.Op Fl Fl init-large | Fl Fl init-composed
+.Op Fl Fl deps Ar directory
+.br
+.Op Fl Fl service-worker Ar directory
+.br
+.Op Fl Fl service-worker-pin Ar digest
+.Nm python3
+.Ar tests/native-init.py
+.Fl Fl help
+.Nm python3
+.Ar tests/native-init.py
+.Fl Fl version
+.Sh DESCRIPTION
+This source-checkout developer command performs actual kernel builds and
+native
+QEMU smoke tests.
+It is not an installed operator command, a host-only model
+check or permission to test arbitrary images.
+Use trusted, independently reviewed
+inputs and tools matching the selected retained experiment.
+The command copies inputs to a new workspace and builds there rather than in
+the original kernel tree.
+Existing workspace paths are rejected.
+No root privileges, host service installation or physical target access is
+needed.
+.Pp
+Use Python 3.12 or newer with tarfile's data extraction filter, Rust 1.98.0
+with
+x86_64-unknown-none, and the producer-compatible Zig/QEMU toolchain and boot
+inputs.
+All tools/dependencies must be provisioned before offline execution.
+The producer summary pins the source archive and passing init report, which
+pins the positive envelope.
+Profile magic, sizes, reserved fields and both
+helper ELF payloads must match.
+The copied inputs are validated again before
+extracting the producer archive with the data filter; archived source hashes
+are checked against the summary.
+An optional service worker must have a matching
+passing receipt, artifact hash and safe relative input hashes.
+.Pp
+The default remains AENIN001/ABI 6 with a 4096-byte supervisor bound.
+The explicit large profile uses AENIN002/ABI 15 and an 8192-byte bound, with
+archived pinned boot dependencies.
+The mutually exclusive composed profile uses AENIN003/ABI 16, a 16384-byte
+code bound and the unchanged 4096-byte stack. Its consumer-owned intake summary
+binds the original producer archive/report/envelope and packet provenance.
+It includes generated-dependent Terminal, issued-reclaim and Cleaned probes.
+The three Cleaned and four complete-pair cases explicitly add fat LTO and one
+codegen unit to fit the
+unchanged code limit; other cases retain their prior compiler options.
+Commands in results.json record these per-case options.
+The base build_profile names retained-sampling-v1; it is not a claim that all
+cases use identical compiler flags.
+The compiler profile remains
+retained-sampling-v1, size optimization and a remapped source path.
+The fixed case set depends on profile and optional service-worker selection;
+there is no individual-case filter.
+Expected panic/receipt contexts are source
+oracles, not arbitrary user-configurable success strings.
+The runner verifies copied dependencies and logs Rust, Zig and QEMU versions.
+Kernel builds disable SMP.
+Guest success, owner-close and semantic rejection
+checks apply to the selected profile only.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl producer Ar directory
+Reviewed producer bundle with summary.json, source archive and init artifacts.
+.It Fl Fl summary-pin Ar digest
+Externally retained SHA-256 of the producer summary.
+.It Fl Fl work Ar directory
+New private workspace; must not already exist.
+.It Fl Fl init-large
+Select ABI 15 explicitly.
+The producer must match; this does not convert ABI 6.
+.It Fl Fl init-composed
+Select ABI 16 explicitly using a reviewed sys-init-init-composed-intake-v1
+summary. It cannot be combined with --init-large.
+.It Fl Fl deps Ar directory
+Required for ABI 6, copied as boot dependencies.
+Forbidden with --init-large or --init-composed,
+which consumes archived dependencies instead.
+.It Fl Fl service-worker Ar directory
+Optional sys-init service-worker build with evidence.json and
+service-worker.elf.
+Enables the corresponding additional fixed cases after receipt validation.
+.It Fl Fl service-worker-pin Ar digest
+Required by validation when a service-worker directory is supplied.
+Without that directory, this option alone is ignored by current code.
+.It Fl Fl help
+Print usage and exit without creating a workspace or launching tools.
+.It Fl Fl version
+Print the harness-command version and exit, not a published release version.
+.El
+.Pp
+Relative input/work paths are resolved from the caller's working directory.
+Do not place the new workspace inside any input tree: the harness copies those
+trees and does not uniformly enforce that separation.
+Reserve a private path
+outside producer/SDK/dependency directories and preserve failed workspaces.
+.Sh OUTPUT AND FILES
+Per-case [OK] progress goes to standard error; successful completion prints
+JSON with result and report path. results.json uses sys-init-native-init-v1
+and
+records selected native/build profiles, producer/worker identities, commands,
+case expectations and artifact hashes. sources.json fingerprints copied
+inputs,
+producer and client sources. inputs/, sys-init/, Aether/, cases/ and command
+logs
+remain in the workspace.
+Exceptions in the case-run section save failure or
+interrupted status and re-raise; setup failures can precede a report.
+.Pp
+A running, missing, incomplete or failed report is not passing evidence.
+Do not erase unsuccessful attempts or substitute a previous passing report for
+current inputs.
+A passing guest run applies only to its selected frozen profile.
+.Sh LIMITS AND ENVIRONMENT
+The host environment selects tools through PATH; Python and producer smoke
+scripts can inherit other host settings.
+There is no downloader or hosted CI
+setup in this command.
+A copy/hash record alone is not a live sandbox guarantee.
+Tool commands have 180-second wait deadlines and owned sessions.
+Timeout/interruption cleanup kills the owned trusted, non-detaching process
+group.
+Logs stream to files without a separate size cap.
+Copying and hashing are outside
+these per-command deadlines; there is no overall suite deadline.
+Guest smoke
+watchdogs are separate producer-owned behavior, not a substitute for host
+bounds.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All selected cases completed successfully, or a supported help/version query.
+.It 1
+An ordinary Python exception or explicit semantic/build rejection.
+Other interpreter/signal termination statuses are possible.
+.It 64
+Invalid usage or incompatible required option combinations.
+.It 130
+An uncaught KeyboardInterrupt under ordinary Python invocation; if caught by
+the case-run section, the retained report is marked interrupted.
+.El
+.Sh EXAMPLES
+From the repository root, inspect usage without starting a guest:
+.Bd -literal -offset left
+python3 tests/native-init.py --help
+.Ed
+.Pp
+A full invocation below starts real builds/QEMU.
+First set the quoted shell
+variables from an independently reviewed handoff; they are placeholders, not
+harness environment settings.
+WORK must name a new private directory outside
+all input trees.
+No root privileges are required.
+.Bd -literal -offset left
+python3 tests/native-init.py \e
+  --producer "$PRODUCER" --summary-pin "$SUMMARY_PIN" \e
+  --deps "$DEPS" --work "$WORK"
+.Ed
+.Pp
+Expect all selected cases, exit zero and the documented outputs on success.
+Retain the entire workspace on failure; do not rerun into an existing
+workspace.
+.Sh SEE ALSO
+Repository guides: docs/NATIVE-COVERAGE.md, docs/LIFECYCLE-V1.md,
+docs/NATIVE-SUPERVISION.md, docs/NATIVE-IO.md, docs/NATIVE-ADAPTER.md
+and docs/DOCUMENTATION-INVENTORY.md.
+Exact retained decisions define compatible
+producer inputs and test oracles; manuals do not replace those contracts.
+.Sh CAVEATS
+Independent technical/reader review and installed-target manual lookup remain
+pending.
+The native init profiles are experiments, not production POSIX init.

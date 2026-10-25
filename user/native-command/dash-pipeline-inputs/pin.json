@@ -1,0 +1,6 @@
+{
+  "script": "pipeline.sh",
+  "sha256": "1bd64d9f6d43dc25524766e43b9c62a7207d05932ce30130a2f069c15de83456",
+  "origin": "Aether-userland/experiments/dash-native/workloads/pipeline.sh",
+  "scope": "Unchanged consumer workload; private producer qualification, not consumer acceptance"
+}

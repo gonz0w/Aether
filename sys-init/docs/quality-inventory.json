@@ -1,0 +1,1781 @@
+{
+  "schema": "sys-init-quality-inventory-v1",
+  "scope": "Initial experimental subsystem inventory; not full interface, release or draft conformance",
+  "snapshot": "docs/evidence/standards-update-2026-09-05",
+  "snapshot_manifest_sha256": "a8b64ee9fe1884341b9b0eb8322938b2a03ddf5e1cb946b5ccdb434c0d8b2157",
+  "process": [
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "docs/QUALITY-PROCESS.md",
+    "docs/STANDARDS-UPDATE-REVIEW.md",
+    "docs/STANDARDS-RC1-REVIEW.md",
+    "docs/STATIC-CHECKS.md",
+    "docs/NATIVE-BOUNDARY-REVIEW.md",
+    "SECURITY.md",
+    "docs/decisions/0097-io-worker-tool-bounds.md",
+    "docs/decisions/0098-legacy-builder-bounds.md",
+    "docs/DOCUMENTATION-INVENTORY.md",
+    "docs/documentation-inventory.json",
+    "docs/man/sys-init-checks.1",
+    "docs/decisions/0099-documentation-inventory.md",
+    "docs/decisions/0100-checker-manuals.md",
+    "docs/man/sys-init-check-native-evidence.1",
+    "docs/man/sys-init-check-quality.1",
+    "docs/man/sys-init-check-static.1",
+    "docs/decisions/0101-runtime-manuals.md",
+    "docs/man/sys-init-check-model.1",
+    "docs/man/sys-init-check-host.1",
+    "docs/man/sys-init-measure-host.1",
+    "docs/decisions/0102-standards-manuals.md",
+    "docs/man/sys-init-check-standards.1",
+    "docs/man/sys-init-check-experience.1",
+    "docs/man/sys-init-check-distribution.1",
+    "docs/decisions/0103-standards-wrapper-validation.md",
+    "docs/decisions/0104-builder-manuals.md",
+    "docs/man/sys-init-build-lifecycle.1",
+    "docs/man/sys-init-build-native-io-worker.1",
+    "docs/man/sys-init-build-native-service-worker.1",
+    "docs/man/sys-init-build-native-supervisor.1",
+    "docs/decisions/0105-native-runner-manuals.md",
+    "docs/man/sys-init-test-lifecycle-native.1",
+    "docs/man/sys-init-test-native-init.1",
+    "docs/man/sys-init-test-native-io-stop.1",
+    "docs/man/sys-init-test-native-supervision.1",
+    "docs/HOST-DESCRIPTORS.md",
+    "docs/decisions/0106-host-descriptor-reference.md",
+    "docs/decisions/0107-legacy-runner-bounds.md",
+    "docs/decisions/0108-aggregate-log-bounds.md",
+    "docs/decisions/0109-inner-capture-bounds.md",
+    "docs/decisions/0110-cooperative-check-cleanup.md",
+    "docs/decisions/0111-aggregate-active-termination.md",
+    "docs/decisions/0112-static-record-reference.md",
+    "docs/STATIC-RECORDS.md",
+    "docs/decisions/0113-static-record-validation.md",
+    "docs/decisions/0114-static-input-integrity.md",
+    "docs/QUALITY-RECORDS.md",
+    "docs/decisions/0115-quality-record-reference.md",
+    "docs/decisions/0116-quality-record-validation.md",
+    "docs/decisions/0117-quality-snapshot-closure.md",
+    "docs/decisions/0118-quality-input-bounds.md",
+    "docs/OFFLINE-LOCKS.md",
+    "docs/decisions/0119-offline-lock-reference.md",
+    "docs/decisions/0120-standards-input-bounds.md",
+    "docs/decisions/0121-standards-input-rechecks.md",
+    "docs/decisions/0122-private-standards-execution.md",
+    "docs/decisions/0123-standards-child-bounds.md",
+    "docs/decisions/0124-standards-termination.md",
+    "docs/NATIVE-EVIDENCE-RECORDS.md",
+    "docs/decisions/0125-native-catalog-reference.md",
+    "docs/decisions/0126-native-catalog-validation.md",
+    "docs/decisions/0127-native-metadata-inputs.md",
+    "docs/decisions/0128-native-payload-hashing.md",
+    "docs/decisions/0129-native-content-reads.md",
+    "docs/decisions/0130-native-verified-content.md",
+    "docs/decisions/0131-native-bundle-consistency.md",
+    "docs/decisions/0132-native-receipt-json.md",
+    "docs/decisions/0133-native-consumer-report-fields.md",
+    "docs/decisions/0134-native-linked-receipt-fields.md",
+    "docs/decisions/0135-native-artifact-correspondence.md",
+    "docs/decisions/0136-io-envelope-correspondence.md",
+    "docs/decisions/0137-sdk-receipt-fields.md",
+    "docs/decisions/0138-derived-sdk-correspondence.md",
+    "docs/decisions/0139-producer-receipt-consistency.md",
+    "docs/decisions/0140-source-archive-correspondence.md",
+    "docs/decisions/0141-producer-source-correspondence.md",
+    "docs/decisions/0142-evidence-limits-and-priority.md",
+    "docs/EVIDENCE-LIMITS.md",
+    "docs/decisions/0143-aggregate-source-snapshots.md",
+    "docs/decisions/0144-aggregate-report-publication.md",
+    "docs/decisions/0145-aggregate-startup-and-pipes.md",
+    "docs/EXTENDED-HOST-TESTS.md",
+    "docs/extended-host-plan.json",
+    "docs/decisions/0146-extended-host-plan.md",
+    "docs/decisions/0147-extended-host-runner.md",
+    "docs/man/sys-init-check-extended-host.1",
+    "docs/decisions/0148-extended-host-replay-review.md",
+    "docs/decisions/0149-extended-host-linux.md",
+    "docs/decisions/0150-linux-development-checks.md",
+    "docs/decisions/0151-linux-rust-tools.md",
+    "docs/LINUX-DEVELOPMENT.md",
+    "docs/decisions/0152-linux-offline-reload.md",
+    "docs/decisions/0153-aether-product-priority.md",
+    "docs/decisions/0154-native-history-errno.md",
+    "docs/decisions/0155-native-closed-history.md",
+    "docs/decisions/0156-native-cut-acceptance.md",
+    "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+    "docs/research/NATIVE-CUT-ACCEPTANCE-REVIEW.md",
+    "docs/decisions/0157-cut-coordinator-core.md",
+    "docs/decisions/0158-cut-retirement-model.md",
+    "docs/decisions/0159-pending-and-mixed-cuts.md",
+    "docs/decisions/0160-launched-journal-adapter.md",
+    "docs/decisions/0161-terminal-journal-adapter.md",
+    "docs/decisions/0162-cleaned-journal-adapter.md",
+    "docs/decisions/0163-journal-retirement-integration.md",
+    "docs/decisions/0164-native-journal-mapping.md",
+    "docs/research/NATIVE-JOURNAL-MAPPING.md",
+    "docs/decisions/0165-native-launch-history.md",
+    "docs/decisions/0166-native-cut-storage.md",
+    "docs/specs/NATIVE-CUT-STORAGE-V0.md",
+    "docs/decisions/0167-native-cut-reservation.md",
+    "docs/decisions/0168-native-reservation-binding.md",
+    "docs/decisions/0169-launched-application-core.md",
+    "docs/decisions/0170-native-launched-application.md",
+    "docs/decisions/0171-generated-launch-execution.md",
+    "docs/decisions/0172-acknowledged-launch-retirement.md",
+    "docs/decisions/0173-terminal-application-core.md",
+    "docs/decisions/0174-native-terminal-binding.md",
+    "docs/INIT-CAPACITY-HANDOFF.md",
+    "docs/research/SUSTAINED-HISTORY-RETENTION.md",
+    "docs/decisions/0178-history-retention-research.md",
+    "docs/V1-SCOPE.md",
+    "docs/V1-IMPLEMENTATION.md",
+    "docs/SIMPLICITY-ADOPTION.md",
+    "docs/research/USEFUL-BOOT-INPUTS.md",
+    "docs/INIT-COMMAND-ADAPTER.md",
+    "prototypes/native-command/README.md",
+    "docs/decisions/0213-owner-stack-exec-readiness.md"
+  ],
+  "surfaces": [
+    {
+      "id": "Q-MODEL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/RUNTIME-MODEL.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Required transitions and three mutation controls",
+      "evidence": "docs/specs/RUNTIME-V0.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-HOST",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/HOST-RUNTIME.md",
+      "tests": [
+        "tests/test_host_runtime.py",
+        "tests/test_host_descriptors.py",
+        "tests/test_host_cleanup.py",
+        "tests/test_host_wait_ownership.py",
+        "tests/test_host_readiness_ordering.py",
+        "tests/test_host_readiness_writers.py",
+        "tests/test_host_readiness_diagnostics.py",
+        "tests/test_host_parent_death.py",
+        "tests/test_host_accounting.py"
+      ],
+      "oracle": "Exact lifecycle, framing, wait ownership and observed cleanup",
+      "evidence": "docs/evidence/native-readiness-failures-validation-2026-09-05/validation/results.json",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/NATIVE-COVERAGE.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native-supervision.py",
+        "tests/lifecycle-native.py",
+        "tests/native-io-stop.py"
+      ],
+      "oracle": "Named positive markers and exact semantic rejection contexts",
+      "evidence": "docs/native-coverage.json",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-HARNESS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/DEVELOPMENT-CHECKS.md",
+      "tests": [
+        "tests/test_harness_runner.py",
+        "tests/test_harness_evidence.py",
+        "tests/test_harness_native_audit.py",
+        "tests/test_harness_native_init.py",
+        "tests/test_harness_native_io.py",
+        "tests/test_harness_native_service_worker.py",
+        "tests/test_harness_quality_process.py",
+        "tests/test_harness_worker_bounds.py",
+        "tests/test_harness_capture.py",
+        "tests/test_harness_cleanup.py",
+        "tests/test_harness_termination.py",
+        "tests/test_harness_quality_records.py",
+        "tests/test_harness_quality_validation.py",
+        "tests/test_harness_quality_snapshot.py",
+        "tests/test_harness_quality_inputs.py",
+        "tests/test_harness_offline_locks.py",
+        "tests/test_harness_standard_inputs.py",
+        "tests/test_harness_standard_identity.py",
+        "tests/test_harness_standard_private.py",
+        "tests/test_harness_standard_capture.py",
+        "tests/test_harness_standard_termination.py",
+        "tests/test_harness_native_catalog.py",
+        "tests/test_harness_native_catalog_validation.py",
+        "tests/test_harness_native_metadata.py",
+        "tests/test_harness_native_hashing.py",
+        "tests/test_harness_native_content.py",
+        "tests/test_harness_native_verified_content.py",
+        "tests/test_harness_native_consistency.py",
+        "tests/test_harness_native_receipt_json.py",
+        "tests/test_harness_native_report_fields.py",
+        "tests/test_harness_native_linked_fields.py",
+        "tests/test_harness_native_correspondence.py",
+        "tests/test_harness_native_io_envelope.py",
+        "tests/test_harness_native_sdk.py",
+        "tests/test_harness_native_derived_sdk.py",
+        "tests/test_harness_native_producer_links.py",
+        "tests/test_harness_native_source_archive.py",
+        "tests/test_harness_native_producer_sources.py",
+        "tests/test_harness_source_snapshot.py",
+        "tests/test_harness_report_publication.py",
+        "tests/test_harness_startup_pipes.py",
+        "tests/test_harness_extended_host.py"
+      ],
+      "oracle": "Reject absent tests/tools, wrong identities, timeout and mismatched semantic results",
+      "evidence": "docs/evidence/native-readiness-failures-validation-2026-09-05/validation/results.json",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-MEASURE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/HOST-MEASUREMENTS.md",
+      "tests": [
+        "tests/test_harness_measurements.py"
+      ],
+      "oracle": "Validate summary counts and statistics; exploratory performance only",
+      "evidence": "docs/HOST-MEASUREMENTS.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-READINESS-RETRY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0022-native-readiness-retry.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Silent/malformed cleanup and fresh retry complete with three reclaims; omissions reject at 927/929 after one reclaim",
+      "evidence": "docs/evidence/native-readiness-retry-2026-09-05/results.json",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-RETRY-BUDGET",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0023-native-retry-budget.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Three failed attempts reclaim exactly three workers; fourth reservation denied; extra/short controls reject at 931/934",
+      "evidence": "docs/evidence/native-retry-budget-2026-09-06/results.json",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-RETRY-CANCELLATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0024-native-retry-cancellation.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Cancelled reservation and collected-frame admission denied; omission controls reject at 936/937 with one/zero reclaims",
+      "evidence": "docs/evidence/native-retry-cancellation-2026-09-06/results.json",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-DEPENDENCY-LOSS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0025-native-dependency-loss.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Provider loss preserves admitted dependent and denies new admission; incorrect stop/admission reject at 940/941",
+      "evidence": "docs/evidence/native-dependency-loss-2026-09-06/results.json",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-CONTROL-MODEL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/CONTROL-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Stop/shutdown conflict without state changes; same-kind joins preserve deadline; late launches stay owned",
+      "evidence": "docs/evidence/control-operations-2026-09-06/model-after.json",
+      "stage": "Model tests and full checks before model completion"
+    },
+    {
+      "id": "Q-CONTROL-RECEIPTS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0027-control-receipts.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Replay emits no effects; retired identity never dispatches; timeout/disconnect preserves manager work; ambiguous failure poisons session",
+      "evidence": "docs/evidence/control-receipts-2026-09-06/model.json",
+      "stage": "Model tests and full checks before facade completion"
+    },
+    {
+      "id": "Q-CONTROL-SESSION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0028-control-session-ownership.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Reconstruction cannot reset completed/retired receipts or failed session; original facade retains outcomes without new effects",
+      "evidence": "docs/evidence/control-session-2026-09-06/model.json",
+      "stage": "Model tests and full checks before completion"
+    },
+    {
+      "id": "Q-CONTROL-CODEC",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0029-control-request-decoding.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Bounded parsing precedes dispatch; equivalent encodings replay without effects; omitted depth/duplicate guards caught",
+      "evidence": "docs/evidence/control-codec-2026-09-06/model.json",
+      "stage": "Model integration and full checks before completion"
+    },
+    {
+      "id": "Q-CONTROL-REPLY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0030-control-receipt-encoding.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Bounded exact receipts exclude effects; replay bytes match; encoding failure preserves ownership; omitted field check caught",
+      "evidence": "docs/evidence/control-reply-2026-09-06/model.json",
+      "stage": "Model integration and full checks before completion"
+    },
+    {
+      "id": "Q-CONTROL-OBSERVATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0031-control-observation-encoding.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Nested identity matches; exact wait/outcome matrix; bounded encode/decode preserves owned work; identity omission caught",
+      "evidence": "docs/evidence/control-observation-2026-09-06/model.json",
+      "stage": "Model integration and full checks before completion"
+    },
+    {
+      "id": "Q-CONTROL-DELIVERY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0032-control-memory-delivery.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Fixed errors distinguish no dispatch/unknown; one reply/effect batch; disconnect and output failure preserve work; replay transfers no duplicate effects",
+      "evidence": "docs/evidence/control-delivery-2026-09-06/model.json",
+      "stage": "Model integration and full checks before completion"
+    },
+    {
+      "id": "Q-CONTROL-STREAM",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0033-control-incremental-stream.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Header bounds precede body copy/dispatch; phase deadlines never extend on progress; partial output loss preserves replay/ownership; off-by-one mutation caught",
+      "evidence": "docs/evidence/control-stream-2026-09-06/model.json",
+      "stage": "Model integration and full checks before completion"
+    },
+    {
+      "id": "Q-CONTROL-AUTHORITY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0035-control-authority-model.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Foreign binding and insufficient closure deny; independent disclosure protects conflict details; revoke preserves effects/history; binding omission caught",
+      "evidence": "docs/evidence/control-authority-model-2026-09-06/model.json",
+      "stage": "Model policy tests and full checks before completion"
+    },
+    {
+      "id": "Q-EFFECT-LEDGER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0036-effect-acknowledgment-model.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Bounded token identity/retirement; unknown retains slot; unissued execution denied; acknowledgment never changes lifecycle ownership",
+      "evidence": "docs/evidence/effect-ledger-2026-09-06/model.json",
+      "stage": "Isolated ledger tests and full checks before completion"
+    },
+    {
+      "id": "Q-ACCOUNTED-DELIVERY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0037-accounted-delivery.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Capacity denial precedes model effects; replay creates no tokens; issue/ack remain distinct; capture/output failures retain accounting; gate omission caught",
+      "evidence": "docs/evidence/accounted-delivery-2026-09-06/model.json",
+      "stage": "Opt-in submission accounting tests and full checks before completion"
+    },
+    {
+      "id": "Q-EVENT-ACCOUNTING-BOUNDARY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0038-event-accounting-boundary.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Exact twelve-effect cut, same/later-cut force occurrences, background cause independent of active operation, and acknowledgment separate from cleanup",
+      "evidence": "docs/evidence/event-accounting-boundary-2026-09-06/model.json",
+      "stage": "Characterization only; BG-057 owns event journal implementation"
+    },
+    {
+      "id": "Q-EVENT-JOURNAL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0039-event-journal.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Whole-cut reservation, occurrence identity, retained supplied cause, bounded retirement, unknown/capture-failure retention; reservation omission detected",
+      "evidence": "docs/evidence/event-journal-2026-09-06/model.json",
+      "stage": "Isolated primitive; BG-057 remains active for lifecycle integration"
+    },
+    {
+      "id": "Q-JOURNAL-RUNTIME",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0040-journal-runtime.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Admission before model mutation; retained lifecycle cause; twelve-effect and duplicate-force tokens; denial preserves observations; capture/transfer failure retains uncertainty",
+      "evidence": "docs/evidence/journal-runtime-2026-09-06/model.json",
+      "stage": "Trusted lifecycle integration; unknown-progress and control composition remain BG-057"
+    },
+    {
+      "id": "Q-OBSERVATION-INBOX",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0041-observation-inbox.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Four immutable FIFO cuts with bounded retained payloads; unknown does not apply or reconcile; overflow closes without dropping accepted data; budget/clock/order and capture failure preserve ownership",
+      "evidence": "docs/evidence/observation-inbox-2026-09-06/model.json",
+      "stage": "Trusted bounded retention; authoritative reconciliation and control composition remain open"
+    },
+    {
+      "id": "Q-CONFIRMED-RESULT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0043-confirmed-result-qualification.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Exact issued/owner/profile/target matching; selected success/errno classification; unknown rejects; qualification does not mutate journal or lifecycle",
+      "evidence": "docs/evidence/confirmed-result-2026-09-06/model.json",
+      "stage": "Pure qualifier; BG-058 retains serialized application and native witnesses"
+    },
+    {
+      "id": "Q-RESULT-APPLIER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0044-confirmed-result-application.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Retained context and fresh qualification; single coordinator/reentry guard; stale/unknown denial; before/after-ack failure preserves evidence; separate observations",
+      "evidence": "docs/evidence/result-applier-2026-09-06/model.json",
+      "stage": "Trusted serialized application; native binding/observations and witnesses remain BG-058"
+    },
+    {
+      "id": "Q-TARGET-REGISTRY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0045-native-target-registry.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Independent native/model generations; stale target denial; typed terminal facts; unknown reservation held; confirmed reclaim separate from model cleanup and retirement",
+      "evidence": "docs/evidence/target-registry-2026-09-06/model.json",
+      "stage": "Trusted empty-domain model; lifecycle mapping and fresh native witnesses remain BG-058"
+    },
+    {
+      "id": "Q-TERMINAL-MAPPING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0046-terminal-event-mapping.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Stopped kind retained; stale evidence ignored; cancelled intent prevents retry; cleanup precedes replacement; projection does not mutate state",
+      "evidence": "docs/evidence/terminal-mapping-2026-09-06/model.json",
+      "stage": "Model only; complete driver cleanup and native consumption remain BG-058"
+    },
+    {
+      "id": "Q-REJECTED-LAUNCH-CLEANUP",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0047-rejected-launch-cleanup.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Both endpoint closes required; unknown holds ownership; exact local reclaim token acknowledged before cleaned; retry does not reclaim an unadmitted target",
+      "evidence": "docs/evidence/rejected-launch-cleanup-2026-09-06/model.json",
+      "stage": "Fixed trusted two-endpoint profile; admitted-target inventory and native witness remain BG-058"
+    },
+    {
+      "id": "Q-ADMITTED-RESOURCES",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0048-admitted-resource-cleanup.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "All cleanup orders require reader closed, native target reclaimed and wait released; shared slot and 64-token bound; unknown/pending retains ownership",
+      "evidence": "docs/evidence/admitted-resources-2026-09-06/model.json",
+      "stage": "Post-admission trusted model; driver composition and native consumption remain BG-058"
+    },
+    {
+      "id": "Q-LIFECYCLE-DRIVER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0049-lifecycle-driver-composition.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Both launch outcomes route to owned cleanup; pending events survive backpressure; partial failure retains attempts; wait blocks cleanup; oversized runtime rejected before claim",
+      "evidence": "docs/evidence/driver-composition-2026-09-06/model.json",
+      "stage": "Two-service trusted composition; channel acquisition and native consumption remain BG-058"
+    },
+    {
+      "id": "Q-CHANNEL-ACQUISITION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/decisions/0050-channel-acquisition.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Capacity reserved before create; exact pair retained before bind; known errors clean empty inventory locally; malformed reply retains unknown; independent channel generation",
+      "evidence": "docs/evidence/channel-acquisition-2026-09-06/model.json",
+      "stage": "Trusted composed acquisition model; fresh native consumption remains BG-058"
+    },
+    {
+      "id": "Q-NATIVE-ACQUISITION-CLEANUP",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0051-native-acquisition-cleanup.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Busy create and kernel denied launch retain resources; three observed reclaims; omitted writer close yields 951/0 and omitted wait release 953/1; 14 old clients byte-identical",
+      "evidence": "docs/evidence/native-acquisition-cleanup-2026-09-06/witness/results.json",
+      "stage": "Fresh 17-case native sequence; full per-attempt driver routing remains BG-058"
+    },
+    {
+      "id": "Q-NATIVE-ATTEMPT-RETRY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0052-native-attempt-retry.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Exact native launch EBUSY retained; early retry is local denial; all handles cleaned before one replacement; writer/guard omissions hit 961/963 with zero reclaims",
+      "evidence": "docs/evidence/native-attempt-retry-2026-09-06/witness/results.json",
+      "stage": "Fresh 20-case native witness; wait-bearing attempt and broader driver policy remain BG-058"
+    },
+    {
+      "id": "Q-NATIVE-ATTEMPT-WAIT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0053-native-attempt-wait.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Pending wait retained through repeated cancel; explicit cleanup release; old token stale; forget/release omissions hit 971/973; earlier changed clients freshly pass",
+      "evidence": "docs/evidence/native-attempt-wait-2026-09-06/witness/results.json",
+      "stage": "Fresh 23-case native witness; service intent and deadline precedence remain BG-058"
+    },
+    {
+      "id": "Q-NATIVE-ATTEMPT-INTENT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0054-native-attempt-intent.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Timeout/revision precedence; cancellation preserves completion; service intent blocks retry before acquisition and retains live-stop resources; controls hit 980/981",
+      "evidence": "docs/evidence/native-attempt-intent-2026-09-06/witness/results.json",
+      "stage": "Fresh 27-case native witness; partial cleanup/stop-error policy remain BG-058"
+    },
+    {
+      "id": "Q-NATIVE-ATTEMPT-ERRORS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0055-native-attempt-errors.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Partial cleanup retains worker/wait after local adapter 0x20002/16; native stop 0x20007/9 preserves intent/unresolved ownership; controls hit 990/0 and 991/3",
+      "evidence": "docs/evidence/native-attempt-errors-2026-09-06/witness/results.json",
+      "stage": "Fresh 31-case witness; reader-close/wait-release failures remain BG-058 and reconciliation BG-033"
+    },
+    {
+      "id": "Q-NATIVE-RELEASE-ERRORS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0056-native-release-errors.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Native reader close 0x24003/13 retains reader/worker/wait; adapter release 0x25005/9 retains wait after partial cleanup; exact omission assertions 992/2 and 993/3",
+      "evidence": "docs/evidence/native-release-errors-2026-09-06/witness/results.json",
+      "stage": "Fresh 35-case native witness; effect/event routing remains BG-058 and recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-PENDING-EVENTS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0057-native-pending-events.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Full inbox retains pending; terminal supersedes launch; Launched delivery cannot authorize cleanup; Cleaned delivery gates eligibility; exact controls 994/0 and 995/0",
+      "evidence": "docs/evidence/native-pending-events-2026-09-06/witness/results.json",
+      "stage": "Fresh 38-case native witness; rejected launch BG-058, full journal BG-057, recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-REJECTED-EVENTS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0058-native-rejected-events.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Native 0x23001/16 retained with endpoints; full inbox preserves failure; cleanup requires failure delivery; Cleaned retained until transfer; exact controls 997/0 and 998/0",
+      "evidence": "docs/evidence/native-rejected-events-2026-09-06/witness/results.json",
+      "stage": "Fresh 41-case native witness; routed replacement BG-058, journal BG-057, recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-ROUTED-REPLACEMENT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0059-native-routed-replacement.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Pending Cleaned blocks acquisition; one accepted retry has fresh generation-two events; old inbox retains new launch; duplicate/budget denial; exact controls 1001/0 and 1002/1",
+      "evidence": "docs/evidence/native-routed-replacement-2026-09-06/witness/results.json",
+      "stage": "Fresh 45-case native witness; routed cancellation BG-058, journal BG-057, recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-ROUTED-CANCELLATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0060-native-routed-cancellation.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Three cancellation orders preserve pending/outcome and intent; Cleaned cannot revive cancelled retry/launch; allowance unused; exact controls 1005/0 and 1004/0",
+      "evidence": "docs/evidence/native-routed-cancellation-2026-09-06/witness/results.json",
+      "stage": "Fresh 48-case native witness; admitted live cancellation BG-058, journal BG-057, recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-ROUTED-LIVE-STOP",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0061-native-routed-live-stop.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Stop preserves worker/reader/wait and pending; observed 144 supplies Terminal; transfer gates cleanup; cancelled retry denied; controls 1006/0 and 1007/0",
+      "evidence": "docs/evidence/native-routed-live-stop-2026-09-06/witness/results.json",
+      "stage": "Fresh 51-case native witness; routed stop errors BG-058, journal BG-057, recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-ROUTED-STOP-ERROR",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0062-native-routed-stop-error.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Native stop 0x20007/9 preserves pending/intent; history delivery cannot clean stale worker; native observe 0x25001/9 propagates; no Cleaned/retry; controls 1009/3 and 1010/3",
+      "evidence": "docs/evidence/native-routed-stop-error-2026-09-06/witness/results.json",
+      "stage": "Fresh 54-case native witness; routed partial cleanup BG-058, journal BG-057, recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-ROUTED-PARTIAL-CLEANUP",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0063-native-routed-partial-cleanup.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Reader/worker cleanup then local wait 0x25005/9; wait retained, no Cleaned/eligibility/retry on repeated failure; controls 1012/3 and 1013/3",
+      "evidence": "docs/evidence/native-routed-partial-cleanup-2026-09-06/witness/results.json",
+      "stage": "Fresh 57-case native witness; integration review BG-058/BG-057 and recovery BG-033"
+    },
+    {
+      "id": "Q-NATIVE-BINDING-ADMISSION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0066-native-binding-admission.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Two retained full-token/worker bindings; changed fields and conflicting reservations deny before acquisition; controls 1014/0 and 1015/0",
+      "evidence": "docs/evidence/native-binding-admission-2026-09-06/witness/results.json",
+      "stage": "Fresh 61-case native witness; NB-04 failure retention next, remaining ND-01 and ND-02\u201305 open"
+    },
+    {
+      "id": "Q-NATIVE-BINDING-FAILURE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0067-native-binding-failure-retention.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Post-acquisition local binding failure retains endpoints/token/reservation; repeated driver calls deny; writer-loss control 1017/0; fixture cleanup leaves driver closed",
+      "evidence": "docs/evidence/native-binding-failure-2026-09-06/witness/results.json",
+      "stage": "Fresh 63-case native witness; NB-05 selected rejection next; full ND-01/02/03 integration open"
+    },
+    {
+      "id": "Q-NATIVE-BINDING-BUSY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0068-native-binding-busy-rejection.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Exact creation/launch busy preserves consumed token and correct inventory, releases slot claim for other issued service; controls 1018/0 and 1019/0",
+      "evidence": "docs/evidence/native-binding-busy-2026-09-06/witness/results.json",
+      "stage": "Fresh 67-case native witness; NB-06 expected target/result next; broader errors and ND-02\u201305 open"
+    },
+    {
+      "id": "Q-NATIVE-EXPECTED-TARGET",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0069-native-expected-target.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Exact reserved native target match; wrong-slot/generation expectation closes owner retaining actual worker/reader; counters do not advance; controls 1021/0 and 1022/0",
+      "evidence": "docs/evidence/native-expected-target-2026-09-06/witness/results.json",
+      "stage": "Fresh 72-case witness; NB-08 exhaustion and NB-09 lost reply next; other errors and ND-02\u201305 open"
+    },
+    {
+      "id": "Q-NATIVE-GENERATION-EXHAUSTION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0070-native-generation-exhaustion.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Three actual native generations; exhausted-slot denial preserves unused token/empty inventory and zero acquisitions; available slot acquires; controls 1023/3 and 1024/3",
+      "evidence": "docs/evidence/native-generation-exhaustion-2026-09-06/witness/results.json",
+      "stage": "Fresh 75-case native witness; NB-09 invocation/receipt design next; broader NB/ND bounds and integration open"
+    },
+    {
+      "id": "Q-NATIVE-CHANNEL-RECEIPT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0072-native-channel-receipt.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Real channel receipt held before application; duplicate invocation, mismatched local delivery and closure retain ownership; phase/writer omission controls 1025/0 and 1026/0",
+      "evidence": "docs/evidence/native-channel-receipt-2026-09-06/witness/results.json",
+      "stage": "Fresh 80-case native witness; IR-01\u201304 creation slice; IR-05\u201307 and remaining NB/ND/recovery open"
+    },
+    {
+      "id": "Q-NATIVE-LAUNCH-RECEIPT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0073-native-launch-receipt.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Real launch receipt retains worker/reader and transfers writer before application; generation advances once; closure retains receipt; writer/early-generation controls 1030/0 and 1031/0",
+      "evidence": "docs/evidence/native-launch-receipt-2026-09-06/witness/results.json",
+      "stage": "Fresh 84-case native witness; IR-05\u201306 local launch receipt slice; IR-07 and remaining NB/ND/recovery open"
+    },
+    {
+      "id": "Q-NATIVE-SYNTHETIC-ABSENCE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0074-native-synthetic-missing-return.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Synthetic omitted syscall after real start guard; closed Started/pending identity and retained pair without invented outcome; controls 1033/0, 1034/0, 1035/0",
+      "evidence": "docs/evidence/native-synthetic-missing-return-2026-09-06/witness/results.json",
+      "stage": "Fresh 89-case native fixture witness; IR-07 is synthetic absence, not a lost kernel reply; remaining NB/ND/recovery open"
+    },
+    {
+      "id": "Q-NATIVE-TERMINAL-COLLISIONS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0076-native-terminal-collisions.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_harness_native_service_worker.py",
+        "tests/test_harness_worker_bounds.py"
+      ],
+      "oracle": "Actual equal-result normal/fault and normal/stop kinds differ; live sample has one read and terminal three coherent reads; ignore-kind control 1036/0; rebuilt worker legacy regressions",
+      "evidence": "docs/evidence/native-terminal-collisions-2026-09-06/witness/results.json",
+      "stage": "Fresh 114-case native witness with rebuilt worker; standalone NT-01\u201302; bound identity/partial history NT-03\u201307 and remaining NB/ND/recovery open"
+    },
+    {
+      "id": "Q-NATIVE-BOUND-SAMPLING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0077-native-bound-sampling.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Pre-read owner/index/token/actual Worker rejection; held three-read fact and duplicate denial; actual stale 0x25001/9 retained with target/closed pending; controls 1040/0 and 1039/0",
+      "evidence": "docs/evidence/native-bound-sampling-2026-09-06/witness/results.json",
+      "stage": "Fresh 120-case native witness; fixture-seeded admitted state; full launch composition and NT-04\u201307/NB/ND/recovery remain open"
+    },
+    {
+      "id": "Q-TERMINAL-RECEIPT-VALIDATOR",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0078-terminal-receipt-validator.md",
+      "tests": [
+        "tests/native_sample_receipts.rs",
+        "tests/test_native_sample_receipts.py",
+        "scripts/check-all.py"
+      ],
+      "oracle": "Nine named Rust tests with parameterized raw malformed/native-error/partial/coherence cases; forgetting-prefix and invented-native-errno controls fail exact assertions; sealed samples preserve received values",
+      "evidence": "docs/evidence/terminal-receipt-validator-2026-09-06/README.md",
+      "stage": "Required synthetic host Rust 1.98.0 gate; no native raw capture or bound resource integration"
+    },
+    {
+      "id": "Q-NATIVE-RAW-SAMPLING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0079-native-raw-sample-retention.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native_sample_receipts.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Actual three-return terminal receipt and O1/S/O2 stale errors retain exact successful prefixes and native operation; raw-forget-prefix detects loss at 1042/reclaimed=1; all 120 prior oracles",
+      "evidence": "docs/evidence/native-raw-sampling-2026-09-06/witness/results.json",
+      "stage": "Fresh 125-case native witness; standalone capture only; combined Driver raw history exceeds 4 KiB and remains open"
+    },
+    {
+      "id": "Q-NATIVE-COMPOSITION-SIZE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/research/NATIVE-COMPOSITION-SIZE.md",
+      "tests": [
+        "docs/evidence/native-composition-size-2026-09-06/attempt-8/study.py",
+        "tests/native_sample_receipts.rs"
+      ],
+      "oracle": "Build-only candidate: 120 strict 4 KiB links, maximum 4048 bytes; 12 paired-path images identical; nine host tests and two exact omission controls; no target execution",
+      "evidence": "docs/evidence/native-composition-size-2026-09-06/attempt-8/results.json",
+      "stage": "Build feasibility established; explicit profile/default decision and fresh 127-case target acceptance required"
+    },
+    {
+      "id": "Q-NATIVE-RETAINED-SAMPLING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0081-native-retained-sampling-profile.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_harness_native_init.py",
+        "tests/native_sample_receipts.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "127 native cases preserve prior oracles; bound S/O2 stale errors retain prefix/target/pending and close driver; held fact at 4048 bytes; token/pending/raw-prefix controls remain exact",
+      "evidence": "docs/evidence/native-retained-sampling-2026-09-06/witness/results.json",
+      "stage": "Retained-sampling-v1 qualified with fixture-seeded admission; bound malformed injection NT-04 next, NT-05\u201307/full launch/retirement/recovery open"
+    },
+    {
+      "id": "Q-NATIVE-MALFORMED-SAMPLING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0082-native-malformed-sampling.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native_sample_receipts.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Six synthetic S/O2 malformed triples preserve local cause/raw data/worker/reader/token/pending/generation; further sampling denied; controls 1043/0 closure, 1044/0 reader, 1045/0 invented errno; 136 native cases",
+      "evidence": "docs/evidence/native-malformed-sampling-2026-09-06/witness/results.json",
+      "stage": "NT-04 selected malformed data through bound session; O1 malformed inputs remain host-tested; NT-05 interruption next, NT-06/07/full launch/retirement/recovery open"
+    },
+    {
+      "id": "Q-NATIVE-INTERRUPTED-SAMPLING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0083-native-interrupted-sampling.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native_sample_receipts.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Empty denial; synthetic interruption after real O1/O1-S preserves exact partial prefix/local cause/resources/pending/identity; repeated calls deny; controls 1046/0 closure, 1047/0 prefix, 1048/0 invented fact, 1049/0 reader; 143 native cases",
+      "evidence": "docs/evidence/native-interrupted-sampling-2026-09-06/witness/results.json",
+      "stage": "Synthetic NT-05 qualified; NT-06/07 identity/conflict/capacity and retirement next; full launch, additional O1 injections and recovery open"
+    },
+    {
+      "id": "Q-NATIVE-PENDING-HISTORY-VIEW",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0085-native-pending-history-view.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native_pending_history.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Seven positives 100/3: empty denial, private real terminal view, duplicate no-op, full token/owner/index/service/actual-worker denial and retained state/raw data; token omission 1050/0; all 143 prior cases; three host view tests and exact token omission assertion",
+      "evidence": "docs/evidence/native-pending-history-view-2026-09-06/witness/results.json",
+      "stage": "PH-01/02 borrowed-view origin and replay qualified; independent candidate/conflict/capacity/session-spanning storage and BG-057 retirement remain open"
+    },
+    {
+      "id": "Q-PENDING-HISTORY-CONFLICT-CORE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0086-pending-history-conflict-core.md",
+      "tests": [
+        "tests/native_pending_history.rs",
+        "tests/test_native_sample_receipts.py",
+        "scripts/check-all.py"
+      ],
+      "oracle": "Nine view/conflict tests include independent duplicate, full identity denial before production, produced identity recheck, exact first/conflicting retention and no production after closure; four new exact omission assertions plus previous controls",
+      "evidence": "docs/evidence/pending-history-conflict-core-2026-09-06/host/results.json",
+      "stage": "Pure borrowed comparison/retention only; native Driver guard, actual diagnostic storage, fresh target conflict witness and PH-05\u201307 remain open"
+    },
+    {
+      "id": "Q-STATIC",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/STATIC-CHECKS.md",
+      "tests": [
+        "tests/test_harness_static.py",
+        "tests/test_harness_static_records.py",
+        "tests/test_harness_static_validation.py",
+        "tests/test_harness_static_inputs.py"
+      ],
+      "oracle": "Syntax/format/lint failures and native boundary inventory drift reject; missing/mismatched tools, timeout and overflow cannot pass",
+      "evidence": "docs/decisions/0096-boundary-review-and-clippy.md",
+      "stage": "required local aggregate gate"
+    },
+    {
+      "id": "Q-STANDARDS-WRAPPERS",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0103-standards-wrapper-validation.md",
+      "tests": [
+        "tests/test_harness_standard_wrappers.py"
+      ],
+      "oracle": "Invalid Experience lock/inventory never invokes synthetic checker; required assertion failure remains failure under parent/inherited optimization for Experience/Distribution",
+      "evidence": "docs/decisions/0103-standards-wrapper-validation.md",
+      "stage": "required aggregate harness gate; no native execution"
+    },
+    {
+      "id": "Q-NATIVE-IO-CAPTURE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0105-native-runner-manuals.md",
+      "tests": [
+        "tests/test_harness_native_io.py"
+      ],
+      "oracle": "Copied builder help succeeds with captured helper; deleting helper fails before build; copied io-stop build preserves retained raw/envelope bytes",
+      "evidence": "docs/decisions/0105-native-runner-manuals.md",
+      "stage": "required aggregate harness regression; host build capture only, not native behavioral coverage"
+    },
+    {
+      "id": "Q-HOST-DESCRIPTOR-CONTRACT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/HOST-DESCRIPTORS.md",
+      "tests": [
+        "tests/test_host_descriptor_contract.py",
+        "tests/test_host_descriptors.py"
+      ],
+      "oracle": "Byte/scalar bounds, staged parse/preparation, graph limits, no-launch activation, raw-byte staleness and real child environment precedence; executable temporary example",
+      "evidence": "docs/decisions/0106-host-descriptor-reference.md",
+      "stage": "required host gate; no native or production descriptor claim"
+    },
+    {
+      "id": "Q-CUT-CORE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Ten cut-coordinator tests include four exact source omission controls; synthetic origin/application only",
+      "evidence": "docs/evidence/cut-coordinator-core-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-CUT-RETIREMENT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Eight synthetic retirement tests include three exact source omission controls; no native cleanup claim",
+      "evidence": "docs/evidence/cut-retirement-model-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-CUT-PENDING",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Eight pending/mixed-cut tests and two pending omission controls; four core and three retirement controls retained",
+      "evidence": "docs/evidence/pending-mixed-cuts-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-LAUNCHED-JOURNAL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Nine real policy-model/journal adapter tests with two adapter source omission controls; native origin still synthetic",
+      "evidence": "docs/evidence/launched-journal-adapter-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-TERMINAL-JOURNAL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Eight real model/journal Terminal tests, two source omission controls and missing-reclaim failure; native facts remain synthetic",
+      "evidence": "docs/evidence/terminal-journal-adapter-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-CLEANED-JOURNAL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Nine actual model/journal Cleaned tests and two source omission controls; exact executed reclaim plus trusted synthetic resource inspection required",
+      "evidence": "docs/evidence/cleaned-journal-adapter-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-JOURNAL-RETIREMENT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "model",
+      "reference": "docs/specs/NATIVE-CUT-ACCEPTANCE-V0.md",
+      "tests": [
+        "tests/test_runtime_model.py"
+      ],
+      "oracle": "Seven actual journal/retirement integration tests with two source omission controls; pending/resource/tombstone callbacks remain synthetic",
+      "evidence": "docs/evidence/journal-retirement-integration-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-LAUNCH-HISTORY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0165-native-launch-history.md",
+      "tests": [
+        "tests/native-init.py"
+      ],
+      "oracle": "Actual native channel/launch-to-History positive 100/3 and four controls 1071/0 through 1074/0 in a fresh 190-case witness; synthetic issuance and fixture disposal remain explicit",
+      "evidence": "docs/evidence/native-launch-history-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-CUT-RESERVATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/specs/NATIVE-CUT-STORAGE-V0.md",
+      "tests": [
+        "tests/test_native_sample_receipts.py",
+        "tests/native_cut_reservation.rs"
+      ],
+      "oracle": "Five fixed Rust reservation tests, three source omission controls and x86_64-unknown-none layout compilation; synthetic membership only, no native execution",
+      "evidence": "docs/evidence/native-cut-reservation-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-RESERVATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0168-native-reservation-binding.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Native reservation positive 100/3 and owner/qualification/token controls 1075/0, 1076/0, 1077/0 in a fresh 194-case witness; one actual attempt, no lifecycle application",
+      "evidence": "docs/evidence/native-reservation-binding-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-RUST-LAUNCHED-APPLICATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0169-launched-application-core.md",
+      "tests": [
+        "tests/native_cut_reservation.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Seven host Rust application tests and four omission controls: complete transition/token capture, replay, denial and retained Unknown closure. All 194 native images unchanged; native application unconsumed.",
+      "evidence": "docs/evidence/launched-application-core-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-LAUNCHED-APPLICATION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0170-native-launched-application.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Fresh 198-case witness: Launched application 100/3, retained Unknown controls 1078/0, 1079/0, 1080/0; exact Reserved effect retained, no effect execution.",
+      "evidence": "docs/evidence/native-launched-application-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-GENERATED-LAUNCH",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0171-generated-launch-execution.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Fresh 203-case witness: exact generated launch 100/3; token/early-ack/writer controls 1083/0\u20131085/0 and native launch EBUSY retention 1086/0. No effect retirement.",
+      "evidence": "docs/evidence/generated-launch-execution-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-LAUNCH-RETIREMENT",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0172-acknowledged-launch-retirement.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Fresh 208-case witness: retained launch retirement and dependent Launched 100/3; retention, ack, historical-count and native source controls 1088/0\u20131091/0. No Terminal/Cleaned or durable retention claim.",
+      "evidence": "docs/evidence/acknowledged-launch-retirement-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-TERMINAL-CORE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0173-terminal-application-core.md",
+      "tests": [
+        "tests/native_cut_reservation.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Four host Rust Terminal tests and four omission controls: reclaim capture, both orders, exact replay, denial and Unknown retention. Native source binding remains pending.",
+      "evidence": "docs/evidence/terminal-application-core-2026-09-07/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-NATIVE-COMPOSED-TERMINAL",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0175-init-composed-terminal-consumer.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/test_harness_native_init.py"
+      ],
+      "oracle": "214 ABI-16 cases including Terminal 100/3 and 1094\u20131098/0 controls; 32 independently replayed profile cases; 359 byte-identical legacy builds. Issued reclaim/Cleaned remain open.",
+      "evidence": "docs/evidence/init-composed-terminal-consumer-2026-09-07/README.md",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-NATIVE-RECLAIM-CLEANED",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0176-issued-reclaim-execution.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native_cut_reservation.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Ten fresh reclaim/Cleaned cases; exact 100/3 positives and 1100\u20131105/1108/1109 controls. 25 core tests/17 controls, 573 unchanged old images. Provider policy teardown and durable retention remain open.",
+      "evidence": "docs/evidence/issued-reclaim-cleaned-2026-09-07/README.md",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-COMPLETE-PAIR-TEARDOWN",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0177-complete-two-service-teardown.md",
+      "tests": [
+        "tests/native-init.py",
+        "tests/native_cut_reservation.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Four pair cases and sixteen changed-image regressions; 567 identical prior images. Both services Cleaned, two source samples, six preserved core records; no sustained reuse.",
+      "evidence": "docs/evidence/complete-pair-teardown-2026-09-07/README.md",
+      "stage": "Fresh target run before native completion"
+    },
+    {
+      "id": "Q-SIMPLE-SERVICE-OWNER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/SIMPLE-SERVICE-OWNER.md",
+      "tests": [
+        "tests/native_service_owner.rs",
+        "tests/test_native_sample_receipts.py",
+        "tests/native-init.py"
+      ],
+      "oracle": "Fixed current state across 100 host cycles; partial cleanup and stale/unknown denial controls; three native cases with exact outcomes.",
+      "evidence": "docs/evidence/simple-service-owner-2026-09-07/README.md",
+      "stage": "Fresh native consuming run before native completion"
+    },
+    {
+      "id": "Q-SIMPLE-SERVICE-PAIR",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/SIMPLE-SERVICE-PAIR.md",
+      "tests": [
+        "tests/native_service_pair.rs",
+        "tests/native_service_owner.rs",
+        "tests/test_native_sample_receipts.py",
+        "tests/native-init.py"
+      ],
+      "oracle": "Direct startup/replacement and reverse shutdown; exact stop identity, retained partial errors, provider admission and shutdown-order controls; four native pair cases plus three owner regressions.",
+      "evidence": "docs/evidence/simple-service-pair-2026-09-07/README.md",
+      "stage": "Fresh Aether consuming evidence before native completion"
+    },
+    {
+      "id": "Q-CONNECTION-OWNER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/INIT-COMMAND-ADAPTER.md",
+      "tests": [
+        "tests/native_connection_owner.rs",
+        "tests/test_native_sample_receipts.py"
+      ],
+      "oracle": "Eight host tests and two omission controls: partial paired acquisition, transfer, exact keys, known retry/unknown denial and explicit backend EOF before terminal cleanup",
+      "evidence": "docs/evidence/connection-owner-2026-09-08/README.md",
+      "stage": "Native trap/protocol wiring and fresh Aether code/stack/cleanup evidence remain required"
+    },
+    {
+      "id": "Q-ABI9-COMMAND-OWNER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/INIT-COMMAND-ADAPTER.md",
+      "tests": [
+        "tests/native_byte_compare.rs",
+        "tests/test_native_sample_receipts.py",
+        "docs/evidence/command-owner-native-2026-09-08/run-scalar-command.py",
+        "docs/evidence/command-owner-failures-2026-09-08/run-owner-probes.py",
+        "docs/evidence/command-owner-stop-2026-09-08/run-command-stop.py",
+        "docs/evidence/command-owner-stop-2026-09-08/run-regressions.py",
+        "docs/evidence/dash-script-owner-2026-09-09/build-script-owner.py",
+        "docs/evidence/dash-script-owner-2026-09-09/check-compatibility.py",
+        "docs/evidence/dash-script-launch-2026-09-09/run-script-launch.py",
+        "docs/evidence/dash-script-stop-2026-09-09/run-script-stop.py",
+        "docs/evidence/dash-script-stop-2026-09-09/check-probe-compatibility.py",
+        "docs/evidence/dash-startup-abi17-2026-09-11/build-startup.py",
+        "docs/evidence/dash-startup-errors-2026-09-11/run-startup-errors.py"
+      ],
+      "oracle": "Three scalar comparison tests and two controls; five fresh ABI9 owner cases with exact terminal and reclaim results under unchanged code/stack limits; eight native ownership failure/omission probes; actual pre-dispatch stop143/kind3, runner1/backend17, six reclaims and missing-retirement1403/reclaimed0",
+      "evidence": "docs/evidence/dash-startup-abi17-2026-09-11/README.md",
+      "stage": "Six native denied-grant allocation cases and three injected Unknown checks pass; ten prior ABI17 images identical. Synthetic ambiguity is not a real kernel ambiguity witness."
+    },
+    {
+      "id": "Q-ABI22-COMMAND-OWNER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/SUSTAINED-INIT-HANDOFF.md",
+      "tests": [
+        "docs/evidence/si07-loop-2026-10-03/drivers/run-si07-loop.py",
+        "docs/evidence/si07-loop-2026-10-03/drivers/run-si07-loop-control.py",
+        "docs/evidence/si07-loop-2026-10-03/drivers/run-si07-loop-exhausted.py",
+        "tests/native_connection_owner.rs",
+        "docs/evidence/si07-errors-2026-10-03/drivers/run-si07-errors.py"
+      ],
+      "oracle": "Seven fresh native request-loop cases: zero/one/six useful-cycle halt, buffered halt, invalid input, busy halt on omitted UART close and pre-admission epoch exhaustion; five legacy ABI9 images identical. Four additional private native cases qualify complete split replies, lost write reply and real close/reclaim Unknown/no replay.",
+      "evidence": "docs/evidence/si07-errors-2026-10-03/README.md",
+      "stage": "Finite developer request loop; production recovery, broader wait schedules and complete v1 integration remain open."
+    },
+    {
+      "id": "Q-ABI22-BASELINE-BUILDER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/AETHER-BASELINE.md",
+      "tests": [
+        "tests/test_harness_aether_baseline.py",
+        "scripts/build-aether-baseline.py"
+      ],
+      "oracle": "Pinned source/dependency/tool intake; archive/path/type/budget negatives; existing output preservation; tool failure retention; exact baseline raw/ELF equality; fresh native one-cycle/halt with ordered0/0/17, three reclaims and idle bound. Explicit inert-table profile: exact role/image/order membership and zero retries checked by real compiler negative controls; new native useful cycle and zero-command halt without startup probe; default baseline image identity preserved.",
+      "evidence": "docs/evidence/service-table-2026-10-03/README.md",
+      "stage": "Experimental static table and developer console; production error recovery, bounded failure replacement and assembled release remain open."
+    },
+    {
+      "id": "Q-ABI22-SERVICE-TABLE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0179-abi22-inert-service-table.md",
+      "tests": [
+        "scripts/build-aether-baseline.py",
+        "tests/test_harness_aether_baseline.py",
+        "docs/evidence/service-table-2026-10-03/early-halt/driver.py"
+      ],
+      "oracle": "Compile-time exact topology/zero retry rejection; fresh native command cycle with ordered0/0/17 and three reclaims; halt before admission with zero workers; no startup idle marker; 16 KiB image and scoped linked-stack inspection; default owner/ELF/envelope identical.",
+      "evidence": "docs/evidence/service-table-2026-10-03/README.md",
+      "stage": "Explicit static developer topology; bounded failure supervision, general descriptors and assembled v1 remain open."
+    },
+    {
+      "id": "Q-ABI22-BOUNDED-RETRY",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/decisions/0180-abi22-bounded-pre-effect-retry.md",
+      "tests": [
+        "scripts/build-aether-baseline.py",
+        "tests/test_harness_aether_baseline.py",
+        "docs/evidence/supervised-retry-2026-10-03/controls/driver.py"
+      ],
+      "oracle": "Five fresh native cases: normal cycle; exit64 before I/O then known cleanup and fresh successful cohort; two failures exhaust and reject another run; actual stopped command after read blocks replacement; actual EACCES cleanup becomes Unknown, retains resources and denies replay. Fixed payload scope, output assertions, epochs, code/stack bounds and old profile bytes preserved.",
+      "evidence": "docs/evidence/supervised-retry-2026-10-03/README.md",
+      "stage": "One conservative pre-effect command retry in explicit fixed-memory developer profile; general failure recovery, arbitrary command side effects, matched environment and assembled v1 remain open."
+    },
+    {
+      "id": "Q-SERIAL-BOOT-COMPOSITION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/SERIAL-BOOT-COMPOSITION.md",
+      "tests": [
+        "docs/evidence/serial-boot-review-2026-10-03/review.py"
+      ],
+      "oracle": "Offline captured producer manifest and source-input correspondence; no mixed profile, runtime delivery or native acceptance is inferred. Current source changes remain separate from the sealed design review.",
+      "evidence": "docs/evidence/serial-boot-review-2026-10-03/README.md",
+      "stage": "One authority owner and one shell selected; qualified lifecycle profile and matching userland runtime are pending before actual sys-init composition."
+    },
+    {
+      "id": "Q-ABI24-PRODUCER-INTAKE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0182-abi24-producer-intake.md",
+      "tests": [
+        "docs/evidence/abi24-producer-intake-2026-10-03/review.py"
+      ],
+      "oracle": "Offline retained-subset hashes/membership and exact final recorded statuses; incomplete attempts and expected polling exhaustion cannot count as healthy shell idle. Artifact archive outer digests verified at capture, no member replay or native execution here.",
+      "evidence": "docs/evidence/abi24-producer-intake-2026-10-03/README.md",
+      "stage": "Kernel producer mechanisms available; matching wait-aware userland client and actual sys-init composition remain open."
+    },
+    {
+      "id": "Q-OWNED-SERIAL-SESSION",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "docs/SERIAL-SESSION-ACCEPTANCE.md",
+      "tests": [
+        "prototypes/native-session/init.rs",
+        "docs/evidence/owned-serial-session-2026-10-03/native-current.py",
+        "docs/evidence/owned-serial-session-2026-10-03/userland-review/oracle.py",
+        "docs/evidence/serial-session-diagnosis-2026-10-03/native.py",
+        "docs/evidence/serial-session-diagnosis-2026-10-03/check.py",
+        "docs/evidence/serial-session-failure-capture-2026-10-03/native-full.py",
+        "docs/evidence/serial-session-failure-capture-2026-10-03/check-session-caller.py",
+        "docs/evidence/terminal-read-race-2026-10-04/native-fixed.py",
+        "docs/evidence/terminal-read-race-2026-10-04/check.py",
+        "scripts/build-aether-session.py",
+        "scripts/serial_session_smoke.py",
+        "tests/test_harness_aether_session.py",
+        "tests/test_harness_serial_denials.py",
+        "docs/evidence/serial-session-denials-2026-10-04/check.py",
+        "docs/evidence/serial-session-denials-2026-10-04/native.py",
+        "tests/test_harness_serial_final_boundaries.py",
+        "docs/evidence/session-limits-2026-10-04/check.py",
+        "docs/evidence/session-final-controls-2026-10-04/check.py"
+      ],
+      "oracle": "Current maintained/fixed yielded immediate and delayed cases require exact90 UART bytes, eight admissions, ten terminal identities/reclaims and authorized halt. Actual yielded EOF failure precedes repair; actual wrong-direction EBADF and synthetic live-peer EOF still fail without parent completion/halt. Ten trace mutants reject. Historic exact caller attribution remains unavailable; prior evidence retained. Decision0186: five exact boot-handle guards, actual console -13 and late halt -16 require exact owner fault context/no completion; no timeout or terminal-only reclamation claim. Decisions0187\u20130188 add four lifetime/cleanup and seven loader/write native denials, exact typed result/fault contexts, no parent completion/halt/replay, and explicit synthetic receipt-loss scope.",
+      "evidence": "docs/evidence/session-consumer-review-2026-10-04/README.md",
+      "stage": "Selected bounded candidate controls qualified; continuing ordinary shell use blocked by matched15-lifetime SESSION profile. Independent userland consumption of all eleven final denials reviewed in decision0189. Local producer request ready/unsent; no sibling write or scope expansion. Independent assembled/release review remains separate."
+    },
+    {
+      "id": "Q-FILESYSTEM-INIT-OWNER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "prototypes/native-filesystem/README.md",
+      "tests": [
+        "prototypes/native-filesystem/policy.rs",
+        "prototypes/native-filesystem/tests.rs",
+        "prototypes/native-filesystem/init.rs",
+        "tests/test_harness_filesystem_consumer.py"
+      ],
+      "oracle": "Actual bounded policy with typed doubles: exact bootstrap before effects, live generation readiness/root before one dependent, short/EAGAIN offsets and shared/per-frame bounds, dependent before engine settlement, exact clean exit0/EOF/EPIPE/close/reclaim before halt. 35 injected failures and three compiling guard omissions; host/structural only, no trap-wrapper or native authority acceptance. Decision0191: exact producer native eight-case receipt/18 inputs matched. Independently validate five complete retained normalized kernel spans, linked UD2 and65 trace/eight receipt corruptions. Positive tails are partial; positive native outcomes are producer-reported/source-bound, not local full-trace replay.",
+      "evidence": "docs/evidence/filesystem-native-consumer-2026-10-20/README.md",
+      "stage": "Bounded exact native activation/readback/fixed-peer producer witness consumed; no runtime change or new local guest. Next matching ABI29 shell/client/PID/FD/loader/runner/package delivery; wider SESSION and assembled acceptance open."
+    },
+    {
+      "id": "Q-FILESYSTEM-AF07-OWNER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "target",
+      "reference": "prototypes/native-filesystem-af07/README.md",
+      "tests": [
+        "prototypes/native-filesystem-af07/policy.rs",
+        "prototypes/native-filesystem-af07/tests.rs",
+        "prototypes/native-filesystem-af07/init.rs",
+        "tests/test_harness_filesystem_af07_consumer.py"
+      ],
+      "oracle": "Actual fixed-AF07 policy: original 35 injected failures plus old/future greeting and disconnect rejection, exact 64-byte disconnect and ordered settlement, partial/EAGAIN offsets and bounded exhaustion. Four compiling guard omissions fail focused test. Strict Rust build/lints/format and ELF/raw/scoped-stack inspection; no native trap or authority acceptance. Decision0193: all876 input hashes/120 delivery inputs match. Independent decoder and semantics replay all eight complete selected native oracles (writer2/14/eight paired waits; reader3/21/original stages; five exact failed-peer spans), with semantic/witness/receipt corruptions. Clock events summarized, no raw UART/media/VM replay. Strict host C17/UBSan decoder probe rejects genuine boot parent7; source arithmetic pins generation0 owner6. No native shell acceptance.",
+      "evidence": "docs/evidence/filesystem-af07-consumer-2026-10-21/README.md",
+      "stage": "Exact bounded AF07 native activation/readback/fixed-peer witness consumed. Next corrected ABI29 boot-parent client input and complete linked/AF07 FD/path/exec fit, matching sys-init dispatcher and fresh shell/TTY/runner/package qualification."
+    },
+    {
+      "id": "Q-ABI29-DISPATCH-CORE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "prototypes/native-filesystem-session/README.md",
+      "tests": [
+        "prototypes/native-filesystem-session/lib.rs",
+        "prototypes/native-filesystem-session/startup.rs",
+        "prototypes/native-filesystem-session/children.rs",
+        "prototypes/native-filesystem-session/fd_startup.rs",
+        "tests/native_fd_startup.rs",
+        "tests/fd_startup_consumer.c",
+        "prototypes/native-filesystem-session/fork_gate.rs",
+        "prototypes/native-filesystem-session/fork_frames.rs",
+        "tests/native_fork_gate.rs",
+        "tests/fork_frame_consumer.c",
+        "prototypes/native-filesystem-session/fork_streams.rs",
+        "prototypes/native-filesystem-session/fork_pipe.rs",
+        "prototypes/native-filesystem-session/fork-pipe-provenance.json",
+        "tests/native_fork_streams.rs",
+        "prototypes/native-filesystem-session/fork_transport.rs",
+        "tests/native_fork_capture.rs",
+        "prototypes/native-filesystem-session/owner_region.rs",
+        "prototypes/native-filesystem-session/owner_entry.rs",
+        "tests/native_owner_region.rs",
+        "tests/native_broker_init.rs",
+        "scripts/check-broker-init.py",
+        "tests/native_fork_publish.rs",
+        "tests/owner_compare.c",
+        "scripts/owner_compare.py",
+        "prototypes/native-filesystem-session/owner_dispatch.rs",
+        "tests/native_owner_dispatch.rs",
+        "tests/native_fd_equivalence.rs",
+        "tests/native_fork_refusal.rs",
+        "prototypes/native-filesystem-session/owner_runtime.rs",
+        "prototypes/native-filesystem-session/owner_control.rs",
+        "prototypes/native-filesystem-session/native_owner_control.rs",
+        "prototypes/native-filesystem-session/native_owner.rs",
+        "scripts/owner_measure.py",
+        "tests/native_owner_runtime.rs"
+      ],
+      "oracle": "Decisions0194/0200/0202-0212 retain exact historical startup, tagged fork, FILE/stream inheritance, publication, dispatch and owner-placement results in their decisions/evidence. Checks cover complete bounded frames and malformed/short input, identity/generation/phase/refusal ordering, admission closure, no replay, known versus unknown cleanup, C/Rust consumer agreement, shared offsets/CLOEXEC/holders, EOF/EPIPE, source retirement and actual in-place owner construction. Strictly compiling omissions and borrow denials remain required. Injected host observations are not native authority/copy/peak-stack evidence. Separate public-CWD profile selects AFSRPC08/AEFP0003 with unchanged map/startup002/fork/exec02; matching provider/owner checks retain56 host methods/controls and measured44968 code,7624 resident,7992/8184 conservative guarded stack. Userland owns physical CWD policy; sys-init shares Connection and existing workspace. Native acceptance and current progress belong to root STATE; historical failed fits do not establish current readiness. Public CWD original native attempt failed a stale AF07 page-count oracle, with recovery skipped and VMs stopped. Corrected explicit AF08 geometry1331/34 is independently backed by sealed engine/ELF measurements; strict offline transcript recheck is diagnostic only. Fresh bounded native recovery remains required.",
+      "evidence": "docs/evidence/abi30-owner-placement-2026-10-22/README.md",
+      "stage": "BG-070 concrete boot/FILE/fork/stream/wait/terminal/shutdown composition measured offline; security stack gate blocks admission. Immutable exec and initial readiness remain, new code budget not yet selected. Existing seals/pins exact."
+    },
+    {
+      "id": "Q-AF07-ENDPOINT-ADAPTER",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "prototypes/native-filesystem-session/AF07-TRANSPORT.md",
+      "tests": [
+        "prototypes/native-filesystem-session/af07_transport.rs",
+        "prototypes/native-filesystem-session/af07_transport_tests.rs",
+        "prototypes/native-filesystem-session/af07_native.rs",
+        "tests/native_af07_remote.rs"
+      ],
+      "oracle": "Actual pinned Client/Framed with typed native doubles: six tests, all64 partial greeting/disconnect prefixes, <=16-byte short/EAGAIN, same-direction waits/errors/100000 bound, invalid rights/old protocol/stale epoch, independent raw close failures, cached once-only closes/no I/O or replay after retirement. Three compiling omissions reject. Native object/disassembly reviewed for exact ABI29 operations/zero unused args; no native execution/authority/fit claim. Subsequent ten-member remote/client input passes two actual-library host tests over scripted native replies: generated lookup/read/shared offsets/nonfinal versus final close/raw disconnect failures and64 dirty partial-body retirements with no replay/extra close.",
+      "evidence": "docs/evidence/af07-remote-adapter-2026-10-21/README.md",
+      "stage": "Endpoint transport and remote shared-description compatibility prepared. Remaining authenticated process/FD/binding/path/cross-process lifetime and immutable exec contract; then full dispatcher/shutdown/fit and fresh native consumption. Native endpoint packet unchanged; newer remote/client source has host-only composition."
+    },
+    {
+      "id": "Q-FILE-RPC-EXCHANGE",
+      "owner": "sys-init maintainer",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "prototypes/native-filesystem-session/FILE-RPC.md",
+      "tests": [
+        "prototypes/native-filesystem-session/fd_dispatch.rs",
+        "tests/native_fd_dispatch.rs",
+        "tests/native_fd_dispatch_server.rs",
+        "tests/fd_dispatch_client.c",
+        "tests/fd_dispatch_facade.c",
+        "tests/fd_dispatch_mixed.c",
+        "tests/native_fd_mixed_server.rs",
+        "tests/fd_dispatch_session.c",
+        "tests/native_fd_session_server.rs"
+      ],
+      "oracle": "Five actual handler/process/client/service tests with synthetic storage: complete request/padded response, semantic-error sequence continuation, stale keys including unsupported ops, partial input, lost header/body, unknown source retirement, cleared workspace and independent raw peer/source cleanup/no replay. Three compiling omissions reject. Two fresh live C transport/Rust driver sessions (10 complete exchanges and lost-body retirement) pass with actual C codec/client and joined service fixture threads; strict C17/UBSan, pinned headers/runtime and Rust format/Clippy. Native no_std generic builds only; no native IPC/holder/placement/peak-fit or linked shell acceptance. Subsequent typed C facade12 consumes unchanged transport/codec: two live host sessions test ten typed operations, local no-I/O denials, short-read caller tail preservation, closed zero-read error and lost-body retirement/unchanged caller output. Three compiling copy/tail/retired-errno omissions fail exact C exits; all owned processes stop. Decision0198: five live canonical mixed-table C/Rust cases check overlapping file/pipe source selectors, real host pipe create/read/write/alias/redirection/EOF/final close, file shared offsets/EOF and no stream fallback, lost-body/stale map/unknown-close with and without physical effect. Map/output preservation, independent actual stream cleanup, source counters and all owned processes stopped. Three selector/alias-close/unknown-close omissions fail exact C exits; strict C17/UBSan/format and Rust/Clippy/format. Decision0199: six live actual-session/FILE-redirect host cases test shared offsets/old-pipe EOF, inert snapshots, known-target-error actual prepared-dup rollback, lost dup/cleanup headers, unknown target with/no physical close, unchanged map/output on failure, cached finish/raw transport results, independent actual stream cleanup/source counters/all owned processes stopped. Three cleanup/publication/unresolved omissions fail exact C exits. Strict C17/UBSan/format and Rust/Clippy/format.",
+      "evidence": "docs/evidence/session-redirection-consumption-2026-10-22/README.md",
+      "stage": "Session/bounded FILE redirection consumed on host against unchanged Peer/handler/service. Next selected linked-shell startup/authenticated native adapters, copy/immutable exec/failed-or-unknown-exec preservation and whole resource placement/fit; then complete native dispatcher/shutdown and fresh matched witness. Decision0201 source review: libc wrapper wiring now exists, but actual tagged fork stage/child rebind remains. Kernel parent thaw and pinned broker frozen-parent clone need explicit BG-069 contract/proof before BG-070 native composition; no runtime coverage added."
+    },
+    {
+      "id": "Q-OWNER-EXEC",
+      "owner": "Aether system integration",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0213-owner-stack-exec-readiness.md",
+      "tests": [
+        "prototypes/native-filesystem-session/owner_exec_tests.rs",
+        "prototypes/native-filesystem-session/exec_frames.rs",
+        "tests/native_owner_region.rs",
+        "scripts/check-broker-init.py"
+      ],
+      "oracle": "Four actual private tests cover commit/known refusal/unknown receipt/partial publish/partial delivery/readiness exhaustion, exact current FILE/pipe bindings and generations; three compiling receipt/CLOEXEC/readiness omissions fail. Actual C608 frame decoded by Rust.57 prior tests/eight controls/two borrow denials retained. Code39376/49152, resident7504/8192, conservative stack8000/8184; no native execution.",
+      "evidence": "docs/decisions/0213-owner-stack-exec-readiness.md",
+      "stage": "Build/host-qualified ABI31 candidate. Prepare reviewed native harness and fresh scoped qualification; persistent executable loading/Zsh/TTY/packages/ISO and independent acceptance remain open."
+    },
+    {
+      "id": "Q-AF07-FRESH",
+      "owner": "Aether system integration",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0222-file16-public-dup2.md",
+      "tests": [
+        "scripts/qualify-af07-owner.py",
+        "tests/test_harness_af07_owner.py",
+        "tests/native_owner_region.rs"
+      ],
+      "oracle": "Decision0222: matched AEFP0002/map/startup/fork/exec and public mixed dup2 pass focused host/target checks. Selected producer15 cases/21 controls, FILE15/10 with C/Rust/C12 replies/96 malformed headers, mixed C26/four controls, libc84 per startup mode, fork/exec/readiness and owner56 methods/controls; old profiles regressions pass. Complete selected owner41360 code/7528 resident/7992 conservative stack fits49152/8192/8184 usable; old path owner40640/7504/8000 exact. Immutable helper19 actual-body outcomes checks self/CLOEXEC/local10/exact FILE replacement/stdin/read16/shared EOF/close. Source-matched guardedv9 and exact native three-guest receipt prepared; no VM. Fresh scoped disposition required, current budgets/authority/full-file/media/canary/wait/terminal/cleanup/no-retry rules preserved. Input/qualifier host methods exercise actual matching intake/parser, exact profile/geometry/identity, malformed/resealed/drift rejection, complete bounded capture, strict wait pairing, panic symbolization and unknown-stop retention; see decisions0214\u20130221 and their compact evidence for earlier scoped native outcomes and failures. Historical generic-only panics remain individually unattributed;0219 Accessed-only source/frame/flags correction and exact matching native witness retain their recorded scope. Current root STATE owns results/next action; no independent/native dup2 or release acceptance. Minimum Python runner and independent review open.",
+      "evidence": "docs/decisions/0221-root-path-owner.md",
+      "stage": "Bounded native read/count/cleanup passes; public replacement/CWD/home writes/persistent ELF/packages/Zsh/ISO and independent acceptance remain open."
+    },
+    {
+      "id": "Q-FILE-WRITE-OBSERVATIONS",
+      "owner": "sys-init/Aether-userland integration",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0223-file-write-observations.md",
+      "tests": [
+        "scripts/check-file-write-observations.py",
+        "tests/file_write_observations.rs",
+        "tests/native_fd_dispatch.rs",
+        "tests/native_owner_dispatch.rs"
+      ],
+      "oracle": "Explicit matched AEFW Peer copies current bound Process and complete write receipt before reply sends; returns original mutation facts independently of complete/unknown delivery and local FILE cleanup, retaining source versus FILE closes through retirement/drop with no replay. Actual AF09 host cases include all terminal states, local NotSent,130 physical-loss/error positions, preflight and rebind; named compiling controls and old composed owner/profile gates. No native activation, whole fit, settlement, persistence or release acceptance.",
+      "evidence": "docs/evidence/file-write-observations-2026-10-24/README.md",
+      "stage": "change-selected before completion"
+    },
+    {
+      "id": "Q-HOME-OWNER-FIT",
+      "owner": "sys-init/Aether-userland integration",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "docs/decisions/0224-home-owner-fit.md",
+      "tests": [
+        "scripts/check-home-owner.py",
+        "prototypes/native-filesystem-session/home_owner_tests.rs",
+        "scripts/owner_measure.py",
+        "tests/owner_compare.c"
+      ],
+      "oracle": "Matched two-grant final-slot owner; exact receipt/admission/delivery/cleanup before fail-stop, current sole-source cleanup independent of receipt/FILE closes, child/current generation/rebind and once-only retention; named compiling controls and old composed-owner/profile regression. Complete Native ELF/code/resident/conservative call-graph stack under unchanged ABI31 limits. Model headroom is not native peak/authority/recovery acceptance.",
+      "evidence": "docs/evidence/home-owner-fit-2026-10-24/README.md",
+      "stage": "Offline source/host/no_std and complete conservative fit qualified; separate peer review/integration recorded in owning item. No guest/native activation."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "G-CODING",
+      "topic": "Unsafe/FFI/error-path baseline; language tools and budgets",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/active/BG-056--complete-quality-standard-adoption.md",
+      "milestone": "Decisions 0095\u20130141 complete scoped static, tool/capture bounds and retained-evidence validation. Next: bound aggregate source snapshot reads, then review aggregate report/error paths (decision 0142). Full native/C/FFI review, tool closure, filesystem deadlines/races and independent acceptance remain open; see docs/EVIDENCE-LIMITS.md. Decision 0143 completes bounded aggregate source snapshot reads; report/error paths are next. Decision 0144 records snapshot/report failures and atomic publication; startup/output-pipe/fatal-signal limits remain. Decision 0145 handles output-directory startup and broken pipes; fatal/repeated signals and blocked I/O remain limits."
+    },
+    {
+      "id": "G-DOCS",
+      "topic": "Complete command/API inventory, manuals and reader review",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/active/BG-056--complete-quality-standard-adoption.md",
+      "milestone": "18 command manuals plus host descriptor, static/quality/lock/native-record references are present. Decision 0142 consolidates evidence limits. Remaining API families, installed/target lookup and independent technical/reader/HTML visual review remain open."
+    },
+    {
+      "id": "G-EXTENDED",
+      "topic": "CI and scheduled fuzz/stress runners, corpus, budgets and freshness",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/active/BG-054--define-host-ci-harness.md",
+      "milestone": "Maintainer decision 2026-10-22 retires other-OS product support and platform qualification. Keep useful host checks; prior macOS/Linux and EHT-01 evidence remains scoped to its snapshots. Aether native, hosted scheduling and actual review claims retain their own requirements."
+    },
+    {
+      "id": "G-READINESS",
+      "topic": "Native caller binding/revocation, effect acknowledgment and real delivery",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/active/BG-050--specify-control-requests.md",
+      "milestone": "Before exposing the control facade across a process/native boundary",
+      "reference": "docs/specs/CONTROL-AUTHORITY-V0.md",
+      "review_evidence": "docs/evidence/control-authority-review-2026-09-06/reviewed-files.json"
+    },
+    {
+      "id": "G-RECOVERY",
+      "topic": "Effect-driver integration, unknown reconciliation and production supervisor recovery",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/captured/BG-033--define-bootstrap-and-supervisor-recovery.md",
+      "milestone": "Before recovery or POSIX session implementation",
+      "reference": "docs/research/UNKNOWN-EFFECT-RECONCILIATION.md",
+      "review_evidence": "docs/evidence/reconciliation-review-2026-09-06/reviewed-files.json"
+    },
+    {
+      "id": "G-DESCRIPTOR",
+      "topic": "Production service configuration",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/captured/BG-035--define-service-descriptor-profile.md",
+      "milestone": "Before production descriptor support"
+    },
+    {
+      "id": "G-TTY",
+      "topic": "Device/session authority and mode recovery",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/captured/BG-048--define-device-mount-ownership.md",
+      "milestone": "Before TTY/session acceptance"
+    },
+    {
+      "id": "G-NATIVE-DRIVER",
+      "topic": "ND-01 issued identity/admission; ND-02 terminal kind; ND-03 journal acceptance and retirement; ND-04/05 composition",
+      "status": "open",
+      "owner": "sys-init maintainer",
+      "backlog": ".planning/backlog/active/BG-058--qualify-producer-effect-evidence.md",
+      "milestone": "Decision 0094: 175 native cases pass; six owned-history sealing scenarios and exact 1061/1062/1063 controls. Next PH-06 native errno and closed terminal inspection; PH-07/recovery open.",
+      "reference": "docs/decisions/0094-native-history-sealing.md",
+      "review_evidence": "docs/evidence/native-history-sealing-2026-09-06/consumer-review.json"
+    },
+    {
+      "id": "G-USEFUL-BOOT",
+      "topic": "Matched real userland startup/lifecycle, sustained wait profile and shutdown delivery",
+      "status": "open",
+      "owner": "sys-init maintainer with Aether/userland mechanism and application owners",
+      "backlog": ".planning/backlog/active/BG-067--consume-useful-boot-handoff.md",
+      "milestone": "Decision0213: separate approved ABI31 guarded stack and measured49152 code budget; complete bounded owner39376 bytes, Runtime3408+workspace4096, conservative stack8000/8184. Actual immutable-helper exec/receipt/CLOEXEC/rebind/publication/readiness host tests pass, matched C provider and full shell/helper link accepted by unchanged ELF parser. Native composition/harness/transaction/failure/export/readback and independent acceptance remain; no guest or Zsh/ISO.",
+      "reference": "docs/FILESYSTEM-BOOT-HANDOFF.md",
+      "review_evidence": "docs/decisions/0213-owner-stack-exec-readiness.md"
+    }
+  ]
+}

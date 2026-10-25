@@ -1,0 +1,29 @@
+{
+  "schema": "aether-userland.process-proposal-delivery.v1",
+  "work": "UL-037",
+  "scope": "shared unreleased draft authored; no owner acceptance, pin change or runtime test",
+  "files": {
+    "../Aether-standards/drafts/distribution-v0.2.0/PROCESS-FD.md": "deb14773d7f6547019c7be0383050ce0419ee4a43c3675fc1e41f27451d9d4e4",
+    "../Aether-standards/drafts/distribution-v0.2.0/PROCESS-FD-REVIEW.json": "9a2e0f9bf9488056c86320ac6d51dae6fd212006e24f3209ea7d8925494ed9e3",
+    "../Aether-standards/drafts/distribution-v0.2.0/PROCESS-FD-SOURCES.json": "743904363ceaefb52c12db587c089fb2871287eb70d8b8896d02b391c0ed9afa"
+  },
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "tools/check.py"
+      ],
+      "cwd": "Aether-standards",
+      "exit": 0,
+      "scope": "release integrity, existing offline cases and local links"
+    },
+    {
+      "command": "rules.record(PROCESS-FD-REVIEW.json)",
+      "exit": 0,
+      "scope": "pending review structure only; no approvals"
+    }
+  ],
+  "runtime_tests_rerun": false,
+  "follow_on": "UL-038"
+}

@@ -1,0 +1,642 @@
+{
+  "scope": "UL-069 download-only build inputs; not installed or runtime-tested",
+  "root": "/Users/cam/DEV/Aether-userland/build/qemu-build-inputs-63k7xktv",
+  "base_image": "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+  "receipt_sha256": "33b718071c8fdbd1633904f223f22361a65b339f51b0adb63a4a76a7214df4b6",
+  "files": {
+    "cleanup.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "cac65de2398bb882cb199d28f120b02ca78d6190a5557566bbc2e710a1ae2612",
+    "stderr": "df745ee5be61569d4b2d6d6dbe3df86ccc68e91e0de53c2c9548485eb2b858fb",
+    "collector.py": "5c87febd6438f0726c299be4891f781646426ff0d0b68807b327a0aaa436e0c5",
+    "cleanup.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collect.sh": "6c588b722a5a02fa1a99d07ce253befe6ecbe6e21b3e682045342a0c86dd48cd",
+    "PLAN.md": "867d01e0154ae7722bc3632aec7804ecdbd08dbbf5688b236562c7c06537cded",
+    "sources.list.d/debian.sources": "7d9e81dd5e13f1ccf6a607c778086b314c8072192c50d8840a02599bc96ec306",
+    "debs/libtsan2_14.2.0-19_arm64.deb": "c767c05f3dade13b5780478366029f2ff32e44bea852c6a4d7a1f93f1363d3e3",
+    "debs/python3-venv_3.13.5-1_arm64.deb": "08d23753825316cbffb69011c9cda39a6cc4adc4d51ea808c8d68d9981573dda",
+    "debs/libobjc-14-dev_14.2.0-19_arm64.deb": "b248dc482ad75e0dbe64e70a468ce61b2c167fe63420185290dd441b28cd1357",
+    "debs/python3.13-venv_3.13.5-2+deb13u4_arm64.deb": "2ccce7da838b594b0396f5193a120841fabbd833772bfd8c78fd20a81b38a8a0",
+    "debs/libuuid1_2.41.5-0+deb13u1_arm64.deb": "448ad6b190184dbff24508ef2eda88bd737a5ffc0f9750eb779fcf9885292bea",
+    "debs/python3-typing-extensions_4.13.2-1_all.deb": "b67662f211c35c17c74a0725bc7c8ffc3b126c650e2a2525593adee06f2bbf69",
+    "debs/libllvm19_1%3a19.1.7-3+b1_arm64.deb": "8a48e1a49f7fcc3be74e697767d72902f4b03041401d1529bcfad1849df39148",
+    "debs/python3-typeguard_4.4.2-1_all.deb": "81e512101d7ab94e73646b9a8e4fb9b948836e3172dc5719ad3acbcde65bca01",
+    "debs/uuid-dev_2.41.5-0+deb13u1_arm64.deb": "eca5896d42fcc5daaf3f875a11a8766ef6673191d236d233b92d33f6b5fc0341",
+    "debs/liblastlog2-2_2.41.5-0+deb13u1_arm64.deb": "934e7f90814e014aa0ab8ffbadef4f31ce44228b7135db9b733f4b68cabfccfc",
+    "debs/libglib2.0-dev_2.84.4-3~deb13u3_arm64.deb": "913883aa6452ddcfff3fd401459e1eb5f66353a0d30e50d16b1d3db87c4d9a1a",
+    "debs/make_4.4.1-2_arm64.deb": "043219839669c431def9bb410c4a827f115ee5bf377469d55c4ed905f81f73be",
+    "debs/rpcsvc-proto_1.4.3-1+b1_arm64.deb": "6ae3c216e6c7d8e042ad3f122b8aa89aff56b2b5174b1c5780a7841b3becd61c",
+    "debs/pkg-config_1.8.1-4_arm64.deb": "fef9662964fa4ff2ebbeefe076adffad79374f744274085c8ce931d5feb462a1",
+    "debs/libgio-2.0-dev_2.84.4-3~deb13u3_arm64.deb": "a1c9f8f81aa7ec75501ddefe3ed8fcf3835154810662ce216bc517dd9ea3f44d",
+    "debs/libpcre2-32-0_10.46-1~deb13u1_arm64.deb": "8dd0bda429e5ddd25d73865d944a2f3f4f04a2605acaecee73d1fe5630b22c7f",
+    "debs/python3.13-minimal_3.13.5-2+deb13u4_arm64.deb": "0fec1a8d1c46c8fd715d022a2bddc6917e499addf82cadd0fb68d92b23a0c24f",
+    "debs/libhwasan0_14.2.0-19_arm64.deb": "5a758db399fafd354b6488c4f250b7670fb1f61c31b4e4f329d0fbb750a17084",
+    "debs/python3-zipp_3.21.0-1_all.deb": "6cd0f768a5e5c574c7ae4b9d56603f8399b31de732167007e42fc17decc5cc6a",
+    "debs/binutils-aarch64-linux-gnu_2.44-3_arm64.deb": "79cbf1459118bce3535133ffbf1fd2adbd57af65271f95c829af5cfa7f474168",
+    "debs/libglib2.0-bin_2.84.4-3~deb13u3_arm64.deb": "8bb0a5f9315828a10dc2f69778f7e9d0ab854dd1b826ed13bfc9b34acadd240b",
+    "debs/python3-setuptools-whl_78.1.1-0.1_all.deb": "0caf134e73ab90ffeaa5ce2529d73ea7d48078b2a9251ed9d1b7b514a61e9483",
+    "debs/libgio-2.0-dev-bin_2.84.4-3~deb13u3_arm64.deb": "e592f6e203bc85a40a89c204b1395dbe865b4d92f3a9a8b4e8c2485c7933c4ec",
+    "debs/libitm1_14.2.0-19_arm64.deb": "d6f0255b498af876ab7bf4420672e43cbe58dcd577f0711131cbfbcbee283cdb",
+    "debs/libgprofng0_2.44-3_arm64.deb": "4642014c84f3d070d889725900fbd23165189597d45deddc7bdcf9928de9e32e",
+    "debs/clang-19_1%3a19.1.7-3+b1_arm64.deb": "4cb5d48c887e0c1071a058ae8eb30540db77379be50388fcd6b3f9ad1016d54c",
+    "debs/python3-inflect_7.3.1-2_all.deb": "6c10dca4d4aa0eb0b4e16e8b62b74a073a8d22be8809c3f61c56b06fdd1451f8",
+    "debs/libgomp1_14.2.0-19_arm64.deb": "43e84cb7971d8a4d8870cab6204e998ea4f23ee1339bb0ff556dd881bac82d25",
+    "debs/libobjc4_14.2.0-19_arm64.deb": "2c402e31c3636f8c5be1f1c4a4716e9335e570862b7e393ade1e63bde9ff933c",
+    "debs/libelf1t64_0.192-4_arm64.deb": "815b4265c7d6c89c5bbad456bdeed7af893da6912c9d16cf4c581001927c0e37",
+    "debs/binutils_2.44-3_arm64.deb": "7228716cad15e78d1571f1cd4ec7141f64608790d0fbcba23a07f2eda6298272",
+    "debs/meson_1.7.0-1_all.deb": "e92d04e60e784336883d537755d09b7dcb856809fa318a0931df3898e84ded95",
+    "debs/libffi-dev_3.4.8-2_arm64.deb": "55f6d389cc954407cdba6e4ba5e7039dd2042d2ca8929d6f5eb49d6b97ba92de",
+    "debs/llvm-19-linker-tools_1%3a19.1.7-3+b1_arm64.deb": "2538a8ea604718a02cae7ffab7ee2d537fab2e5eed256584a0bd475bddc3da39",
+    "debs/libmount-dev_2.41.5-0+deb13u1_arm64.deb": "3407555e8f12a76904df25829d8d83d7681823370b48cd3bb6f1c40448d4dc31",
+    "debs/mount_2.41.5-0+deb13u1_arm64.deb": "8b40a9eb9f72647c8732e9264c7328233f8ef8e9d962e516edeb210caa6789b6",
+    "debs/libctf0_2.44-3_arm64.deb": "12cb7df9eafd965c00c38a8720c5b78e7b0106390f69fe180a3b3589f407d550",
+    "debs/libexpat1_2.8.3-1~deb13u1_arm64.deb": "c3248c4beb721c8290e6e34527ae56b1fc965aa6a14982ca602df4458ef0854e",
+    "debs/libglib2.0-dev-bin_2.84.4-3~deb13u3_arm64.deb": "ef8978233501cd152d6007f88bf7f14fd563ca4e38a2b18634b63d17b4983f56",
+    "debs/libglib2.0-0t64_2.84.4-3~deb13u3_arm64.deb": "97d54c95f7e190cc21cc6a94e3e9654c5fac6e7b86db33ca6ff00feae60bced4",
+    "debs/python3-pkg-resources_78.1.1-0.1_all.deb": "cf8749251172abc945216cf878367f614cf91d3d9a1043ba3bacc5a74e8cc1a8",
+    "debs/python3-autocommand_2.2.2-3_all.deb": "1e62ac22ff83466228c051c6c2402a40f521646e15b5aa54cf2391206a848bad",
+    "debs/libz3-4_4.13.3-1_arm64.deb": "29a7b924a5a38c9ac4e2a64aa11586a9c54f26b579b18e4f75adf8f7c1106e45",
+    "debs/libsysprof-capture-4-dev_48.0-2_arm64.deb": "73f30f2a5ff7b378f8d47f1a3e1fcfac74043a4612bf0661c3ea4b96e6e27f98",
+    "debs/pkgconf-bin_1.8.1-4_arm64.deb": "bce0638102650b61224901da320c2f867a91cfc133532a5fb526d2ce05465fe6",
+    "debs/libsepol-dev_3.8.1-1_arm64.deb": "83c6a0333dd9eb04db23a98817a8df09e4c5d2a88c012f900dc809f63c8ad6b8",
+    "debs/libcrypt-dev_1%3a4.4.38-1_arm64.deb": "eec6d4658495cdb8ce505cad91e0918edb8086677f280f3851c07ccd70543054",
+    "debs/libctf-nobfd0_2.44-3_arm64.deb": "7b1894cbd09bd59507af259ba680a1f5d3b68c6ba9e5d69508ea2d75b3f01be6",
+    "debs/libpython3.13-minimal_3.13.5-2+deb13u4_arm64.deb": "774474a023c4835c5362222419b57959d97ebe3ef63d7c54f8a8801226cef163",
+    "debs/libstdc++-14-dev_14.2.0-19_arm64.deb": "8760122d044cd8eb8c69426311d6b5ce7bb8f0f76e9cda1944d153ae878138f8",
+    "debs/libsmartcols1_2.41.5-0+deb13u1_arm64.deb": "1881ac0bc2a58a52ecbf6e7690b17552233b71e94129db79e2302656b0d22f24",
+    "debs/libxml2_2.12.7+dfsg+really2.9.14-2.1+deb13u3_arm64.deb": "a66b9c960acef8ed9653223cbd00b155a92ebb758ea13a788c41609246c23bc7",
+    "debs/bsdutils_1%3a2.41.5-0+deb13u1_arm64.deb": "9afcc3e049a66d7f703d092f845c800b767fb9afe9e681e1483eec163aadcb18",
+    "debs/pkgconf_1.8.1-4_arm64.deb": "aaf89947e9a5a6d980d14f43dfde8d0ad4e869b5cd33567321ca8baeb7ee7740",
+    "debs/util-linux_2.41.5-0+deb13u1_arm64.deb": "d427f83a08d46107e8f7d39f1522a8a316e785e45f04ad657d2ecb7570210d84",
+    "debs/python3-packaging_25.0-1_all.deb": "d70c8469f6e9c6105e1ebcd3ebdc963f11dadbeddd89d2d1a2a3cb1c97d2ecbc",
+    "debs/libasan8_14.2.0-19_arm64.deb": "5621bd583a3390b45726a8eebe23601f7fad86a25193e5349976cbf17e2bc9ad",
+    "debs/login_1%3a4.16.0-2+really2.41.5-0+deb13u1_arm64.deb": "c0bc34268bc1528b627f8c0cfe1e6d9ca7b4dd00428690a63f1d1b0adb5dc508",
+    "debs/libglib2.0-data_2.84.4-3~deb13u3_all.deb": "bb9c50614316ccb8533d65f2f995e25d1275e0d83dcd2b675c2b6da8d620e55b",
+    "debs/libblkid1_2.41.5-0+deb13u1_arm64.deb": "d7d122b4c7a0a8ae6135a1687c9c4ce80a88f9e498c01998f634dd32caab9016",
+    "debs/python3-jaraco.text_4.0.0-1_all.deb": "d5e060c9ba9d5206b53670cf2473681b45030cc6a55d18a8c6d87419a924e502",
+    "debs/libgc1_1%3a8.2.8-1_arm64.deb": "58747952e7bd66396023aa8bf53f5039217fddd750b337dfa13352d4fc07f528",
+    "debs/libpkgconf3_1.8.1-4_arm64.deb": "8a9477ed7af47d7ddefa1fe02bf9f87d6778e8cc59062064f1b076880a7a14a5",
+    "debs/python3.13_3.13.5-2+deb13u4_arm64.deb": "db41afdb3d84d2d00ba5c6e4e2e4e70dc1e21d7710c152a7b04d4fce6b2f74e9",
+    "debs/libc-bin_2.41-12+deb13u3_arm64.deb": "02f366115bea79b87fe26c7dec4dc444f9fdcc76440905d88cc26dbef075511b",
+    "debs/libjansson4_2.14-2+b3_arm64.deb": "7938472b1ddfa8b0c8f58d5f44406ae7a77a342dbb502a02f6bf292b4f853ab0",
+    "debs/libmount1_2.41.5-0+deb13u1_arm64.deb": "14e2d555459f3c0b1442bb49dd2d266ea202a003198c86f65508a1dbfaa18732",
+    "debs/python3-jaraco.context_6.0.1-1+deb13u1_all.deb": "f909ec7b00dd96a1905322acba7cdd2df09747ceddeef6e426a97b33ab227f80",
+    "debs/libpython3.13-stdlib_3.13.5-2+deb13u4_arm64.deb": "37cce6086b7c1ca93086f83b68761737607689e634693b6972b5dbfd6c080872",
+    "debs/libedit2_3.1-20250104-1_arm64.deb": "496c31df89fac9cb7e98102fcc21daf887376dcd9914f6322c86dd5bd4360ff1",
+    "debs/media-types_13.0.0_all.deb": "0788e4b0b72db1bcf74a19cb24c3511e7770ad0b341f0f30e361701c3072f53e",
+    "debs/libblkid-dev_2.41.5-0+deb13u1_arm64.deb": "18fc2da74bbbe194cabb96e8870512627434c5d5b2f25f082cc5ede36f502913",
+    "debs/python3-jaraco.functools_4.1.0-1_all.deb": "f5ac3e5f79b6394191d76ea7cde9255d8bae98f639886cb981444128f6545796",
+    "debs/libpcre2-16-0_10.46-1~deb13u1_arm64.deb": "c1935859e4fdac3306ee577f98dbcee8aec50b8e2ff0892ca2f0fa05ee5f9008",
+    "debs/binutils-common_2.44-3_arm64.deb": "f2d6b7d0b5521c4c90fc105e32819cd5268c1aa69104173b3fb856595f898249",
+    "debs/python3-setuptools_78.1.1-0.1_all.deb": "90c4bc8e311873e5b571b407ce6b1fd38195dff77f9de056301a0f950e6df5a5",
+    "debs/girepository-tools_2.84.4-3~deb13u3_arm64.deb": "bd197a47174ec6b8588ace15e1e1fb67d97229b21982a8e9320cb1263d3d601e",
+    "debs/linux-libc-dev_6.12.107-1_all.deb": "dc68dd53c7356598d005866da0d19d7bd33af2a62971aced624cdf04492902b4",
+    "debs/libclang-common-19-dev_1%3a19.1.7-3+b1_arm64.deb": "fc0f2c5ffd2b2d7cd0119ed4fb1050c5757d0ed20a4f5c0964d8d737c73b0843",
+    "debs/native-architecture_0.2.6_all.deb": "cb065efb2dd0ad8de45ace298bdb959e4d66478ca8599312bde4fa543d8b7532",
+    "debs/libselinux1-dev_3.8.1-1_arm64.deb": "32b994441e6a445365fd99711e9c2c25aaa492a3ff9729ba3b881fe4e8901ef4",
+    "debs/libbinutils_2.44-3_arm64.deb": "c51c0cc0272202d00fc3e6da8b96bfed2a428c239b689363abddd3bac6bd7a02",
+    "debs/python3_3.13.5-1_arm64.deb": "8d5be256bf3bb4f07afce1aa86f0595c6939e1a6c2ea939bdcb7b36351cbe021",
+    "debs/libc-dev-bin_2.41-12+deb13u3_arm64.deb": "abe73702b06627e16b95b7928200f67385a14ad1f1c6edd9af135dd26092a485",
+    "debs/libsframe1_2.44-3_arm64.deb": "d4a90764fa79858347aaa3197bc4489404f005d9cdbea9b2ec75a607ea5ff518",
+    "debs/clang_1%3a19.0-63_arm64.deb": "a9fca67115f164c782fc9acbefeffbc723b8a65efcfe97714440635c3cb4bb11",
+    "debs/libclang-cpp19_1%3a19.1.7-3+b1_arm64.deb": "9c0465b890bc962467043fa47dd0fc4dbb278422c3fdf7f7f0e1c3e6e8a13620",
+    "debs/libpcre2-posix3_10.46-1~deb13u1_arm64.deb": "6cec057b7490c87332f619286d76a349b3394c1a932b24732f7f1d3d8342acd3",
+    "debs/zlib1g-dev_1%3a1.3.dfsg+really1.3.1-1+b1_arm64.deb": "745ebcf1fa115e230af76216355d7290a24f1790fe3780249b519c0e4d30534f",
+    "debs/libatomic1_14.2.0-19_arm64.deb": "7ccff90234484bf21ae5ecb79d25b6a84b2f4038f65dd139085b2e3a937cd8dc",
+    "debs/libc6_2.41-12+deb13u3_arm64.deb": "ff529924782d3286181188fc265a6a92e7fe28975fb3a925dc0e05c0ca66e52f",
+    "debs/ninja-build_1.12.1-1+b1_arm64.deb": "4afc3194ca4d4f051893f169daa48ba9eac769d76f3f13839e5ad0a9688b5fe6",
+    "debs/python3-pip-whl_25.1.1+dfsg-1_all.deb": "e65351935aa4af2b10ae2abb5744f5059e9abad51aea6cd0cb825702010763f7",
+    "debs/python3-minimal_3.13.5-1_arm64.deb": "b1dff61d3e68c83c747b03399356ba707d491bcaf6e495b575d46be3143cdec8",
+    "debs/libubsan1_14.2.0-19_arm64.deb": "b5539003465ea1e60f66b9e3a1019da182e826c82d480944f3656b12351c74c8",
+    "debs/liblsan0_14.2.0-19_arm64.deb": "488a54a5fe01a926ae16d73dc7ea9f530f1bf63fae73640f741695eec2541a38",
+    "debs/libpython3-stdlib_3.13.5-1_arm64.deb": "0e5b09b3c90f34399a357c32e1be08a3f31b39d3c615464f00354b309f82e732",
+    "debs/python3-more-itertools_10.7.0-1_all.deb": "385d785fa84261838732ec97627b4e95ec7399fc449d8a2aaaef66fb5f961c25",
+    "debs/libgirepository-2.0-0_2.84.4-3~deb13u3_arm64.deb": "43bf2bd7e888ecd3f0227a3ecff5f1d1a3915db5e38a0199bab514e7a1760e01",
+    "debs/libc6-dev_2.41-12+deb13u3_arm64.deb": "b2d2660900bd0bfe110b485532367774589d86d2e57b4ed74d8f06e3208a6959",
+    "debs/libgcc-14-dev_14.2.0-19_arm64.deb": "64b8ebc7182a69aa9525df6eab5e7eb849b947e350d821549f8a8a3e9b19e5ba",
+    "debs/libpcre2-dev_10.46-1~deb13u1_arm64.deb": "cf70657d734060bad45def0c67208e2afb1e165a5640d53b3bfe2264a3ada932",
+    "debs/libclang1-19_1%3a19.1.7-3+b1_arm64.deb": "e0719cbb2bd6bb3b91f471d1fa41b364eae0604774db56a7b3dd8d24738a5f20",
+    "apt-lists/deb.debian.org_debian_dists_trixie-updates_main_binary-arm64_Packages.lz4": "54129b18dfc8545f7ee28b783793c0ecd6952f6ac6314c24384162e02822c048",
+    "apt-lists/deb.debian.org_debian-security_dists_trixie-security_InRelease": "fb3fc2f8aaccd1fcd34eacf1711a4190d731523d1d47699412d0d499fc5e3e48",
+    "apt-lists/deb.debian.org_debian-security_dists_trixie-security_main_binary-arm64_Packages.lz4": "cb907cd4ea70e3c6753ec5fd88a62325d12502247c010b9b3880e0d92efd7038",
+    "apt-lists/deb.debian.org_debian_dists_trixie-updates_InRelease": "58528b55658b20b3110693075cf44c63f1cc52a93bc2b705556688b753304532",
+    "apt-lists/deb.debian.org_debian_dists_trixie_InRelease": "98b25b5cd185c59d34aa6e4c3e9b5b8f01bbe9d104fe2dcfbcd30dc0a14a59ed",
+    "apt-lists/deb.debian.org_debian_dists_trixie_main_binary-arm64_Packages.lz4": "e9994d5872cb22ed8735b561f3ab7e377b4d7f775e169a7a7d9c5ceae32e72d3"
+  },
+  "packages": [
+    {
+      "package": "binutils-aarch64-linux-gnu",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "binutils-common",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "binutils",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "bsdutils",
+      "version": "1:2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "clang-19",
+      "version": "1:19.1.7-3+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "clang",
+      "version": "1:19.0-63",
+      "architecture": "arm64"
+    },
+    {
+      "package": "girepository-tools",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libasan8",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libatomic1",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libbinutils",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libblkid-dev",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libblkid1",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libc-bin",
+      "version": "2.41-12+deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libc-dev-bin",
+      "version": "2.41-12+deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libc6-dev",
+      "version": "2.41-12+deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libc6",
+      "version": "2.41-12+deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libclang-common-19-dev",
+      "version": "1:19.1.7-3+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libclang-cpp19",
+      "version": "1:19.1.7-3+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libclang1-19",
+      "version": "1:19.1.7-3+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libcrypt-dev",
+      "version": "1:4.4.38-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libctf-nobfd0",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libctf0",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libedit2",
+      "version": "3.1-20250104-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libelf1t64",
+      "version": "0.192-4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libexpat1",
+      "version": "2.8.3-1~deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libffi-dev",
+      "version": "3.4.8-2",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgc1",
+      "version": "1:8.2.8-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgcc-14-dev",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgio-2.0-dev-bin",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgio-2.0-dev",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgirepository-2.0-0",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libglib2.0-0t64",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libglib2.0-bin",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libglib2.0-data",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "all"
+    },
+    {
+      "package": "libglib2.0-dev-bin",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libglib2.0-dev",
+      "version": "2.84.4-3~deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgomp1",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libgprofng0",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libhwasan0",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libitm1",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libjansson4",
+      "version": "2.14-2+b3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "liblastlog2-2",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libllvm19",
+      "version": "1:19.1.7-3+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "liblsan0",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libmount-dev",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libmount1",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libobjc-14-dev",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libobjc4",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpcre2-16-0",
+      "version": "10.46-1~deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpcre2-32-0",
+      "version": "10.46-1~deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpcre2-dev",
+      "version": "10.46-1~deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpcre2-posix3",
+      "version": "10.46-1~deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpkgconf3",
+      "version": "1.8.1-4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpython3-stdlib",
+      "version": "3.13.5-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpython3.13-minimal",
+      "version": "3.13.5-2+deb13u4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libpython3.13-stdlib",
+      "version": "3.13.5-2+deb13u4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libselinux1-dev",
+      "version": "3.8.1-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libsepol-dev",
+      "version": "3.8.1-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libsframe1",
+      "version": "2.44-3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libsmartcols1",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libstdc++-14-dev",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libsysprof-capture-4-dev",
+      "version": "48.0-2",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libtsan2",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libubsan1",
+      "version": "14.2.0-19",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libuuid1",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libxml2",
+      "version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3",
+      "architecture": "arm64"
+    },
+    {
+      "package": "libz3-4",
+      "version": "4.13.3-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "linux-libc-dev",
+      "version": "6.12.107-1",
+      "architecture": "all"
+    },
+    {
+      "package": "llvm-19-linker-tools",
+      "version": "1:19.1.7-3+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "login",
+      "version": "1:4.16.0-2+really2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "make",
+      "version": "4.4.1-2",
+      "architecture": "arm64"
+    },
+    {
+      "package": "media-types",
+      "version": "13.0.0",
+      "architecture": "all"
+    },
+    {
+      "package": "meson",
+      "version": "1.7.0-1",
+      "architecture": "all"
+    },
+    {
+      "package": "mount",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "native-architecture",
+      "version": "0.2.6",
+      "architecture": "all"
+    },
+    {
+      "package": "ninja-build",
+      "version": "1.12.1-1+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "pkg-config",
+      "version": "1.8.1-4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "pkgconf-bin",
+      "version": "1.8.1-4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "pkgconf",
+      "version": "1.8.1-4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "python3-autocommand",
+      "version": "2.2.2-3",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-inflect",
+      "version": "7.3.1-2",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-jaraco.context",
+      "version": "6.0.1-1+deb13u1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-jaraco.functools",
+      "version": "4.1.0-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-jaraco.text",
+      "version": "4.0.0-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-minimal",
+      "version": "3.13.5-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "python3-more-itertools",
+      "version": "10.7.0-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-packaging",
+      "version": "25.0-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-pip-whl",
+      "version": "25.1.1+dfsg-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-pkg-resources",
+      "version": "78.1.1-0.1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-setuptools-whl",
+      "version": "78.1.1-0.1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-setuptools",
+      "version": "78.1.1-0.1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-typeguard",
+      "version": "4.4.2-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-typing-extensions",
+      "version": "4.13.2-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-venv",
+      "version": "3.13.5-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "python3-zipp",
+      "version": "3.21.0-1",
+      "architecture": "all"
+    },
+    {
+      "package": "python3.13-minimal",
+      "version": "3.13.5-2+deb13u4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "python3.13-venv",
+      "version": "3.13.5-2+deb13u4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "python3.13",
+      "version": "3.13.5-2+deb13u4",
+      "architecture": "arm64"
+    },
+    {
+      "package": "python3",
+      "version": "3.13.5-1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "rpcsvc-proto",
+      "version": "1.4.3-1+b1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "util-linux",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "uuid-dev",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "arm64"
+    },
+    {
+      "package": "zlib1g-dev",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1",
+      "architecture": "arm64"
+    }
+  ]
+}

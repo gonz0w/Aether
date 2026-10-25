@@ -1,0 +1,10 @@
+{
+  "version": "0.5.13.5",
+  "archive": "build/dash-0.5.13.5.tar.gz",
+  "sha256": "40090101a2a491f13e901d3d48e90414f26634628b9bfff35ff540363c227a7d",
+  "url": "http://gondor.apana.org.au/~herbert/dash/files/dash-0.5.13.5.tar.gz",
+  "digest_cross_check": "https://raw.githubusercontent.com/Homebrew/homebrew-core/HEAD/Formula/d/dash-shell.rb",
+  "digest_document_sha256": "44cdfcd6401b993b1dcbbc62b67e8e92489448bcc9fa19b1d02df059e146ab16",
+  "trust": "not-authenticated; HTTP source with matching HTTPS packaging digest; research only, UL-016 open",
+  "patches": []
+}

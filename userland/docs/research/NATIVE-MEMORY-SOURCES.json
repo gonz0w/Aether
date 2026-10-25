@@ -1,0 +1,44 @@
+{
+  "schema": "aether-userland.native-memory-review.v1",
+  "date": "2026-09-05",
+  "scope": "Source and standards review; shared draft authored, no native allocation tests or implementation",
+  "inputs": {
+    "/Users/cam/DEV/Aether-standards/docs/NATIVE-C-MEMORY.md": "f67897eec9f7c219dc12dde5eac921f037872c760f0c39c9a99a6c0955e8e298",
+    "/Users/cam/DEV/Aether-standards/docs/CATALOG.md": "65f6aa37b79abd2678274b498887d725bba75c567abc3500a8f23fbcf9e77708",
+    "/Users/cam/DEV/Aether-standards/CONTRIBUTING.md": "8d70a32d2fe970dbed34a02a9bad475b31ed839190839aa6decb21df0a9ffbc7",
+    "/Users/cam/DEV/aether/docs/NATIVE-C.md": "c51890a717514c0fac4dcd560f8297fb038462aae16c422209d27d07c19d92bb",
+    "/Users/cam/DEV/aether/.planning/STATE.md": "e66514a4052c974a84335edcba73a188abe36f2e760540e010825fe2e46b70e7",
+    "/Users/cam/DEV/aether/kernel/arch/x86_64/native_c.zig": "cde2bf223e20e3bd35c9f1ef062cf88470b3483747b3b59846ec9d18368ec219",
+    "/Users/cam/DEV/Aether-userland/build/musl-audit/musl-1.2.6/src/malloc/mallocng/malloc.c": "ea50e97cccc60331d7306f6226949d2af94797ce2d39d474d226aa53cfb830d3",
+    "/Users/cam/DEV/Aether-userland/build/musl-audit/musl-1.2.6/src/malloc/mallocng/glue.h": "56268d71ebb44e1b105850c57c7d47657b984a308df6575e6e6979f7c67363c6",
+    "/Users/cam/DEV/Aether-userland/build/musl-audit/musl-1.2.6/src/mman/mprotect.c": "6086bef900c10b86151f427c007329a6ca843dbd466f19fab432a13dfc4c1b58",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/protection-evidence.json": "9f99f8c26e286456fd4ae81c212156797975a6f316e0ac91ca547c56a6f317c5",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/runtime-evidence.json": "24daf6b2040e007e8573b31f43365e5a71de1704b988bbf80caa1632f14d3548",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/interrupted-output-evidence.json": "115e781c5749f805d51cee10be3d76266e55480550575c45f79819ec23abc006",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/allocator-failure-evidence.json": "d2295d0ac153697b59213642fe9a0de28abc54e2067374c580a212d93d494a3f",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/arithmetic-evidence.json": "578415e8729d5f3c84f9d4c916b520ce8009bcfbeb6eaffb876bc8e8ad0a4c7c",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/builtins-evidence.json": "7ada04cf0720ae870b57b2d72afaaa5f21c52e1a67ac2fb52eaf4d7c680030dc",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/large-tls-evidence.json": "57abac9437e211b95d7c018c7ac98a3ad4db820d57ba4063dce35c410f552f86",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/allocator-fallback-evidence.json": "a2d3cea6c74f5cb7abe0be6c40cbf5d94ae061ba36fd3c647f42236033f29411",
+    "/Users/cam/DEV/Aether-userland/experiments/musl-reference/allocator-metadata-evidence.json": "2b985ff82a3cbcf30c2222fa01e0ba7245b77c6550edcadafffbbb4757580781"
+  },
+  "checks": [
+    {
+      "command": "python3 docs/check-experience.py",
+      "exit": 0,
+      "stdout": "Hearth dark: all text roles >= 4.5:1; minimum 5.90:1\nHearth light: all text roles >= 4.5:1; minimum 4.73:1\n14 release files verified; implementation conformance is separate\n"
+    },
+    {
+      "command": "python3 docs/check-standards.py",
+      "exit": 0,
+      "stdout": "25 foundation release files, source snapshots and local links verified; implementation conformance is separate\n"
+    },
+    {
+      "command": "python3 docs/check-distribution.py",
+      "exit": 0,
+      "stdout": "30 offline descriptor/graph/trust/measurement cases pass; no native runtime or cryptographic enforcement claim\n"
+    }
+  ],
+  "owner_acceptance": "pending",
+  "published_releases_changed": false
+}

@@ -1,0 +1,218 @@
+{
+  "schema": "aether-userland.allocator-failure-evidence.v1",
+  "scope": "QEMU Linux user emulation RLIMIT_DATA exhaustion; host-enforced limit includes emulator overhead; not physical memory exhaustion or Aether",
+  "output": "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7",
+  "image_id": "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+  "source_sha256": "1485f1ce2a10d0c4f0f4e97e1727583d973e36dd69aec7d37fa23239228a8df2",
+  "script_sha256": "bff06945893e20d29b9ce19976b64a036f21ee1f8f9c9acedf98dd8bad863114",
+  "tools_lock_sha256": "2c72123a27ec11e2bdcae7e334be6493176ba6643f517a1478d5b55565547ac7",
+  "reference_evidence_sha256": "43fbf868436543852b46c117fda0d0d1c5a3ed76de27b34057abad4145ff6c8e",
+  "sdk_pin_evidence_sha256": "57abac9437e211b95d7c018c7ac98a3ad4db820d57ba4063dce35c410f552f86",
+  "runtime_identity_evidence_sha256": "24daf6b2040e007e8573b31f43365e5a71de1704b988bbf80caa1632f14d3548",
+  "elf_sha256": "d06a5321dcbbf42bc13fc6b053fcc56fdf977b47a3e10cf57336cebf47dbdd95",
+  "elf_bytes": 19696,
+  "commands": [
+    {
+      "name": "compile",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-std=c11",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fstack-protector-strong",
+        "-fno-builtin",
+        "-nostdinc",
+        "-isystem",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/include",
+        "-c",
+        "/Users/cam/DEV/Aether-userland/experiments/musl-reference/allocator-failure.c",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7/allocator-failure.o"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "link",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-fuse-ld=/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+        "-nostdlib",
+        "-static",
+        "-Wl,-z,noexecstack",
+        "-Wl,--no-undefined",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crt1.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crti.o",
+        "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7/allocator-failure.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/libc.a",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crtn.o",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7/allocator-failure.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "undefined",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+        "--undefined-only",
+        "--extern-only",
+        "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7/allocator-failure.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "relocations",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-r",
+        "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7/allocator-failure.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "headers",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-h",
+        "-l",
+        "/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7/allocator-failure.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "bounded",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7,dst=/inputs,ro=true",
+        "--entrypoint=python3",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-c",
+        "import os,resource,sys; n=int(sys.argv[1])*1024*1024; resource.setrlimit(resource.RLIMIT_DATA,(n,n)); assert resource.getrlimit(resource.RLIMIT_DATA)==(n,n); os.execvp(\"qemu-x86_64\",[\"qemu-x86_64\",\"-tb-size\",\"16\",\"-strace\",\"/inputs/allocator-failure.elf\",sys.argv[1]])",
+        "64"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "roomy-control",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/allocator-failure-j1gbzip7,dst=/inputs,ro=true",
+        "--entrypoint=python3",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-c",
+        "import os,resource,sys; n=int(sys.argv[1])*1024*1024; resource.setrlimit(resource.RLIMIT_DATA,(n,n)); assert resource.getrlimit(resource.RLIMIT_DATA)==(n,n); os.execvp(\"qemu-x86_64\",[\"qemu-x86_64\",\"-tb-size\",\"16\",\"-strace\",\"/inputs/allocator-failure.elf\",sys.argv[1]])",
+        "256"
+      ],
+      "exit": 20
+    }
+  ],
+  "results": [
+    {
+      "case": "bounded",
+      "rlimit_data_mib": 64,
+      "exit": 0,
+      "syscalls": [
+        "arch_prctl",
+        "set_tid_address",
+        "mmap",
+        "brk",
+        "brk",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mremap",
+        "mmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "mmap",
+        "munmap",
+        "write",
+        "exit_group"
+      ],
+      "failed_mappings": [
+        "1 mmap(NULL,8388628,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = -1 errno=12 (Cannot allocate memory)",
+        "1 mmap(NULL,134217748,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = -1 errno=12 (Cannot allocate memory)"
+      ],
+      "trace_sha256": "924f8510f122ca94ea154fd862e2eeba5c01d4d0e8f070673cc4a3c6a70f909e"
+    },
+    {
+      "case": "roomy-control",
+      "rlimit_data_mib": 256,
+      "exit": 20,
+      "syscalls": [
+        "arch_prctl",
+        "set_tid_address",
+        "mmap",
+        "brk",
+        "brk",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "mmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "munmap",
+        "exit_group"
+      ],
+      "failed_mappings": [],
+      "trace_sha256": "ce4d35c8b273ff35f4713517bb812fe460cdd6db5bc7276b1d2a2b727d0dd802"
+    }
+  ]
+}

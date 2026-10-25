@@ -1,0 +1,1 @@
+Compile-only failure: upstream portability/LSM inline functions have unused parameters under -Wextra/-Werror. Preserve upstream bytes and classify its include directory with -isystem; keep strict diagnostics on original probe. No native case ran. Matching source/recipe/build logs are archived.

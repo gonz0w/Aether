@@ -1,0 +1,46 @@
+{
+  "schema": "sys-init-static-tools-v1",
+  "rust_toolchain": "1.98.0",
+  "rustfmt_version": "rustfmt 1.9.0-stable (88d9e12ae1 2026-08-18)",
+  "rustfmt_sha256": {
+    "Darwin-arm64": "ca9cbe15a4add6baf62d8ce177015c9c48f209ebcf4364416b1953142e8701f8",
+    "Linux-aarch64": "8504a2528f067d436b2d8d772a8587bd756b3865ecc721fbb5a366727a9451e1"
+  },
+  "rustfmt_args": [
+    "--edition",
+    "2024",
+    "--config",
+    "style_edition=2024,skip_children=true",
+    "--emit",
+    "stdout"
+  ],
+  "rust_sources": [
+    "tests/native_sample_receipts.rs",
+    "tests/native_pending_history.rs"
+  ],
+  "python_roots": [
+    "scripts",
+    "tests",
+    "prototypes",
+    ".githooks"
+  ],
+  "python_top_level": [
+    "docs"
+  ],
+  "clippy_version": "clippy 0.1.98 (88d9e12ae1 2026-08-18)",
+  "clippy_sha256": {
+    "Darwin-arm64": "6a1ccc398ad5466587424fd97625bad2a9296d4ef031a853b99eb80362f6e1e9",
+    "Linux-aarch64": "dc1e08486a0621ddcc91b093122d6ddc5bcf1bcb03914cbddc7a7c6082c46fb3"
+  },
+  "clippy_args": [
+    "--edition=2024",
+    "--test",
+    "--emit=metadata",
+    "-D",
+    "clippy::all"
+  ],
+  "clippy_modules": [
+    "prototypes/native-supervisor/sample_receipts.rs",
+    "prototypes/native-supervisor/pending_history.rs"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "observed": "2026-09-05",
+  "scope": "Working files inspected; companion runtime reports not rerun.",
+  "repositories": {
+    "Aether": {
+      "head": "0ea1d0b83a43247874be2b306f68bbbc2f5a6cdd",
+      "files": {
+        ".planning/STATE.md": "a791f4a7e92734d436068cf5748286b9de70dc9fbe655c39a0a54d82bb234408",
+        ".planning/PROJECT.md": "9d592b0fb76f13f424b0af759924c96e05d31360d9b96493ef9405a232edf451",
+        "boot/limine.conf": "d59a4a3d8ac341c10fce71aef9e904760006c34df456fbeaddb9ffab4a25cde5"
+      }
+    },
+    "pkg-mgr": {
+      "head": "f9f5b16f890d7aa9d2f7f1594360cdf82116dc13",
+      "files": {
+        ".planning/STATE.md": "ce4f4be8fd701af1b901b78eb356e14a149249c2c44d94b95cc8279566a30224",
+        "docs/AETHER-HANDOFF.md": "d9ac1f0c1e6ec414ab41fab1f8ce61e9eae2bbcbac05398c7b1e201a83226597",
+        "docs/SERVICE-HANDOFF.md": "4650768167ce38fbfe64918f1ad0d1cd8488d415ee267fa4945ae318b81daf96"
+      }
+    }
+  }
+}

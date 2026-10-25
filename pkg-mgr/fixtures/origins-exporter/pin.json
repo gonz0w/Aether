@@ -1,0 +1,14 @@
+{
+  "schema": "pkg-origins-exporter-fixture-v1",
+  "source_project": "Aether-origins",
+  "review_date": "2026-09-06",
+  "scope": "Host byte exporter only; no authentication or native/runtime adoption",
+  "files": {
+    "LICENSE": "904f4df177e4f135c1c39893a81db4c5199909a3bd9a2f5ad7c449fab7e92c1c",
+    "LOCAL-STORE.md": "10010d0c6181d5d440b040a4ffaa9cef931730772fcf27fcb58951afeec11d31",
+    "payload.bin": "cb3934024214a08ade8f5e50eb2f98b984dbb70dbe9f307eacbef8fae7ff3d92",
+    "source-store.sh": "33f54c584ef5c10cf00ce0036c851fb4be07abde7a32df89f691b2acac904c04",
+    "source.kv": "e268b0848bd0667e759846a2fd3dfc9e6aeda7bf5a5930863103b4f3cbc41be2",
+    "source_store.py": "cca78e5fab3e248640a2c852c0f6d1eded9bb7428d36a32e9d9efb29c72241b6"
+  }
+}

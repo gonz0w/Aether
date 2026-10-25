@@ -1,0 +1,21 @@
+{
+  "inputs": [
+    {
+      "name": "compiler-rt-21.1.8.src.tar.xz",
+      "sha256": "dd54ae21aee1780fac59445b51ebff601ad016b31ac3a7de3b21126fd3ccb229",
+      "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/compiler-rt-21.1.8.src.tar.xz",
+      "verification": "matched GitHub release API asset digest; no independent signature verification"
+    },
+    {
+      "name": "cmake-21.1.8.src.tar.xz",
+      "sha256": "85735f20fd8c81ecb0a09abb0c267018475420e93b65050cc5b7634eab744de9",
+      "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/cmake-21.1.8.src.tar.xz",
+      "verification": "matched GitHub release API asset digest; no independent signature verification"
+    },
+    {
+      "name": "cmake-3.31.6-py3-none-macosx_10_10_universal2.whl",
+      "sha256": "da9d4fd9abd571fd016ddb27da0428b10277010b23bb21e3678f8b9e96e1686e",
+      "source": "PyPI cmake 3.31.6 via pip HTTPS; locally recorded hash"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "format": "aether-native-fs-owner-stack-v1",
+  "status": "experimental-offline-qualified; native-acceptance-pending",
+  "decision": "sys-init/docs/decisions/0213-owner-stack-exec-readiness.md",
+  "profile": {
+    "outer_magic": "AENFS005",
+    "nested_magic": "AENMX010",
+    "owner_abi": 31,
+    "engine_abi": 26,
+    "flags": [
+      "native-fs-session",
+      "native-fs-session-init",
+      "native-fs-owner-data",
+      "native-fs-owner-stack"
+    ],
+    "requires": "Existing complete private BSP storage/SESSION writer closure; incomplete and release-artifact selections reject",
+    "old_profiles": "AENFS002/003/004 and their code/stack bounds unchanged; no implicit upgrade"
+  },
+  "entry": {
+    "register_order": [
+      "rdi",
+      "rsi",
+      "rdx",
+      "rcx",
+      "r8",
+      "r9",
+      "r10",
+      "r11"
+    ],
+    "values": [
+      31,
+      40961,
+      61697,
+      49154,
+      53249,
+      49155,
+      9437184,
+      8192
+    ],
+    "rsp": 8396792,
+    "capture": "Eight scalars captured before ordinary calls; exact selected binding is necessary, not authority by itself. SESSION excludes storage-lifetime; r9 is immutable image c003, not event selector e002."
+  },
+  "code": {
+    "base": 4194304,
+    "maximum_bytes": 49152,
+    "pages": 12,
+    "permissions": "user RX; no writable image statics; supervisor backing aliases read-only NX",
+    "measured_bytes": 39376,
+    "headroom_bytes": 9776,
+    "reason": "Complete bounded owner measured before budgeting; 12 pages provide approximately25 percent headroom"
+  },
+  "stack": {
+    "base": 8388608,
+    "bytes": 8192,
+    "usable_bytes": 8184,
+    "permissions": "zeroed user RW/NX before exposure",
+    "guard_pages": [
+      8384512,
+      8396800
+    ],
+    "inspected_bound_bytes": 8000,
+    "inspection": "Conservative compiled direct/verified immutable constant-edge graph with128 bytes margin/function; dynamic/unknown/recursive/mutable edges reject. Not formal hardware peak proof."
+  },
+  "data": {
+    "base": 9437184,
+    "bytes": 8192,
+    "permissions": "zeroed user RW/NX",
+    "runtime_bytes": 3408,
+    "workspace_bytes": 4096,
+    "remaining_bytes": 688,
+    "guard_pages": [
+      9433088,
+      9445376
+    ]
+  },
+  "resources": {
+    "owner_backing_pages": 128,
+    "maximum_code_stack_data_pages": 16,
+    "system_backing_bytes": 36700160,
+    "domains": 7,
+    "channel_records": 12,
+    "writer_seconds": 60,
+    "writer_ticks": 6000,
+    "reader_seconds": 30,
+    "reader_ticks": 3000,
+    "qualification_mutations": 9,
+    "qualification_requests": 96,
+    "capture_bytes": 65536,
+    "new_syscalls": 0,
+    "heap": false,
+    "writable_image_statics": false
+  },
+  "exec": {
+    "request": "AEEXEC01/v1/608 bytes; canonical304-byte context body +32-byte zero-padded pathname +272-byte argv/env",
+    "reply": "AEEXR001/32 bytes; exact sequence, original negative errno, zero reserved word; known refusal only",
+    "authority": "Actual authenticated Peer/native process/freeze/receipt and sole FILE/stream state; pathname is never image authority",
+    "policy": "Child roles2..4 may select only existing immutable c003 /inputs/helper; missing returnsENOENT, unsupportedEACCES. General persistent executable loading not implemented.",
+    "ordering": "Complete validated context -> actual freeze -> prior receipt -> image23007 -> exact receipt23008 -> CLOEXEC/holders -> fresh FILE generation/rebind -> publish23009 -> full startup -> actual live ready observation",
+    "failure": "Known refusal verifies unchanged receipt before actual cancellation; old context/flags/offsets and errno preserved. Unknown/partial/error retires route without replay or invented rollback."
+  },
+  "lifetime": "Sole boot owner until VM termination; no owner restart/reuse/unmap. Separate zeroed stack/data come from existing owner backing, never peer grants or dynamic authority.",
+  "coverage": {
+    "commands": [
+      "python3 -B -m unittest discover -s tests -p test_fs_owner_stack.py -v",
+      "python3 -B -m unittest discover -s tests -p test_owner_stack_constants.py -v",
+      "python3 -B userland/experiments/filesystem-service/check-fork-stage.py --exec",
+      "python3 -B sys-init/scripts/check-broker-init.py --libraries OWNED_PRODUCER --compact-compare --unified-route --compose-owner --guarded-stack --exec-provider OWNED_EXEC_PROVIDER"
+    ],
+    "evidence": "docs/evidence/owner-exec-2026-10-23/README.md",
+    "missing": "Fresh matched native permission/zeroing/isolation/transaction/continued-parent/failure/export/recovery qualification; independent acceptance; persistent exec, public writable descriptors, Zsh/TTY/packages/ISO"
+  },
+  "sources_sha256": {
+    "build.zig": "e9fd88432f3833256558d6cc6ddab7b13619dc01075eb0f0906985d4c51478f2",
+    "kernel/arch/x86_64/native_c.zig": "b203e14c914c460f62394f9103d6e8c8f8b4f6d9c53bea112253de5dad36ec05",
+    "kernel/arch/x86_64/native_fs_roles.zig": "4e33854e13a795a465f001a370b83f18d3efef3d3cef1959feaa87bea25d99b1",
+    "kernel/native_fs_session.zig": "b5576f3d3975d4b0d887fe502b33ec593e7f5f0e7c7cb8be1ad3ef2fb978aea3",
+    "kernel/native_launch.zig": "2840014abe2f8db8e8466df67d9075d0ca0200e292bec173bebbd40b358189ad",
+    "sys-init/prototypes/native-filesystem-session/owner_region.rs": "7d4ece34c7cdf0874c846ce9925541f16cfa9b516a8b95d484d508c2d7347b05",
+    "sys-init/prototypes/native-filesystem-session/owner_entry.rs": "b147f289c98a1a4aa363fafea6e2da0a2345f3fb48b9fffff69d244508a75a1d",
+    "sys-init/prototypes/native-filesystem-session/native_owner.rs": "b7cd6a96eb08f3a3a1b8b995ebe1c3d53c1af73fad8151337b76c9039ed892ed",
+    "kernel/main.zig": "cfd40933d09aeeff61b78bb5bc104fd6f1505e8043a389b40adfc7e6cdfa8de2",
+    "kernel/arch/x86_64/clock.zig": "8b8985ec0281d28c8189fae11d1f736119e78eac4917ec25296ec530a4931273"
+  }
+}

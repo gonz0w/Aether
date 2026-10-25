@@ -1,0 +1,161 @@
+{
+  "scope": "Candidate native shell workload adaptation; no runtime acceptance",
+  "transformation": "Remove only the Linux QEMU helper execution prefix; preserve shell logic and output/exit oracles",
+  "environment": {
+    "WITNESS": "value",
+    "LC_ALL": "C",
+    "PATH": "/nonexistent"
+  },
+  "helper": {
+    "path": "experiments/dash-reference/helper.c",
+    "sha256": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+    "provenance": "Current local helper source pinned for proposed native build; no unchanged historical source claim"
+  },
+  "reference_summary_sha256": "1e78a70a54dcefb8d9ac301611dd53cd8920c4c826952c26aa209eac68cdaf1c",
+  "cases": [
+    {
+      "id": "DASH-argv",
+      "phase": 1,
+      "script": "experiments/dash-native/workloads/argv.sh",
+      "sha256": "ac4d61ea22140d72c69971917f670d07dbdf0c4dac111ca26b6555d26d3f2916",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/argv.sh",
+      "reference_sha256": "8de85f743afc345d47641fa397cd277edc67d265a4e4be87e1878b54a072fd9c",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/argv.stdout",
+      "stdout_sha256": "ed3765893b83454ab44d6a5ea60453472e1c6194099d1f48c87f894e91a63125",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-denied-redirection",
+      "phase": 3,
+      "script": "experiments/dash-native/workloads/denied-redirection.sh",
+      "sha256": "a884d6c7f8409b47c360838cb0a6dace675bbde71f4f5f36b98210ee38bef46a",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/denied-redirection.sh",
+      "reference_sha256": "a884d6c7f8409b47c360838cb0a6dace675bbde71f4f5f36b98210ee38bef46a",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/denied-redirection.stdout",
+      "stdout_sha256": "d1bf116eb9a24974b9c0309c5c26026496b3083a37f8b45fc67ce9383235d614",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-early-reader",
+      "phase": 3,
+      "script": "experiments/dash-native/workloads/early-reader.sh",
+      "sha256": "0db6c46dd04aca2053f6f0456ef0ad00736e93ce47340f404933af8419b6f566",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/early-reader.sh",
+      "reference_sha256": "f66b906e1a301d743d4df8ff36a343d21405d087bf291fb5e261d8346faf7fc5",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/early-reader.stdout",
+      "stdout_sha256": "e774838bf964ee4e0c6d6c4cc1683ed467e30f0dd2d81b23519a54ba134066ad",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-failed-exec",
+      "phase": 2,
+      "script": "experiments/dash-native/workloads/failed-exec.sh",
+      "sha256": "bc3c974dab16dbfcdb0bbe1239bd7b6c77bf755c8584211cf4d48e0eaa33dd76",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/failed-exec.sh",
+      "reference_sha256": "bc3c974dab16dbfcdb0bbe1239bd7b6c77bf755c8584211cf4d48e0eaa33dd76",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/failed-exec.stdout",
+      "stdout_sha256": "49f89d0f44bbe4a90a27822d70bd795a5010d86bce2e08705cfda9d729739fd1",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-fd-closure",
+      "phase": 2,
+      "script": "experiments/dash-native/workloads/fd-closure.sh",
+      "sha256": "509024fc70fa266bc5cdfa6ff42b1c86230df8c7e6cfd0c78e66fe905b3214c1",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/fd-closure.sh",
+      "reference_sha256": "354c2f791059c0d3a52170edc9f87c73e66eddcc88820f251a45ae767976ac71",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/fd-closure.stdout",
+      "stdout_sha256": "99d623ee60c277d76d04d66a1d3978b736bfed4ff808d9a7ebc2bbb8666be311",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-fd-leak-control",
+      "phase": 2,
+      "script": "experiments/dash-native/workloads/fd-leak-control.sh",
+      "sha256": "1e66c6d1748a1789137bc200e9919c34296fadf8f4088ecea275c681a5f64f7d",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/fd-leak-control.sh",
+      "reference_sha256": "dae39c8bda0dbd10ed1525b6177c0549c05baa4d245ab9bd370da11376637696",
+      "expected_exit": 22,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/fd-leak-control.stdout",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-pipeline",
+      "phase": 3,
+      "script": "experiments/dash-native/workloads/pipeline.sh",
+      "sha256": "1bd64d9f6d43dc25524766e43b9c62a7207d05932ce30130a2f069c15de83456",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/pipeline.sh",
+      "reference_sha256": "0a7516ca174c34cfa1e4dbaaf39e5c202a0d81ef941c43ccf493432c3b7c56b7",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/pipeline.stdout",
+      "stdout_sha256": "d766b8359aa08a567b4285d4b55fadf446e770220edfb62f3688bf18554d8e50",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-redirection",
+      "phase": 3,
+      "script": "experiments/dash-native/workloads/redirection.sh",
+      "sha256": "7416d63f5cc70c188fc16bbea7e97b5ac6e7e28195dde021163d24785d54269f",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/redirection.sh",
+      "reference_sha256": "a95460b9ec0bce325f57be5ba09a1ab6652f463d772d4c53ebc97aa5a7de91b8",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/redirection.stdout",
+      "stdout_sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-signal-table",
+      "phase": 1,
+      "script": "experiments/dash-native/workloads/signal-table.sh",
+      "sha256": "b045be40cb78c024171761b4ee884b7e7aeddbcbd5786fd85414358c8f02de08",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/signal-table.sh",
+      "reference_sha256": "b045be40cb78c024171761b4ee884b7e7aeddbcbd5786fd85414358c8f02de08",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/signal-table.stdout",
+      "stdout_sha256": "08e54549c5777abb6c6d4cf70f84fcc115f8daf840feb4d67640f7802c3121aa",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-substitution",
+      "phase": 3,
+      "script": "experiments/dash-native/workloads/substitution.sh",
+      "sha256": "e8b096d8eb2bab7497cabc85bcd56012a9d520cac50ed3aeaf1d299b7ea3adb4",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/substitution.sh",
+      "reference_sha256": "0e4741f669de2fbeb21300b44db285721d9cea91742f2ca41558edd89745cab4",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/substitution.stdout",
+      "stdout_sha256": "5e1fbefff34947852f397607ecc21e74a3f39c35fcb2c457ced736865c760a81",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-syntax-error",
+      "phase": 1,
+      "script": "experiments/dash-native/workloads/syntax-error.sh",
+      "sha256": "5149348c814e56f9ed29392279e4e52120c0f6db348e507faa3db8a07db8ff7b",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/syntax-error.sh",
+      "reference_sha256": "5149348c814e56f9ed29392279e4e52120c0f6db348e507faa3db8a07db8ff7b",
+      "expected_exit": 2,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/syntax-error.stdout",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "native_status": "NOT RUN"
+    },
+    {
+      "id": "DASH-wait",
+      "phase": 2,
+      "script": "experiments/dash-native/workloads/wait.sh",
+      "sha256": "087a4dbd0db86924288781ddb6f0f7c72336296b4ed253c0d59add6e374396f5",
+      "reference_script": "docs/evidence/dash-reference-2026-09-05/cases/wait.sh",
+      "reference_sha256": "920da42691fc59d7181fa9a24fbf9b37bada4c3252102f0546025dd2d6fc765e",
+      "expected_exit": 0,
+      "expected_stdout": "docs/evidence/dash-reference-2026-09-05/cases/wait.stdout",
+      "stdout_sha256": "3493c8d51f642a7f255e30a6c72725fd1457cef8fcf867b88d2e146b0bbfc763",
+      "native_status": "NOT RUN"
+    }
+  ]
+}

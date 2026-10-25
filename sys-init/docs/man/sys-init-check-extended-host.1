@@ -1,0 +1,83 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 7, 2026
+.Dt SYS-INIT-CHECK-EXTENDED-HOST 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-extended-host
+.Nd run or replay the local EHT-01 trusted-host campaign
+.Sh SYNOPSIS
+.Nm python3 scripts/check-extended-host.py
+.Op Fl Fl plan Ar file
+.Op Fl Fl output-root Ar directory
+.Op Fl Fl seed Ar seed
+.Nm python3 scripts/check-extended-host.py
+.Fl Fl help
+.Nm python3 scripts/check-extended-host.py
+.Fl Fl version
+.Sh DESCRIPTION
+Run from the source checkout with POSIX Python 3.10 or newer.
+There is no installed executable under this manual's name.
+The default plan is docs/extended-host-plan.json.
+Eight fresh sequential workers each run all 54 trusted-host cases in a fixed
+seeded order, with classes contiguous.
+The parent verifies actual IDs, order, counts, source hashes and plan identity.
+Empty, skipped, incomplete or contradictory evidence cannot pass.
+.Pp
+Each worker has a 60-second and combined 4 MiB output bound.
+The campaign has a 600-second deadline, including capture checks.
+On failure the existing aggregate helper attempts one-second cooperative
+cleanup,
+then forces its owned process group and reaps the direct child.
+Escaped descendants, fatal parent termination and blocked filesystem I/O remain
+outside these guarantees.
+These are local host tests, not native Aether or production qualification.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl plan Ar file
+Select a local EHT-01 plan with supported fields, budgets and exact corpus
+hashes.
+The path is resolved before reading.
+.It Fl Fl output-root Ar directory
+Parent for a new private run directory; default out/extended-host.
+.It Fl Fl seed Ar seed
+Replay one seed present in the plan.
+The result is labeled replay and is not a full eight-seed qualification.
+.It Fl Fl help
+Display help and exit.
+.It Fl Fl version
+Display version and exit.
+.El
+.Pp
+Internal worker and plan-identity switches are reserved for the supervisor.
+.Sh OUTPUT
+The private results.json records running/final status, seeds, expected and
+actual IDs, commands, source/implementation hashes, platform, timing and log
+identities.
+Each attempt retains separate stdout/stderr prefixes and capture outcome.
+Cleanup fields state the scope attempted, not arbitrary descendant containment.
+Later seeds remain explicitly unattempted after failure; no automatic retry.
+Reports use atomic replacement without a power-loss durability guarantee.
+Stdout emits the terminal JSON summary only after final report publication.
+Operational errors use stderr.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+Selected campaign or replay passed.
+.It 1
+Invalid plan/evidence, source drift, worker failure or reporting error.
+.It 64
+Invalid command-line syntax.
+.It 130
+Interrupted campaign.
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+python3 scripts/check-extended-host.py
+python3 scripts/check-extended-host.py --help
+.Ed
+.Pp
+For exact replay, pass a recorded seed with the same plan/source identities.
+The runner neither schedules itself nor joins the normal ten-gate command.
+.Sh SEE ALSO
+docs/EXTENDED-HOST-TESTS.md, docs/DEVELOPMENT-CHECKS.md,
+docs/decisions/0147-extended-host-runner.md

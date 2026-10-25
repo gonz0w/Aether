@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions, design ideas and experiments
+    url: https://github.com/gonz0w/Aether/discussions
+    about: Ask a question or explore an idea before it becomes a work item.
+  - name: Private vulnerability report
+    url: https://github.com/gonz0w/Aether/security/advisories/new
+    about: Share potential vulnerabilities privately instead of in a public issue.
+  - name: Project guide
+    url: https://github.com/gonz0w/Aether/wiki
+    about: Find the short guide and links to versioned technical documentation.

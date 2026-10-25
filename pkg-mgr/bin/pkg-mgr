@@ -1,0 +1,162 @@
+#!/bin/sh
+# First-party CLI: presentation and dispatch only; helpers retain authority.
+set -eu
+LC_ALL=C
+export LC_ALL
+repo=$(CDPATH='' cd "$(dirname "$0")/.." && pwd -P)
+usage() {
+    cat <<'HELP'
+pkg-mgr - inspect and manage experimental private-root packages
+
+Usage: pkg-mgr [OPTIONS] COMMAND [ARGUMENTS]
+
+Inspect:
+  list | owners | verify | orphans
+  files NAME | deps NAME | rdeps NAME
+Binary packages:
+  export NAME
+  import BUNDLE BUNDLE-SHA256 TARGET
+  recover BUNDLE BUNDLE-SHA256 TARGET
+  preflight BUNDLE BUNDLE-SHA256 TARGET
+Retained replacement:
+  prepare BUNDLE BUNDLE-SHA256 TARGET OLD-RECORD-SHA256
+  finish INTENT-SHA256
+
+Options (before COMMAND):
+  --root PATH           Existing initialized private root (required)
+  --format human|tsv    Human presentation (default) or unchanged helper output
+  --color auto|always|never
+                       ANSI semantic colors on stderr (default: auto)
+  --plain              ASCII, no color or animation
+  --quiet              Suppress nonessential status messages
+  --help               Show this help
+  --version            Show CLI version
+
+Examples:
+  pkg-mgr --root /absolute/private-root list
+  pkg-mgr --root /absolute/private-root --format tsv verify
+  pkg-mgr --root /absolute/private-root --plain preflight /absolute/bundle SHA256 TARGET
+
+Limits:
+  Local research packages only: no remote authenticity, live-prefix install,
+  package deletion, service activation, or power-loss durability claim.
+  Prepare leaves a pending transaction; finish needs its exact intent digest.
+  See docs/CLI.md and docs/REPLACEMENT-POLICY.md in this checkout.
+HELP
+}
+root=; format=human; color=auto; plain=no; quiet=no
+seen_root=no; seen_format=no; seen_color=no
+bad() { printf '[FAILED] Invalid command or options. Run pkg-mgr --help.\n' >&2; exit 64; }
+# Paths may contain spaces, but controls must not inject diagnostic rows.
+for argument do
+    case $argument in *[[:cntrl:]]*) bad;; esac
+done
+while test "$#" -gt 0; do
+    option=$1
+    case $option in
+        --help) test "$#" -eq 1 || bad; usage; exit;;
+        --version) test "$#" -eq 1 || bad; printf 'pkg-mgr 0.1.0 (private-root prototype)\n'; exit;;
+        --plain) plain=yes; shift;;
+        --quiet) quiet=yes; shift;;
+        --root|--root=*|--format|--format=*|--color|--color=*)
+            case $option in
+                *=*) value=${option#*=}; option=${option%%=*}; shift;;
+                *) test "$#" -ge 2 || bad; value=$2; shift 2;;
+            esac
+            case $option in
+                --root) test "$seen_root" = no || test "$root" = "$value" || bad; root=$value; seen_root=yes;;
+                --format) test "$seen_format" = no || test "$format" = "$value" || bad; format=$value; seen_format=yes;;
+                --color) test "$seen_color" = no || test "$color" = "$value" || bad; color=$value; seen_color=yes;;
+            esac;;
+        --*) bad;;
+        *) break;;
+    esac
+done
+case $format in human|tsv) ;; *) bad;; esac
+case $color in auto|always|never) ;; *) bad;; esac
+test "$plain" != yes || test "$color" != always || bad
+test "$format" != tsv || test "$color" != always || bad
+case $root in /*) ;; *) bad;; esac
+test "$#" -gt 0 || bad
+command=$1; shift
+case $command in
+    list|owners|verify|orphans) test "$#" -eq 0 || bad; helper=state;;
+    files|deps|rdeps) test "$#" -eq 1 || bad; helper=state;;
+    export) test "$#" -eq 1 || bad; helper=binary;;
+    import|recover|preflight) test "$#" -eq 3 || bad; helper=binary;;
+    prepare) test "$#" -eq 4 || bad; helper=replacement;;
+    finish) test "$#" -eq 1 || bad; helper=replacement;;
+    *) bad;;
+esac
+use_color=no
+if test "$plain" = no && test "$format" = human; then
+    if test "$color" = always; then use_color=yes
+    elif test "$color" = auto && test -t 2 && test "${TERM:-dumb}" != dumb && test -z "${NO_COLOR:-}"; then use_color=yes
+    fi
+fi
+status() {
+    label=$1; message=$2; tone=$3
+    if test "$use_color" = yes; then printf '\033[%sm[%s]\033[0m %s\n' "$tone" "$label" "$message" >&2 || return 1
+    else printf '[%s] %s\n' "$label" "$message" >&2 || return 1
+    fi
+}
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/pkg-mgr-cli.XXXXXX")
+keep_output=no
+# Called by the EXIT trap; exercised by CLI output and interruption fixtures.
+# shellcheck disable=SC2329
+cleanup() { if test "$keep_output" = no; then rm -rf "$scratch"; fi; }
+trap cleanup 0
+# POSIX shells defer traps while waiting for this foreground helper. Record the
+# signal, then drain its receipt/diagnostics before cleanup removes the buffers.
+delivery_started=no
+interrupted_code=0
+# Called by the INT/HUP/TERM traps below, not ordinary control flow.
+# shellcheck disable=SC2329
+interrupted() {
+    if test "$delivery_started" = yes; then keep_output=yes; fi
+    if test "$interrupted_code" -eq 0; then interrupted_code=$1; fi
+}
+trap 'interrupted 130' INT
+trap 'interrupted 129' HUP
+trap 'interrupted 143' TERM
+# Catch PIPE in shell builtins; external delivery tools report their own failure.
+trap 'keep_output=yes' PIPE
+if test "$quiet" = no && test "$helper" != state && test "$format" = human; then status RUN "Running $command in the selected private root." 33 || exit 1; fi
+code=0
+sh "$repo/mk/$helper.sh" "$command" "$root" "$@" > "$scratch/out" 2> "$scratch/err" || code=$?
+# Keep raw evidence independent of human rendering. These are observations,
+# never new package authority or a substitute for pinned transaction validation.
+printf '%s\n' "$code" > "$scratch/helper-exit"
+delivery_started=yes
+output_failed=no
+if test "$format" = tsv; then
+    cat "$scratch/out" || output_failed=yes
+    cat "$scratch/err" >&2 || output_failed=yes
+else
+    awk -v plain="$plain" -v command="$command" -f "$repo/mk/cli-render.awk" "$scratch/out" || output_failed=yes
+    if test -s "$scratch/err"; then
+        awk -v plain="$plain" -v diagnostic=yes -f "$repo/mk/cli-render.awk" "$scratch/err" >&2 || output_failed=yes
+    fi
+fi
+if test "$output_failed" = yes; then keep_output=yes; fi
+if test "$keep_output" = yes; then
+    # Escape the local pathname before showing it to a terminal. If stderr also
+    # fails, the caller can find the private directory under TMPDIR.
+    saved_path=$(printf '%s\n' "$scratch" | awk -v plain=yes -f "$repo/mk/cli-render.awk")
+    status UNKNOWN "Output delivery incomplete or interrupted. Retained helper output: $saved_path (out, err, helper-exit). Inspect package state before retrying." 33 || :
+    if test "$interrupted_code" -ne 0; then exit "$interrupted_code"; fi
+    exit 1
+fi
+if test "$interrupted_code" -ne 0; then
+    status UNKNOWN 'Interrupted; completion is not established. Review any emitted receipt and inspect the private root before retrying. A pending replacement requires finish with its pinned intent digest.' 33 || keep_output=yes
+    exit "$interrupted_code"
+fi
+if test "$format" = tsv; then exit "$code"; fi
+if test "$code" -ne 0; then
+    if test "$code" -eq 2; then status BLOCKED 'Preconditions prevent completion; review the reported blockers.' 33 || { keep_output=yes; exit 1; }
+    else status FAILED 'Command did not complete successfully. Review the diagnostics; partial work may require recovery.' 31 || { keep_output=yes; exit 1; }
+    fi
+elif test "$quiet" = no && test "$helper" != state && test "$format" = human; then
+    status OK "$command completed; see the result for package and transaction identity." 32 || { keep_output=yes; exit 1; }
+fi
+exit "$code"

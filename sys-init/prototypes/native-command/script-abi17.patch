@@ -1,0 +1,285 @@
+--- a/user/native-command/cat-roles.rs
++++ b/user/native-command/cat-roles.rs
+@@ -1,6 +1,9 @@
+ // SPDX-License-Identifier: BSD-2-Clause
+ // Direct role/copy prerequisite: one conformance client and one backend.
+ use super::*;
++#[path = "script_lifecycle.rs"]
++mod script_lifecycle;
++use script_lifecycle::{Owned, BoundNative, Identity};
+ fn reference(j: usize, generation: u32) -> u32 {
+     0x76000000 + ((j as u32) << 16) + generation
+ }
+@@ -15,6 +18,8 @@
+     }
+ }
+ pub fn run(factory: u64, first: u64, second: u64, third: u64) -> ! {
++    #[cfg(script_launch_probe)]
++    script_lifecycle::script_launch_probe::run(factory, [first, second, third]);
+     if cfg!(cat_parent_identity) {
+         check(call(0x10027, 0, 0, 0, 0, 0, 0).0 == 4, 1592);
+         check(call(0x1006e, 1, 2, 3, 4, 5, 6).0 == 0, 1592);
+@@ -58,9 +63,16 @@
+             1590,
+         );
+     }
++    let mut shell_id = Identity::new();
++    let mut stream_id = Identity::new();
++    let mut file_id = Identity::new();
++    let roles = script_lifecycle::roles();
++    let mut owners = [Owned::new(&mut shell_id, roles[0], 2), Owned::new(&mut stream_id, roles[1], 2), Owned::new(&mut file_id, roles[2], 2)];
++    let images = [first, second, third];
++    let mut bindings = [BoundNative::new(factory, images, 0), BoundNative::new(factory, images, 1), BoundNative::new(factory, images, 2)];
+     for generation in 1..=2 {
+         let files = if cfg!(cat_file_service) {
+-            let connection = launch(factory, third, 2);
++            let connection = script_lifecycle::start_next(&mut owners, &mut bindings, 2);
+             let mut hello = [0; 32];
+             let mut expected = [0; 32];
+             put(&mut expected, 4, 0xf001);
+@@ -75,7 +87,7 @@
+         } else {
+             None
+         };
+-        let service = launch(factory, second, if cfg!(cat_parent_swap) { 0 } else { 1 });
++        let service = script_lifecycle::start_next(&mut owners, &mut bindings, 1);
+         let mut hello = [0; 32];
+         check(transfer(service.reader, &mut hello, false) == 1, 1500);
+         let handles = [0xf101, 0xf201, 0xf202];
+@@ -86,7 +98,7 @@
+         let client = if cfg!(cat_admission) {
+             cat_admission::launch_cat(factory, first)
+         } else {
+-            launch(factory, first, if cfg!(cat_parent_swap) { 1 } else { 0 })
++            script_lifecycle::start_next(&mut owners, &mut bindings, 0)
+         };
+         let mut bootstrap_remaining = if cfg!(cat_cwd_cut_empty) || cfg!(cat_identity_cut_empty) {
+             0
+@@ -296,56 +308,8 @@
+         let mut directory_poisoned = false;
+         let mut pwd_queries = 0usize;
+         for _ in 0..200000 {
+-            let state = ctl(0x20001, client.child);
+-            check(state.0 >= 0, 1501);
+-            if state.0 > 0 {
+-                peer_record();
+-                check(
+-                    state.0
+-                        == if cfg!(cat_signal) {
+-                            if cfg!(cat_signal_int) { 3 } else { 16 }
+-                        } else if fault {
+-                            135
+-                        } else if cfg!(cat_force_stop) {
+-                            144
+-                        } else if cfg!(cat_files) {
+-                            1
+-                        } else if cfg!(cat_dash_main) {
+-                            8
+-                        } else if invalid {
+-                            111
+-                        } else if cfg!(cat_usage) || cfg!(toybox_final_status) {
+-                            65
+-                        } else if io_error
+-                            || close_error
+-                            || unknown
+-                            || cfg!(toybox_close_reentry)
+-                            || cfg!(cat_cwd_poison)
+-                        {
+-                            2
+-                        } else {
+-                            1
+-                        }
+-                        && state.2
+-                            == if cfg!(cat_signal) {
+-                                4
+-                            } else if fault {
+-                                2
+-                            } else if cfg!(cat_force_stop) && !cfg!(cat_stop_wrong_kind) {
+-                                3
+-                            } else {
+-                                1
+-                            },
+-                    1501,
+-                );
+-                if cfg!(cat_signal) {
+-                    check(
+-                        ctl(0x20001, client.child) == state
+-                            && ctl(0x20007, client.child).0 == 0
+-                            && ctl(0x20001, client.child) == state,
+-                        1592,
+-                    );
+-                }
++            if let Some(terminal) = script_lifecycle::observe(&mut owners[0], &mut bindings[0]) {
++                check((terminal.detail, terminal.kind) == if cfg!(script_stop) { (143, 3) } else { (0, 1) }, 1501);
+                 let mut pending = [0u8; 1];
+                 check(
+                     used == 0
+@@ -361,6 +325,21 @@
+                         .0 == 0,
+                     1502,
+                 );
++                #[cfg(script_stop)]
++                {
++                    check(stopped && live == [true; 3], 1606);
++                    for record in &mut file_records {
++                        if record.reference != 0 {
++                            if !cfg!(script_stop_skip_close) {
++                                check(backend(files.unwrap(), 3, record.backend, 0, 0, &[]) == [0; 32], 1606);
++                                check(get(&backend(files.unwrap(), 2, record.backend, 0, 1, &[]), 0) as i32 == -9, 1606);
++                                *record = FileRecord::EMPTY;
++                            }
++                        }
++                    }
++                    check(file_records.iter().all(|r| r.reference == 0), 1599);
++                    live = [false; 3];
++                }
+                 check(
+                     invalid
+                         || live
+@@ -409,6 +388,24 @@
+             check(!invalid, 1502);
+             check(!uncertain, 1532);
+             check(!directory_poisoned, 1593);
++            #[cfg(script_stop)]
++            if get(&request, 0) == 7 {
++                // Complete first read is consumed, but no backend effect/reply
++                // is issued. Dash cannot send another request before its reply.
++                check(!stopped && file_sequence == 1 && file_reads == 0
++                    && file_records[0].reference != 0 && file_records[0].offset == 0
++                    && file_records[1].reference == 0 && positions == [0; 3], 1606);
++                let mut expected = [0; 32];
++                put(&mut expected, 0, 7);
++                put(&mut expected, 4, file_records[0].reference);
++                put(&mut expected, 8, 3);
++                put(&mut expected, 12, 16);
++                check(request == expected, 1606);
++                owners[0].request_stop(&mut bindings[0], &owners[0].key()).unwrap_or_else(|_| end(1606));
++                stopped = true;
++                used = 0;
++                continue;
++            }
+             if cfg!(cat_files) && matches!(get(&request, 0), 6..=8) {
+                 let mut reply = file_reply(
+                     files.unwrap(),
+@@ -419,7 +416,6 @@
+                     &mut file_reads,
+                 );
+                 check(transfer(client.writer, &mut reply, true) == 1, 1598);
+-                request = [0; 32];
+                 used = 0;
+                 continue;
+             }
+@@ -473,7 +469,6 @@
+                 } else {
+                     check(transfer(client.writer, &mut reply, true) == 1, 1502);
+                 }
+-                request = [0; 32];
+                 used = 0;
+                 continue;
+             }
+@@ -558,7 +553,6 @@
+                     1540,
+                 );
+                 stopped = true;
+-                request = [0; 32];
+                 used = 0;
+                 continue;
+             }
+@@ -593,7 +587,6 @@
+             } else {
+                 check(transfer(client.writer, &mut reply, true) == 1, 1502);
+             }
+-            request = [0; 32];
+             used = 0;
+         }
+         check(exited, 1501);
+@@ -609,11 +602,11 @@
+             );
+         }
+         if cfg!(cat_files) {
+-            check(file_sequence == 1 && file_reads > 0, 1598);
++            check(file_sequence == 1 && if cfg!(script_stop) { file_reads == 0 } else { file_reads > 0 }, 1598);
+             check(file_records.iter().all(|r| r.reference == 0), 1599);
+         }
+         check(directory_poisoned == cfg!(cat_cwd_poison), 1593);
+-        check(stopped == cfg!(cat_force_stop), 1540);
++        check(stopped == (cfg!(cat_force_stop) || cfg!(script_stop)), 1540);
+         check(injected == (io_error || close_error || unknown), 1531);
+         let diagnostic: &[u8] =
+             if cfg!(toybox_close_policy) && (cfg!(cat_close_input) || cfg!(cat_close_output)) {
+@@ -658,7 +651,9 @@
+             } else {
+                 b""
+             };
+-        let copied = if cfg!(cat_files) {
++        let copied = if cfg!(script_stop) {
++            &b""[..]
++        } else if cfg!(cat_files) {
+             &b"hello\n"[..]
+         } else if cfg!(cat_dash_main) {
+             &b"dash-main\n"[..]
+@@ -745,27 +740,7 @@
+                 1506,
+             );
+         }
+-        check(
+-            ctl(0x24003, client.reader).0 == 0
+-                && ctl(0x24003, client.writer).0
+-                    == if cfg!(cat_reply_cut)
+-                        || cfg!(cat_cwd_reply_cut)
+-                        || cfg!(cat_cwd_cut)
+-                        || cfg!(cat_identity_cut)
+-                        || cfg!(cat_identity_short)
+-                        || cfg!(cat_identity_version)
+-                        || cfg!(cat_identity_legacy)
+-                        || cfg!(cat_cwd_short)
+-                        || cfg!(cat_cwd_version)
+-                        || cfg!(cat_cwd_legacy)
+-                    {
+-                        -13
+-                    } else {
+-                        0
+-                    }
+-                && ctl(0x20002, client.child).0 == 0,
+-            1506,
+-        );
++        script_lifecycle::cleanup(&mut owners[0], &mut bindings[0]);
+         if let Some(files) = files {
+             if !cfg!(cat_files) {
+                 file_service_probe(files, 2);
+@@ -780,22 +755,8 @@
+                 1541,
+             );
+         }
+-        check(
+-            ctl(0x24003, service.writer).0 == 0
+-                && terminal(service.child) == (17, 1)
+-                && ctl(0x24003, service.reader).0 == 0
+-                && ctl(0x20002, service.child).0 == 0,
+-            1506,
+-        );
+-        if let Some(files) = files {
+-            check(
+-                ctl(0x24003, files.writer).0 == 0
+-                    && terminal(files.child) == (17, 1)
+-                    && ctl(0x24003, files.reader).0 == 0
+-                    && ctl(0x20002, files.child).0 == 0,
+-                1597,
+-            );
+-        }
++        script_lifecycle::finish_backend(&mut owners[1], &mut bindings[1]);
++        script_lifecycle::finish_backend(&mut owners[2], &mut bindings[2]);
+     }
+     end(100)
+ }
+--- a/user/native-connections/supervisor.rs
++++ b/user/native-connections/supervisor.rs
+@@ -195,7 +195,7 @@
+ ) -> ! {
+     check(
+         (abi, factory, first, second, channels, third)
+-            == (9, 0xa001, 0xc001, 0xc002, 0xd001, 0xc003),
++            == (17, 0xa001, 0xc001, 0xc002, 0xd001, 0xc003),
+         949,
+     );
+     #[cfg(command_runner)]

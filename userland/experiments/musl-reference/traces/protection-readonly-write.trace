@@ -1,0 +1,8 @@
+1 arch_prctl(4098,2117080,0,8388608,0,131072) = 0
+1 set_tid_address(0x204d88) = 1
+1 mmap(NULL,8192,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = 0x0000ffff9d720000
+1 rt_sigprocmask(SIG_UNBLOCK,[33 34],NULL,8) = 0
+1 rt_sigaction(SIGSEGV,0x0000ffff9c11eb88,NULL) = 0
+1 mprotect(0x0000ffff9d720000,8192,PROT_READ) = 0
+--- SIGSEGV {si_signo=SIGSEGV, si_code=2, si_addr=0x0000ffff9d720000} ---
+1 exit_group(40)

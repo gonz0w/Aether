@@ -1,0 +1,6 @@
+{
+  "source": "Aether-userland/experiments/dash-native/workloads/denied-redirection.sh",
+  "sha256": "a884d6c7f8409b47c360838cb0a6dace675bbde71f4f5f36b98210ee38bef46a",
+  "expected_exit": 0,
+  "stdout_sha256": "d1bf116eb9a24974b9c0309c5c26026496b3083a37f8b45fc67ce9383235d614"
+}

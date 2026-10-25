@@ -1,0 +1,138 @@
+{
+  "scope": "signed/unsigned 128-bit arithmetic under QEMU Linux user emulation; not full builtins suite or Aether",
+  "output": "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5",
+  "runtime_archive_sha256": "f9aeb6a0e14ba915c7988a3159faccf55da5852c5465d199ad8339d79672f6bc",
+  "elf_sha256": "bf47fa78822d9adfc3d9d682e8bed905a8afd4573e61bcdb91d084063a893ec5",
+  "elf_bytes": 8752,
+  "source_sha256": "ad0c5a18a70903746f8f07c1724cc4de4d7cb1373b88b964b678abc5b3da867a",
+  "script_sha256": "b5ba7dbf112f2d1aed856bcf975a46fb8be54e1d7ae7e4f8def4230641280df1",
+  "image_id": "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+  "commands": [
+    {
+      "name": "compile",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-nostdinc",
+        "-isystem",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/include",
+        "-c",
+        "/Users/cam/DEV/Aether-userland/experiments/musl-reference/arithmetic.c",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.o"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "without-runtime",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-fuse-ld=/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+        "-nostdlib",
+        "-static",
+        "-Wl,-z,noexecstack",
+        "-Wl,--no-undefined",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crt1.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crti.o",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/libc.a",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crtn.o",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/bad.elf"
+      ],
+      "exit": 1
+    },
+    {
+      "name": "link",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-fuse-ld=/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+        "-nostdlib",
+        "-static",
+        "-Wl,-z,noexecstack",
+        "-Wl,--no-undefined",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crt1.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crti.o",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/libc.a",
+        "/Users/cam/DEV/Aether-userland/build/compiler-rt-dw59lg43/obj/lib/linux/libclang_rt.builtins-x86_64.a",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crtn.o",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "symbols",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "undefined",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+        "--undefined-only",
+        "--extern-only",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "relocations",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-r",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "headers",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-h",
+        "-l",
+        "/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5/arithmetic.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "linux",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/builtins-witness-5ul_o1g5,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/arithmetic.elf"
+      ],
+      "exit": 0
+    }
+  ],
+  "stdout": "AETHER BUILTINS PASS\n",
+  "trace_sha256": "9dea815d0aa5086f0a02d9bcec38e63fd08ea92ef0a59a3081176f3bb0b29ea4"
+}

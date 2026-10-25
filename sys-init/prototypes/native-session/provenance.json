@@ -1,0 +1,44 @@
+{
+  "producer_source_archive": "docs/evidence/abi24-producer-intake-2026-10-03/session-owner-lifecycle/final-sources.tar.gz",
+  "archive_sha256": "e272c36d1711472e7c1ab0f80080a23b0e94f4be5e17bcf6450964b5ca045232",
+  "license": "BSD-2-Clause; preserves original first-party notices",
+  "members": {
+    "user/native-connections/pipe.rs": {
+      "origin_sha256": "a33f3c63899139ae7b78cddcedd74b08a29e59ef68a786d03a786851ae2b4c13",
+      "local_sha256": "a33f3c63899139ae7b78cddcedd74b08a29e59ef68a786d03a786851ae2b4c13",
+      "modified": false
+    },
+    "user/native-connections/pipeline.rs": {
+      "origin_sha256": "82450198598373baec7e34ffff467635a6712db40befa21b6f6f27f82e9135fd",
+      "local_sha256": "57f4c0dcd6b7c0ae082830130b84424bee9096da1bc9d080a3f32053f26bd343",
+      "modified": true
+    },
+    "user/native-connections/exec_fds.rs": {
+      "origin_sha256": "0fae34150813b9d3e3404f74d0f61f013ee83a2633375b6f792d0a684ed037d3",
+      "local_sha256": "0fae34150813b9d3e3404f74d0f61f013ee83a2633375b6f792d0a684ed037d3",
+      "modified": false
+    },
+    "user/native-capacity/session-owner.rs": {
+      "origin_sha256": "e03fc5c7a2c8aa84e0cf1c2e9522dacb26707970bcffebf2db4d613bccb3810b",
+      "local_sha256": "51701fc2c4bfde0e91ca87000e3c452d72d51cef9968bd477f105d383fe3e595",
+      "modified": true,
+      "local_changes": "Owned entry/module adaptation; confirmed terminal reobservation on channel-read EOF (decision0184)."
+    },
+    "user/native-capacity/startup.rs": {
+      "origin_sha256": "eab6bc9b32b0b468f3e328c1a17f1c9ef100bc20577a9aa1cf26aa29361211f1",
+      "local_sha256": "eab6bc9b32b0b468f3e328c1a17f1c9ef100bc20577a9aa1cf26aa29361211f1",
+      "modified": false
+    },
+    "user/native-capacity/session_exec.rs": {
+      "origin_sha256": "ddb0960949565bd634f7e3c345fc4caaca8bdba662d69e0140d1bebb6f04fb73",
+      "local_sha256": "ddb0960949565bd634f7e3c345fc4caaca8bdba662d69e0140d1bebb6f04fb73",
+      "modified": false
+    },
+    "user/native-capacity/session_children.rs": {
+      "origin_sha256": "a61ff1a0598040618ecb53005a03094e1a83cdbc9ca93fb6f416cc7e06565a3d",
+      "local_sha256": "a61ff1a0598040618ecb53005a03094e1a83cdbc9ca93fb6f416cc7e06565a3d",
+      "modified": false
+    }
+  },
+  "changes": "Selected dispatcher: remove boot entry/panic attributes and handlers; expose inline settlement/failure boundary. Pipeline import moves into the owned module namespace. No protocol/state/cleanup algorithm rewrite."
+}

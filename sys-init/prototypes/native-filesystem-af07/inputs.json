@@ -1,0 +1,46 @@
+{
+  "scope": "Candidate selection only; not an accepted runtime/default lock or native launch authorization",
+  "profile": "AENFS003/ABI29 with nested AENMX009",
+  "bootstrap": [
+    29,
+    40961,
+    61697,
+    49154,
+    53249,
+    49155
+  ],
+  "roles": {
+    "engine": 0,
+    "selected_process": 1,
+    "available_process_slots": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "owner": 6
+  },
+  "engine_manifest_sha256": "e28d249b97d2e0a94c376190ec3f3839d50b6c1426cf788bab8f303fdb4084ac",
+  "engine_elf_sha256": "9039e7b1d9a488076e3f8329b3666f39d85385f294d89954dd03df7c2df1753a",
+  "producer_mechanism_receipt": {
+    "path": "/Users/cam/DEV/Aether/docs/evidence/fs-session-init-native-2026-10-20.json",
+    "sha256": "839ef5c876aa51054c5c7880ab681c50876b1ecb84c9041a3143097ba202cfb4"
+  },
+  "selected_program_c002": {
+    "sha256": "76f7561bc8bcbbaf28ff63dcc5a1954026ed3b892ae3d5c24e07f1672708fc13",
+    "scope": "producer small p replacement image; not a shell or filesystem-backed application",
+    "source": "/Users/cam/DEV/Aether/user/storage/session/process.c",
+    "source_sha256": "e2af24d606937f63ff9f178ce23bd129c11c185a4912a17770e35a1cd04f8d1b"
+  },
+  "workload": "read-only filesystem activation, one selected process, clean disconnect and complete shutdown",
+  "native_acceptance": false,
+  "native_blocker": "Aether must explicitly compose and execute this separate AF07 owner with its exact engine under ABI29. Engine-only operational acceptance does not qualify this owner.",
+  "engine_delivery": "/Users/cam/DEV/Aether/.deps/fs-launch-af07-2026-10-21-v3",
+  "wire_protocol": "AFSRPC07",
+  "engine_root_rights": 31,
+  "producer_operational_receipt": {
+    "path": "/Users/cam/DEV/Aether/docs/evidence/fs-af07-operational-native-2026-10-21.json",
+    "sha256": "ee44c9c7cd2bdc2c0382d76d1aa415083900e2dfdc6cafac6bed6c2b58a04cdf"
+  }
+}

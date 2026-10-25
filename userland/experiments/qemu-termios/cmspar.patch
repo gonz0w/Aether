@@ -1,0 +1,12 @@
+--- a/linux-user/syscall.c
++++ b/linux-user/syscall.c
+@@ -5893,6 +5893,9 @@
+ 	{ TARGET_HUPCL, TARGET_HUPCL, HUPCL, HUPCL },
+ 	{ TARGET_CLOCAL, TARGET_CLOCAL, CLOCAL, CLOCAL },
+ 	{ TARGET_CRTSCTS, TARGET_CRTSCTS, CRTSCTS, CRTSCTS },
++#if defined(TARGET_CMSPAR) && defined(CMSPAR)
++        { TARGET_CMSPAR, TARGET_CMSPAR, CMSPAR, CMSPAR },
++#endif
+ };
+ 
+ static const bitmask_transtbl lflag_tbl[] = {

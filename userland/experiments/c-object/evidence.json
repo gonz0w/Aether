@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-05",
+  "scope": "compile-only; no linking or execution",
+  "compiler": "Apple clang 21.0.0 (clang-2100.3.20.102)",
+  "host_target": "arm64-apple-darwin27.0.0",
+  "compile_target": "x86_64-unknown-none-elf",
+  "command": "clang --target=x86_64-unknown-none-elf -ffreestanding -fno-stack-protector -mno-red-zone -mgeneral-regs-only -O2 -Wall -Wextra -Werror -c experiments/c-object/probe.c -o build/c-object/probe.o",
+  "exit_code": 0,
+  "elf": {
+    "class": 64,
+    "endian": "little",
+    "type": "ET_REL",
+    "machine": "EM_X86_64"
+  },
+  "source_sha256": "2dead327684c6bce86ff0a3a57e03778e263a2d8a8f26a1aa810e21a4345f3bf",
+  "object_sha256": "ce21d6d54e1e80f1aead18215995997ea656061beb33289fcd72386f6184e59e"
+}

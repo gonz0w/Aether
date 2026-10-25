@@ -1,0 +1,7 @@
+$ argv ok
+pipe data
+$ substitution ok
+pipe data
+$ closed ok
+session diagnostic
+session ok

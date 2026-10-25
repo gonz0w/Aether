@@ -1,0 +1,5 @@
+exec errors ok
+argv ok
+pipe data
+closed ok
+exec recovery ok

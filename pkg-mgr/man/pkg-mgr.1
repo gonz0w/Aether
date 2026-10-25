@@ -1,0 +1,221 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 7, 2026
+.Dt PKG-MGR 1
+.Os "pkg-mgr 0.1.0 experimental"
+.Sh NAME
+.Nm pkg-mgr
+.Nd inspect and manage experimental private-root packages
+.Sh SYNOPSIS
+.Nm
+.Fl -root Ar path
+.Op Ar options
+.Ar command
+.Op Ar arguments
+.Nm
+.Fl -help
+.Nm
+.Fl -version
+.Sh DESCRIPTION
+.Nm
+is a checkout-based host tool for local, staged packages.
+Run
+.Pa bin/pkg-mgr
+from its source checkout.
+A standalone installed executable and native Aether package installation are
+not implemented.
+Root creation and source builds are explicit make operations.
+Evidence-bound registration currently requires a root beneath the checkout.
+No root privileges are required for the private-root workflows described here.
+.Pp
+Global options precede the command.
+The root must be an absolute path to an existing initialized private directory
+owned by the caller with mode 0700.
+Paths may contain spaces; control characters in arguments are rejected.
+The implementation requires a single writer and a caller-controlled filesystem.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -root Ar path
+Select the required private root.
+There is no implicit root or environment-based root selection.
+.It Fl -format Ar human Ns | Ns Ar tsv
+Select human presentation, the default, or unchanged helper output for scripts.
+Human results use stdout; status and diagnostics use stderr.
+TSV mode preserves ordinary helper streams and exit status.
+Wrapper interruption and delivery diagnostics remain text in either mode.
+.It Fl -color Ar auto Ns | Ns Ar always Ns | Ns Ar never
+Control stderr status colors; the default is auto.
+Auto requires a terminal on stderr, TERM other than dumb, and an empty or unset
+NO_COLOR variable.
+Always overrides NO_COLOR.
+Stdout remains uncolored.
+.It Fl -plain
+Use ASCII human output, escaping control and non-ASCII bytes.
+Machine-mode bytes remain unchanged.
+No color or animation is used.
+.It Fl -quiet
+Suppress nonessential start and success status messages.
+Results and failures remain visible.
+.It Fl -help
+Print command help and exit.
+This must be the final argument when encountered during option parsing.
+.It Fl -version
+Print the prototype version and exit.
+This must be the final argument when encountered during option parsing.
+.El
+.Pp
+Valued options accept both
+.Ql --option=value
+and
+.Ql --option value .
+Repeated identical valued options are accepted; conflicting values are rejected.
+Combining color always with plain or TSV mode is a usage error.
+There are no progress or verbose options.
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm list
+List registered packages.
+.It Cm owners
+Report package ownership of staged paths.
+.It Cm verify
+Verify staged regular-file contents and recorded permissions.
+No damaged file is repaired.
+.It Cm orphans
+Report packages outside the dependency closure of requested world roots.
+No package is deleted.
+.It Cm files Ar name
+List recorded files for a package.
+.It Cm deps Ar name
+List the package's direct dependencies.
+.It Cm rdeps Ar name
+List its direct reverse dependencies.
+.It Cm export Ar name
+Create a local binary directory bundle for a registered package.
+An occupied destination is rejected.
+.It Cm import Ar bundle Ar bundle-sha256 Ar target
+Verify and import a local bundle into a fresh private stage.
+The bundle path is absolute; its SHA-256 descriptor pin and compiler target
+are explicit caller inputs.
+This does not establish remote authenticity.
+.It Cm recover Ar bundle Ar bundle-sha256 Ar target
+Recover a pinned interrupted import only when existing staged content matches
+its bundle exactly.
+It does not repair or delete mismatched content.
+.It Cm preflight Ar bundle Ar bundle-sha256 Ar target
+Compare a proposed bundle with current state without replacing it.
+Local changes, dependencies and ownership may block replacement.
+.It Cm prepare Ar bundle Ar bundle-sha256 Ar target Ar old-record-sha256
+Prepare a retained replacement using the exact current package-record pin.
+Save the emitted intent digest.
+Preparation leaves a pending transaction and does not activate the new package.
+An identical proposed record is an unchanged no-op.
+.It Cm finish Ar intent-sha256
+Revalidate and finish the pending replacement identified by its exact intent pin.
+Retain the old payload and records.
+Repeated completion is idempotent only while the checked state remains unchanged.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width TMPDIR
+.It Ev TMPDIR
+Parent directory for private scratch and receipt directories; default is /tmp.
+.It Ev TERM
+Controls automatic terminal color selection.
+.It Ev NO_COLOR
+A nonempty value disables automatic color; explicit always overrides it.
+.It Ev PATH
+Selects host helper programs.
+Use a trusted host tool environment; recipes execute trusted maintainer code.
+.El
+.Sh FILES
+Paths below are relative to the selected private root unless noted otherwise.
+.Bl -tag -width Ds
+.It Pa .pkg-mgr-root
+Initialized fixture marker.
+.It Pa state/packages/NAME.tsv
+Package records, including file hashes and ordinary permissions.
+.It Pa state/world
+Editable requested-package roots.
+.It Pa stage/NAME
+Staged payload, separate from any live system prefix.
+.It Pa binaries/NAME
+Local binary directory bundle.
+.It Pa .replacement
+Pending retained-replacement transaction; normal operations remain guarded.
+.It Pa replacements/INTENT-SHA256
+Completed retained payload and transaction evidence.
+.It Pa ${TMPDIR:-/tmp}/pkg-mgr-cli.*
+Private output buffers, retained if output delivery fails or rendering is interrupted.
+They contain out, err and helper-exit when those files were written successfully.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width 143
+.It 0
+Operation succeeded within its declared scope.
+.It 1
+Helper failure or output-delivery failure.
+.It 2
+Blocked replacement preflight.
+.It 64
+Invalid CLI usage.
+.It 129, 130, 143
+Caught HUP, INT or TERM respectively; completion may be unknown.
+.El
+.Pp
+Other helper statuses pass through during ordinary completion.
+Caught signals take precedence over output-delivery failure.
+A failing CLI exit can follow a completed mutation.
+.Sh RECOVERY
+Do not blindly retry a mutation after missing output or an interruption.
+The CLI waits for its foreground helper, then attempts to deliver buffered output.
+It does not promise cancellation, rollback or termination of helper descendants.
+The first caught signal selects the interruption exit status.
+SIGKILL and system failure can prevent receipt retention.
+.Pp
+When output delivery fails, inspect the reported private receipt directory.
+Treat raw buffers as untrusted bytes; use a viewer that does not execute terminal
+controls.
+Recover the emitted intent digest and use the normal pinned finish procedure.
+A receipt is an observation, not permission to bypass transaction validation.
+Copy needed evidence before temporary-file cleanup.
+.Pp
+A partial record-publishing copy is preserved and blocks finish retry with
+.Ql invalid pending record copy .
+A complete pinned copy whose rename failed can be retried.
+No automatic repair, pruning or payload deletion is provided.
+.Sh EXAMPLES
+From the source checkout, with sh, GNU Make and a SHA-256 tool available,
+create a new private root and build the local text fixture:
+.Bd -literal -offset indent
+root=$(mktemp -d "$PWD/.pkg-mgr-live-man.XXXXXX")
+make -s -f mk/pkg.mk ROOT="$root" init-root
+make -s -f mk/pkg.mk ROOT="$root" register
+bin/pkg-mgr --root "$root" list
+bin/pkg-mgr --root "$root" --plain verify
+.Ed
+.Pp
+The list includes hello-local; verification exits zero and reports verified staged
+file contents.
+The fixture root remains for inspection; these commands do not write to a live prefix.
+For script output, use:
+.Bd -literal -offset indent
+bin/pkg-mgr --root "$root" --format tsv \e
+    files hello-local
+.Ed
+.Pp
+An unsupported operation is a usage error with status 64:
+.Bd -literal -offset indent
+bin/pkg-mgr --root "$root" remove hello-local
+.Ed
+.Sh SECURITY CONSIDERATIONS
+Pins establish byte identity, not publisher authenticity or freshness.
+This prototype does not provide hostile-path race resistance, concurrent-writer
+coordination, service activation, live-prefix installation or power-loss durability.
+No supported security service or public release approval is implied.
+.Sh SEE ALSO
+.Xr make 1 ,
+.Xr sh 1 ,
+.Xr pkg-state 5
+.Pp
+The source distribution includes docs/CLI.md for workflow and validation context,
+docs/PACKAGE-STATE.md for records, docs/BINARY-PACKAGE.md for bundle formats,
+docs/IMPORT-RECOVERY.md for import recovery, and docs/REPLACEMENT-POLICY.md for
+replacement details.

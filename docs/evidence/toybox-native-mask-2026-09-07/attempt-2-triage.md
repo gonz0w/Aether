@@ -1,0 +1,1 @@
+Native loader rejected startup ELF before admission: no PT_TLS. The existing parser requires nonempty bounded TLS. Add an actual thread-local sentinel observed before and after real startup, preserving all parser constraints. Retain matching attempted sources/ELF/logs. No runtime test passed in this attempt.

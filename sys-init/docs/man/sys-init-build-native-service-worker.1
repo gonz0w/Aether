@@ -1,0 +1,163 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-BUILD-NATIVE-SERVICE-WORKER 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-build-native-service-worker
+.Nd build an inert experimental Aether artifact from local inputs
+.Sh SYNOPSIS
+.Nm python3
+.Ar scripts/build-native-service-worker.py
+.br
+.Fl Fl sdk Ar directory
+.br
+.Fl Fl tools-lock Ar file
+.br
+.Fl Fl receipt-pin Ar digest
+.br
+.Fl Fl output Ar directory
+.Nm python3
+.Ar scripts/build-native-service-worker.py
+.br
+.Fl Fl help
+.Nm python3
+.Ar scripts/build-native-service-worker.py
+.br
+.Fl Fl version
+.Sh DESCRIPTION
+This source-checkout developer tool builds files only; it does not boot a
+guest,
+install a service or execute the generated image.
+Use Python 3.10 or newer on a
+POSIX development host, from the repository root.
+No root privileges are needed.
+A successful build establishes the recorded structural checks, not native
+runtime
+acceptance.
+Use the separately qualified runner and matching producer profile
+before making a target-behavior claim.
+.Pp
+Supply an independently reviewed local I/O SDK receipt and its exact SHA-256,
+plus the tools-lock file selected by that receipt.
+The SDK must contain
+evidence.json, stage/usr/include and stage/usr/lib with crt1.o, crti.o, crtn.o
+and libc.a.
+The receipt must select probe_variant io.
+The tools lock identifies
+clang, lld, nm, readelf and objdump by executable path and SHA-256.
+The builder verifies receipt, lock and libc identities before creating output,
+copies local inputs and checks used tool hashes before and after their runs.
+These executable hashes do not authenticate SDK provenance or shared
+libraries.
+.Pp
+Compilation targets x86_64-linux-musl using C11, optimization, stack
+protection,
+explicit copied headers and an empty sysroot; linking is static without
+default
+libraries.
+ELF checks require the expected x86-64 target, TLS, non-executable
+stack, no dynamic interpreter/segment, no writable-executable load segment,
+no undefined external symbols and no remaining relocations.
+This is a scoped
+structural check of trusted build outputs, not a general hostile-ELF
+validator.
+The service worker links directly against the captured libc/startup objects;
+it does not consume native_io.o or produce a native-C envelope.
+.Pp
+Each compiler/tool invocation has a 180-second deadline and a 4 MiB
+merged-output
+limit.
+Failure kills only the owned group of trusted, non-detaching tools and
+retains the accepted log prefix.
+The command is not confinement against hostile
+tools or concurrent input mutation.
+Copying, hashing and other Python work are
+outside this per-tool deadline.
+.Sh OPTIONS AND OPERANDS
+.Bl -tag -width Ds
+.It Fl Fl sdk Ar directory
+Required local SDK root with the reviewed files described above.
+.It Fl Fl tools-lock Ar file
+Required tool-lock JSON whose digest matches the SDK receipt.
+.It Fl Fl receipt-pin Ar digest
+Required exact SHA-256 of SDK evidence.json.
+Obtain it from the reviewed input
+handoff; computing an arbitrary local digest does not establish trust.
+.It Fl Fl output Ar directory
+Required new output directory.
+It must not exist.
+Parents may be created;
+the builder sets the new root mode to 0700.
+Partial failure artifacts remain.
+.It Fl Fl help
+Print usage and exit without building or creating output.
+.It Fl Fl version
+Print the builder-command version and exit; not a published release identity.
+.El
+.Sh OUTPUT AND FILES
+The successful command prints an artifact path on standard output.
+Compiler/linker output is retained in logs.
+Python and argument errors use
+standard error and may include tracebacks.
+Preserve the entire output directory,
+including failed attempts; a running/missing receipt is not a successful
+build.
+Output includes inputs/, service-worker.o, service-worker.elf,
+service-worker.map, evidence.json, attempts.json and named tool logs.
+The final record uses schema sys-init-native-service-worker-v1 and result
+pass.
+Attempt failures use result fail with error_type and error, including timeout,
+overflow and interruption; they do not use the I/O builder's separate result
+names.
+.Pp
+A post-compile size or structural failure can follow a successful tool
+attempt.
+Check the builder exit and final evidence, not just the compiler receipt.
+.Sh ENVIRONMENT
+Tools receive an explicit environment: PATH=/usr/bin:/bin:/usr/sbin:/sbin,
+LC_ALL=C and TMPDIR inside the new output directory.
+Compiler/tool executable
+paths come from the copied lock.
+Other caller tool variables are not forwarded.
+The parent Python process still uses its normal host environment.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+The build and its final checks completed; also supported help/version queries.
+.It 1
+An explicit build rejection or ordinary uncaught tool/Python failure.
+Signal or abrupt termination can produce other statuses without final
+evidence.
+.It 64
+Invalid arguments.
+.El
+.Sh EXAMPLES
+From the repository root, inspect usage without launching tools:
+.Bd -literal -offset left
+python3 scripts/build-native-service-worker.py --help
+.Ed
+.Pp
+Set SDK, TOOLS_LOCK and RECEIPT_PIN from an independently reviewed local SDK
+handoff first.
+They are shell placeholders, not builder environment settings.
+Choose an output path that does not yet exist:
+.Bd -literal -offset left
+python3 scripts/build-native-service-worker.py \e
+  --sdk "$SDK" --tools-lock "$TOOLS_LOCK" \e
+  --receipt-pin "$RECEIPT_PIN" \e
+  --output out/service-worker-review
+.Ed
+.Pp
+Expected success is an artifact path and exit zero.
+These examples do not boot
+or execute the artifact.
+Do not reuse paths containing retained acceptance data.
+.Sh SEE ALSO
+Repository guides: docs/NATIVE-SERVICE.md, docs/QUALITY-PROCESS.md,
+docs/DOCUMENTATION-INVENTORY.md and the source script for exact build flags.
+.Sh CAVEATS
+The manual title is not an installed command.
+Independent technical/reader
+review and target manual lookup remain pending.
+Build success is not runtime
+conformance or authority to publish a release.

@@ -1,0 +1,14 @@
+{
+  "format": "aether-private-af07-inputs-v1",
+  "scope": "Experimental explicit AF07 input selection; not a released pin or native execution authority",
+  "engine": {
+    "directory": ".deps/fs-launch-af07-2026-10-23-v13",
+    "seal": "66ba59fb4237fd365ed4b848d890785413b69250e744ea7f4309f1c1eb6d3974"
+  },
+  "activation": {
+    "directory": ".deps/fs-init-af07-2026-10-23-v9",
+    "seal": "f92faac3d95343c4b2d46b4c4962ca9b299593a9f9c639f11fbbf3359e1056fb",
+    "elf": "87598149c7a33307fffd3dc393f4cb87a04f635b40276f079943f93a904ebc03",
+    "raw": "620939e5218df104586ff38ce843776696c70814efdd2180c0244e7defae08a7"
+  }
+}

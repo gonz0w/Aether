@@ -1,0 +1,13 @@
+1 arch_prctl(4098,2117080,0,8388608,0,131072) = 0
+1 set_tid_address(0x204d88) = 1
+1 mmap(NULL,8192,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = 0x0000ffff8b3b9000
+1 mprotect(0x0000ffff8b3b9000,4096,PROT_NONE|0x40000000) = -1 errno=22 (Invalid argument)
+1 mprotect(0x0000ffff8b3b9000,4096,PROT_READ) = 0
+1 mprotect(0x0000ffff8b3b9000,8192,PROT_READ) = 0
+1 mprotect(0x0000ffff8b3ba000,4096,PROT_NONE) = 0
+1 write(1,0xffff8b3ba000,1) = -1 errno=14 (Bad address)
+1 mprotect(0x0000ffff8b3b9000,8192,PROT_READ|PROT_WRITE) = 0
+1 munmap(0x0000ffff8b3b9000,8192) = 0
+1 mprotect(0x0000ffff8b3b9000,4096,PROT_READ) = -1 errno=12 (Cannot allocate memory)
+1 write(1,0x200250,23) = 23
+1 exit_group(0)

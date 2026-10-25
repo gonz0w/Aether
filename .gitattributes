@@ -1,0 +1,2 @@
+# Preserve source, fixtures and immutable evidence bytes. New text uses LF.
+* -text

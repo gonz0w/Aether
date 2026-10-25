@@ -1,0 +1,158 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 7, 2026
+.Dt PKG-BINARY 5
+.Os "pkg-mgr 0.1.0 experimental"
+.Sh NAME
+.Nm pkg-binary
+.Nd local binary package directory transport
+.Sh DESCRIPTION
+A local-binary-directory-v2 bundle transports one registered host package into
+another initialized private root.
+It is a directory of ordinary files, not an archive or a production store format.
+It provides byte-identity checks, not remote publisher authentication.
+The caller supplies the absolute bundle path, descriptor SHA-256 pin and expected
+compiler target.
+.Pp
+The bundle and destination must remain under caller control with a single writer.
+Imported executable content and build recipes remain trusted by the caller.
+No native Aether ABI, service activation, installation to a live prefix or
+power-loss durability is implied.
+.Sh DIRECTORY LAYOUT
+The bundle has exactly these top-level entries:
+.Bl -tag -width Ds
+.It Pa artifact.kv
+Canonical descriptor binding the other metadata tables.
+.It Pa package.tsv
+Exact permission-tracked pkg-state-v2 record, including embedded evidence,
+dependencies, file hashes, sizes, paths and modes.
+.It Pa target.kv
+Canonical host identity record.
+.It Pa modes.tsv
+One ordinary mode, tab, logical path per file, in package-record order.
+.It Pa dependencies.tsv
+One dependency name, tab, exact registered-record SHA-256 per dependency,
+in package-record order.
+An empty dependency list has an empty table.
+.It Pa files/
+Regular-file blobs named by their 64-character lowercase SHA-256.
+Repeated content shares one blob within this bundle.
+Unreferenced blobs are rejected.
+.El
+.Pp
+Links, hard-linked files and special entries are rejected before content is consumed.
+Unknown top-level entries are rejected.
+All five metadata tables must be readable regular files.
+.Sh ARTIFACT DESCRIPTOR
+The descriptor has these key=value lines in exact order, each ending in newline.
+There are no comments, blank lines, duplicate keys or optional keys.
+The four digest values are 64 lowercase hexadecimal characters.
+.Bl -tag -width Ds
+.It Li format
+Must be local-binary-directory-v2.
+.It Li record_sha256
+Hash of package.tsv.
+.It Li target_sha256
+Hash of target.kv.
+.It Li modes_sha256
+Hash of modes.tsv.
+.It Li dependencies_sha256
+Hash of dependencies.tsv.
+.It Li authenticity
+Must be not-proven.
+.It Li service_activation
+Must be unsupported.
+.El
+.Pp
+The caller's descriptor pin binds artifact.kv itself.
+A locally calculated pin demonstrates integrity for one's own build.
+A pin delivered beside an untrusted download does not authenticate that download.
+.Sh TARGET RECORD
+The target record has these key=value lines in exact order:
+.Bl -tag -width Ds
+.It Li format
+Must be host-binary-target-v1.
+.It Li host_os
+Must match the running host's uname -s output.
+.It Li host_arch
+Must match the running host's uname -m output.
+.It Li compiler_target
+Must match the caller's explicit expected target.
+.It Li modes
+Must be recorded-0000-0777.
+.El
+.Pp
+These comparisons do not prove minimum OS version, CPU features, ABI compatibility
+or native Aether support.
+The package must contain a manifest-bound host observation at
+.Pa usr/local/share/pkg-mgr/NAME/host.kv .
+Its target runtime must be host-only.
+Other prefixes and runtimes require an explicit extension.
+Metadata observations do not grant authority.
+.Sh FILE AND DEPENDENCY TABLES
+Modes are exactly four octal digits from 0000 through 0777 and must equal the
+package record's modes, in the same file order.
+Set-ID and sticky bits are rejected.
+File sizes, content hashes and paths are checked through candidate state validation.
+The directory does not preserve ownership, timestamps, ACLs, extended attributes,
+directory modes or empty directories.
+.Pp
+Dependency fingerprints must match already registered records and the package's
+bound host observations.
+Import dependencies explicitly before dependents; no resolver or version substitution
+is implemented.
+Neither import nor export edits world.
+.Sh VALIDATION AND PUBLICATION
+Export first verifies registered state and refuses an occupied binaries/NAME.
+Import verifies existing state, descriptor binding, schema, host identity, modes,
+dependency fingerprints and blob content, then constructs a private candidate.
+Existing state validation checks candidate sizes, evidence and ownership conflicts.
+The stage and record are published in separate renames.
+.Pp
+An ordinary failure between publication renames cleans only this invocation's
+newly published, unregistered stage.
+A crash can leave an occupied unregistered stage; import refuses to overwrite it.
+Recover can publish the missing record only after validating the existing stage
+against the exact pinned bundle.
+It does not repair mismatched content.
+There is no automatic recovery, package deletion or crash-atomic transaction.
+.Sh COMPATIBILITY
+V2 transport requires permission-tracked pkg-state-v2 records.
+Earlier local-binary-directory-v1 bundles are rejected.
+Rebuild and register into a fresh private root; no automatic migration rewrites
+historical records, bundles or evidence.
+.Sh EXAMPLES
+From the checkout, with a host C compiler, Python 3, GNU Make, sh and a SHA-256 tool,
+run the real bytecount lifecycle fixture:
+.Bd -literal -offset indent
+sh tests/bytecount-integration.sh
+.Ed
+.Pp
+It rejects corrupted source, builds and registers the command, exports a local
+bundle, imports it into a fresh private root and checks imported execution.
+A PASS line and retained_root identify successful evidence and the private output.
+It does not download sources or write to a live prefix.
+The compiler target is a host observation for this experiment, not a compatibility
+policy for arbitrary downloaded software.
+.Pp
+For a previously exported bundle, inspect the descriptor as data:
+.Bd -literal -offset indent
+cat "$bundle/artifact.kv"
+.Ed
+.Pp
+Here bundle is the absolute path to binaries/bytecount beneath the retained root.
+Never source a metadata file as shell code.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa ROOT/binaries/NAME
+Exported local bundle.
+.It Pa ROOT/stage/NAME
+Imported staged payload.
+.It Pa ROOT/state/packages/NAME.tsv
+Imported package record.
+.El
+.Sh SEE ALSO
+.Xr pkg-mgr 1 ,
+.Xr pkg-state 5
+.Pp
+See docs/BINARY-PACKAGE.md for workflow and validation context and
+docs/IMPORT-RECOVERY.md for exact pinned recovery.

@@ -1,0 +1,4703 @@
+{
+  "schema": "userland-source-inventory-v1",
+  "scope": "Tracked maintained source/patch files and extensionless hooks; immutable/vendor/build exclusions below",
+  "base_commit": "f363a235bf3846ef77868315ad775ae9e4c1a6eb",
+  "exclusions": {
+    "docs/vendor": "Pinned third-party/shared inputs, not house-style migration",
+    "docs/evidence": "Immutable historical snapshots and generated outputs, not current implementation",
+    "build": "Private generated sources, upstream trees and outputs; consumed generated code still needs review",
+    "non-source": "Narrative, manifests and other assets are outside this source census; coverage.json owns documentation inventory"
+  },
+  "limits": [
+    "Static subprocess hints are review leads, not defects or execution evidence.",
+    "Top-level and generated CLI behavior is not inferred by importing code.",
+    "No complete source audit, minimum-runtime, native or release claim."
+  ],
+  "files": [
+    {
+      "path": ".githooks/check.py",
+      "sha256": "2c3e5986764f6be30e6423a5e0744f4b9455ca8d9fd332eda1e291d38ad74c84",
+      "bytes": 2929,
+      "language": "Python",
+      "subsystem": ".githooks",
+      "owner": "Aether-standards copied tooling",
+      "coverage_ids": [
+        "UD-git-workflow"
+      ],
+      "documents": [
+        ".githooks/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 11,
+          "call": "subprocess.check_output"
+        },
+        {
+          "line": 19,
+          "call": "subprocess.Popen"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": ".githooks/commit-msg",
+      "sha256": "85491cb0627d75f5b9b4b12d6ef9a76412636371b23f2f41d62f4ad461f88e07",
+      "bytes": 103,
+      "language": "shell",
+      "subsystem": ".githooks",
+      "owner": "Aether-standards copied tooling",
+      "coverage_ids": [
+        "UD-git-workflow"
+      ],
+      "documents": [
+        ".githooks/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": ".githooks/pre-commit",
+      "sha256": "bcd6b72a43ec573c7d9453f7f782fc908bf417a12a86183ac3f7f816fbb4b606",
+      "bytes": 192,
+      "language": "shell",
+      "subsystem": ".githooks",
+      "owner": "Aether-standards copied tooling",
+      "coverage_ids": [
+        "UD-git-workflow"
+      ],
+      "documents": [
+        ".githooks/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": ".githooks/setup.py",
+      "sha256": "f25af0b51771a1fafbada2435168e58a36ddd375024cac6457076cd2136ddb3b",
+      "bytes": 1547,
+      "language": "Python",
+      "subsystem": ".githooks",
+      "owner": "Aether-standards copied tooling",
+      "coverage_ids": [
+        "UD-git-workflow"
+      ],
+      "documents": [
+        ".githooks/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 22,
+          "call": "subprocess.check_output"
+        },
+        {
+          "line": 25,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 29,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 31,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/check-distribution.py",
+      "sha256": "5f594899e907e4e0b76fcbde049f4bb74b40bd4d81d7d0d88e8d0c1f117e9b51",
+      "bytes": 2797,
+      "language": "Python",
+      "subsystem": "docs/check-distribution.py",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-quality"
+      ],
+      "documents": [
+        "docs/STANDARDS.md",
+        "docs/quality/PROCESS.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/check-experience.py",
+      "sha256": "375d262e8dac9bc4edb713980af0aa9bba2380ae950c99d57f7bdf75beb65a7d",
+      "bytes": 1275,
+      "language": "Python",
+      "subsystem": "docs/check-experience.py",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-quality"
+      ],
+      "documents": [
+        "docs/STANDARDS.md",
+        "docs/quality/PROCESS.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/check-standards.py",
+      "sha256": "efb87fceb6f396eddeec8c79cc46043de5473923bfccd0506a69a5f4ba8a2d80",
+      "bytes": 2782,
+      "language": "Python",
+      "subsystem": "docs/check-standards.py",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-quality"
+      ],
+      "documents": [
+        "docs/STANDARDS.md",
+        "docs/quality/PROCESS.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/quality/check.py",
+      "sha256": "706b8e67854b04286854c3151b0f01adf3dfc006a9dd12954570bf0740ef635f",
+      "bytes": 3270,
+      "language": "Python",
+      "subsystem": "docs/quality",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-python-qualification",
+        "UD-quality",
+        "UD-quality-command",
+        "UD-quality-process",
+        "UD-rc1-adp02",
+        "UD-source-inventory"
+      ],
+      "documents": [
+        "docs/quality/COMMAND-RUNNER-REVIEW.md",
+        "docs/quality/MANUAL-REVIEW.md",
+        "docs/quality/PROCESS.md",
+        "docs/quality/RC1-ADP02.md",
+        "docs/quality/SOURCE-INVENTORY.md",
+        "docs/quality/quality-command.json",
+        "docs/quality/rc1-clauses.json",
+        "docs/quality/source-inventory.json"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/quality/processes.py",
+      "sha256": "9fe68456395a51755c5545203eca247a44195712706d5efb9d4cef076fb749a8",
+      "bytes": 1316,
+      "language": "Python",
+      "subsystem": "docs/quality",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-python-qualification",
+        "UD-quality",
+        "UD-quality-command",
+        "UD-quality-process",
+        "UD-rc1-adp02",
+        "UD-source-inventory"
+      ],
+      "documents": [
+        "docs/quality/COMMAND-RUNNER-REVIEW.md",
+        "docs/quality/MANUAL-REVIEW.md",
+        "docs/quality/PROCESS.md",
+        "docs/quality/RC1-ADP02.md",
+        "docs/quality/SOURCE-INVENTORY.md",
+        "docs/quality/quality-command.json",
+        "docs/quality/rc1-clauses.json",
+        "docs/quality/source-inventory.json"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/quality/test-check.py",
+      "sha256": "95d44f59366dfa2d7e321e95ff744a9d9d49e2b76b577136acde20ff392b9ffd",
+      "bytes": 1971,
+      "language": "Python",
+      "subsystem": "docs/quality",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-python-qualification",
+        "UD-quality",
+        "UD-quality-command",
+        "UD-quality-process",
+        "UD-rc1-adp02",
+        "UD-source-inventory"
+      ],
+      "documents": [
+        "docs/quality/COMMAND-RUNNER-REVIEW.md",
+        "docs/quality/MANUAL-REVIEW.md",
+        "docs/quality/PROCESS.md",
+        "docs/quality/RC1-ADP02.md",
+        "docs/quality/SOURCE-INVENTORY.md",
+        "docs/quality/quality-command.json",
+        "docs/quality/rc1-clauses.json",
+        "docs/quality/source-inventory.json"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "docs/quality/test-processes.py",
+      "sha256": "e5001f5707f5e87c1d76e3a3e4906ab2380afc02fea5f332aecbabee31e514f0",
+      "bytes": 5376,
+      "language": "Python",
+      "subsystem": "docs/quality",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-python-qualification",
+        "UD-quality",
+        "UD-quality-command",
+        "UD-quality-process",
+        "UD-rc1-adp02",
+        "UD-source-inventory"
+      ],
+      "documents": [
+        "docs/quality/COMMAND-RUNNER-REVIEW.md",
+        "docs/quality/MANUAL-REVIEW.md",
+        "docs/quality/PROCESS.md",
+        "docs/quality/RC1-ADP02.md",
+        "docs/quality/SOURCE-INVENTORY.md",
+        "docs/quality/quality-command.json",
+        "docs/quality/rc1-clauses.json",
+        "docs/quality/source-inventory.json"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/awk-reference/build-musl.py",
+      "sha256": "30313bb945757d6971c1cd5b5e78f790e82ccc52f620cb6ce23c5048995c283b",
+      "bytes": 5247,
+      "language": "Python",
+      "subsystem": "experiments/awk-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-awk-reference"
+      ],
+      "documents": [
+        "experiments/awk-reference/MUSL-PLAN.md",
+        "experiments/awk-reference/PLAN.md",
+        "experiments/awk-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 56,
+          "call": "subprocess.Popen"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/awk-reference/build.py",
+      "sha256": "1db6346996ad4ca02d993e324f4b137e0e23ab8d7e14cd993b91df2bce3d0156",
+      "bytes": 3924,
+      "language": "Python",
+      "subsystem": "experiments/awk-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-awk-reference"
+      ],
+      "documents": [
+        "experiments/awk-reference/MUSL-PLAN.md",
+        "experiments/awk-reference/PLAN.md",
+        "experiments/awk-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 33,
+          "call": "subprocess.check_output"
+        },
+        {
+          "line": 46,
+          "call": "subprocess.Popen"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/awk-reference/math-probe.c",
+      "sha256": "a1be3dc80ba9f5d9deaf010e1b5d114984fd050ca974cd63321739d39f708664",
+      "bytes": 335,
+      "language": "C",
+      "subsystem": "experiments/awk-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-awk-reference"
+      ],
+      "documents": [
+        "experiments/awk-reference/MUSL-PLAN.md",
+        "experiments/awk-reference/PLAN.md",
+        "experiments/awk-reference/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/awk-reference/test-musl.py",
+      "sha256": "03d13681e8fff02ca40877a5b319b428d4e2eee82ac2d657d61d987c07d5ab61",
+      "bytes": 7316,
+      "language": "Python",
+      "subsystem": "experiments/awk-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-awk-reference"
+      ],
+      "documents": [
+        "experiments/awk-reference/MUSL-PLAN.md",
+        "experiments/awk-reference/PLAN.md",
+        "experiments/awk-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 77,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 85,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/awk-reference/test.py",
+      "sha256": "1d50ab1551061b094f8ba10150c925b34135436ed55c98fa04b9087d5adaa557",
+      "bytes": 6568,
+      "language": "Python",
+      "subsystem": "experiments/awk-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-awk-reference"
+      ],
+      "documents": [
+        "experiments/awk-reference/MUSL-PLAN.md",
+        "experiments/awk-reference/PLAN.md",
+        "experiments/awk-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 107,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/c-object/probe.c",
+      "sha256": "2dead327684c6bce86ff0a3a57e03778e263a2d8a8f26a1aa810e21a4345f3bf",
+      "bytes": 184,
+      "language": "C",
+      "subsystem": "experiments/c-object",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-c-object"
+      ],
+      "documents": [
+        "experiments/c-object/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/bootstrap-controls.c",
+      "sha256": "842b732f6dc6593b25495293af4c010c5620c14a8184b56ecfa15965a11a3891",
+      "bytes": 5843,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/bootstrap-native.c",
+      "sha256": "2da1c1941e60ebad6fa744d9220c8b2edb0bf78c00c1b5da6201c62d2e81eaee",
+      "bytes": 1893,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/budget-native.c",
+      "sha256": "0d22e0ddfa73c492da2d377cebe1b26c411095af9958c87013f0d09137a631ba",
+      "bytes": 4630,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/bytecount-controls.c",
+      "sha256": "72dd05496a4d3308ee36cf58bece04e98d0ee0d72b65217f93cb30200552b7ba",
+      "bytes": 2701,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/bytecount.c",
+      "sha256": "9f6f6fc6de23fc3b3620b7ff89647203694bd0b0ba23f87929f38cbd7c4f375c",
+      "bytes": 2766,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/carrier-native.c",
+      "sha256": "81f7904662a4637e552d92a3acbaa28cc2ab8257ee1514adad00f32a21978899",
+      "bytes": 3890,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check-bootstrap.py",
+      "sha256": "7312c367fa7b630b9f2e34d68e9e19314adf05bcfc98f0bbd823330af5035b13",
+      "bytes": 10278,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check-local-output.py",
+      "sha256": "ca6d8091f72b40dae5880fa439678082d31db99e95789eedc5f473f8681cd6b9",
+      "bytes": 9302,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check-mapped.py",
+      "sha256": "7496665821b6af4186f1c6ff574ba0b01648a6a49d46cbbcb84f66ec89164de2",
+      "bytes": 6987,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check-parser.py",
+      "sha256": "60a2f567687525008bd3b3def436dd73f0b8a789a33cf84dd2edae571da4772b",
+      "bytes": 7016,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check-process.py",
+      "sha256": "ee1f31f8982159a3c5e31b4d961459c51fac443afb4eda99344b67732822d775",
+      "bytes": 2159,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check-results.py",
+      "sha256": "16e15c6430520983a5d4d5a97f64bd03821e33981ebd166623f7744bf357e202",
+      "bytes": 7339,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/check.py",
+      "sha256": "030c20e533b5af4ff58c0f78020eb8c15ad8e1d74904ffffe4959c239e0f2bee",
+      "bytes": 8304,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/launch-native.h",
+      "sha256": "34442771813dd811fc170bd3580e74fa837c2a4b1119cadd0201829a6a37d7d9",
+      "bytes": 2785,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/local-frontend-controls.c",
+      "sha256": "a60364bf1168cb04fa079edaadd67e5ea77e64d4605a2c4d84ded1899bea8b8b",
+      "bytes": 9716,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/local-frontend.c",
+      "sha256": "0537186672bca2aa1143084d9cbd6a23d503a64d5e871ada5e0779c552902898",
+      "bytes": 2272,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/local-frontend.h",
+      "sha256": "231c7de77ab542fee2118024401f05e815b17c85e84dd2c2aa02c66cc854b322",
+      "bytes": 1420,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/local-output-controls.c",
+      "sha256": "fe4465383f9a2a1c9689c07b64fd016b44ef81ce24b58cce71d24962683b7cbe",
+      "bytes": 7981,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/local-output.c",
+      "sha256": "7a68545f66381590f9e2868699a33f78f3129a47f9cf9fda87baf6bf414ac6e3",
+      "bytes": 2578,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/local-output.h",
+      "sha256": "dd408b1c50689e832e862278d48bae6871a86721c6a87964f37d410b647eb7dc",
+      "bytes": 1789,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/mapped-child.c",
+      "sha256": "26dfe4fc5f28f2755c00e49edd5227c727b70e61b3898d3c0f87277fe7960d3c",
+      "bytes": 396,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/mapped-cleanup.c",
+      "sha256": "d8872e2390450411f53006442bc2d183eac1714925af9ddb6588e9e5499b11f4",
+      "bytes": 994,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/mapped-controls.c",
+      "sha256": "7bedaa068db4c36b5566aeb95819841f4f170fa3506ad4573bfa662e54a4dc0e",
+      "bytes": 7138,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/mapped-controls.h",
+      "sha256": "835554802759bfa70f11fd56e9e3cad7481deb301abb2e350ec6aebdc2cad305",
+      "bytes": 157,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/mapped-runner.h",
+      "sha256": "4aefceeb509239217efd54aed02ba904d5e676857352dca86a22d6b8b1654556",
+      "bytes": 1515,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/mapped-uncertainty.c",
+      "sha256": "bf270f11a3b0304a57e5b4d14fc0f4def25cd5e57c4f44cfdf4f0968b8d13f3f",
+      "bytes": 3197,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/native-entry.c",
+      "sha256": "d35a8556cf9403a848eda05a891572c6c985333109288ecafe1be542204c98e1",
+      "bytes": 233,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/native-io.c",
+      "sha256": "21ca8eee76d69b91b954ad343e405e7ae857025ce403dd9a918cbe4a4fd8560c",
+      "bytes": 5590,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/native-io.h",
+      "sha256": "21d6e56c249a580c2199c3d4edfb89ed398c72f43faa1285d15f1bcedf6ad635",
+      "bytes": 863,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/native.py",
+      "sha256": "f555c06ded32259f05e1ec46ec48e9e53e1c32b9d812b0011a2f43eafd3d8002",
+      "bytes": 31535,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/parser-controls.c",
+      "sha256": "db37e26300df60ccf7708956464c252c2fc4b7c2f21292602b8a7c29dd985572",
+      "bytes": 7834,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/prepare-native.py",
+      "sha256": "94e2bb97eaefa342be0b08f60807ea1c25fb2315f0f5c0775bb50eeb943ec8db",
+      "bytes": 22606,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/process.py",
+      "sha256": "9f0c0464c10fa23bfc7c3c91fe26b04e5ab063ca058eeb6d41542d98c6186e4e",
+      "bytes": 3755,
+      "language": "Python",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 58,
+          "call": "subprocess.Popen"
+        },
+        {
+          "line": 91,
+          "call": "subprocess.CompletedProcess"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/reply-native.c",
+      "sha256": "4100b2df9e1b4dd89fa14d3883254f75c56adfe362a14c7b354eda98b8f519e3",
+      "bytes": 2760,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/result-controls.c",
+      "sha256": "d905891ce0231cfd622e8a0794f4f5bac608635d12d1234bf064a0af074320fc",
+      "bytes": 6981,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/runner-parse.c",
+      "sha256": "c895cae8e534badf9311933363a51d0bad34e3a475f69464afaa65b7996a1d75",
+      "bytes": 2391,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/runner-parse.h",
+      "sha256": "ac9b4c5b7d23ec080292af84bab5814eae029248a6a4ebe59153985368a82455",
+      "bytes": 1159,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/runner-result.c",
+      "sha256": "acaecd63f5c033938878f292b6030b3f219e2dfc7f69af824a1ed7c424a67e71",
+      "bytes": 2574,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/runner-result.h",
+      "sha256": "0c29abdb634d82103f4dab878fcf047642ec5d2b1fb33a6e6355efb3cb433b51",
+      "bytes": 1314,
+      "language": "C header",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/runner.c",
+      "sha256": "8c3dbb8b32ad189bb1426646565c44b5676e27fd0ae82c0ec037b49297af9449",
+      "bytes": 5147,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/startup-controls.c",
+      "sha256": "9a6041889e976cedd7eb42778f700b886a710c65b477d05bf7416dcbedea3915",
+      "bytes": 5182,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/startup-observer.c",
+      "sha256": "6d1e8040c449b6d733066366d22f58c6ddbcd53120a2437808d81883802da563",
+      "bytes": 929,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/terminal-native.c",
+      "sha256": "23410ba64381f2d356d5e48e6fb9095eb77d84cb076a9f358eb090f7ca467670",
+      "bytes": 380,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/command-runner/transfer-controls.c",
+      "sha256": "4f55eadbbe86ed2744856021fa74fd7b2f669c63339186fc39c6cf05b966bfe9",
+      "bytes": 8575,
+      "language": "C",
+      "subsystem": "experiments/command-runner",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-aether-run-contract",
+        "UD-bytecount",
+        "UD-command-runner"
+      ],
+      "documents": [
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/dash-reference/audit-imports.py",
+      "sha256": "221345a9585aaa46aad5451aeb1229a1b789da6afeebe6069378e6a2f0be0e4e",
+      "bytes": 1275,
+      "language": "Python",
+      "subsystem": "experiments/dash-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-dash-reference"
+      ],
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 16,
+          "call": "subprocess.check_output"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/dash-reference/build.py",
+      "sha256": "c247304f7393eb2eef6f59248de1982e676677ae8ba0f6a68fc272fa24ae38b0",
+      "bytes": 5902,
+      "language": "Python",
+      "subsystem": "experiments/dash-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-dash-reference"
+      ],
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 64,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/dash-reference/helper.c",
+      "sha256": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+      "bytes": 1226,
+      "language": "C",
+      "subsystem": "experiments/dash-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-dash-reference"
+      ],
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/dash-reference/test.py",
+      "sha256": "415a74372d0af5ae870d6c19e933f7c5987e4034d7a8b19dfdbed29000ca1a54",
+      "bytes": 5092,
+      "language": "Python",
+      "subsystem": "experiments/dash-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-dash-reference"
+      ],
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 30,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/descriptor-fallback/check.py",
+      "sha256": "a516134b98683a0b8816a291a61aa774c15f7b7f13e741ca3378857efdccefde",
+      "bytes": 7145,
+      "language": "Python",
+      "subsystem": "experiments/descriptor-fallback",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-descriptor-fallback"
+      ],
+      "documents": [
+        "experiments/descriptor-fallback/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 36,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/descriptor-fallback/checked.patch",
+      "sha256": "bcfa3b3fb01be18ff7a0e6e3ed6e380d49ddc2d767b6d7bf2d6db88b3705d305",
+      "bytes": 1523,
+      "language": "patch",
+      "subsystem": "experiments/descriptor-fallback",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-descriptor-fallback"
+      ],
+      "documents": [
+        "experiments/descriptor-fallback/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/descriptor-fallback/probe.c",
+      "sha256": "1e64e9f47c44cfd7dd24ff9390ea3692c72417077a3c3146c34ba03cc0113bcc",
+      "bytes": 3255,
+      "language": "C",
+      "subsystem": "experiments/descriptor-fallback",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-descriptor-fallback"
+      ],
+      "documents": [
+        "experiments/descriptor-fallback/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/launch-profile/check.py",
+      "sha256": "c6659a12094a69b0bd807322e8c661d4867c97243c6c7d437e61dd3f16a1d739",
+      "bytes": 7052,
+      "language": "Python",
+      "subsystem": "experiments/launch-profile",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-launch-profile"
+      ],
+      "documents": [
+        "experiments/launch-profile/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/launch-profile/launch.py",
+      "sha256": "f29b84f6e400d7399568cac67eeb093b2c1d8331df2a31f34da5afed8199fe6a",
+      "bytes": 6902,
+      "language": "Python",
+      "subsystem": "experiments/launch-profile",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-launch-profile"
+      ],
+      "documents": [
+        "experiments/launch-profile/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/linux-uapi/build.py",
+      "sha256": "badcb7e560e8369da03a45cea68deea3aad54f34bdeeec011b74289694eb3d59",
+      "bytes": 5223,
+      "language": "Python",
+      "subsystem": "experiments/linux-uapi",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-linux-uapi"
+      ],
+      "documents": [
+        "experiments/linux-uapi/PLAN.md",
+        "experiments/linux-uapi/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 48,
+          "call": "subprocess.check_output"
+        },
+        {
+          "line": 60,
+          "call": "subprocess.Popen"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/adapter-errors.c",
+      "sha256": "380603e3cee47f64529b4400113f228dab25225b554d85c4445d12d91856ce43",
+      "bytes": 2017,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/allocator-failure.c",
+      "sha256": "1485f1ce2a10d0c4f0f4e97e1727583d973e36dd69aec7d37fa23239228a8df2",
+      "bytes": 2172,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/allocator-fallback.c",
+      "sha256": "357bc3fdda44cabd7ad319c5bf9eba82ef018aca92c93ec33e0e277a14a81e48",
+      "bytes": 1857,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/allocator-metadata.c",
+      "sha256": "103719a54c537f9fd61fb7880bc1cd2a39a7c855b19fca549f2636d31619bba9",
+      "bytes": 2159,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/arithmetic.c",
+      "sha256": "ad0c5a18a70903746f8f07c1724cc4de4d7cb1373b88b964b678abc5b3da867a",
+      "bytes": 1878,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/build-builtins.py",
+      "sha256": "af6529e1702c7e05673179a51865055eabc839f7835f4b47d64137fabe71b919",
+      "bytes": 4001,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 53,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 60,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/build.py",
+      "sha256": "3aa11fb087dd98a1af66f082bdb80451208581dec2a403280ee3f8f5647cfe5b",
+      "bytes": 8295,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 48,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-adapter-errors.py",
+      "sha256": "d6af76d15d79b2f02288d9ff3443716d177417870a68f0466ceddfb69abf2f69",
+      "bytes": 6705,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 37,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-allocator-failure.py",
+      "sha256": "bff06945893e20d29b9ce19976b64a036f21ee1f8f9c9acedf98dd8bad863114",
+      "bytes": 5374,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 35,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-allocator-fallback.py",
+      "sha256": "0e0f801de836c01d79db7f3baf0e6a167ef559f1618464ef81fb61f0407068f4",
+      "bytes": 5572,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 35,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-allocator-metadata.py",
+      "sha256": "1c18573e8411bacae66df08b6d1450973266ee3b33c91ebe914206cb0355bc78",
+      "bytes": 5139,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 35,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-builtins.py",
+      "sha256": "b5ba7dbf112f2d1aed856bcf975a46fb8be54e1d7ae7e4f8def4230641280df1",
+      "bytes": 3980,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 26,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-interrupted-output.py",
+      "sha256": "00c0299606cd8b757f096e9d7677d3b2a9d403b73895eebfaaeb457fb4749ce4",
+      "bytes": 4865,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 35,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-large-tls.py",
+      "sha256": "5905d397faf80757e96b0c802205a05835f06d3e3741d9de66516f06513c5468",
+      "bytes": 4654,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 29,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/check-protection.py",
+      "sha256": "11f294dc5da8922d9edb156fc72de1e18feffdba636dcc70ba69da90bc6782be",
+      "bytes": 4994,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 35,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/interrupted-output.c",
+      "sha256": "04d041634639c101dbeeac31409c47737fb26b92939ee2f38b7780ed00a7d9c3",
+      "bytes": 2750,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/large-tls.c",
+      "sha256": "e18b78af62df15b9b46a0fa317c34b141862fc1062cb7a88c48f0e7ccabd70ab",
+      "bytes": 1100,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/metadata-protection-strict.patch",
+      "sha256": "a62513f471675d7603d2a8ef9ab884bbf53cd4ee2313598260bb418872bf911f",
+      "bytes": 296,
+      "language": "patch",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/probe.c",
+      "sha256": "356efb8ded69aafa3441932b517e77c75e13598a4a1853575aef87bb6b25db98",
+      "bytes": 1170,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/protection.c",
+      "sha256": "aa043d54b9533885247ff11f4e6133ac3f6c23065769e90c53466292dd41bb03",
+      "bytes": 2889,
+      "language": "C",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/musl-reference/run-linux.py",
+      "sha256": "9976e5367d4fb60caa4f5f82fbdde7bf1fe1e84ea91cb9be5c8707b4f26bc7bd",
+      "bytes": 3228,
+      "language": "Python",
+      "subsystem": "experiments/musl-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-musl-reference"
+      ],
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 23,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 35,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/build.py",
+      "sha256": "238fbcbd0618445927c24d4dc6506025845e58186ff12a23e0ee410e5685d2a7",
+      "bytes": 14801,
+      "language": "Python",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 60,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/io_probe.c",
+      "sha256": "e825c81bf3e3738ca4b517c4f01b937e74e125173dfe3b69589ac747c9842719",
+      "bytes": 2800,
+      "language": "C",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/memory_probe.c",
+      "sha256": "5c7bff530ba30eaa9234c950ddbe5be2f9359b70c413c69327ff0279a0a116dc",
+      "bytes": 2097,
+      "language": "C",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/native_io.c",
+      "sha256": "65f29346be4c6eff2574397ec58405d8253cde14f99af38fb5bf4d7bf313f17c",
+      "bytes": 1601,
+      "language": "C",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/native_memory.c",
+      "sha256": "d71506d7bbc1018ec2af68719c1b7dcf3f9f1f8eb4a3cc36c8c3c08ea3df6667",
+      "bytes": 1961,
+      "language": "C",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/probe.c",
+      "sha256": "b96096afc17947e41436ed4fe8b3c33caaa1769746049e901c49a86497fedfa5",
+      "bytes": 2653,
+      "language": "C",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-c/test_io.py",
+      "sha256": "5363e5f7e15934aa1e2d2383afddc68d5e47084cb79318d66e031d1bf11ffbd2",
+      "bytes": 6468,
+      "language": "Python",
+      "subsystem": "experiments/native-c",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-c"
+      ],
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 30,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-channel/channel.c",
+      "sha256": "599e0975c99dae65638217e99dec2e96696110a720f4470aa577a763253b4cda",
+      "bytes": 1239,
+      "language": "C",
+      "subsystem": "experiments/native-channel",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-channel"
+      ],
+      "documents": [
+        "experiments/native-channel/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-channel/channel.h",
+      "sha256": "bb1a248f399e1bc3a38ccdacad84b54887966ba942bade4a243d397a4a3d4f38",
+      "bytes": 564,
+      "language": "C header",
+      "subsystem": "experiments/native-channel",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-channel"
+      ],
+      "documents": [
+        "experiments/native-channel/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-channel/check.py",
+      "sha256": "372da3f2394d1091c3171d00231d5f3cbf6d6c3c0964044e64c4d5fe00e061c8",
+      "bytes": 8548,
+      "language": "Python",
+      "subsystem": "experiments/native-channel",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-channel"
+      ],
+      "documents": [
+        "experiments/native-channel/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 42,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-channel/helper.c",
+      "sha256": "3cacf6d049b84f5e2eb51fdd67c79dde5ce31f17b748117669fb59374c97e9e5",
+      "bytes": 2153,
+      "language": "C",
+      "subsystem": "experiments/native-channel",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-channel"
+      ],
+      "documents": [
+        "experiments/native-channel/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/check.py",
+      "sha256": "8339f5066868db959b91905476d88967bd8d90c4249cef72f70d098c3713d3c8",
+      "bytes": 17580,
+      "language": "Python",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 57,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/client.c",
+      "sha256": "6018214abd133d70c8a300e9237f8d18905dcc3642b5d4982d6b0f997ee71649",
+      "bytes": 8963,
+      "language": "C",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/fd-failures.h",
+      "sha256": "93dfd61427a6082fdcabb4deebb85f2b2cca10f7c59415c4632519ac562b079f",
+      "bytes": 2760,
+      "language": "C header",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/fd-layer.h",
+      "sha256": "1f4c353dfe98e6eac6f0f3efddec63579777f3f12bf253520e0614fcf3c4ce54",
+      "bytes": 3678,
+      "language": "C header",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/fd-probe.h",
+      "sha256": "65e0951d1acbbc2e575c5da7624f83548bac8699085236996d0f6d47d4cb9554",
+      "bytes": 2485,
+      "language": "C header",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/libc-adapter.h",
+      "sha256": "10cfe9e17c35d05a4ca26ff78bc9c9de326ca92ec120eca6b0bd5725638842a6",
+      "bytes": 2633,
+      "language": "C header",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/libc-probe.c",
+      "sha256": "08bfdfbcfc1adacc671962d3847b9122f5f30f18c4e0807e465b4a78379e3b1a",
+      "bytes": 2566,
+      "language": "C",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/service-start.c",
+      "sha256": "4563f89d30c982af4e2480f175d6d0259fb1c7ce29c0a278be3ee797f7d6ce1f",
+      "bytes": 836,
+      "language": "C",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/stdio-adapter.h",
+      "sha256": "8c328df0f30c96c735227b5b9017846c85d046166c7807f9d3af7bbf503af165",
+      "bytes": 2479,
+      "language": "C header",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/stdio-probe.c",
+      "sha256": "42ac60282aceeb5c2786055202a0c275997c60c9a2450fb23bf9270a16d6adde",
+      "bytes": 1993,
+      "language": "C",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-files/stdio-transport.h",
+      "sha256": "bbc4f3fa5dbbd8b350faa62f0f99322278602b527f88b371791476fa4b416a49",
+      "bytes": 233,
+      "language": "C header",
+      "subsystem": "experiments/native-files",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-files"
+      ],
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/check.py",
+      "sha256": "d878495cd4b5687e40e59fb3f42d8db5be93c35f8cdf4600a9169cb106b1ac9e",
+      "bytes": 9502,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 48,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/coexist.py",
+      "sha256": "a193f3b7c1573b7f0a062e96796c4fd7d088f6143d6a76f42b0ee90ce82f5d4d",
+      "bytes": 9244,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 39,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/connections-client.c",
+      "sha256": "13e0263a47786ec338f52770112bf6b72ade6605a77bb8d55fa58bedc0123c4e",
+      "bytes": 2006,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/connections-prepare.py",
+      "sha256": "f4193b82e685b1b50b310efcedcfccebe2c4af0c5e89cc6f9bd8a67115003dea",
+      "bytes": 4335,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 27,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/connections.py",
+      "sha256": "7f5485302941ed0d30f92b24968f94b4f1c72c77c87657184aab2217b5847883",
+      "bytes": 9932,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 39,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/fileio-libc-adapter.h",
+      "sha256": "e593cab74763c3cfe55ec825f007be675ae7ef32364f66b9866c64f7c80b34d7",
+      "bytes": 2888,
+      "language": "C header",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/fileio-libc-client.c",
+      "sha256": "131880c751865de01046609b0bbaf20d0c5b14094b124ce0b27afd56f3e07245",
+      "bytes": 5715,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/fileio-libc-prepare.py",
+      "sha256": "43c9220fa83cb46315b1f31fb68bbe3392f029b87278eae01577c19f36538917",
+      "bytes": 4844,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 28,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/fileio-libc-probe.c",
+      "sha256": "61cd3bb5a7660c161016e50777acc8490b1b2682d69df2644708699852131ca2",
+      "bytes": 3107,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/fileio-libc.py",
+      "sha256": "7853be962a20ea83d872582d22c7492b9a06b33858234d0fc35f2fb0bc63fd83",
+      "bytes": 10160,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 39,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-client.c",
+      "sha256": "19cc137bc0035776a49b7695609794490f7376a28b2875b8c7ecb0ca847c2136",
+      "bytes": 6196,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-libc-adapter.h",
+      "sha256": "df4619040d42c88fe7f217c1264853db6c3d15355f9851bdac83f181276adf21",
+      "bytes": 2572,
+      "language": "C header",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-libc-client.c",
+      "sha256": "99cae28475650fe1569ce7671f6648aef5a57d4778014c9d41ce55a2835cf0dc",
+      "bytes": 6951,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-libc-prepare.py",
+      "sha256": "86ce9d5c9538d74335e261b316fb12c44667c22a5905fe47878e5e00162a2ac6",
+      "bytes": 5048,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 28,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-libc-probe.c",
+      "sha256": "f6abb954fb9787984c04d2feeedc87057603e2b9d3b686ae26d00d01f17d7df7",
+      "bytes": 2445,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-libc.py",
+      "sha256": "408c198c03096c3e081c7449c4a35dee6ea0d2234fe8315bdb873f94448e6dcd",
+      "bytes": 10601,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 39,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited-prepare.py",
+      "sha256": "5285171c16d485970fa2a3a7d78c7f4272da727d8dadd68a55497bcff7653561",
+      "bytes": 4470,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 27,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/inherited.py",
+      "sha256": "9ab4026bf2107d41d0daa25453c119ee18401736096da5b87d6f03dc9163c177",
+      "bytes": 10369,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 39,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/prepare.py",
+      "sha256": "727e598329617d19077ab7bf420d7993ac47d19c49a87062e51f0418886eceaa",
+      "bytes": 4488,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 28,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/requester.c",
+      "sha256": "242ce73835af1b102542ea928f373c97e4aa7d9aca22995e62f2f22c29544a6e",
+      "bytes": 5373,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/shared-client.c",
+      "sha256": "e75a5a1f306269f004b0aeaf2b78b87be03d2a9f0790e4b497aee56e42fec542",
+      "bytes": 3608,
+      "language": "C",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/shared-prepare.py",
+      "sha256": "9ebb6cf42e6679adc9b2632a600e26cd7f556a4652155ff3cc1f5fac9529d33c",
+      "bytes": 4370,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 27,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/native-process/shared.py",
+      "sha256": "78793df0f5da8a465781674090886fbb2ddccd61f47f62c63a9ba42ea16a72b1",
+      "bytes": 10155,
+      "language": "Python",
+      "subsystem": "experiments/native-process",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-native-process"
+      ],
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 39,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/process-reference/check.py",
+      "sha256": "e7e29adcb243abfa83c4487e9f4965d5aa440a5829e48026b6e54ed90573e66c",
+      "bytes": 5242,
+      "language": "Python",
+      "subsystem": "experiments/process-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-process-reference"
+      ],
+      "documents": [
+        "experiments/process-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 36,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/process-reference/probe.c",
+      "sha256": "a194059f7b8d84ae643a56a15707cc435b99f777eaaebe692a154b527b59eaaf",
+      "bytes": 5921,
+      "language": "C",
+      "subsystem": "experiments/process-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-process-reference"
+      ],
+      "documents": [
+        "experiments/process-reference/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/build.py",
+      "sha256": "a4ad4b12f0a429b068d6e26db28c9d419b7255f2c8236019cb8368dd4bfbf104",
+      "bytes": 8563,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-composed.py",
+      "sha256": "3c46ea0375be54f59a9a57346378acf42df353c84e5c583cf99292b086692481",
+      "bytes": 8810,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-finalizer.py",
+      "sha256": "f64c495a1e5b94e6f6bb5cbbf9cfb3f5281ff9c6a7535c26849dab364fd6501c",
+      "bytes": 2874,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-io-faults.py",
+      "sha256": "e3205b160b0a5118498a3266c3013875687427f840469318bffec2dd2e00d522",
+      "bytes": 7680,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-locale-buffered.py",
+      "sha256": "0cc2c851b4c566b27eb784bcb111b2357e060107fca226eb5dabe1108ba72a80",
+      "bytes": 8476,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-mask.py",
+      "sha256": "7667b70eecb1c6b7573212251c193043092723766b00efce05fed89b28ddf2f5",
+      "bytes": 2925,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-session.py",
+      "sha256": "dc79d8ba35f9d0280a1c75e744b538f5bc59a61eeefa2ae1c079f087e38deee7",
+      "bytes": 2990,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-stdio-loop.py",
+      "sha256": "2756ea5c009d2a6643178597af9ef0846a554b949677a61822db79d0d391a23d",
+      "bytes": 7268,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/check-vector.py",
+      "sha256": "b5fb419ffc158baabef5714bc70381464eef0f8c227eaf4cc4ddde315e6a4057",
+      "bytes": 2795,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/composed.c",
+      "sha256": "a1fc4e24d307f714413528e4939c6d5b940a1d41e81205cd0c5d50cb71b86200",
+      "bytes": 4905,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/finalizer-controls.c",
+      "sha256": "fc017b63c6690b6641123095f331caee11e01d173eef2faf013ebb2ffa6d2889",
+      "bytes": 5245,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/finalizer.c",
+      "sha256": "db979584ad82e11bf814160e42706cdccdab8ef04550748de0731f1d2387956f",
+      "bytes": 1959,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/finalizer.h",
+      "sha256": "1c20397a6a7a5f13c18001ff35e63c227060a48ff76dee5c19ba4e1c995b249e",
+      "bytes": 1222,
+      "language": "C header",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/io-faults-control.c",
+      "sha256": "38d6fca67609f3e7b3e1803f45eadeae9bd500d5664fc47d59e1b8d4b588873d",
+      "bytes": 2010,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/io-faults.c",
+      "sha256": "a56fa76f6dc46c03567706186a6fc081b7f7061fcec7fbb24d0ee93933aeaa77",
+      "bytes": 1765,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/locale-faults-control.c",
+      "sha256": "960f8f92fd5cc7640b27a93cd7dd1e5cc18babbb2e7c3a5300513e2a0a6e6636",
+      "bytes": 2232,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/locale-faults.c",
+      "sha256": "416e440d2e1331575b071d7a2371f6485735f1a508bc3a8dfec1ec327d9e3a24",
+      "bytes": 1953,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/mask-controls.c",
+      "sha256": "5c5f2f46400e605cea8dd38294b89788b26701c86ec8dfb67d953422d5c0704c",
+      "bytes": 3122,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/mask.c",
+      "sha256": "bbfe502342aa838408c4b612ba849b43bb8935c251d1e14ceef4911a89cf2e41",
+      "bytes": 827,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/mask.h",
+      "sha256": "c4b5f84cbaa6a374c80ae7c6b07566da84060e12559bb1604ac9f9aa99daee73",
+      "bytes": 828,
+      "language": "C header",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/session-controls.c",
+      "sha256": "10c0681bd5f611851aa3da3563550ec42367781f2bd220d1041175a803d6367a",
+      "bytes": 5867,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/session.c",
+      "sha256": "6c37af826748526cac6039efed8bef8a913ce95f90b97211114fe9e24efa2b92",
+      "bytes": 2157,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/session.h",
+      "sha256": "77db8ff0048d47529d42eb2a468941a1becabc8720315b221c15b94adce7de6f",
+      "bytes": 856,
+      "language": "C header",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/stdio-loop-controls.c",
+      "sha256": "ca386c7cd3b583e025e4740b3b384aa6b9180ed2166bdfaaa7a9d71fdecd8135",
+      "bytes": 5460,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/stdio-loop.h",
+      "sha256": "6269df9e9947a67a4d593f428793c0a37294022675f0e49dfee5b771f93fbc7c",
+      "bytes": 153,
+      "language": "C header",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/test-standalone.py",
+      "sha256": "32e1fada48095c059b9ead7ca4876e679dddba5634124e44f1cdf214e1904ca9",
+      "bytes": 6473,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/test.py",
+      "sha256": "3503081dc4519a3dcade821cfd296aa035e4efb9de40c34391fb62ca66d80cd4",
+      "bytes": 9026,
+      "language": "Python",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 101,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 111,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/vector-controls.c",
+      "sha256": "348c558e29fb032d8118927f800efaac0829d1e77f091d0edd0b10bb6aa358b1",
+      "bytes": 4258,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/vector.c",
+      "sha256": "8c97729f7305798094fd2c9d2760062bf3a1a16fcecd311edf104b6f71bbab80",
+      "bytes": 1743,
+      "language": "C",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/toybox-reference/vector.h",
+      "sha256": "b48b69e52c08f9208950eb367f6d9517131360de7890364f1cdd04595d314cd7",
+      "bytes": 1073,
+      "language": "C header",
+      "subsystem": "experiments/toybox-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-toybox-reference"
+      ],
+      "documents": [
+        "experiments/toybox-reference/COMPOSED.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/PLAN.md",
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/VECTOR.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/build-busybox.py",
+      "sha256": "224819f24dbbe28a3947cd4bbd0264ef22b9c235c0ba2b59a2f302345d30689f",
+      "bytes": 8488,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 94,
+          "call": "subprocess.Popen"
+        },
+        {
+          "line": 110,
+          "call": "subprocess.check_output"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/build-getlimits.py",
+      "sha256": "5c6a66d62e05ce555a61b275a0923b5b970412def6212c6ad311a8e6ee29237c",
+      "bytes": 6969,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 87,
+          "call": "subprocess.Popen"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/build-gnu.py",
+      "sha256": "6401763e56560622753afa55388fd0964360e4f2e390e198e93fe0fbc661b043",
+      "bytes": 6960,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 87,
+          "call": "subprocess.Popen"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/cases.py",
+      "sha256": "4f77032e59f18523d16c8763ec3360f7960a48d4bbbd0058868aa21eea3a2514",
+      "bytes": 4947,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 34,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/parity-diagnosis.py",
+      "sha256": "cbde688ab680a7290b4ad3a4e3bc32699be9fc80466b9ad103583c920b8cb3d4",
+      "bytes": 1957,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 14,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/parity-probe.py",
+      "sha256": "68c9b57b06cbf95717896c8899b33c5853115a6ad0a389ffe8f6804e6e947824",
+      "bytes": 1228,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 19,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/shell-cases.py",
+      "sha256": "2c90081c9dd746bca560add8f787371cbd8921a4531088185b4440f2e5565231",
+      "bytes": 6060,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 33,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 54,
+          "call": "subprocess.Popen"
+        },
+        {
+          "line": 83,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 89,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/test-busybox-upstream.py",
+      "sha256": "3edfc038442224001039709a8d4c27edd324f3e1a315f4c1e1b391912d5645d5",
+      "bytes": 4801,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 82,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 89,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/test-gnu-shell.py",
+      "sha256": "7ed271ac8fa2c07480f0ad753bb25a749c0cfad9fde0ee3b7ccf868d274620a7",
+      "bytes": 5426,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 91,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 98,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/test-gnu-upstream.py",
+      "sha256": "e0bd19f4a4fa8af021705d1c306584094063c22f8ba88a4cc8a4f0c682b8e258",
+      "bytes": 5966,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 100,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 107,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    },
+    {
+      "path": "experiments/tr-stty-reference/test-gnu.py",
+      "sha256": "8144d0ea01ac4e08a1adb660fad954001f10a5972dc3d8ea62942a596aa57a5d",
+      "bytes": 3615,
+      "language": "Python",
+      "subsystem": "experiments/tr-stty-reference",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-tr-stty-reference"
+      ],
+      "documents": [
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/tr-stty-reference/README.md"
+      ],
+      "subprocess_call_hints": [
+        {
+          "line": 53,
+          "call": "subprocess.run"
+        },
+        {
+          "line": 60,
+          "call": "subprocess.run"
+        }
+      ],
+      "audit_status": "Not established by this inventory; consult scoped review/evidence",
+      "follow_ons": [
+        "UL-061",
+        "UL-063"
+      ]
+    }
+  ]
+}

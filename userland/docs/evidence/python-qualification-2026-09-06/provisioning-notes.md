@@ -1,0 +1,1 @@
+Initial sandbox download attempts failed DNS; authorized network download succeeded. Release-page responses were gzip encoded. Initial checksum text matcher failed on nested HTML spans; structured checksum extraction matched both already-pinned archive digests. Builds verified the explicit published digest before extraction. No signature-verification claim.

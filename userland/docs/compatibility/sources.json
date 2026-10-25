@@ -1,0 +1,30 @@
+{
+  "schema": "aether-userland.posix-review.v1",
+  "date": "2026-09-05",
+  "inventory_sha256": "0fb2e30e5b6867525beef129995cd4d6e7b111f10de39fdb42e61c225af78827",
+  "local_sources": {
+    "docs/NATIVE-DESCRIPTORS.md": "8c7dae4330ed50647121cdfcb7d2a4fc5fa7271049341feb69f9429ea380bd69",
+    "docs/evidence/strict-native-libc-2026-09-05/summary.json": "67f6e6df362a97ed2a972a19a48dfa446528cd51aa1730230654a9447573a851",
+    "docs/research/PACKAGES.md": "6591d7b29d0b9399dde00b63bf3c65936a4e5d6fe678c4e665da2d25ff0c06e2",
+    "docs/vendor/aether-distribution/v0.1.0/POSIX.md": "454ab53cee61329f6b32f2ae064def6d498f2c91a0b6f78300cbaa859309927f",
+    "experiments/musl-reference/RUNTIME.md": "cd89c9e12121a8d480b75940550d2ecd8019b0f4d2a69a8bf301afded994fbc1",
+    "experiments/native-c/README.md": "41e713dd8e9cf206ca27b9659092a3c2e6058eef1d1f9eae9dcf34db03deb9f2",
+    "experiments/native-c/io_probe.c": "632da0c4e70a2633833abd240d075c46682bd63d52699f187924976351a9741f",
+    "experiments/native-c/native_io.c": "65f29346be4c6eff2574397ec58405d8253cde14f99af38fb5bf4d7bf313f17c",
+    "docs/NATIVE-MEMORY.md": "d20055b49e541eb7801bc124ffc178b5be97b14a54823d0b4e9cd454ed7eb0b3",
+    "docs/evidence/native-memory-userland-2026-09-05/summary.json": "b3230fe36f8a7ac6f0aa0771588056810266fdd92e399c3617627b1dc3b3c431"
+  },
+  "web_review": {
+    "method": "Official Open Group search-index excerpts; direct page fetches returned HTTP 403",
+    "reviewed_pages": [
+      "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html",
+      "https://pubs.opengroup.org/onlinepubs/9799919799/functions/exec.html",
+      "https://pubs.opengroup.org/onlinepubs/9799919799/functions/open.html",
+      "https://pubs.opengroup.org/onlinepubs/9799919799/functions/pipe.html",
+      "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dup.html",
+      "https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn.html",
+      "https://pubs.opengroup.org/onlinepubs/9799919799/functions/V2_chap02.html"
+    ],
+    "limits": "Other interface links are reference locators, not full normative clauses reviewed this turn. Re-read full clauses before implementing or claiming conformance."
+  }
+}

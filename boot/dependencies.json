@@ -1,0 +1,23 @@
+{
+  "zig": "0.16.0",
+  "qemu": "11.1.1",
+  "xorriso": "1.5.8.pl02",
+  "limine": {
+    "version": "12.7.0",
+    "url": "https://github.com/Limine-Bootloader/Limine/releases/download/v12.7.0/limine-binary.tar.gz",
+    "sha256": "dda92cf2506712823c065e3afea592a5880408dd49a240c6811c36497e365769",
+    "protocol_commit": "617369cb577108e483c096e373c4f2ecc9d2081d"
+  },
+  "firmware": {
+    "code": {
+      "url": "https://raw.githubusercontent.com/qemu/qemu/v11.1.1/pc-bios/edk2-x86_64-code.fd.bz2",
+      "sha256": "f4d7c29fccb5e1d4d851eaddc41a5c4feec7de96ca7ad9bbf96f4d09838ef973",
+      "unpacked_sha256": "33090cc07675baa5190d9f1e84bf5176b33bcbfa9bacac522961150cdb6dbb2a"
+    },
+    "vars": {
+      "url": "https://raw.githubusercontent.com/qemu/qemu/v11.1.1/pc-bios/edk2-i386-vars.fd.bz2",
+      "sha256": "83470f393b9a200838b2292a65ca5708a109005d65a6422f3fa23cb21c8179b9",
+      "unpacked_sha256": "5d2ac383371b408398accee7ec27c8c09ea5b74a0de0ceea6513388b15be5d1e"
+    }
+  }
+}

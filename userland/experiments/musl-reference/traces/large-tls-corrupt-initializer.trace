@@ -1,0 +1,4 @@
+1 mmap(NULL,16664,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = 0x0000ffffadba9000
+1 arch_prctl(4098,281473596444736,0,34,-1,0) = 0
+1 set_tid_address(0x205d58) = 1
+1 exit_group(12)

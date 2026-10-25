@@ -1,0 +1,2 @@
+aether-run: invalid invocation
+Try 'aether-run --help'.

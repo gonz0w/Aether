@@ -1,0 +1,3 @@
+hello-local fixture source
+
+This checked-in text file is the local source input for the scaffold recipe.

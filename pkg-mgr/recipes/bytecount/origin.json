@@ -1,0 +1,8 @@
+{
+  "source_project": "Aether-userland",
+  "source": "/Users/cam/DEV/Aether-userland/docs/evidence/bytecount-prepare-2026-09-05/source/userland/experiments/command-runner/bytecount.c",
+  "source_sha256": "257dc3ebecc91aa28d2f6819d27507591331e9256e436c9bcbb1a0f2c740a57e",
+  "evidence_manifest_sha256": "6256ebd3967c9858d7b55ba4bbb6e1f1cd1dd2179eb82d377d8026b0f9b2b648",
+  "license_sha256": "904f4df177e4f135c1c39893a81db4c5199909a3bd9a2f5ad7c449fab7e92c1c",
+  "verified_evidence_files": 75
+}

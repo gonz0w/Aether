@@ -1,0 +1,1849 @@
+{
+  "schema": "aether-documentation-coverage-v1",
+  "scope": "Checkout root; experimental userland only, no supported distribution. Initial inventory pending UL-061 completeness and independent review.",
+  "entries": [
+    {
+      "id": "UD-c-object",
+      "surface": "c-object experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/c-object/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-command-runner",
+      "surface": "command-runner experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/README.md",
+        "experiments/command-runner/SUSTAINED.md"
+      ],
+      "evidence": [
+        "docs/evidence/sustained-runtime-2026-10-03/README.md",
+        "docs/evidence/si07-consumer-2026-10-03/README.md",
+        "docs/evidence/si07-loop-consumer-2026-10-03/README.md",
+        "docs/evidence/si07-errors-consumer-2026-10-03/README.md",
+        "docs/evidence/si07-errors-consumer-2026-10-03/review.md",
+        "docs/SI07-DISPOSITION.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-reference",
+      "surface": "dash-reference experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-import-process-2026-09-06/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-descriptor-fallback",
+      "surface": "descriptor-fallback experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/descriptor-fallback/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-launch-profile",
+      "surface": "launch-profile experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/launch-profile/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-musl-reference",
+      "surface": "musl-reference experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/musl-reference/README.md",
+        "experiments/musl-reference/RUNTIME.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-c",
+      "surface": "native-c experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-c/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/sdk-error-guards-2026-10-04/README.md",
+        "docs/evidence/sdk-error-guards-2026-10-04/source-review.md",
+        "docs/evidence/sdk-guards-disposition-2026-10-04/README.md",
+        "docs/evidence/sdk-guards-disposition-2026-10-04/source-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-channel",
+      "surface": "native-channel experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-channel/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-files",
+      "surface": "native-files experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-files/DESCRIPTORS.md",
+        "experiments/native-files/FAILURES.md",
+        "experiments/native-files/LIBC.md",
+        "experiments/native-files/README.md",
+        "experiments/native-files/STDIO.md",
+        "experiments/native-files/WRITABLE.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-process",
+      "surface": "native-process experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-process/COEXIST.md",
+        "experiments/native-process/CONNECTIONS.md",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "experiments/native-process/INHERITED.md",
+        "experiments/native-process/README.md",
+        "experiments/native-process/RUNTIME.md",
+        "experiments/native-process/SHARED.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-process-reference",
+      "surface": "process-reference experimental contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/process-reference/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-repository",
+      "surface": "repository",
+      "kind": "repository",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "README.md",
+        "AGENTS.md",
+        "CONTRIBUTING.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-libc-posix",
+      "surface": "libc-posix",
+      "kind": "api",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/compatibility/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-architecture",
+      "surface": "architecture",
+      "kind": "protocol",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/ARCHITECTURE.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-bytecount",
+      "surface": "bytecount",
+      "kind": "command",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/command-runner/README.md",
+        "experiments/command-runner/NATIVE.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-quality",
+      "surface": "quality",
+      "kind": "workflow",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/quality/PROCESS.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-base-programs",
+      "surface": "Experimental base command/provider planning",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/research/BASE-PROGRAMS.md",
+        "docs/research/PACKAGES.md"
+      ],
+      "evidence": [
+        "docs/research/base-programs/review.json",
+        "docs/research/base-programs/change-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-toybox-reference",
+      "surface": "Minimal upstream utility build and reference acceptance",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/toybox-reference/README.md",
+        "experiments/toybox-reference/PLAN.md",
+        "docs/research/TOYBOX-NATIVE-AUDIT.md",
+        "docs/TOYBOX-NATIVE-CAT.md",
+        "docs/research/TOYBOX-NATIVE-SDK.md",
+        "experiments/toybox-reference/FINALIZER.md",
+        "experiments/toybox-reference/VECTOR.md",
+        "experiments/toybox-reference/STDIO-LOOP.md",
+        "experiments/toybox-reference/SESSION.md",
+        "experiments/toybox-reference/MASK.md",
+        "experiments/toybox-reference/COMPOSED.md",
+        "docs/TOYBOX-OWNER-HANDOFF.md"
+      ],
+      "evidence": [
+        "docs/evidence/toybox-reference-2026-09-06/summary.json",
+        "docs/evidence/toybox-native-audit-2026-09-06/summary.json",
+        "docs/evidence/toybox-standalone-2026-09-06/summary.json",
+        "docs/evidence/toybox-io-faults-2026-09-06/summary.json",
+        "docs/evidence/toybox-locale-buffered-2026-09-06/summary.json",
+        "docs/evidence/toybox-native-scope-2026-09-06/summary.json",
+        "docs/evidence/toybox-native-sdk-2026-09-06/summary.json",
+        "docs/evidence/toybox-finalizer-2026-09-06/summary.json",
+        "docs/evidence/toybox-vector-2026-09-06/summary.json",
+        "docs/evidence/toybox-stdio-loop-2026-09-06/summary.json",
+        "docs/evidence/toybox-session-2026-09-06/summary.json",
+        "docs/evidence/toybox-mask-2026-09-06/summary.json",
+        "docs/evidence/toybox-composed-2026-09-06/summary.json",
+        "docs/evidence/toybox-owner-handoff-2026-09-06/summary.json"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-awk-reference",
+      "surface": "Awk provider consumer comparison",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/awk-reference/README.md",
+        "experiments/awk-reference/PLAN.md",
+        "docs/research/AWK-TR-STTY.md",
+        "experiments/awk-reference/MUSL-PLAN.md"
+      ],
+      "evidence": [
+        "docs/evidence/awk-comparison-2026-09-06/summary.json",
+        "docs/evidence/mawk-musl-2026-09-06/summary.json"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-tr-stty-reference",
+      "surface": "Experimental tr/stty provider evaluation",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/tr-stty-reference/README.md",
+        "experiments/tr-stty-reference/PLAN.md",
+        "experiments/qemu-termios/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/tr-stty-source-2026-09-06/summary.json",
+        "docs/evidence/gnu-tr-stty-2026-09-06/summary.json",
+        "docs/evidence/busybox-tr-stty-2026-09-06/summary.json",
+        "docs/evidence/gnu-tr-upstream-2026-09-06/summary.json",
+        "docs/evidence/gnu-shell-2026-09-06/summary.json",
+        "docs/evidence/gnu-stty-invalid-2026-09-06/summary.json",
+        "docs/evidence/gnu-stty-extended-2026-09-06/summary.json",
+        "docs/evidence/qemu-termios-2026-09-06/summary.json",
+        "docs/evidence/qemu-build-inputs-2026-09-06/summary.json"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-linux-uapi",
+      "surface": "Private Linux reference header export and SDK view",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/linux-uapi/README.md",
+        "experiments/linux-uapi/PLAN.md"
+      ],
+      "evidence": [
+        "docs/evidence/linux-uapi-2026-09-06/summary.json"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-aether-run-contract",
+      "surface": "Proposed public aether-run startup and status contract",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/AETHER-RUN.md",
+        "docs/quality/COMMAND-RUNNER-REVIEW.md",
+        "docs/RUNNER-INTEGRATION.md",
+        "experiments/command-runner/BOUNDARY-PLAN.md",
+        "docs/RUNNER-LOCAL-OUTCOMES.md",
+        "experiments/command-runner/LOCAL-OUTPUT.md",
+        "docs/RUNNER-OWNER-HANDOFF.md"
+      ],
+      "evidence": [
+        "docs/evidence/aether-run-contract-2026-09-06/summary.json",
+        "docs/evidence/command-source-review-2026-09-06/summary.json",
+        "docs/evidence/command-tooling-2026-09-06/summary.json",
+        "docs/evidence/command-c17-2026-09-06/summary.json",
+        "docs/evidence/command-readability-2026-09-06/summary.json",
+        "docs/evidence/runner-owner-review-2026-09-06/verification.json",
+        "docs/evidence/command-bootstrap-2026-09-06/summary.json",
+        "docs/evidence/command-transfer-2026-09-06/summary.json",
+        "docs/evidence/native-bootstrap-userland-2026-09-06/summary.json",
+        "docs/evidence/native-replies-userland-2026-09-06/summary.json",
+        "docs/evidence/native-launch-userland-2026-09-06/summary.json",
+        "docs/evidence/native-terminal-userland-2026-09-06/summary.json",
+        "docs/evidence/runner-parser-2026-09-06/summary.json",
+        "docs/evidence/runner-startup-2026-09-06/summary.json",
+        "docs/evidence/runner-results-2026-09-06/summary.json",
+        "docs/evidence/runner-mapped-2026-09-06/summary.json",
+        "docs/evidence/runner-local-proposal-2026-09-06/summary.json",
+        "docs/evidence/runner-uncertainty-2026-09-06/summary.json",
+        "docs/evidence/runner-native-uncertainty-2026-09-06/summary.json",
+        "docs/evidence/runner-native-startup-2026-09-06/summary.json",
+        "docs/evidence/runner-native-budget-2026-09-06/summary.json",
+        "docs/evidence/runner-local-delivery-2026-09-06/summary.json",
+        "docs/evidence/runner-local-frontend-2026-09-06/summary.json",
+        "docs/evidence/runner-owner-handoff-2026-09-06/summary.json"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-rc1-adp02",
+      "surface": "Unpublished standards candidate applicability and migration review",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/quality/RC1-ADP02.md",
+        "docs/quality/rc1-clauses.json"
+      ],
+      "evidence": [
+        "docs/evidence/rc1-adp02-2026-09-06/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-quality-command",
+      "surface": "quality 0.1.0 host contributor checker",
+      "kind": "command",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": "sha256:706b8e67854b04286854c3151b0f01adf3dfc006a9dd12954570bf0740ef635f",
+      "documents": [
+        "man/man1/aether-userland-quality.1",
+        "man/README.md",
+        "docs/quality/PROCESS.md",
+        "docs/quality/quality-command.json"
+      ],
+      "evidence": [
+        "docs/evidence/quality-manual-2026-09-06/README.md",
+        "docs/evidence/quality-process-2026-09-06/README.md",
+        "docs/evidence/source-inventory-2026-09-06/maintainer-review.json"
+      ],
+      "reviewer": "Project maintainer; approved review packet 2026-09-06",
+      "exclusion": null
+    },
+    {
+      "id": "UD-quality-process",
+      "surface": "Host quality reference process ownership",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "verified",
+      "revision": "sha256:9fe68456395a51755c5545203eca247a44195712706d5efb9d4cef076fb749a8",
+      "documents": [
+        "docs/quality/PROCESS.md",
+        "man/man1/aether-userland-quality.1"
+      ],
+      "evidence": [
+        "docs/evidence/quality-process-2026-09-06/README.md",
+        "docs/evidence/source-inventory-2026-09-06/maintainer-review.json"
+      ],
+      "reviewer": "Project maintainer; approved review packet 2026-09-06",
+      "exclusion": null
+    },
+    {
+      "id": "UD-python-qualification",
+      "surface": "Isolated quality-check interpreter qualification and manual reviewer handoff",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": "152af26f",
+      "documents": [
+        "docs/quality/MANUAL-REVIEW.md",
+        "docs/evidence/python-qualification-2026-09-06/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/python-qualification-2026-09-06/3.10.21/results.json",
+        "docs/evidence/python-qualification-2026-09-06/3.12.14/results.json"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-git-workflow",
+      "surface": "Copied contributor Git hook tooling",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        ".githooks/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/source-inventory-2026-09-06/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-source-inventory",
+      "surface": "Dated maintained-source census and audit routing",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/quality/SOURCE-INVENTORY.md",
+        "docs/quality/source-inventory.json"
+      ],
+      "evidence": [
+        "docs/evidence/source-inventory-2026-09-06/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-import-process",
+      "surface": "Host dash import auditor process boundary",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "verified",
+      "revision": "sha256:22dadd299513d34953d06f1499d4fad1654f2b17e75a782fc731be636f1ed1d0",
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-import-process-2026-09-06/README.md",
+        "docs/evidence/dash-review-2026-09-07/README.md"
+      ],
+      "reviewer": "Project maintainer approval, 2026-09-07; docs/evidence/dash-review-2026-09-07/maintainer-review.json",
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-host-build",
+      "surface": "Dash test-helper local compiler process boundary",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "verified",
+      "revision": "sha256:6cb0ecd0529110d6a1d179d422e67c0bc96a3888eacbd2718ef457fa4b2b81ea",
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-host-build-2026-09-06/README.md",
+        "docs/evidence/dash-container-integration-2026-09-06/README.md",
+        "docs/evidence/dash-review-2026-09-07/README.md"
+      ],
+      "reviewer": "Project maintainer approval, 2026-09-07; docs/evidence/dash-review-2026-09-07/maintainer-review.json",
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-container-process",
+      "surface": "Remote lifecycle adapter integrated into dash guest and target-generator stages",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "verified",
+      "revision": "sha256:14fd3c4144b91b5845f88322cbc65d4da0d9d2920912588ff58c4bc431a4db2d",
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-container-2026-09-06/README.md",
+        "docs/evidence/dash-container-integration-2026-09-06/README.md",
+        "docs/evidence/dash-generator-2026-09-06/README.md",
+        "docs/evidence/dash-review-2026-09-07/README.md"
+      ],
+      "reviewer": "Project maintainer approval, 2026-09-07; docs/evidence/dash-review-2026-09-07/maintainer-review.json",
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-generator-build",
+      "surface": "Controlled local build and top-level target-generator stages",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "verified",
+      "revision": "sha256:54d8ddeaff2df926b29bd1d88fe22f98f65c6698c4bfc09d4ba4eac15145fd2a",
+      "documents": [
+        "experiments/dash-reference/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-generator-2026-09-06/README.md",
+        "docs/evidence/dash-review-2026-09-07/README.md"
+      ],
+      "reviewer": "Project maintainer approval, 2026-09-07; docs/evidence/dash-review-2026-09-07/maintainer-review.json",
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-transport-faults",
+      "surface": "Live post-create and committed-create response-loss fixtures",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "verified",
+      "revision": "sha256:922165c3e554c8e391b367dd4928e70ae3fe30e935a6644ac889cd4dbdee0b66",
+      "documents": [
+        "experiments/dash-reference/README.md",
+        "docs/quality/DASH-REVIEW.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-transport-loss-2026-09-06/README.md",
+        "docs/evidence/dash-relay-eof-2026-09-06/README.md",
+        "docs/evidence/dash-transport-qualified-2026-09-07/README.md",
+        "docs/evidence/dash-create-response-2026-09-07/README.md",
+        "docs/evidence/dash-review-2026-09-07/README.md"
+      ],
+      "reviewer": "Project maintainer approval, 2026-09-07; docs/evidence/dash-review-2026-09-07/maintainer-review.json",
+      "exclusion": null
+    },
+    {
+      "id": "UD-parser-extended",
+      "surface": "Fixed host parser byte sweep, replay/reduction, static analysis, RSS metrics, concurrency and transport stress",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/command-runner/EXTENDED.md"
+      ],
+      "evidence": [
+        "docs/evidence/parser-extended-2026-09-07/README.md",
+        "docs/evidence/parser-replay-2026-09-07/README.md",
+        "docs/evidence/extended-host-2026-09-07/README.md",
+        "docs/evidence/parser-reducer-review-2026-09-07/README.md",
+        "docs/evidence/asan-host-2026-09-07/README.md",
+        "docs/evidence/extended-matrix-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-sdk-package-handoff",
+      "surface": "Experimental SDK/package coordination proposal",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/SDK-PACKAGE-HANDOFF.md",
+        "docs/SDK-OWNER-REVIEW.md",
+        "docs/SDK-ADMISSION-RESPONSE.md",
+        "docs/SDK-TARGET-DECISION.md",
+        "docs/SDK-08-CLOSURE.md",
+        "experiments/sdk-consumer/README.md",
+        "docs/quality/SDK-REVIEW.md",
+        "experiments/sdk-consumer/STARTUP-PLAN.md",
+        "experiments/sdk-consumer/RECEIPT-FAILURE-PLAN.md",
+        "experiments/sdk-consumer/SCHEMA-PLAN.md",
+        "experiments/sdk-consumer/PREFLIGHT-PLAN.md"
+      ],
+      "evidence": [
+        "docs/evidence/sdk-package-handoff-2026-09-07/README.md",
+        "docs/evidence/sdk-admission-response-2026-09-07/README.md",
+        "docs/evidence/sdk-target-review-2026-09-07/README.md",
+        "docs/evidence/sdk-consumer-preimport-2026-09-07/README.md",
+        "docs/evidence/sdk-imported-consumer-2026-09-07/README.md",
+        "docs/evidence/sdk-startup-link-2026-09-07/README.md",
+        "docs/evidence/sdk-static-rebuild-2026-09-07/README.md",
+        "docs/evidence/sdk-08-closure-2026-09-07/README.md",
+        "docs/evidence/sdk-08-native-2026-09-07/README.md",
+        "docs/evidence/sdk08-matched-2026-09-07/README.md",
+        "docs/evidence/sdk-package-review-2026-09-07/README.md",
+        "docs/evidence/sdk-copy-check-2026-09-07/README.md",
+        "docs/evidence/sdk-receipt-failures-2026-09-07/README.md",
+        "docs/evidence/sdk-schema-2026-09-07/README.md",
+        "docs/evidence/sdk-preflight-2026-09-07/README.md",
+        "docs/evidence/sdk-review-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-identity-planning",
+      "surface": "Identity/session planning; no supported login or recovery workflow",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/IDENTITY-PLAN.md",
+        "docs/quality/IDENTITY-REVIEW.md"
+      ],
+      "evidence": [
+        "docs/evidence/identity-planning-2026-09-07/README.md",
+        "docs/evidence/identity-review-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-qemu-termios",
+      "surface": "Isolated reference QEMU correction contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/qemu-termios/README.md",
+        "experiments/qemu-termios/TRANSLATION-PLAN.md",
+        "experiments/qemu-termios/BUILD-PLAN.md",
+        "experiments/qemu-termios/PTY-PLAN.md",
+        "experiments/qemu-termios/CONSUMER-PLAN.md",
+        "experiments/qemu-termios/COMMON-PLAN.md",
+        "experiments/qemu-termios/UPSTREAM-PLAN.md",
+        "experiments/qemu-termios/RECOVERY-PLAN.md",
+        "experiments/qemu-termios/LEGACY-PLAN.md",
+        "experiments/qemu-termios/RANGE-PLAN.md",
+        "experiments/qemu-termios/SPEED-PLAN.md",
+        "experiments/qemu-termios/LOCALE-PLAN.md",
+        "experiments/qemu-termios/UTF8-PLAN.md"
+      ],
+      "evidence": [
+        "docs/evidence/qemu-cmspar-translation-2026-09-07/README.md",
+        "docs/evidence/qemu-offline-build-2026-09-07/README.md",
+        "docs/evidence/qemu-consumer-regression-2026-09-07/README.md",
+        "docs/evidence/qemu-recovery-2026-09-07/README.md",
+        "docs/evidence/busybox-legacy-2026-09-07/README.md",
+        "docs/evidence/tr-ranges-2026-09-07/README.md",
+        "docs/evidence/stty-speed-2026-09-07/README.md",
+        "docs/evidence/candidate-locale-2026-09-07/README.md",
+        "docs/evidence/tr-utf8-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-provider-review",
+      "surface": "Bounded awk tr stty provider review",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/quality/PROVIDER-REVIEW.md",
+        "docs/research/BASE-PROGRAMS.md"
+      ],
+      "evidence": [
+        "docs/evidence/provider-review-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-tr-byte-subset",
+      "surface": "Candidate package tr byte subset",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/compatibility/TR-BYTE-SUBSET.md",
+        "experiments/qemu-termios/SUBSET-PLAN.md",
+        "docs/TR-OWNER-HANDOFF.md"
+      ],
+      "evidence": [
+        "docs/evidence/tr-subset-2026-09-07/README.md",
+        "docs/evidence/tr-owner-handoff-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-tr-workload",
+      "surface": "Bounded reference tr workload measurements",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/qemu-termios/WORKLOAD-PLAN.md"
+      ],
+      "evidence": [
+        "docs/evidence/tr-workload-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-m3-focus",
+      "surface": "M3 native integration focus and producer intake",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/M3-EXECUTION-FOCUS.md"
+      ],
+      "evidence": [
+        "docs/evidence/m3-refocus-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-four-role-parent",
+      "surface": "Opt-in four-role native runner consumer",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/command-runner/FOUR-ROLE-PLAN.md",
+        "experiments/command-runner/NATIVE.md",
+        "experiments/command-runner/SUSTAINED.md"
+      ],
+      "evidence": [
+        "docs/evidence/four-role-consumer-2026-09-07/README.md",
+        "docs/evidence/four-role-native-2026-09-07/README.md",
+        "docs/evidence/sustained-command-contract-2026-09-25/README.md",
+        "docs/evidence/sustained-command-contract-2026-09-25/review.md",
+        "docs/evidence/sustained-decoder-2026-09-25/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-toybox-native-consumer",
+      "surface": "Bounded native Toybox normal-copy consumer",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/TOYBOX-NATIVE-CAT.md",
+        "experiments/toybox-native/PLAN.md",
+        "experiments/toybox-native/FINALIZATION-GAPS.md"
+      ],
+      "evidence": [
+        "docs/evidence/toybox-native-consumer-2026-09-07/README.md",
+        "docs/evidence/toybox-error-usage-consumer-2026-09-07/README.md",
+        "docs/evidence/toybox-finalizer-consumer-2026-09-07/README.md",
+        "docs/evidence/toybox-backend-rebuild-2026-09-07/README.md",
+        "docs/evidence/toybox-producer-regression-2026-09-07/README.md",
+        "docs/evidence/toybox-close-consumer-2026-09-07/README.md",
+        "docs/evidence/toybox-close-regression-2026-09-07/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-dash-native-link",
+      "surface": "dash native SDK link and bounded startup prerequisite experiments",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/dash-native/PLAN.md",
+        "docs/NATIVE-DASH-GAPS.md",
+        "experiments/dash-native/WORKLOADS.md",
+        "experiments/dash-native/METADATA.md",
+        "experiments/dash-native/ACCEPTANCE.md",
+        "experiments/dash-native/FAILED-EXEC.md",
+        "experiments/dash-native/SCRATCH.md",
+        "experiments/dash-native/SESSION.md",
+        "experiments/dash-native/SESSION-ACCEPTANCE.md",
+        "experiments/dash-native/SESSION-RECOVERY.md",
+        "experiments/dash-native/RECOVERY-ACCEPTANCE.md",
+        "experiments/dash-native/SESSION-FAILED-EXEC.md",
+        "experiments/dash-native/FAILED-EXEC-ACCEPTANCE.md",
+        "experiments/dash-native/SESSION-SCRATCH.md",
+        "experiments/session-runtime/README.md",
+        "docs/evidence/session-runtime-build-imports-2026-09-29/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/dash-native-link-2026-09-07/README.md",
+        "docs/evidence/dash-native-link-2026-09-07/review.md",
+        "docs/evidence/dash-startup-probe-2026-09-07/README.md",
+        "docs/evidence/dash-startup-probe-2026-09-07/review.md",
+        "docs/evidence/dash-startup-intake-2026-09-07/README.md",
+        "docs/evidence/dash-startup-native-2026-09-07/README.md",
+        "docs/evidence/dash-workload-handoff-2026-09-07/README.md",
+        "docs/evidence/shell-mask-consumer-2026-09-07/README.md",
+        "docs/evidence/dash-init-consumer-2026-09-08/README.md",
+        "docs/evidence/dash-init-consumer-2026-09-08/review.md",
+        "docs/evidence/dash-parent-consumer-2026-09-08/README.md",
+        "docs/evidence/dash-parent-consumer-2026-09-08/review.md",
+        "docs/evidence/dash-metadata-review-2026-09-08/README.md",
+        "docs/evidence/dash-metadata-review-2026-09-08/review.md",
+        "docs/evidence/dash-metadata-consumer-2026-09-08/README.md",
+        "docs/evidence/dash-metadata-consumer-2026-09-08/review.md",
+        "docs/evidence/dash-cwd-consumer-2026-09-09/README.md",
+        "docs/evidence/dash-cwd-consumer-2026-09-09/review.md",
+        "docs/evidence/dash-cwd-bootstrap-consumer-2026-09-09/README.md",
+        "docs/evidence/dash-cwd-bootstrap-consumer-2026-09-09/review.md",
+        "docs/evidence/dash-file-consumer-2026-09-09/README.md",
+        "docs/evidence/dash-file-consumer-2026-09-09/review.md",
+        "docs/evidence/dash-file-admission-consumer-2026-09-09/README.md",
+        "docs/evidence/dash-file-admission-consumer-2026-09-09/review.md",
+        "docs/evidence/dash-file-descriptions-consumer-2026-09-09/README.md",
+        "docs/evidence/dash-file-descriptions-consumer-2026-09-09/review.md",
+        "docs/evidence/dash-file-recovery-consumer-2026-09-09/README.md",
+        "docs/evidence/dash-file-recovery-consumer-2026-09-09/review.md",
+        "docs/evidence/dash-backend-intake-2026-09-09/README.md",
+        "docs/evidence/dash-backend-intake-2026-09-09/review.md",
+        "docs/evidence/dash-backend-consumer-2026-09-10/README.md",
+        "docs/evidence/dash-backend-consumer-2026-09-10/review.md",
+        "docs/evidence/dash-helper-consumer-2026-09-10/README.md",
+        "docs/evidence/dash-helper-consumer-2026-09-10/review.md",
+        "docs/evidence/dash-serial-consumer-2026-09-11/README.md",
+        "docs/evidence/dash-serial-consumer-2026-09-11/review.md",
+        "docs/evidence/dash-redirect-consumer-2026-09-11/README.md",
+        "docs/evidence/dash-redirect-consumer-2026-09-11/review.md",
+        "docs/evidence/pipe-core-consumer-2026-09-11/README.md",
+        "docs/evidence/pipe-core-consumer-2026-09-11/review.md",
+        "docs/evidence/dash-argv-signal-consumer-2026-09-13/README.md",
+        "docs/evidence/dash-argv-signal-consumer-2026-09-13/review.md",
+        "docs/evidence/dash-wait-consumer-2026-09-14/README.md",
+        "docs/evidence/dash-wait-consumer-2026-09-14/review.md",
+        "docs/evidence/dash-closure-consumer-2026-09-14/README.md",
+        "docs/evidence/dash-closure-consumer-2026-09-14/review.md",
+        "docs/evidence/dash-phase-one-consumer-2026-09-14/README.md",
+        "docs/evidence/dash-phase-one-consumer-2026-09-14/review.md",
+        "docs/evidence/dash-acceptance-index-2026-09-14/README.md",
+        "docs/evidence/dash-acceptance-index-2026-09-14/review.md",
+        "docs/evidence/dash-recovery-consumer-2026-09-14/README.md",
+        "docs/evidence/dash-recovery-consumer-2026-09-14/review.md",
+        "docs/evidence/dash-failed-exec-consumer-2026-09-15/README.md",
+        "docs/evidence/dash-failed-exec-consumer-2026-09-15/review.md",
+        "docs/evidence/dash-scratch-intake-2026-09-15/README.md",
+        "docs/evidence/dash-scratch-consumer-2026-09-23/README.md",
+        "docs/evidence/dash-substitution-consumer-2026-09-23/README.md",
+        "docs/evidence/dash-substitution-regression-2026-09-23/README.md",
+        "docs/evidence/dash-parent-consumer-2026-09-24/README.md",
+        "docs/evidence/dash-session-plan-2026-09-24/README.md",
+        "docs/evidence/dash-serial-pipeline-consumer-2026-09-24/README.md",
+        "docs/evidence/shell-streams-consumer-2026-09-24/README.md",
+        "docs/evidence/session-consumer-2026-09-25/README.md",
+        "docs/evidence/session-consumer-2026-09-25/review.md",
+        "docs/evidence/dash-session-recovery-plan-2026-09-25/README.md",
+        "docs/evidence/dash-session-recovery-plan-2026-09-25/review.md",
+        "docs/evidence/recovery-consumer-2026-09-29/README.md",
+        "docs/evidence/recovery-consumer-2026-09-29/review.md",
+        "docs/evidence/dash-failed-exec-session-plan-2026-09-29/README.md",
+        "docs/evidence/dash-failed-exec-session-plan-2026-09-29/review.md",
+        "docs/evidence/failed-exec-session-consumer-2026-09-29/README.md",
+        "docs/evidence/failed-exec-session-consumer-2026-09-29/review.md",
+        "docs/evidence/dash-scratch-session-plan-2026-09-29/README.md",
+        "docs/evidence/dash-scratch-session-plan-2026-09-29/review.md",
+        "docs/evidence/scratch-session-consumer-2026-09-29/README.md",
+        "docs/evidence/scratch-session-consumer-2026-09-29/review.md",
+        "experiments/dash-native/SCRATCH-ACCEPTANCE.md",
+        "experiments/dash-native/SESSION-SERIAL.md",
+        "docs/evidence/dash-serial-session-plan-2026-09-29/README.md",
+        "docs/evidence/dash-serial-session-plan-2026-09-29/review.md",
+        "docs/evidence/serial-session-consumer-2026-09-29/README.md",
+        "docs/evidence/serial-session-consumer-2026-09-29/review.md",
+        "experiments/dash-native/SERIAL-ACCEPTANCE.md",
+        "docs/SESSION-SDK-BOUNDARY.md",
+        "docs/quality/SESSION-RUNTIME-REVIEW.md",
+        "docs/evidence/session-sdk-boundary-2026-09-29/README.md",
+        "docs/evidence/session-sdk-boundary-2026-09-29/review.md",
+        "docs/evidence/session-runtime-python310-2026-10-03/README.md",
+        "docs/evidence/session-runtime-python310-2026-10-03/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-lab-image",
+      "surface": "bounded developer lab-kit contributor subsystem",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/lab-image/README.md",
+        "experiments/lab-image/BOOT.md",
+        "experiments/lab-image/BOOT-ABI24.md"
+      ],
+      "evidence": [
+        "docs/evidence/lab-image-2026-10-03/README.md",
+        "docs/evidence/lab-image-2026-10-03/review.md",
+        "docs/evidence/session-channel-wait-consumer-2026-10-03/README.md",
+        "docs/evidence/lab-boot-command-2026-10-04/README.md",
+        "docs/evidence/lab-boot-command-2026-10-04/source-review.md",
+        "docs/evidence/sysinit-recipe-consumer-2026-10-04/README.md",
+        "docs/evidence/sysinit-recipe-consumer-2026-10-04/source-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-session-channel-wait",
+      "surface": "bounded ABI24 wait-aware session runtime and lab composition",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/session-runtime/README.md",
+        "docs/ABI24-SESSION-HANDOFF.md"
+      ],
+      "evidence": [
+        "docs/evidence/session-channel-wait-consumer-2026-10-03/README.md",
+        "docs/evidence/session-channel-wait-consumer-2026-10-03/source-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-sysinit-session-consumer",
+      "surface": "independent bounded sys-init ABI24 entry consumption and unresolved-failure audit",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/SYSINIT-SESSION-CONSUMPTION.md"
+      ],
+      "evidence": [
+        "docs/evidence/sysinit-session-consumer-2026-10-03/README.md",
+        "docs/evidence/sysinit-session-consumer-2026-10-03/source-review.md",
+        "docs/evidence/sysinit-read-race-consumer-2026-10-04/README.md",
+        "docs/evidence/sysinit-read-race-consumer-2026-10-04/source-review.md",
+        "docs/evidence/sysinit-recipe-consumer-2026-10-04/README.md",
+        "docs/evidence/sysinit-recipe-consumer-2026-10-04/source-review.md",
+        "docs/evidence/sysinit-denials-consumer-2026-10-04/README.md",
+        "docs/evidence/sysinit-denials-consumer-2026-10-04/source-review.md",
+        "docs/evidence/sysinit-final-controls-consumer-2026-10-04/README.md",
+        "docs/evidence/sysinit-final-controls-consumer-2026-10-04/source-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-entropy",
+      "surface": "explicit private native entropy grant adapter and probe",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-entropy/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/native-entropy-consumer-2026-10-05/README.md",
+        "docs/evidence/native-entropy-consumer-2026-10-05/source-review.md",
+        "docs/evidence/native-service-retirement-consumer-2026-10-05/README.md",
+        "docs/evidence/native-service-retirement-consumer-2026-10-05/source-review.md",
+        "docs/evidence/native-service-reaper-consumer-2026-10-05/README.md",
+        "docs/evidence/native-service-reaper-consumer-2026-10-05/source-review.md",
+        "docs/evidence/native-service-origin-consumer-2026-10-05/README.md",
+        "docs/evidence/native-service-origin-consumer-2026-10-05/source-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-clock",
+      "surface": "private explicit-grant elapsed clock and absolute sleep adapter/probe",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-clock/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/native-clock-consumer-2026-10-05/README.md",
+        "docs/evidence/native-clock-consumer-2026-10-05/source-review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-service-runtime",
+      "surface": "private maintained musl service runtime and SDK supplement",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-service-runtime/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/native-service-runtime-2026-10-06/README.md",
+        "docs/evidence/native-service-runtime-2026-10-06/review.md",
+        "docs/evidence/service-runtime-openzfs-consumer-2026-10-06/README.md",
+        "docs/evidence/service-runtime-openzfs-consumer-2026-10-06/review.md",
+        "docs/evidence/runtime-liveness-2026-10-06/README.md",
+        "docs/evidence/runtime-liveness-2026-10-06/review.md",
+        "docs/evidence/reaper-fix-2026-10-06/README.md",
+        "docs/evidence/reaper-fix-2026-10-06/review.md",
+        "docs/evidence/fixed-reaper-consumer-2026-10-06/README.md",
+        "docs/evidence/fixed-reaper-consumer-2026-10-06/review.md",
+        "docs/evidence/spa-active-consumer-2026-10-06/README.md",
+        "docs/evidence/spa-active-consumer-2026-10-06/review.md",
+        "docs/evidence/pool-diagnostic-review-2026-10-07/README.md",
+        "docs/evidence/pool-diagnostic-review-2026-10-07/review.md",
+        "docs/evidence/backing-scan-consumer-2026-10-07/README.md",
+        "docs/evidence/backing-scan-consumer-2026-10-07/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-native-utc",
+      "surface": "private shared UTC variant and checked libc timestamp wrappers",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/native-utc/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/native-utc-2026-10-06/README.md",
+        "docs/evidence/native-utc-2026-10-06/review.md",
+        "docs/evidence/reaper-utc-2026-10-06/README.md",
+        "docs/evidence/reaper-utc-2026-10-06/review.md",
+        "docs/evidence/fixed-reaper-consumer-2026-10-06/README.md",
+        "docs/evidence/fixed-reaper-consumer-2026-10-06/review.md",
+        "docs/evidence/spa-active-consumer-2026-10-06/README.md",
+        "docs/evidence/spa-active-consumer-2026-10-06/review.md",
+        "docs/evidence/pool-diagnostic-review-2026-10-07/README.md",
+        "docs/evidence/pool-diagnostic-review-2026-10-07/review.md",
+        "docs/evidence/backing-scan-consumer-2026-10-07/README.md",
+        "docs/evidence/backing-scan-consumer-2026-10-07/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-service",
+      "surface": "private Rust filesystem service authority, write policy and borrowed engine metadata",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-SERVICE-NATIVE-ENTRY.md",
+        "docs/proposals/FS-SERVICE-TRANSPORT.md",
+        "docs/proposals/FS-SERVICE-METADATA.md",
+        "docs/proposals/FS-AF07-OPERATIONAL-OWNER.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-policy-2026-10-18/README.md",
+        "docs/evidence/filesystem-policy-2026-10-18/review.md",
+        "docs/evidence/filesystem-bridge-2026-10-18/README.md",
+        "docs/evidence/filesystem-bridge-2026-10-18/review.md",
+        "docs/evidence/filesystem-transport-2026-10-19/README.md",
+        "docs/evidence/filesystem-transport-2026-10-19/review.md",
+        "docs/evidence/filesystem-native-consumption-2026-10-20/README.md",
+        "docs/evidence/filesystem-metadata-service-2026-10-21/README.md",
+        "docs/evidence/filesystem-metadata-service-2026-10-21/review.md",
+        "docs/evidence/filesystem-af07-owner-2026-10-21/README.md",
+        "docs/evidence/filesystem-af07-owner-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-session-fs-abi29",
+      "surface": "private ABI29 shell startup, complete client link and initial backing candidate",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/session-runtime/README.md",
+        "docs/proposals/SESSION-FS-ABI29.md"
+      ],
+      "evidence": [
+        "docs/evidence/session-abi29-candidate-2026-10-21/README.md",
+        "docs/evidence/session-abi29-candidate-2026-10-21/review.md",
+        "docs/evidence/session-abi29-link-2026-10-21/README.md",
+        "docs/evidence/session-abi29-link-2026-10-21/review.md",
+        "docs/evidence/session-abi29-boot-parent-2026-10-21/README.md",
+        "docs/evidence/session-abi29-boot-parent-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-descriptors",
+      "surface": "private read-only Owner-backed file descriptions",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-DESCRIPTORS.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-descriptors-2026-10-21/README.md",
+        "docs/evidence/filesystem-descriptors-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-af07-client",
+      "surface": "private read-only AF07 transport client",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-AF07-CLIENT.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-af07-client-2026-10-21/README.md",
+        "docs/evidence/filesystem-af07-client-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-remote-fds",
+      "surface": "private AF07-backed read-only descriptions",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-REMOTE-DESCRIPTORS.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-remote-fds-2026-10-21/README.md",
+        "docs/evidence/filesystem-remote-fds-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-process-fds",
+      "surface": "private ABI29 process descriptor views",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-PROCESS-DESCRIPTORS.md",
+        "experiments/filesystem-service/vendor/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-process-fds-2026-10-21/README.md",
+        "docs/evidence/filesystem-process-fds-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-wire",
+      "surface": "private AEFD0001 file RPC handler and C codec",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-FD-WIRE.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-wire-2026-10-21/README.md",
+        "docs/evidence/filesystem-fd-wire-2026-10-21/review.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-client",
+      "surface": "Private C file-client transport",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-CLIENT.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-client-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-facade",
+      "surface": "Private typed C file facade and live host pipe integration",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-FACADE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-facade-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-bindings",
+      "surface": "Private proposed tagged startup FD snapshot decoder",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-BINDINGS.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-bindings-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-routing",
+      "surface": "Private tagged C read dispatcher and host integration",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-ROUTING.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-routing-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-table",
+      "surface": "Private tagged table file operations and host qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-TABLE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-table-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-streams",
+      "surface": "Private mixed stream aliases and observed close host qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-STREAMS.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-streams-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-write",
+      "surface": "Private tagged stream output host qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-WRITE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-write-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-pipe",
+      "surface": "Private paired pipe publication host qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-PIPE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-pipe-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-replace",
+      "surface": "Private chosen-target stream replacement host qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-REPLACE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-replace-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-session",
+      "surface": "Integrated descriptor startup, operations, projection, finish and target build batch",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-SESSION.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-session-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-redirect",
+      "surface": "File/stream replacement, rollback, receipt and session integration batch",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-REDIRECT.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-redirect-2026-10-21/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-native",
+      "surface": "Native-call descriptor adapters, signal guard and target object qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-NATIVE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-native-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-context",
+      "surface": "Placed descriptor context admission, operation guard and finish integration",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-CONTEXT.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-context-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-startup",
+      "surface": "Proposed single-consumer native descriptor startup and identity admission",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-STARTUP.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-startup-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fd-libc",
+      "surface": "Optional actual libc FD/start/wait/exit bindings and complete-shell link blocker",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FD-LIBC.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fd-libc-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-serialized-copy",
+      "surface": "Versioned serialized local file-view inheritance across native-copy callback",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-SERIALIZED-COPY.md",
+        "docs/proposals/FS-PROCESS-DESCRIPTORS.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-serialized-copy-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fork-frame",
+      "surface": "Proposed fork request/disposition/ready codecs and child-startup correspondence",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FORK-FRAME.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fork-frame-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fork-stage",
+      "surface": "Opt-in armed fork stage, one-shot child constructor and full-shell static link",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FORK-STAGE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fork-stage-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-file-view",
+      "surface": "Read-only authoritative process FILE presence/cloexec metadata v1",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FILE-VIEW.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-file-view-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-fork-tls",
+      "surface": "Real TLS shell relink and unchanged Aether ELF parser host acceptance",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FORK-TLS.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-fork-tls-2026-10-22/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-broker-init",
+      "surface": "opt-in FILE broker in-place construction, bounded description selectors, shared protocol operation boundary and mapped owner integration; checked disconnect verification before endpoint closure with all process views settled",
+      "kind": "subsystem",
+      "owner": "Aether userland/sys-init",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-BROKER-INIT.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-immutable-exec",
+      "surface": "Explicit FILE-context immutable-helper exec and initial/command readiness; known refusal preserves context, failed/unknown retires",
+      "kind": "subsystem",
+      "owner": "Aether userland/sys-init",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-root-paths",
+      "surface": "Canonical root and retained-directory read-only walks; borrowed-base and temporary cleanup",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-ROOT-PATHS.md",
+        "experiments/filesystem-service/README.md",
+        "docs/proposals/FS-FD-WIRE.md",
+        "docs/proposals/FS-FD-LIBC.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-root-paths-2026-10-23/README.md",
+        "docs/evidence/filesystem-path-wire-2026-10-23/README.md",
+        "docs/evidence/filesystem-path-owner-2026-10-23/README.md",
+        "docs/evidence/filesystem-directory-paths-2026-10-23/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-file-replace",
+      "surface": "Matched16-slot FILE/startup/fork/exec and public mixed dup2; bounded native success/recovery witness",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FILE-REPLACE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-file-replace-2026-10-23/README.md",
+        "docs/evidence/filesystem-file16-2026-10-23/README.md",
+        "docs/evidence/filesystem-dup2-owner-2026-10-23/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-process-cwd",
+      "surface": "Retained CWD plus separate AF08 physical parent/path, FILE03 public chdir/getcwd and matched offline owner; no POSIX/native/ISO claim",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-CWD.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-process-cwd-2026-10-23/README.md",
+        "docs/evidence/filesystem-public-cwd-2026-10-23/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-home",
+      "surface": "Trusted existing-handle home delegation with read-only system root; private owner library and offline checker",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-home-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-home-wire",
+      "surface": "Explicit two-grant service/client binding over actual owner policy; offline host and no_std qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME-WIRE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-home-wire-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-client-mutations",
+      "surface": "AF09 client write and typed namespace completion/error receipts; offline host and no_std qualification",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-CLIENT-MUTATIONS.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-client-mutations-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-process-writes",
+      "surface": "AF09 existing-home-file process opens and serialized shared-position writes with retained progress/offset/cleanup; no FILE/native adoption",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-PROCESS-WRITES.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-process-writes-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-file-writes",
+      "surface": "AEFW0001 FILE home opens/write receipts and explicit C client/facade interoperability; host/no_std/freestanding only",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-FILE-WRITES.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-file-writes-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-home-in-place",
+      "surface": "Explicit AF09 home Client/ProcessFiles in-place construction; fieldwise initialization, two greetings and retained cleanup; no native owner adoption",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME-IN-PLACE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-home-in-place-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-home-activation",
+      "surface": "Explicit AF09 two-grant activation wrapper; attachment before one readiness callback, publication before queue send, both greetings before Report.ready, exact failures/cleanup; no native-home entry activation",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME-ACTIVATION.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-home-activation-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-home-native",
+      "surface": "Explicit finite AF09 native home producer; fixed bootstrap and original/normalized receipts, private C carriers, actual selected C lifecycle/order validation; offline candidate with full composition/native gates separate",
+      "kind": "subsystem",
+      "owner": "Aether-userland/Aether",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME-NATIVE.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/evidence/filesystem-home-native-2026-10-24/README.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
+    }
+  ]
+}

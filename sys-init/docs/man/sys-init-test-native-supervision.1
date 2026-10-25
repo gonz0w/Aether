@@ -1,0 +1,142 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-TEST-NATIVE-SUPERVISION 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-test-native-supervision
+.Nd consume experimental sys-init artifacts in an isolated Aether test workspace
+.Sh SYNOPSIS
+.Nm python3
+.Ar tests/native-supervision.py
+.br
+.Fl Fl aether Ar directory
+.br
+.Fl Fl native Ar file
+.br
+.Fl Fl work Ar directory
+.Nm python3
+.Ar tests/native-supervision.py
+.Fl Fl help
+.Sh DESCRIPTION
+This source-checkout developer command performs actual kernel builds and
+native
+QEMU smoke tests.
+It is not an installed operator command, a host-only model
+check or permission to test arbitrary images.
+Use trusted, independently reviewed
+inputs and tools matching the selected retained experiment.
+The command copies inputs to a new workspace and builds there rather than in
+the original kernel tree.
+Existing workspace paths are rejected.
+No root privileges, host service installation or physical target access is
+needed.
+.Pp
+Use Python 3.10 or newer, Rust 1.98.0 with x86_64-unknown-none and a
+producer-compatible Zig/QEMU toolchain with boot dependencies already
+available.
+The wrapper does not select a kernel revision for you or authenticate
+provenance
+merely by copying and hashing a mutable directory.
+Provision tools separately.
+The runner copies the kernel and dependencies, then runs five supervision
+cases:
+pass, wrong_detail, fault_entry, native-no-output and native-skip-zero.
+It builds the corresponding envelope and kernel with SMP disabled, then
+invokes
+the copied producer's supervised_smoke.py.
+The positive requires the exact
+success line and zero smoke status; negatives require the selected panic line,
+nonzero status and absence of success.
+It is a legacy supervision profile.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl aether Ar directory
+Trusted kernel source snapshot with matching boot dependencies.
+.It Fl Fl native Ar file
+Reviewed native C envelope compatible with the supervision profile.
+.It Fl Fl work Ar directory
+New workspace; must not already exist.
+.It Fl Fl help
+Print usage and exit without creating a workspace or launching tools.
+.El
+.Pp
+There is no --version option; argparse rejects it with exit 2.
+Relative input/work paths are resolved from the caller's working directory.
+Do not place the new workspace inside any input tree: the harness copies those
+trees and does not uniformly enforce that separation.
+Reserve a private path
+outside producer/SDK/dependency directories and preserve failed workspaces.
+.Sh OUTPUT AND FILES
+Per-case PASS progress goes to standard output.
+Rejections use standard error;
+other failures can produce tracebacks.
+Sources and producer-sources JSON files,
+clients/, copied Aether/, commands.json, per-step logs and copied serial logs
+remain in the workspace. results.json is an incrementally written list of
+accepted cases.
+Early failure can leave no list; fewer than five cases is not a
+complete run.
+There is no schema-tagged final summary.
+.Pp
+A running, missing, incomplete or failed report is not passing evidence.
+Do not erase unsuccessful attempts or substitute a previous passing report for
+current inputs.
+A passing guest run applies only to its selected frozen profile.
+.Sh LIMITS AND ENVIRONMENT
+The host environment selects tools through PATH; Python and producer smoke
+scripts can inherit other host settings.
+There is no downloader or hosted CI
+setup in this command.
+A copy/hash record alone is not a live sandbox guarantee.
+Zig/smoke calls have 120-second deadlines and a 4 MiB merged-output cap.
+Logs retain the accepted prefix on failure.
+Adjacent .log.json receipts record
+command, cwd, caller/helper hashes, bounds and actual outcomes.
+Nonzero exits
+remain available to the semantic oracle; timeout or overflow is never an
+invented expected-rejection exit.
+The helper kills the owned process group of
+trusted non-detaching tools on failure.
+Nested builders use independent compiler groups and deadlines; outer
+interruption does not prove complete cleanup of those nested groups.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All selected cases completed successfully, or a supported help/version query.
+.It 1
+An ordinary Python exception or explicit semantic/build rejection.
+Other interpreter/signal termination statuses are possible.
+.It 2
+Invalid argparse usage, including --version.
+.El
+.Sh EXAMPLES
+From the repository root, inspect usage without starting a guest:
+.Bd -literal -offset left
+python3 tests/native-supervision.py --help
+.Ed
+.Pp
+A full invocation below starts real builds/QEMU.
+First set the quoted shell
+variables from an independently reviewed handoff; they are placeholders, not
+harness environment settings.
+WORK must name a new private directory outside
+all input trees.
+No root privileges are required.
+.Bd -literal -offset left
+python3 tests/native-supervision.py \e
+  --aether "$AETHER" --native "$NATIVE" --work "$WORK"
+.Ed
+.Pp
+Expect all selected cases, exit zero and the documented outputs on success.
+Retain the entire workspace on failure; do not rerun into an existing
+workspace.
+.Sh SEE ALSO
+Repository guides: docs/NATIVE-COVERAGE.md, docs/LIFECYCLE-V1.md,
+docs/NATIVE-SUPERVISION.md, docs/NATIVE-IO.md, docs/NATIVE-ADAPTER.md
+and docs/DOCUMENTATION-INVENTORY.md.
+Exact retained decisions define compatible
+producer inputs and test oracles; manuals do not replace those contracts.
+.Sh CAVEATS
+Independent technical/reader review and installed-target manual lookup remain
+pending.
+The native init profiles are experiments, not production POSIX init.

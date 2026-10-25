@@ -1,0 +1,46 @@
+{
+  "zig": {
+    "path": "/opt/homebrew/Cellar/zig/0.16.0_1/bin/zig",
+    "sha256": "71cc3995a7586753ebf82c66dfb8bef43df446517550678781834586a960f8c9"
+  },
+  "rustc": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustc",
+    "sha256": "a11618eca0956a8aa4372c2bc898690b513cbdfa2cb9125b2a5301e360ed5b49"
+  },
+  "qemu-system-x86_64": {
+    "path": "/opt/homebrew/Cellar/qemu/11.1.1/bin/qemu-system-x86_64",
+    "sha256": "25afcb2986e4a0f2c567de17273f55de3c99792b78a07c99e923bb62024c088f"
+  },
+  "librustc-stable_rt.rtsan.dylib": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/librustc-stable_rt.rtsan.dylib",
+    "sha256": "e3ca83af77984fb9fd3422b76a5625896b83049e70332b80f1b74301d9b8fc3a"
+  },
+  "libLLVM.dylib": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/libLLVM.dylib",
+    "sha256": "6da171ecd17bbe20b57b2e2d2e324b8fb2267117b504e864eb8b3012a71a6fec"
+  },
+  "librustc_driver-4031c0ff8e88f5d1.dylib": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/librustc_driver-4031c0ff8e88f5d1.dylib",
+    "sha256": "275171d3d528b7f78bcad812a84658ec3bd756ce9792a329b6edefdf70884c63"
+  },
+  "librustc-stable_rt.lsan.dylib": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/librustc-stable_rt.lsan.dylib",
+    "sha256": "b460787605bee378f6c1c4259f374a0919c1a88f610d46e9e7400743fc9b8de0"
+  },
+  "librustc-stable_rt.asan.dylib": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/librustc-stable_rt.asan.dylib",
+    "sha256": "fe85577dd8119f687d55826e19ebcc184f1bfaa843172257cf6befb79ee0bf18"
+  },
+  "librustc-stable_rt.tsan.dylib": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/librustc-stable_rt.tsan.dylib",
+    "sha256": "51bb340b6daa8a4871f749e7ec403d32433780222c74e92929ca84b020fcbcb1"
+  },
+  "rust-lld": {
+    "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/bin/rust-lld",
+    "sha256": "6f44b61e91d6d7b6ba80bb75391587bb4fa832b248281bd67d519516cde43f98"
+  },
+  "xorriso": {
+    "path": "/opt/homebrew/Cellar/xorriso/1.5.8.pl02/bin/xorriso",
+    "sha256": "d217ca8e759699dcaf36953822bd508f13587c57a890d2c1a71b19f6d0e8da86"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "clang": {
+    "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+    "sha256": "625165a3accc542dafef0264b5bbd18721b8e765c7ec819742ec7d7afd2491f6",
+    "version": "Homebrew clang version 21.1.8"
+  },
+  "make": {
+    "path": "/usr/bin/make",
+    "sha256": "1685f2c90307faa05ef5ae8f707d3a18a519c9dad75882768f66abb475f1b3d7",
+    "version": "GNU Make 3.81"
+  },
+  "bison": {
+    "path": "/usr/bin/bison",
+    "sha256": "1685f2c90307faa05ef5ae8f707d3a18a519c9dad75882768f66abb475f1b3d7",
+    "version": "bison (GNU Bison) 2.3"
+  }
+}

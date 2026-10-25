@@ -1,0 +1,106 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECK-HOST 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-host
+.Nd run bounded trusted-child host fixtures
+.Sh SYNOPSIS
+.Nm python3 scripts/check-host-runtime.py
+.Sh DESCRIPTION
+Run the real trusted-child host fixtures using Python 3.10 or newer on a POSIX
+host, from the repository root.
+The fixtures exercise the bounded host adapter;
+they do not operate host services or execute native Aether images.
+The command discovers test_host*.py modules and runs a worker in a fresh
+session.
+The parent requires a nonempty, complete, successful suite with no skipped
+cases.
+.Pp
+The worker has a 30-second watchdog.
+On timeout the parent kills the owned
+process group containing trusted, non-detaching fixtures and exits with
+failure.
+Combined stdout/stderr capture is limited to 4 MiB of raw bytes.
+Overflow kills the owned group, reaps the direct worker and fails the check.
+The deadline includes pipe draining and process exit.
+Worker allocations and child-created files are outside this limit.
+This is not confinement against
+arbitrary or untrusted child programs.
+.Sh ARGUMENTS
+There is no ordinary option parser, help mode, version mode or output option.
+Any argument list other than the exact internal --suite-worker invocation is
+ignored and starts the normal fixture run.
+In particular, do not use --help,
+--version or an unknown argument expecting a side-effect-free query.
+.Pp
+The exact --suite-worker invocation is an internal mode.
+It directly runs the
+suite and emits suite-count evidence, bypassing the parent watchdog and
+summary.
+Use the no-argument form for ordinary validation.
+.Sh OUTPUT
+Successful execution prints JSON on standard output with profile
+trusted-host-children-v1, result pass, the observed test count, host/Python
+identity, elapsed seconds and selected source hashes.
+Unittest details are copied to standard error.
+The standalone command does not create a retained report directory.
+.Pp
+A worker failure returns the worker's status without a parent success summary.
+Rejected suite evidence or timeout produces a standard-error diagnostic and
+exits 1.
+Timeout or overflow replays the accepted stderr prefix before its diagnostic.
+Partial stdout is discarded and cannot become a passing suite report.
+Overflow also exits 1.
+Interpreter or process-launch failure can produce a traceback instead.
+Use the aggregate runner to retain the outer streams in a private run
+directory.
+.Sh ENVIRONMENT
+The worker uses the invoking Python executable and inherited environment;
+its working directory is the repository root.
+No command-specific environment configuration or network setup is provided.
+Fixture code creates its own temporary workspaces and real child processes.
+.Sh FILES
+Tests are read from tests/test_host*.py and import the host adapter and model.
+Temporary fixture artifacts follow the host's temporary-directory
+configuration.
+There is no output-directory operand or durable standalone report file.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All discovered required tests passed and suite evidence was accepted.
+.It 1
+Parent watchdog expiry, rejected suite evidence or ordinary Python failure.
+.It Other nonzero status
+The parent propagates a nonzero worker status.
+It does not normalize all
+signal or interpreter outcomes to one documented numeric code.
+.El
+.Pp
+There is no special usage-error or help-success exit contract.
+Exceptions during capture, including Python KeyboardInterrupt, kill the owned
+group and reap the direct child.
+Abrupt external termination and detached nested groups have no such guarantee.
+.Sh EXAMPLES
+From the repository root on a supported POSIX host with Python provisioned:
+.Bd -literal -offset indent
+python3 scripts/check-host-runtime.py
+.Ed
+.Pp
+Expect unittest detail on standard error and a passing JSON summary on
+standard
+output only when the required suite passes.
+No root privileges are needed.
+To retain logs, use the aggregate runner:
+.Bd -literal -offset indent
+python3 scripts/check-all.py
+.Ed
+.Sh SEE ALSO
+Repository guides: docs/HOST-RUNTIME.md, docs/DEVELOPMENT-CHECKS.md,
+docs/QUALITY-PROCESS.md and docs/DOCUMENTATION-INVENTORY.md.
+.Sh CAVEATS
+The manual title is not an installed executable.
+Independent review and target
+manual lookup remain pending.
+A pass applies to the recorded host and source,
+not every POSIX system, PID 1 or native Aether behavior.

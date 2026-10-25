@@ -1,0 +1,118 @@
+{
+  "date": "2026-09-05",
+  "version": "1.2.6",
+  "archive_url": "https://deb.debian.org/debian/pool/main/m/musl/musl_1.2.6.orig.tar.gz",
+  "upstream_url": "https://musl.libc.org/releases/musl-1.2.6.tar.gz",
+  "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+  "bytes": 1082499,
+  "hash_source": "https://lists.buildroot.org/pipermail/buildroot/2026-April/800267.html",
+  "expected_sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+  "signature_verified_locally": false,
+  "scope": "bounded source inspection, some files read by excerpts; no build/link/runtime/security audit",
+  "files": [
+    {
+      "path": "configure",
+      "sha256": "aa6574f8049f80f3b0a464bc20ab377a57bc0d3464478ac7ccb500f10002cd78"
+    },
+    {
+      "path": "crt/crt1.c",
+      "sha256": "012269a9166c76a4812d5b2437a43589ad1759999bd369d571527ef345615999"
+    },
+    {
+      "path": "arch/x86_64/crt_arch.h",
+      "sha256": "3dceeb0644f95a5003201705ac78ba869b595c729d868d56f4fd84824a857a7b"
+    },
+    {
+      "path": "arch/x86_64/syscall_arch.h",
+      "sha256": "11982f6196c27975d0ab0c55e0810eaf8ff7abcf4d4166fc06917b30d025f306"
+    },
+    {
+      "path": "src/env/__libc_start_main.c",
+      "sha256": "5e5487e579a3c8f14fcb38bb54f2ede10a74f94130ebb9134dcba8d5f28c0cf4"
+    },
+    {
+      "path": "src/env/__init_tls.c",
+      "sha256": "6cb2c2f1ce53b87b9c7f2452010925ddf3356c4ae40d5e8a77f7bee3960febd6"
+    },
+    {
+      "path": "src/env/__stack_chk_fail.c",
+      "sha256": "2ea4d8cf6758daddecf8973913ac196ffa76fdb355cea391ca890aeafdc2ac6c"
+    },
+    {
+      "path": "src/internal/syscall_ret.c",
+      "sha256": "d7d4192a8265f4d5ade02b9666b9cb4e164a734c49fec3f5eca965e91404dd98"
+    },
+    {
+      "path": "src/internal/syscall.h",
+      "sha256": "4f9158fa2a76d09d5e51c432c47f3ea67eb5ded62b3964cb277791a4997b79c8"
+    },
+    {
+      "path": "src/thread/x86_64/__set_thread_area.s",
+      "sha256": "9a6299228be5f8f467652263e8f98c1f9ab2e0937243589b8c5642f0ebe3236d"
+    },
+    {
+      "path": "src/thread/x86_64/clone.s",
+      "sha256": "1046d162ddd8d902a657b8774bc9c0e8f029c24ea6394055b4ffb0a5c39d39f1"
+    },
+    {
+      "path": "src/thread/x86_64/syscall_cp.s",
+      "sha256": "3d84c844e6a26b934f80fd35e0c7d814b184e489fdd71cd95b176b8ed15be618"
+    },
+    {
+      "path": "src/thread/pthread_create.c",
+      "sha256": "48c232fbc6bb80e0c2cc27a95b22b208274aa424080620c078d130ece02f6dbf"
+    },
+    {
+      "path": "src/thread/__wait.c",
+      "sha256": "dcd6cbad9aafd635788749c407ac13e111c2ccd854cc9e15d271167daa6f3151"
+    },
+    {
+      "path": "src/malloc/mallocng/glue.h",
+      "sha256": "56268d71ebb44e1b105850c57c7d47657b984a308df6575e6e6979f7c67363c6"
+    },
+    {
+      "path": "src/malloc/mallocng/malloc.c",
+      "sha256": "ea50e97cccc60331d7306f6226949d2af94797ce2d39d474d226aa53cfb830d3"
+    },
+    {
+      "path": "src/malloc/mallocng/free.c",
+      "sha256": "c8c06d9847b3cfce57fd1067e8c886370bdfb81c0d198573871721b20a7e817b"
+    },
+    {
+      "path": "src/stdio/__stdio_write.c",
+      "sha256": "9a3f5c2e4b226552afe7b527569a5eeb08d66df59d5bf14bb9fbda01f2d8cdcd"
+    },
+    {
+      "path": "src/stdio/__stdout_write.c",
+      "sha256": "14bd1a69cfcc4f1d5dd31776cac7a0f0027d8dd970331cc20f5280624a820331"
+    },
+    {
+      "path": "src/process/_Fork.c",
+      "sha256": "3821faa03c1718620f1f4804133aa7473065c2f34f9cb49708b7930787e0e9e5"
+    },
+    {
+      "path": "src/process/fork.c",
+      "sha256": "f8905c8b826131ef7cc89ba37ab18cc2e4f29ced4e26c55818f1deb2eb5fe65d"
+    },
+    {
+      "path": "src/process/execve.c",
+      "sha256": "e75d0c7893a58d9cba5795d3435a0b2a1d71e6e5597345cd8d8085ab25270997"
+    },
+    {
+      "path": "src/process/waitpid.c",
+      "sha256": "e39ffad4f998751c747a5973d2660796d7207f68d0b75df89c3765cf79798a1f"
+    },
+    {
+      "path": "src/signal/sigaction.c",
+      "sha256": "f552c570774c9092b83cae411681e9036550dbf8078348b06a1abf8171ce3646"
+    },
+    {
+      "path": "src/signal/x86_64/restore.s",
+      "sha256": "1aa9c1d8b1d809a64f5edcfcb518f9d95e8cf538ddeab74d6048e489e63b3ea1"
+    },
+    {
+      "path": "src/exit/_Exit.c",
+      "sha256": "624597e4f70b5dd19e4a1458e6e2e6314c07ed016ac93e065c1d3de70d06fc6e"
+    }
+  ]
+}

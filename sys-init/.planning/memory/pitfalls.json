@@ -1,0 +1,14 @@
+[
+  {
+    "id": "PIT-001",
+    "date": "2026-06-21",
+    "pitfall": "Prematurely implementing a Linux-specific init design before researching Aether kernel contracts would undermine native authority boundaries and project alignment.",
+    "source": "project initialization"
+  },
+  {
+    "id": "PIT-002",
+    "date": "2026-06-21",
+    "pitfall": "Treating the placeholder seed PRD as complete evidence would hide missing research and citation gaps.",
+    "source": "docs analysis"
+  }
+]

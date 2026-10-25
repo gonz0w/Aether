@@ -1,0 +1,17 @@
+{
+  "scope": "UL-007 composed session proposal; host execution and native execution NOT RUN",
+  "shell": "dash; POSIX sh syntax subset",
+  "expected_exit": 0,
+  "environment": {
+    "WITNESS": "value",
+    "LC_ALL": "C",
+    "PATH": "/nonexistent"
+  },
+  "inputs": {
+    "experiments/dash-native/session/composed.sh": "7198674f3caddffb414eede635dc99554cdfa8aa0f78f11dfbec0a8769084aaf",
+    "experiments/dash-native/session/expected.stdout": "1ce618850d679001b403ab163a67b8758105fe338f1af2b670825b326a0203f4",
+    "experiments/dash-native/session/expected.stderr": "bedec5c40043515e48d87e3cb292087342a4bc2d1ababb6d8c2f3c2afa009a75",
+    "experiments/dash-reference/helper.c": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8"
+  },
+  "acceptance": "experiments/dash-native/SESSION.md"
+}

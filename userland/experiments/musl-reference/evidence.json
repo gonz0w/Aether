@@ -1,0 +1,453 @@
+{
+  "scope": "host build/link/inspection only; binaries NOT executed",
+  "output": "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io",
+  "source_sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+  "tools_lock_sha256": "2c72123a27ec11e2bdcae7e334be6493176ba6643f517a1478d5b55565547ac7",
+  "probe_sha256": "356efb8ded69aafa3441932b517e77c75e13598a4a1853575aef87bb6b25db98",
+  "script_sha256": "3aa11fb087dd98a1af66f082bdb80451208581dec2a403280ee3f8f5647cfe5b",
+  "compiler_runtime": "none linked; 128-bit division deliberately fails",
+  "checks": [
+    "no host header",
+    "no host libc",
+    "missing helper rejected",
+    "static ELF64 x86-64",
+    "no unresolved externals/relocations",
+    "no WX load",
+    "NX stack",
+    "TLS in musl probes"
+  ],
+  "artifacts": [
+    {
+      "name": "sdk",
+      "sha256": "6a38e8299308387b598cf0b42c3dfaf3a0c1022f25df0fcb37ac1a8215c9b0f3",
+      "bytes": 904,
+      "static_syscall_instruction_sites": 0,
+      "program_headers": [
+        [
+          6,
+          4,
+          64,
+          2097216,
+          2097216,
+          224,
+          224,
+          8
+        ],
+        [
+          1,
+          4,
+          0,
+          2097152,
+          2097152,
+          288,
+          288,
+          4096
+        ],
+        [
+          1,
+          5,
+          288,
+          2101536,
+          2101536,
+          22,
+          22,
+          4096
+        ],
+        [
+          1685382481,
+          6,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "startup",
+      "sha256": "17d2383de64051096c96461b4339c76bbf1d2c0b993c7b2f981ccf4a1b556c6d",
+      "bytes": 9048,
+      "static_syscall_instruction_sites": 12,
+      "program_headers": [
+        [
+          6,
+          4,
+          64,
+          2097216,
+          2097216,
+          504,
+          504,
+          8
+        ],
+        [
+          1,
+          4,
+          0,
+          2097152,
+          2097152,
+          796,
+          796,
+          4096
+        ],
+        [
+          1,
+          5,
+          800,
+          2102048,
+          2102048,
+          3754,
+          3754,
+          4096
+        ],
+        [
+          1,
+          6,
+          4556,
+          2109900,
+          2109900,
+          12,
+          3636,
+          4096
+        ],
+        [
+          1,
+          6,
+          4568,
+          2114008,
+          2114008,
+          12,
+          592,
+          4096
+        ],
+        [
+          7,
+          4,
+          4556,
+          2109900,
+          2109900,
+          4,
+          4,
+          4
+        ],
+        [
+          1685382482,
+          4,
+          4556,
+          2109900,
+          2109900,
+          12,
+          3636,
+          1
+        ],
+        [
+          1685382480,
+          4,
+          680,
+          2097832,
+          2097832,
+          20,
+          20,
+          4
+        ],
+        [
+          1685382481,
+          6,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "allocator",
+      "sha256": "82a3a49bdb423b2465e9fb7f8e751129f4bd41059310c8dc90593014f3e92dfc",
+      "bytes": 18408,
+      "static_syscall_instruction_sites": 24,
+      "program_headers": [
+        [
+          6,
+          4,
+          64,
+          2097216,
+          2097216,
+          504,
+          504,
+          8
+        ],
+        [
+          1,
+          4,
+          0,
+          2097152,
+          2097152,
+          932,
+          932,
+          4096
+        ],
+        [
+          1,
+          5,
+          944,
+          2102192,
+          2102192,
+          11374,
+          11374,
+          4096
+        ],
+        [
+          1,
+          6,
+          12320,
+          2117664,
+          2117664,
+          24,
+          4064,
+          4096
+        ],
+        [
+          1,
+          6,
+          12344,
+          2121784,
+          2121784,
+          12,
+          1556,
+          4096
+        ],
+        [
+          7,
+          4,
+          12320,
+          2117664,
+          2117664,
+          4,
+          4,
+          4
+        ],
+        [
+          1685382482,
+          4,
+          12320,
+          2117664,
+          2117664,
+          24,
+          4064,
+          1
+        ],
+        [
+          1685382480,
+          4,
+          816,
+          2097968,
+          2097968,
+          20,
+          20,
+          4
+        ],
+        [
+          1685382481,
+          6,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "date": "2026-09-05",
+  "poisoned_environment_control": {
+    "parent_CPATH": "build/header-poison containing host-only.h",
+    "parent_SDKROOT": "/Library/Developer/CommandLineTools/SDKs/MacOSX27.sdk",
+    "isolated_header_compile": "fails with header not found",
+    "unfiltered_clang_control": "succeeds with same CPATH",
+    "scope": "Environment/header search control; not sandbox enforcement"
+  },
+  "syscall_sites": {
+    "startup": [
+      {
+        "function": "__init_libc",
+        "instruction": "20165d: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_libc",
+        "instruction": "20167c: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_libc",
+        "instruction": "20169b: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_libc",
+        "instruction": "2016c5: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_tp",
+        "instruction": "2017cc: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "static_init_tls",
+        "instruction": "201a11: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "static_init_tls",
+        "instruction": "201ab4: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "exit",
+        "instruction": "201c75: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "_Exit",
+        "instruction": "201ca8: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "_Exit",
+        "instruction": "201cb5: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__set_thread_area",
+        "instruction": "20213d: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "sccp",
+        "instruction": "20218a: 0f 05                        \tsyscall"
+      }
+    ],
+    "allocator": [
+      {
+        "function": "__init_libc",
+        "instruction": "20177d: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_libc",
+        "instruction": "20179c: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_libc",
+        "instruction": "2017bb: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_libc",
+        "instruction": "2017e5: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__init_tp",
+        "instruction": "2018ec: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "static_init_tls",
+        "instruction": "201b31: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "static_init_tls",
+        "instruction": "201bd4: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "exit",
+        "instruction": "201d95: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "_Exit",
+        "instruction": "201dc8: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "_Exit",
+        "instruction": "201dd5: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__simple_malloc",
+        "instruction": "201ea1: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__simple_malloc",
+        "instruction": "201f3d: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__malloc_alloc_meta",
+        "instruction": "20277b: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__malloc_alloc_meta",
+        "instruction": "20278b: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__malloc_alloc_meta",
+        "instruction": "2027b5: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "mmap",
+        "instruction": "20387a: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "mprotect",
+        "instruction": "203903: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "munmap",
+        "instruction": "20393a: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__lock",
+        "instruction": "203f54: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__lock",
+        "instruction": "203f66: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__unlock",
+        "instruction": "203f95: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__unlock",
+        "instruction": "203fa7: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "__set_thread_area",
+        "instruction": "203fb9: 0f 05                        \tsyscall"
+      },
+      {
+        "function": "sccp",
+        "instruction": "20400a: 0f 05                        \tsyscall"
+      }
+    ]
+  },
+  "log_sha256": {
+    "allocator-compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "allocator-disassembly.log": "e042d4ea76f7b5b3a2076ab91225f4c26ce783635c7ffe2ba1aa7708f0a7148b",
+    "allocator-headers.log": "a2e3d8078bcf270b823a16c349182c6755f7ed5d5aa497af9d6cc29fed0aa0c7",
+    "allocator-link.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "allocator-relocations.log": "15864317fea2c9ccafcbdd8216912d3497e933fce1ffe4a0dbf37d14cbb033d3",
+    "allocator-symbols.log": "807708ad6d7cf92a619406081b248ac72a6a979865d98b44bb9288524ecfa471",
+    "allocator-undefined.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "allocator.map": "7f9c288918144babda59a58686e9b1f8e6bb147603169c009ed69b23232310e2",
+    "configure.log": "8e880c075637980fc8382ae67bb339da780a3e12d202def8fc49e346f13bfb26",
+    "make.log": "9eee49b9ca2d5e4526c46dc6dd6104f0727836e8b32f0392cb31921ed3d206f5",
+    "missing-builtins.log": "4ab668c6299967c65b2eb3fecf51c1b8a72cbcd23ffc08bc76099b4f234969c8",
+    "no-host-header.log": "af788259e3334dc5f1509dcf86ca17d88ded96bdfe1d67b61ff74426b1fef74b",
+    "no-host-libc.log": "85741440cec77aa658e3af378c05b0d6c5dfc62cfc14562a817c94f19dc7590b",
+    "sdk-disassembly.log": "56a9bbd73f229d8e0dfaf4b998c8d40520c0cc294ab71aaa760a4fca46dc76ff",
+    "sdk-headers.log": "8d962ec3347c83888cf1f86f416b5033cf214f8bfbdbb17500a01a8e694d660a",
+    "sdk-link.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sdk-relocations.log": "15864317fea2c9ccafcbdd8216912d3497e933fce1ffe4a0dbf37d14cbb033d3",
+    "sdk-symbols.log": "2973a737879ecb0a1de7c4faf963b40ae7c607b3e65065820c6ba1731c7d9bf2",
+    "sdk-undefined.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stage.log": "5d98ca5da94db4bedade7d1bfd588d3b51e48c9683f3d81d8f8eddeb1080850f",
+    "startup-compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "startup-disassembly.log": "845a9789f39e556248b45e676e13462f1e48e2cecc54bbba57e4ef802be21ca8",
+    "startup-headers.log": "a75be0b09d73af25106e27f1de4dae255fbfb5cebbc13b81605febed832bc51f",
+    "startup-link.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "startup-relocations.log": "15864317fea2c9ccafcbdd8216912d3497e933fce1ffe4a0dbf37d14cbb033d3",
+    "startup-symbols.log": "6a25fcb17a68fae80689809b69971c3058193a7d77b7f38acc0fda261166aa6d",
+    "startup-undefined.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "startup.map": "03b1e14ce3a1a0a5c7206c33195ffd7fddd5ae13ba3574a73a27aa0e92f07020"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "source": "Aether-userland/experiments/dash-native/workloads/fd-leak-control.sh",
+  "sha256": "1e66c6d1748a1789137bc200e9919c34296fadf8f4088ecea275c681a5f64f7d",
+  "expected_exit": 22,
+  "helper_exit": 95,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "parents": 3,
+  "prompt_hex": "2420",
+  "echo": false,
+  "environment": {
+    "WITNESS": "value",
+    "LC_ALL": "C",
+    "PATH": "/nonexistent",
+    "PS1": "$ ",
+    "PS2": "> "
+  },
+  "steps": [
+    {
+      "command": "command-1.sh",
+      "expected_uart_after_input_hex": "61726776206f6b0a7069706520646174610a",
+      "next": "prompt"
+    },
+    {
+      "command": "command-2.sh",
+      "expected_uart_after_input_hex": "737562737469747574696f6e206f6b0a7069706520646174610a",
+      "next": "prompt"
+    },
+    {
+      "command": "command-3.sh",
+      "expected_uart_after_input_hex": "636c6f736564206f6b0a73657373696f6e20646961676e6f737469630a73657373696f6e206f6b0a",
+      "next": "parent-exit-0"
+    }
+  ]
+}

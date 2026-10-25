@@ -1,0 +1,6 @@
+{
+  "object": "main.o",
+  "sha256": "220cdb216ccbad43866b00d88cdb17f56893e5de592ad82c3f6b8cbc1d966b4c",
+  "origin": "docs/evidence/shell-main-config-2026-09-09/main-config-b8ylzhjr/results.json",
+  "scope": "explicit actual-main fixture; AETHER_NATIVE_ENV_GUARD enabled"
+}

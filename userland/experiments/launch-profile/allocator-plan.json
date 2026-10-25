@@ -1,0 +1,61 @@
+{
+  "profile": "host-static-c-v0",
+  "image_sha256": "82a3a49bdb423b2465e9fb7f8e751129f4bd41059310c8dc90593014f3e92dfc",
+  "entry": 2102192,
+  "phdr_address": 2097216,
+  "phdr_count": 9,
+  "mappings": [
+    {
+      "start": 2097152,
+      "size": 4096,
+      "permissions": "R",
+      "copy_from": 0,
+      "copy_to": 2097152,
+      "copy_size": 932,
+      "zero_entire_mapping_before_copy": true
+    },
+    {
+      "start": 2101248,
+      "size": 16384,
+      "permissions": "RX",
+      "copy_from": 944,
+      "copy_to": 2102192,
+      "copy_size": 11374,
+      "zero_entire_mapping_before_copy": true
+    },
+    {
+      "start": 2117632,
+      "size": 4096,
+      "permissions": "R",
+      "copy_from": 12320,
+      "copy_to": 2117664,
+      "copy_size": 24,
+      "zero_entire_mapping_before_copy": true
+    },
+    {
+      "start": 2121728,
+      "size": 4096,
+      "permissions": "RW",
+      "copy_from": 12344,
+      "copy_to": 2121784,
+      "copy_size": 12,
+      "zero_entire_mapping_before_copy": true
+    }
+  ],
+  "tls": {
+    "type": 7,
+    "flags": 4,
+    "offset": 12320,
+    "address": 2117664,
+    "file_size": 4,
+    "memory_size": 4,
+    "alignment": 4
+  },
+  "mapped_bytes": 94208,
+  "stack": {
+    "start": 1879048192,
+    "size": 65536,
+    "permissions": "RW",
+    "guard_below": 4096
+  }
+}

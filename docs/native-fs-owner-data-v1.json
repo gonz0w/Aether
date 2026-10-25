@@ -1,0 +1,87 @@
+{
+  "format": "aether-native-fs-owner-data-v1",
+  "status": "experimental-host-and-target-build-qualified; native-consumer-acceptance-pending",
+  "producer": "Aether kernel",
+  "consumer": "sys-init boot filesystem owner",
+  "request": "sys-init BG-072 / decision0205 / 2026-10-22",
+  "profile": {
+    "outer_magic": "AENFS004",
+    "nested_magic": "AENMX009",
+    "owner_abi": 30,
+    "engine_abi": 26,
+    "flags": [
+      "native-fs-session",
+      "native-fs-session-init",
+      "native-fs-owner-data"
+    ],
+    "requires": "Complete existing private BSP filesystem/SESSION writer closure; release artifacts reject",
+    "old_profiles": "AENFS002/ABI28 and AENFS003/ABI29 unchanged and reject AENFS004"
+  },
+  "entry": {
+    "source": "Kernel-built initial normalized frame restored directly into selected boot owner",
+    "rdi": 30,
+    "r10": 9437184,
+    "r11": 8192,
+    "other_grants": "rsi factory,rdx block,rcx second image,r8 process-channel factory,r9 cleanup retain previous ABI29 bindings",
+    "consumption": "Capture entry registers before ordinary calls/interrupt operations overwrite volatile values. Validate ABI/base/size exactly before creating one exclusively owned mutable region. Caller-provided numeric values do not create authority."
+  },
+  "region": {
+    "owner_slot": 6,
+    "base": 9437184,
+    "bytes": 8192,
+    "alignment": 4096,
+    "pages": 2,
+    "permissions": "user read/write; non-executable (RW/NX)",
+    "pte_flags_hex": "0x8000000000000007",
+    "initial_contents": "Every byte zeroed before user mapping/publication; no initializer bytes copied from raw owner image",
+    "backing": "Two pages drawn only from existing owner128-page partition after code and stack; total and per-domain partitions unchanged",
+    "bounds": "Exactly [0x900000,0x902000); owner guard pages0x8ff000 and0x902000 remain unmapped",
+    "isolation": "No mapping or reference to this backing is published into engine/process domains. Unrelated private mappings at the same virtual address do not alias this backing. Higher-half backing aliases stay supervisor-only.",
+    "lifetime": "Single boot-owner lifetime until VM termination. No owner replacement/restart/reuse/unmap API is added; fault is fail-stop. A new boot zeroes backing before exposure.",
+    "ownership": "Kernel owns mapping/backing; sys-init exclusively owns initialized objects and aliases inside the region. It must check alignment/layout, initialize objects before Rust references, avoid overlapping live borrows, and settle actual resource obligations separately."
+  },
+  "unchanged_limits": {
+    "owner_backing_pages": 128,
+    "owner_code_bytes": 16384,
+    "owner_stack_bytes": 4096,
+    "owner_initial_stack_usable_bytes": 4088,
+    "system_backing_bytes": 36700160,
+    "domains": 7,
+    "channel_records": 12,
+    "writer_seconds": 60,
+    "writer_ticks": 6000,
+    "reader_seconds": 30,
+    "reader_ticks": 3000,
+    "qualification_mutations": 9,
+    "qualification_requests": 96,
+    "normalized_capture_bytes": 65536,
+    "new_syscalls": 0,
+    "dynamic_supervisor_allocation": false,
+    "writable_image_statics": false
+  },
+  "known_layout": {
+    "gate_bytes": 2968,
+    "rpc_workspace_bytes": 4096,
+    "combined_bytes": 7064,
+    "remaining_bytes": 1128,
+    "qualification": "Minimum known resident objects only; not complete owner fit. Reuse workspace for non-overlapping transient fork buffers. Measure all remaining state/code/call frames before requesting anything larger."
+  },
+  "failure": "Wrong build/envelope selection rejects before owner admission. Bounds/permissions enforced by owner address-space mappings. No allocation fallback or replay. Partial native transactions retain their existing explicit reconciliation/fail-stop rules.",
+  "validation": {
+    "focused_regression": "python3 -B -m unittest discover -s tests -p test_fs_owner_data.py -v",
+    "host": "Actual mapping/addPage/byte/startup bodies with partition/frame doubles; old-profile absence; four compiling zero/NX/map/binding omissions; all three parser selections and code bounds; build denial controls",
+    "target_build": "Debug and ReleaseSafe x86_64 kernels built; actual Debug mapping symbols disassembled; no QEMU execution",
+    "real_geometry": "Exact sealed AF07 engine/TLS shell accepted by current AENFS004 parser; old activation owner is only a size placeholder",
+    "missing": "Matching ABI30 sys-init entry capture, safe initialization, complete native transaction and measured full owner fit; fresh scoped native permission/zeroing/isolation/failure/shutdown witnesses and independent acceptance",
+    "evidence": "docs/evidence/fs-owner-data-2026-10-22.json"
+  },
+  "sources_sha256": {
+    "build.zig": "814faa0e7e92cf2eccb763347470b741cdfd5f12b3f2a58eada4d50efacf1730",
+    "kernel/native_fs_session.zig": "bcd00b6f07f1c73b1c7bdfc54edf3018c18b2b272ba3f54421e59e796113620f",
+    "kernel/arch/x86_64/native_fs_roles.zig": "e6ea6060d0a9a7403fa87645ab47e442bcda3f4fb5a66602acb448da7ec8736d",
+    "kernel/arch/x86_64/native_c.zig": "ae6b02df43cbf3f0765655a56d34135d1b5431cc644d6ea825c441ad1bbc63d8",
+    "kernel/arch/x86_64/context.zig": "45d12d61495ba6b5fe06c7207f382032358f8177b1c533781617f1c25b624eff",
+    "kernel/arch/x86_64/protection.S": "b4a2d39573a85c795aa103e3da16815d1dd2c454ddbe01c148da592f2908b3d0",
+    "tests/test_fs_owner_data.py": "1b89fc0bab1abddc4b121118892d87d5d34e89ba830ee505e12b0d180a7f5312"
+  }
+}

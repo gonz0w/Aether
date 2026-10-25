@@ -1,0 +1,16 @@
+{
+  "observed": "2026-09-05",
+  "repository": "/Users/cam/DEV/Aether",
+  "head": "0ea1d0b83a43247874be2b306f68bbbc2f5a6cdd",
+  "scope": "Working-file hashes at review; no runtime verification. Companion working files can differ from HEAD.",
+  "files": {
+    ".planning/STATE.md": "2136a6155e52f9f78c9c79889ef8f8b4b0c99a2819622b507dca3e55fddf2bd0",
+    ".planning/M2-LIFETIME.md": "799c15e93d0f74e42b8c38ad0d193e63b7dbd06b1152ece4a33689b5526fc648",
+    ".planning/M2-CAPABILITIES.md": "aef1fb639a62fe902fb79092e0b49cc424bf6fe12c40636a52812ecb2f11def8",
+    ".planning/M3-IPC.md": "18bcc72949a205a8f922fd8c6117449d00f9ef79c8ec536e8a93a479d5c9c2d0",
+    "kernel/lifetime.zig": "ce8c4609cc1cb598b5b868237a9a2bf78275d37fcd6b71ba0cdc47ce761f99e2",
+    "kernel/arch/x86_64/protection.zig": "68a0e7637cf334043a96e3e8ecfd3112f5bfcbcd72a415a59b771d010a5329e1",
+    "user/protection/main.rs": "8b2129f47e5232a8de6745f93f52cd6e3dc1631802e4e2587de0b2cb1e02daab",
+    "kernel/cross_core.zig": "af7a1efc10d64e43d4f38aa04ff470910f1ac9b4c5d28936ffc5b27b37699e73"
+  }
+}

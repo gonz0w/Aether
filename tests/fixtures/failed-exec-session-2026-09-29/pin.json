@@ -1,0 +1,8 @@
+{
+  "experiments/dash-native/failed-exec-session/composed.sh": "62013e4600ea11967c0cd1c018805d31542b3fafc1b0b7ac71498eda082a6ec8",
+  "experiments/dash-native/failed-exec-session/expected.stdout": "37821d781d271d7002ecb806fcbcc33aeb3d655a1918f007560b8f3a2b362b39",
+  "experiments/dash-native/failed-exec-session/expected.stderr": "f30e55cb4af6b5cd4dc09e51c5ef921264f0129f210248b56281c63198bf4565",
+  "experiments/dash-reference/helper.c": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+  "experiments/dash-native/SESSION-FAILED-EXEC.md": "ecb4ccf10db3cee9596c73b5526bd67e62020d98406ba9625bb41aa6eb70cb1d",
+  "experiments/dash-native/failed-exec-session/manifest.json": "0cc89d99029055145280dcd1153157692b1ad9c7adf020686f59a0f5a01031bb"
+}

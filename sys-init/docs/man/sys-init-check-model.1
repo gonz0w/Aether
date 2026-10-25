@@ -1,0 +1,109 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECK-MODEL 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-model
+.Nd validate deterministic policy fixtures and record model results
+.Sh SYNOPSIS
+.Nm python3 scripts/check-runtime-model.py
+.Op Fl Fl output Ar file
+.Nm python3 scripts/check-runtime-model.py
+.Fl Fl help
+.Sh DESCRIPTION
+This source-checkout command runs the deterministic policy-model test suite,
+negative controls and a synthetic benchmark in a child Python interpreter.
+Use Python 3.10 or newer from the repository root.
+The model does not supervise real services or execute native Aether code.
+The harness starts a worker with a 30-second timeout and captures its output.
+Combined stdout/stderr capture is limited to 4 MiB of raw bytes.
+The timeout covers pipe draining and process exit.
+Capture exceptions kill the owned group and reap the direct worker.
+Worker allocations and generated files are outside this cap; detached groups
+and abrupt external termination are outside this cleanup guarantee.
+.Pp
+The benchmark runs 1,000 synthetic traces with eight services each.
+Its elapsed time and peak traced Python allocation are instrumented host
+observations, not native init performance, boot time or process RSS.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl output Ar file
+Write the JSON result to this file, creating its parent directories.
+The default is out/runtime-model/results.json under the repository root.
+An existing file is overwritten on success or a caught worker failure.
+Relative explicit paths are resolved from the caller's working directory.
+Use an owned development path and preserve earlier evidence separately.
+.It Fl Fl help
+Print usage and exit without running tests or writing the report.
+.El
+.Pp
+There is no version option.
+The hidden --worker mode is an internal harness entry point that writes worker
+JSON directly and bypasses the outer timeout and report-file handling.
+.Sh OUTPUT
+On success, the command prints a human-readable PASS line on standard output.
+The JSON report contains passed, test count and captured test output, negative
+controls, scenario counts, Python/platform identity, benchmark measurements
+and
+selected source hashes.
+It is not the aggregate runner's JSON schema.
+.Pp
+A caught worker timeout, overflow, nonzero exit or malformed report writes
+JSON with
+passed set to false and an error string, then re-raises the exception.
+For timeout or overflow, the error string includes the bounded stdout/stderr
+prefixes with replacement decoding of invalid bytes.
+Normal output retains host text encoding and universal-newline handling.
+The resulting traceback is written to standard error.
+Filesystem failure or abrupt termination can prevent writing a failure report;
+an old file is not evidence that the latest invocation succeeded.
+.Sh ENVIRONMENT
+The worker inherits the host Python environment and runs from the repository
+root.
+It uses the same Python executable as the parent.
+No command-specific environment variables, downloaded tools or sibling inputs
+are selected by this command.
+.Sh FILES
+.Pa out/runtime-model/results.json
+is the default report.
+The source tree and model tests are read from the checkout.
+The command does not install files or change host services.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+The worker completed and its report was written; also help.
+.It 1
+An uncaught worker, report or infrastructure exception in the ordinary Python
+invocation, normally accompanied by a traceback.
+.It 2
+Invalid command-line usage, including --version or an unknown argument.
+.El
+.Pp
+Abrupt external termination need not follow these ordinary exit paths.
+.Sh EXAMPLES
+From the repository root with Python available, choose a disposable report
+path:
+.Bd -literal -offset indent
+python3 scripts/check-runtime-model.py --help
+python3 scripts/check-runtime-model.py \e
+  --output out/model-review.json
+.Ed
+.Pp
+The first command prints usage and exits zero.
+The second creates or overwrites the named report and prints a PASS summary
+only after a successful run.
+No root privileges are needed.
+For argument rejection without running the worker:
+.Bd -literal -offset indent
+python3 scripts/check-runtime-model.py --version
+.Ed
+.Pp
+This exits 2 with usage diagnostics, not version output.
+.Sh SEE ALSO
+Repository guides: docs/RUNTIME-MODEL.md, docs/specs/RUNTIME-V0.md,
+docs/DEVELOPMENT-CHECKS.md and docs/DOCUMENTATION-INVENTORY.md.
+.Sh CAVEATS
+This manual title is not an installed executable.
+Independent review and target
+manual lookup remain pending.
+Model success is not a native runtime witness.

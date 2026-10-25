@@ -1,0 +1,129 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECK-QUALITY 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-quality
+.Nd verify local quality records and retained review inputs
+.Sh SYNOPSIS
+.Nm python3 scripts/check-quality-process.py
+.Nm python3 scripts/check-quality-process.py
+.Fl Fl help
+.Nm python3 scripts/check-quality-process.py
+.Fl Fl version
+.Sh DESCRIPTION
+This is a source-checkout developer command.
+The manual title does not name an installed executable.
+Run with Python 3.10 or newer from the repository root.
+The checker finds its inputs relative to the script, not the working
+directory.
+It validates the quality inventory schema, retained review manifest identity,
+listed source digests, unique IDs, coverage/gap dispositions and local file
+references.
+References must be existing files inside the applicable repository or snapshot
+root.
+It does not execute the referenced tests or authenticate reviewer sign-off.
+Open gaps are expected records and do not themselves cause failure.
+.Pp
+The checker reads local files and emits a result; it creates no report
+directory
+and does not rewrite inventories or retained evidence.
+Use the aggregate command for retained logs and its 60-second gate watchdog.
+The standalone checker does not implement a separate elapsed-time or output
+cap.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl help
+Print usage and exit without performing the check.
+.It Fl Fl version
+Print the command version and exit.
+This is not a published sys-init release identifier.
+.El
+.Pp
+There are no ordinary operands, repair modes or output-directory options.
+.Sh OUTPUT
+Success prints JSON with schema sys-init-quality-check-v1, result pass,
+scope, surface count and open-gap count on standard output.
+Caught record or file errors print an escaped diagnostic prefixed by
+quality process: on standard error, without a failure JSON object.
+.Pp
+For a missing reference, review its intended destination and update live
+records.
+For a retained-manifest mismatch, preserve the failed attempt and investigate
+identity; do not regenerate historical digests to make changed evidence pass.
+.Sh ENVIRONMENT
+There are no command-specific environment configuration variables.
+Python uses its ordinary host environment; all reviewed inputs are local.
+No sibling checkout, network service or downloaded tool is consulted.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa docs/quality-inventory.json
+Coverage, gaps, process references and retained snapshot identity.
+.It Pa docs/evidence/standards-update-2026-09-05/SHA256SUMS.json
+Currently selected retained review manifest; the inventory selects the
+snapshot.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+Record structure and reviewed bytes passed; also help and version.
+.It 1
+A caught record, reference, type or filesystem error.
+.It 64
+Invalid arguments, with usage and diagnostics on standard error.
+.El
+.Pp
+Unexpected interpreter failures or abrupt termination can produce a nonzero
+exit without a normal result.
+An absent result is not success.
+.Sh EXAMPLES
+From the sys-init repository root with prerequisites already provisioned:
+.Bd -literal -offset indent
+python3 scripts/check-quality-process.py --help
+python3 scripts/check-quality-process.py
+.Ed
+.Pp
+The first invocation prints usage and exits zero.
+The second prints the success JSON and exits zero only if its scoped checks
+pass.
+To exercise argument rejection without changing inputs:
+.Bd -literal -offset indent
+python3 scripts/check-quality-process.py --unknown
+.Ed
+.Pp
+This prints diagnostics on standard error and exits 64.
+No root privileges are required by these examples.
+Use python3 scripts/check-all.py to retain the normal check and its logs.
+.Sh SEE ALSO
+Repository references: docs/QUALITY-PROCESS.md and
+docs/quality-inventory.json,
+docs/DEVELOPMENT-CHECKS.md and docs/DOCUMENTATION-INVENTORY.md.
+Render this source with the host mandoc tool for offline terminal reading.
+.Sh CAVEATS
+Independent technical and reader review, installed-target lookup and release
+approval remain separate.
+This check does not establish runtime conformance.
+.Pp
+Decision 0116 requires exact inventory/surface fields and documented optional
+gap references, with strict types and bounded JSON before reference traversal.
+Each JSON record is at most 1 MiB and 32 levels deep.
+Snapshot payload reads are also limited to 1 MiB per file.
+Inputs and references must be ordinary files without symlink components
+at or below the checkout root.
+General reference contents are not read or size-limited.
+Nonblocking opens and descriptor identity checks reject selected replacements;
+size and modification time are checked after reading.
+These checks provide neither atomic directory traversal nor an I/O deadline.
+Collections contain 1 to 1,000 entries; strings have at most 4,096 characters.
+Duplicate keys, non-finite constants and malformed paths/digests reject.
+One captured manifest supplies both digest verification and parsed content.
+Failures retain stderr-only diagnostics and exit 1.
+See docs/QUALITY-RECORDS.md for remaining filesystem and snapshot limits.
+.Pp
+Decision 0117 requires the complete snapshot file set to match the manifest,
+excluding the manifest file itself from listed payloads.
+Symlink and special snapshot entries reject; traversal allows at most 2,000
+files and directories.
+Final membership, listed digests and inventory/manifest bytes are rechecked.
+General references and hostile concurrent filesystem changes remain separately
+scoped; these checks do not provide an atomic snapshot.

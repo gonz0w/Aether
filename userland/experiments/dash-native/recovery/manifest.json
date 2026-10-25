@@ -1,0 +1,18 @@
+{
+  "scope": "UL-007 recovery composition proposal; host and native execution NOT RUN",
+  "shell": "pinned target dash with pipefail; not portable sh runtime",
+  "expected_exit": 0,
+  "environment": {
+    "WITNESS": "value",
+    "LC_ALL": "C",
+    "PATH": "/nonexistent"
+  },
+  "inputs": {
+    "experiments/dash-native/recovery/early-reader.sh": "14a25030cfd2f94b8ef95be29241bd4be605a74f2cf07557875a4e60d1c519d4",
+    "experiments/dash-native/recovery/expected.stdout": "df93c46970fa62c9ac09397fa4f4006a9fb1cae6468d90d6c46ee076d5dd063b",
+    "experiments/dash-native/recovery/expected.stderr": "ba403ec5f8fc356cac72fdb41bb96792ec02b6606975856a40a3ad88044c6cbf",
+    "experiments/dash-reference/helper.c": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+    "experiments/dash-native/SESSION-RECOVERY.md": "987a00f8fe669fc76aac095025eef512be05cf0caeb70673a9c69cf3dbf0be52"
+  },
+  "acceptance": "experiments/dash-native/SESSION-RECOVERY.md"
+}

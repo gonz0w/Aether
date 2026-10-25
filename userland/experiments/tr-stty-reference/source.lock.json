@@ -1,0 +1,16 @@
+{
+  "coreutils": {
+    "version": "9.11",
+    "archive": "build/coreutils-9.11.tar.xz",
+    "url": "https://ftp.gnu.org/gnu/coreutils/coreutils-9.11.tar.xz",
+    "sha256": "394024eda0a5955217ceda9cd1201e65dc8fa3aa29c2951135a49521d57c3cc3",
+    "trust": "HTTPS bytes only; BusyBox published hash matches; independent authentication pending UL-016"
+  },
+  "busybox": {
+    "version": "1.38.0",
+    "archive": "build/busybox-1.38.0.tar.bz2",
+    "url": "https://busybox.net/downloads/busybox-1.38.0.tar.bz2",
+    "sha256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+    "trust": "HTTPS bytes only; BusyBox published hash matches; independent authentication pending UL-016"
+  }
+}

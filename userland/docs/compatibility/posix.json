@@ -1,0 +1,462 @@
+{
+  "schema": "aether-userland.posix-inventory.v1",
+  "date": "2026-09-05",
+  "reference_edition": "POSIX.1-2024 / Issue 8",
+  "scope": "Initial consumer families, not exhaustive POSIX interface/options inventory or certification",
+  "status_meaning": "native_status describes this project target; evidence may be Linux/host only as limits explicitly state",
+  "tiers": {
+    "c": "native C foundation",
+    "script": "useful script shell",
+    "tty": "interactive TTY",
+    "base": "packaged authorized base"
+  },
+  "interfaces": [
+    {
+      "id": "PC-001",
+      "interface": "C entry, argv/env, data/BSS, TLS",
+      "tier": "c",
+      "native_status": "deliberately-adapted",
+      "limits": "Bounded x86-64 static musl fixture; fixed developer identity/entropy, no general loader.",
+      "required_witness": "Exact target profile, malformed images and independent context values.",
+      "work": [
+        "UL-003",
+        "UL-006"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/exec.html",
+      "evidence": [
+        "experiments/native-c/README.md"
+      ]
+    },
+    {
+      "id": "PC-002",
+      "interface": "malloc/calloc/realloc/free",
+      "tier": "c",
+      "native_status": "deliberately-adapted",
+      "limits": "Opt-in native-memory v1: 128-page shared quota, anonymous private mappings, no brk/remap, single core/thread; general allocator/address-space scope unproven.",
+      "required_witness": "Native allocation, zeroing, quota failure, preservation on failed growth and cleanup.",
+      "work": [
+        "UL-006",
+        "UL-015"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/malloc.html",
+      "evidence": [
+        "experiments/musl-reference/RUNTIME.md",
+        "docs/NATIVE-MEMORY.md",
+        "docs/evidence/native-memory-userland-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-003",
+      "interface": "read",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Separate native file profile: pinned musl hook, four FDs/two open records, at most 16 bytes per call and EOF. Single-thread valid-local-buffer scope; older fixed-stream profile remains separate. Separate inherited-reference profile: actual musl read accepts exactly two bytes or local zero-length, broker-owned shared position, explicit EAGAIN, other positive sizes ENOTSUP; poisoned connection prevents replay. No general inherited EOF/stdio claim. New file-io mode: musl reads cap one request at 16 bytes, validate zero reads through owner, and exercise short results/repeated EOF with broker-owned position; no prefetch or general filesystem.",
+      "required_witness": "Blocking and interrupted reads, pipes/files, no consumption on invalid range.",
+      "work": [
+        "UL-007",
+        "UL-043",
+        "UL-053",
+        "UL-055"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/read.html",
+      "evidence": [
+        "docs/NATIVE-DESCRIPTORS.md",
+        "docs/evidence/strict-native-libc-2026-09-05/summary.json",
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "docs/evidence/native-inherited-libc-2026-09-05/summary.json",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "docs/evidence/native-fileio-libc-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-004",
+      "interface": "write",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Separate native file profile: pinned musl hook, at most 16 bytes per call into 64-byte volatile scratch supplied by the fixture; read-only denial. No public create/mode, signals or persistence. New inherited file-io mode: writable parent musl calls cap one request at 16 bytes, accept zero writes, enforce ENOSPC at 64 bytes and retain child zero-write denial; independent owner storage readback tested.",
+      "required_witness": "Exact partial/interrupted bytes, writable sinks and EPIPE/SIGPIPE.",
+      "work": [
+        "UL-007",
+        "UL-043",
+        "UL-055"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html",
+      "evidence": [
+        "docs/NATIVE-DESCRIPTORS.md",
+        "docs/evidence/strict-native-libc-2026-09-05/summary.json",
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "docs/evidence/native-fileio-libc-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-005",
+      "interface": "close",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Separate four-FD file profile: pinned musl close and final-reference consuming service close; private failure suite covers uncertain acknowledgement. No EINTR, concurrency or exec cleanup support. Separate inherited-reference profile: actual musl close consumes local binding once, preserves normal collection identity; uncertain reply poisons connection and repeated close gives EBADF, with remote outcome unresolved. New file-io mode retains consuming close and whole-connection poison; dropped-close reply tested after completed storage work, without remote recovery.",
+      "required_witness": "File/pipe lifetimes, errors, exec cleanup and no cross-instance leak.",
+      "work": [
+        "UL-007",
+        "UL-043",
+        "UL-053",
+        "UL-055"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/close.html",
+      "evidence": [
+        "docs/NATIVE-DESCRIPTORS.md",
+        "docs/evidence/strict-native-libc-2026-09-05/summary.json",
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "docs/evidence/native-inherited-libc-2026-09-05/summary.json",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "docs/evidence/native-fileio-libc-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-006",
+      "interface": "dup",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Separate four-FD file profile: musl dup shares open-file position, lowest-free allocation and EMFILE tested. No descriptor flags, concurrency or inheritance.",
+      "required_witness": "Shared open-file offset, failed replacement preserves destination; descriptor flags.",
+      "work": [
+        "UL-007",
+        "UL-043"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dup.html",
+      "evidence": [
+        "docs/NATIVE-DESCRIPTORS.md",
+        "docs/evidence/strict-native-libc-2026-09-05/summary.json",
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-007",
+      "interface": "dup2",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Separate four-FD file profile: musl dup2 validates/replaces and shares position. Private close-error adaptation removes destination and poisons connection; not full POSIX failure semantics or inheritance.",
+      "required_witness": "Shared open-file offset, failed replacement preserves destination; descriptor flags.",
+      "work": [
+        "UL-007",
+        "UL-043"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dup.html",
+      "evidence": [
+        "docs/NATIVE-DESCRIPTORS.md",
+        "docs/evidence/strict-native-libc-2026-09-05/summary.json",
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-008",
+      "interface": "open/openat",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Adapted public open supports read-only single-component service names; other flags return ENOTSUP. Native openat returns ENOSYS. No public create, permissions, directories, symlinks or global namespace.",
+      "required_witness": "Create/truncate/append, path denial, symlink policy and failed open cleanup.",
+      "work": [
+        "UL-007",
+        "UL-043"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/open.html",
+      "evidence": [
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-009",
+      "interface": "fcntl and descriptor/status flags",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "No selectable nonblocking mode, FD_CLOEXEC or FD_CLOFORK.",
+      "required_witness": "Differentiate per-descriptor flags from shared status flags; test across fork/exec.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/fcntl.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-010",
+      "interface": "dup3",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Explicit Issue 8 interface; fixed dup2 support does not include it.",
+      "required_witness": "Flag validation, equal-fd rejection, atomic flag installation.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dup.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-011",
+      "interface": "lseek and shared file offsets",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Adapted public lseek supports SET/CUR positions 0-64, shared aliases, independent opens and overflow rejection. END and other modes return ENOTSUP; internal __lseek and append unadapted. Separate inherited profile demonstrates broker-owned shared positions through two-byte musl reads; it does not adopt inherited lseek. New file-io mode tests shared position across ordinary bounded musl reads/writes and EOF; inherited lseek remains unadopted.",
+      "required_witness": "Alias/child offsets, invalid seek and append behavior.",
+      "work": [
+        "UL-007",
+        "UL-043",
+        "UL-053",
+        "UL-055"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/lseek.html",
+      "evidence": [
+        "experiments/native-files/LIBC.md",
+        "docs/evidence/native-libc-files-2026-09-05/summary.json",
+        "experiments/native-process/INHERITED-LIBC.md",
+        "docs/evidence/native-inherited-libc-2026-09-05/summary.json",
+        "experiments/native-process/FILEIO-LIBC.md",
+        "docs/evidence/native-fileio-libc-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-012",
+      "interface": "pipe/pipe2",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Fixture input queue is not user-created pipe pairs.",
+      "required_witness": "Early reader exit, duplicate end lifetime, EOF only after all writers close, atomic flags.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/pipe.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-013",
+      "interface": "fork",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Fixed supervised instances are not process-image duplication.",
+      "required_witness": "Parent/child return values, memory independence, inherited open descriptions and CLOFORK exclusion.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/fork.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-014",
+      "interface": "exec family",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Boot fixture launch does not replace a calling process image.",
+      "required_witness": "PATH/argv/env, failed exec keeps process intact, descriptor inheritance/CLOEXEC and signal state.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/exec.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-015",
+      "interface": "posix_spawn family",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Potential future implementation choice, not an assumed replacement for arbitrary shell fork.",
+      "required_witness": "File actions, inheritance, cwd/groups/signals and launch failures.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-016",
+      "interface": "wait/waitpid",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Supervisor terminal retention is not parent wait/reap semantics.",
+      "required_witness": "Exact child status, no double reap, errors and interrupted wait.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-017",
+      "interface": "_exit/exit",
+      "tier": "c",
+      "native_status": "deliberately-adapted",
+      "limits": "Bounded single-thread terminal observation and cleanup; general process/files/stdio effects unproven.",
+      "required_witness": "Parent observation, descriptor closure, stdio flushing distinction and reclaim.",
+      "work": [
+        "UL-006",
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/_exit.html",
+      "evidence": [
+        "experiments/native-c/README.md"
+      ]
+    },
+    {
+      "id": "PC-018",
+      "interface": "sigaction/signal masks/kill",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Reference signal tests do not establish native delivery.",
+      "required_witness": "Masks, default/ignored/caught actions, interruption/restart, authority and signal return.",
+      "work": [
+        "UL-007",
+        "UL-008"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/sigaction.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-019",
+      "interface": "cwd/chdir/getcwd",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "No native namespace/cwd model.",
+      "required_witness": "Relative lookup, inaccessible cwd, child inheritance and cd/PWD behavior.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/chdir.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-020",
+      "interface": "stat/fstat and file metadata",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "Package file modes do not provide runtime stat or permissions.",
+      "required_witness": "Types/modes/size, path/fd lookup, missing and denied cases.",
+      "work": [
+        "UL-007"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/stat.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-021",
+      "interface": "directory traversal and mutation",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "No native directory stream or namespace mutation.",
+      "required_witness": "Enumeration, rename/unlink/mkdir errors, links and ownership-scoped lookup.",
+      "work": [
+        "UL-007",
+        "UL-011"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/readdir.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-022",
+      "interface": "stdio and formatted output",
+      "tier": "script",
+      "native_status": "deliberately-adapted",
+      "limits": "Bounded single-thread FILE subset: fread/fwrite/fgetc/fseek/fflush/fclose with dynamic native allocation, private vector callbacks, r/r+ fdopen and read-only fopen. Checked input-flush failure preserves unread bytes; errno survives failed implicit flush plus close. Formatted I/O, all modes, exit flushing and TTY remain untested.",
+      "required_witness": "Flush/close errors, short/interrupted sink, pipes and redirect stdout/stderr.",
+      "work": [
+        "UL-007",
+        "UL-044"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/fflush.html",
+      "evidence": [
+        "experiments/native-files/STDIO.md",
+        "docs/evidence/native-stdio-files-2026-09-05/summary.json"
+      ]
+    },
+    {
+      "id": "PC-023",
+      "interface": "shell grammar/expansion/builtins",
+      "tier": "script",
+      "native_status": "unsupported",
+      "limits": "dash candidate not yet ported; Zsh is interactive destination, not a /bin/sh compatibility proof.",
+      "required_witness": "Quoting, variables, field splitting/globbing, substitution, lists/functions and status.",
+      "work": [
+        "UL-007",
+        "UL-013"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-024",
+      "interface": "sessions/process groups/foreground selection",
+      "tier": "tty",
+      "native_status": "unsupported",
+      "limits": "No native job control.",
+      "required_witness": "Separate jobs, controlling terminal authority, fg/bg, stop/continue and disconnect.",
+      "work": [
+        "UL-008"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/tcsetpgrp.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-025",
+      "interface": "termios/isatty/terminal access",
+      "tier": "tty",
+      "native_status": "unsupported",
+      "limits": "No native serial console or terminal discipline.",
+      "required_witness": "Canonical/raw/echo modes, Ctrl-C/Z, restoration and non-TTY errors.",
+      "work": [
+        "UL-008"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/tcsetattr.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-026",
+      "interface": "locale/encoding/width",
+      "tier": "tty",
+      "native_status": "unsupported",
+      "limits": "Library availability does not establish target locale or display behavior.",
+      "required_witness": "C locale baseline; explicit UTF-8 policy, invalid bytes, combining/wide characters and fallback.",
+      "work": [
+        "UL-009",
+        "UL-013"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/setlocale.html",
+      "evidence": []
+    },
+    {
+      "id": "PC-027",
+      "interface": "identity and credential views",
+      "tier": "base",
+      "native_status": "deliberately-adapted",
+      "limits": "Fixed developer identity is not authenticated login or administrative authority.",
+      "required_witness": "Bind principal/session/grants, deny unauthorized transitions and clean up session.",
+      "work": [
+        "UL-010"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/getuid.html",
+      "evidence": [
+        "experiments/native-c/README.md"
+      ]
+    },
+    {
+      "id": "PC-028",
+      "interface": "utility provider set",
+      "tier": "base",
+      "native_status": "proposed",
+      "limits": "Candidate commands only; no accepted versioned target package closure.",
+      "required_witness": "Per-command executable tests plus versions, digests, licenses and dependency closure.",
+      "work": [
+        "UL-011",
+        "UL-012"
+      ],
+      "reference": "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap01.html",
+      "evidence": [
+        "docs/research/PACKAGES.md"
+      ]
+    }
+  ]
+}

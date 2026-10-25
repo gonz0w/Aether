@@ -1,0 +1,22 @@
+{
+  "sed": {
+    "path": "/opt/homebrew/opt/gnu-sed/libexec/gnubin/sed",
+    "resolved_path": "/opt/homebrew/Cellar/gnu-sed/4.10/bin/gsed",
+    "sha256": "130563b48d1c66445de3d00fe83e352e0447a9f946f042c0164cf8c621e1532b"
+  },
+  "rsync": {
+    "path": "/usr/bin/rsync",
+    "resolved_path": "/usr/bin/rsync",
+    "sha256": "db0a323b7c6028926e5e8bf866bbdf98358531c601bcddc2fecafd8325a075f7"
+  },
+  "sh": {
+    "path": "/bin/sh",
+    "resolved_path": "/bin/sh",
+    "sha256": "ff0b291f8142f71b46ba01ace6c9713fc8049a5518e8bd21869ccf2ef1fed05a"
+  },
+  "awk": {
+    "path": "/usr/bin/awk",
+    "resolved_path": "/usr/bin/awk",
+    "sha256": "4a6a1b89f13e206d11bef1db9cad66a6bf1d6618b07c8f3bf4d2abc33133a906"
+  }
+}

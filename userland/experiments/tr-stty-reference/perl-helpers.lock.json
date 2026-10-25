@@ -1,0 +1,22 @@
+{
+  "scope": "Test-only pure Perl helpers from local macOS Perl 5.34; not target dependencies",
+  "root": "build/gnu-tr-perl-helpers",
+  "files": {
+    "File/Compare.pm": {
+      "source": "/System/Library/Perl/5.34/File/Compare.pm",
+      "sha256": "348d5d80248e1d0d8ba0dea782af869b4a87d7553436e4c3128790787bfa66a4"
+    },
+    "Text/ParseWords.pm": {
+      "source": "/System/Library/Perl/5.34/Text/ParseWords.pm",
+      "sha256": "8a33df070a25ea3fe4e1decc3de808e6c186805fd068b02792ee01523bc9df57"
+    },
+    "pods/perlartistic.pod": {
+      "source": "/System/Library/Perl/5.34/pods/perlartistic.pod",
+      "sha256": "137c097d0615aea42eda7a5087baa3f81aab1a431b9046d5e858e8c8c31987c0"
+    },
+    "pods/perlgpl.pod": {
+      "source": "/System/Library/Perl/5.34/pods/perlgpl.pod",
+      "sha256": "f6e93b8041e616206a702da252d70523c622242d3c4a2c684839902102b4fb39"
+    }
+  }
+}

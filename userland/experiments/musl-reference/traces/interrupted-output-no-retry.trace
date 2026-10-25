@@ -1,0 +1,81 @@
+1 arch_prctl(4098,2128664,0,8388608,0,131072) = 0
+1 set_tid_address(0x207ac8) = 1
+1 pipe2(0xffffba6fec68,526336) = 0
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = -1 errno=11 (Resource temporarily unavailable)
+1 read(3,0x206ac0,4096) = 4096
+1 write(4,0x204ab0,8192) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 write(4,0x204ab0,4096) = 4096
+1 fcntl(4,F_SETFL,O_RDONLY|O_LARGEFILE) = 0
+1 rt_sigprocmask(SIG_UNBLOCK,[33 34],NULL,8) = 0
+1 rt_sigaction(SIGALRM,0x0000ffffba6feb38,NULL) = 0
+1 setitimer(ITIMER_REAL,{it_interval={tv_sec = 0,tv_usec = 10000},it_value={tv_sec = 0,tv_usec = 10000},},NULL) = 0 (old_value = NULL)
+1 write(4,0x200206,1) = -1 errno=4 (Interrupted system call)
+--- SIGALRM {si_signo=SIGALRM, si_code=SI_KERNEL, si_pid=0, si_uid=0} ---
+1 rt_sigreturn(0xe) = -1 errno=513 (Successful exit from sigreturn)
+1 setitimer(ITIMER_REAL,{it_interval={tv_sec = 0,tv_usec = 0},it_value={tv_sec = 0,tv_usec = 0},},NULL) = 0 (old_value = NULL)
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,4096) = 4096
+1 read(3,0x206ac0,1) = -1 errno=11 (Resource temporarily unavailable)
+1 read(3,0x206ac0,1) = -1 errno=11 (Resource temporarily unavailable)
+1 exit_group(20)

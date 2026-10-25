@@ -1,0 +1,105 @@
+{
+  "scope": "UL-060 offline process adoption only",
+  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "approved_files_verified": 93,
+  "runs": [
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "docs/quality/check.py"
+      ],
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout": "25 foundation release files, source snapshots and local links verified; implementation conformance is separate\n30 offline descriptor/graph/trust/measurement cases pass; no native runtime or cryptographic enforcement claim\nHearth dark: all text roles >= 4.5:1; minimum 5.90:1\nHearth light: all text roles >= 4.5:1; minimum 4.73:1\n14 release files verified; implementation conformance is separate\nPASS: pinned standards and documentation inventory structure\nNOT RUN: runtime, full source audit, reader and publication gates\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "docs/quality/check.py",
+        "--release"
+      ],
+      "expected_exit": 1,
+      "actual_exit": 1,
+      "stdout": "25 foundation release files, source snapshots and local links verified; implementation conformance is separate\n30 offline descriptor/graph/trust/measurement cases pass; no native runtime or cryptographic enforcement claim\nHearth dark: all text roles >= 4.5:1; minimum 5.90:1\nHearth light: all text roles >= 4.5:1; minimum 4.73:1\n14 release files verified; implementation conformance is separate\n",
+      "stderr": "FAILED: incomplete release entry\n"
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "docs/quality/check.py",
+        "--unknown"
+      ],
+      "expected_exit": 64,
+      "actual_exit": 64,
+      "stdout": "",
+      "stderr": "usage: check.py [-h] [--version] [--release]\nFAILED: unrecognized arguments: --unknown\n"
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "docs/quality/check.py",
+        "--help"
+      ],
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout": "usage: check.py [-h] [--version] [--release]\n\nOffline adoption integrity and documentation inventory checks (Python 3.10+).\n\noptions:\n  -h, --help  show this help message and exit\n  --version   show program's version number and exit\n  --release   require complete documentation inventory; not release approval\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "docs/quality/check.py",
+        "--version"
+      ],
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout": "quality 0.1.0\n",
+      "stderr": ""
+    }
+  ],
+  "limits": [
+    "No native runtime rerun",
+    "Independent reader review pending",
+    "Extended workloads NOT RUN",
+    "Full source audit UL-063 pending"
+  ],
+  "attempts": [
+    {
+      "status": "infra-error",
+      "case": "integrity fixture",
+      "observed": "macOS temporary path traversed /var symlink; rejected before controls",
+      "correction": "Resolve owned temporary fixture root; production rejection unchanged"
+    },
+    {
+      "args": [],
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout": "25 foundation release files, source snapshots and local links verified; implementation conformance is separate\n30 offline descriptor/graph/trust/measurement cases pass; no native runtime or cryptographic enforcement claim\nHearth dark: all text roles >= 4.5:1; minimum 5.90:1\nHearth light: all text roles >= 4.5:1; minimum 4.73:1\n14 release files verified; implementation conformance is separate\nPASS: pinned standards and documentation inventory structure\nNOT RUN: runtime, full source audit, reader and publication gates\n",
+      "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.007s\n\nOK\n"
+    },
+    {
+      "args": [
+        "--release"
+      ],
+      "expected_exit": 1,
+      "actual_exit": 1,
+      "stdout": "25 foundation release files, source snapshots and local links verified; implementation conformance is separate\n30 offline descriptor/graph/trust/measurement cases pass; no native runtime or cryptographic enforcement claim\nHearth dark: all text roles >= 4.5:1; minimum 5.90:1\nHearth light: all text roles >= 4.5:1; minimum 4.73:1\n14 release files verified; implementation conformance is separate\n",
+      "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.009s\n\nOK\nFAILED: incomplete release entry\n"
+    }
+  ],
+  "local_sources": {
+    "docs/quality/PROCESS.md": "d73a0c10f13745f7500e27bd2c6161ea65731936d6112fbf271f1e8615bf2a6f",
+    "docs/quality/change-review.md": "c5d811ed65295450f756d3c168e88ac262da619f4c4f0854c66744fb0ff65cec",
+    "docs/quality/check.py": "2d9cbec2625b4d963bf14e7bdcede54a53fad04ea8ba42b0222518339a736274",
+    "docs/quality/clang-format.yaml": "bd69a0980ab96c87e3ff8fe3dbd6fcdea0a01a6a890ae5f3d87c8cda1735a716",
+    "docs/quality/coverage.json": "693d5068104528222c477f9968c8a42856ab2bbe27edcc732858a5ff2c51d746",
+    "docs/quality/drafts.sha256": "3de7563856c7c8e93464bc8af0ca91ad0ba3c9f52027a10084952ddea3dea7c4",
+    "docs/quality/test-check.py": "95d44f59366dfa2d7e321e95ff744a9d9d49e2b76b577136acde20ff392b9ffd"
+  }
+}

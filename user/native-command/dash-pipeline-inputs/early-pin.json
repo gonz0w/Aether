@@ -1,0 +1,6 @@
+{
+  "script": "early-reader.sh",
+  "sha256": "0db6c46dd04aca2053f6f0456ef0ad00736e93ce47340f404933af8419b6f566",
+  "origin": "Aether-userland/experiments/dash-native/workloads/early-reader.sh",
+  "scope": "Unchanged consumer workload; private producer qualification"
+}

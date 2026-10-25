@@ -1,0 +1,184 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt AETHER-USERLAND-QUALITY 1
+.Os Aether-userland experimental
+.Sh NAME
+.Nm aether-userland-quality
+.Nd check local standards integrity and documentation inventory
+.Sh SYNOPSIS
+.Nm python3
+.Fl B
+.Pa docs/quality/check.py
+.Op Fl h | Fl -help
+.Op Fl -version
+.Op Fl -release
+.Sh DESCRIPTION
+This page describes the existing quality 0.1.0 contributor checker.
+The manual name is a lookup label, not an installed executable.
+Run the command from the Aether-userland checkout root.
+The declared interpreter requirement is Python 3.10 or later;
+validation records identify the interpreter actually tested.
+No native Aether Python runtime or target installation is implied.
+.Pp
+With no options, the checker verifies the approved-draft manifest pin
+and its complete file inventory before loading its validator.
+It runs the private integrity controls, checks the pinned Foundations,
+Distribution and Experience copies, then validates the local documentation
+inventory structure and referenced file paths.
+The repository root is derived from the checker file location.
+.Pp
+A successful check establishes only the named integrity and structural results.
+It does not establish source authenticity, complete documentation,
+independent review, native execution, POSIX conformance or release authorization.
+Reference checkers execute trusted local Python code after byte verification.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl h , Fl -help
+Print usage and available options to standard output and exit successfully
+without checking the standards inputs.
+.It Fl -version
+Print
+.Dq quality 0.1.0
+to standard output and exit successfully without checking the standards inputs.
+.It Fl -release
+Also require complete documentation inventory entries.
+Draft or blocked entries prevent success.
+Even a successful preflight would not authorize publication.
+This checkout currently rejects incomplete release coverage.
+.El
+.Pp
+There are no positional operands.
+Unknown options and extra operands are usage errors.
+The current Python argument parser accepts unambiguous long-option prefixes
+and repeated boolean options; use full option names in scripts.
+Help and version stop parsing when encountered.
+No quiet, color, progress, JSON or automatic pin-update option is provided.
+.Sh OUTPUT
+Check reports use standard output.
+Usage errors and caught operational failures use standard error.
+Child checks can also write diagnostics and test summaries to standard error
+even when the overall check succeeds.
+Child streams are retained separately and replayed after cleanup.
+Each output file has a 16 MiB limit.
+There is no promised ordering between different output streams.
+The checker adds no color or animation.
+Treat prose reports as human diagnostics, not a stable machine schema.
+Preserve the distinct runtime
+.Dq NOT RUN
+report when recording a successful structural check.
+.Sh ENVIRONMENT
+The parent uses the invoking Python environment.
+Reference children use the same absolute interpreter with
+.Fl B ,
+a fixed
+.Ev PATH
+of /usr/bin:/bin,
+.Ev LC_ALL=C ,
+and a private
+.Ev TMPDIR
+under the checkout build directory.
+Other parent environment variables are not copied to these children.
+Use
+.Fl B
+as shown to suppress bytecode output in the parent as well.
+Use a trusted interpreter, checkout and environment.
+There is no dedicated environment variable for choosing a different standards pin.
+No network provisioning or target installation is performed by this workflow.
+.Sh FILES
+All paths below are relative to the checkout root.
+.Bl -tag -width Ds
+.It Pa build/quality-process-*
+Private retained child input, output and process receipts.
+No automatic pruning is performed.
+.It Pa docs/quality/simplicity.sha256
+Manifest digest for the separately adopted unreleased simplicity extension.
+.It Pa docs/vendor/aether-review-snapshots/2026-09-07/coding-v0.2.0
+Offline additive simplicity snapshot; released pins remain unchanged.
+.It Pa docs/quality/drafts.sha256
+Approved-draft manifest identity.
+.It Pa docs/vendor/aether-approved-drafts/2026-09-05
+Offline approved draft snapshot, not a published replacement release.
+.It Pa docs/quality/coverage.json
+Documentation surface inventory; draft entries remain incomplete.
+.It Pa docs/standards.lock
+Foundations release pin.
+.It Pa docs/distribution.lock
+Distribution release pin.
+.It Pa docs/experience.lock
+Experience release pin.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+The selected checks passed, or help/version was printed.
+.It 1
+A caught integrity, inventory, file or child-check failure occurred.
+Incomplete release coverage also returns 1.
+.It 64
+Invalid command-line usage.
+.El
+.Pp
+An interruption, interpreter startup failure or uncaught exception is not a
+successful check and may have a platform-specific outcome.
+The program does not provide a total in-process validation deadline.
+Its integrity-control child has a 30-second timeout and each of the three
+reference-check children has a 60-second timeout.
+Each child runs in an owned session.
+Timeout or descendants remaining after leader exit trigger group cleanup
+and a failed check.
+Cleanup has a bounded additional wait; unresolved cleanup cannot pass.
+Children that deliberately detach from the session and uncatchable owner
+termination are outside this trusted-checker cleanup contract.
+.Sh EXAMPLES
+No root authority is required.
+From the checkout root, inspect the command without running its checks:
+.Bd -literal
+python3 -B docs/quality/check.py --help
+python3 -B docs/quality/check.py --version
+.Ed
+.Pp
+Both commands return 0; the second prints
+.Dq quality 0.1.0 .
+Run the local gate:
+.Bd -literal
+python3 -B docs/quality/check.py
+.Ed
+.Pp
+Expect status 0 only when the pins and inventory pass, with a separate
+report that runtime and publication gates were not run.
+Check publication completeness:
+.Bd -literal
+python3 -B docs/quality/check.py --release
+.Ed
+.Pp
+The current experimental inventory returns 1 with
+.Dq FAILED: incomplete release entry .
+This is an open documentation gate, not permission to remove draft entries.
+.Sh DIAGNOSTICS
+A pin or content mismatch requires investigation of the changed bytes.
+Compare the retained manifest, source and review evidence before restoring
+an authorized input or proposing an explicit new adoption.
+Never regenerate a pin merely to silence a mismatch.
+.Pp
+For an incomplete release entry, finish the named surface's documentation,
+exact revision, evidence and required reviews.
+Consult
+.Pa docs/quality/PROCESS.md
+and
+.Pa .planning/BACKLOG.md
+for the UL-061 through UL-063 migration work.
+For a child failure, retain both output streams and the actual exit status;
+do not report a timeout or missing tool as semantic rejection.
+.Sh SEE ALSO
+.Pa CONTRIBUTING.md ,
+.Pa docs/quality/PROCESS.md ,
+.Pa docs/quality/RC1-ADP02.md ,
+.Pa docs/quality/coverage.json
+.Sh AUTHORS
+.An Aether contributors
+.Sh SECURITY CONSIDERATIONS
+A checksum identifies bytes, not publisher authority or runtime confinement.
+The checker executes verified local reference code and does not sandbox it.
+The process helper accounts for non-detached descendants of trusted checks;
+it is not a sandbox for hostile code.
+Do not run checks from an unreviewed checkout with elevated authority.

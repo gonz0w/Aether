@@ -1,0 +1,4 @@
+1 arch_prctl(4098,2114104,0,8388608,0,131072) = 0
+1 set_tid_address(0x2041e8) = 1
+1 write(1,0x200200,21) = 21
+1 exit_group(0)

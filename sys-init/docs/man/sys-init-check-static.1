@@ -1,0 +1,126 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECK-STATIC 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-static
+.Nd check scoped source syntax, Rust lints and native boundary records
+.Sh SYNOPSIS
+.Nm python3 scripts/check-static.py
+.Nm python3 scripts/check-static.py
+.Fl Fl help
+.Nm python3 scripts/check-static.py
+.Fl Fl version
+.Sh DESCRIPTION
+This is a source-checkout developer command.
+The manual title does not name an installed executable.
+Run with POSIX Python 3.10 or newer and the separately provisioned
+Rust 1.98.0 toolchain, rustfmt and clippy-driver.
+Only the macOS arm64 tool identities in docs/static-tools.json are reviewed.
+The command resolves the checkout from its own location.
+It compiles selected Python source without executing it or writing bytecode,
+compares the pinned Rust formatter output for two host test files, and runs
+Clippy's default group on those harnesses and their pure imported modules.
+It also checks the native boundary inventory for changed hashes or site lists.
+.Pp
+Python syntax is not semantic analysis.
+The boundary scan is change detection, not a proof of soundness.
+No native trap module is executed or formatted.
+Metadata and copied inputs live in temporary directories removed on exit.
+Each trusted tool call has a ten-second deadline and a 4 MiB merged-output
+cap;
+only the owned, non-detaching process group is terminated on failure.
+Sources are limited to 1 MiB each, 1,000 files and 16 MiB total.
+Tool and source identities are rechecked during the run.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl help
+Print usage and exit without performing the check.
+.It Fl Fl version
+Print the command version and exit.
+This is not a published sys-init release identifier.
+.El
+.Pp
+There are no ordinary operands, repair modes or output-directory options.
+.Sh OUTPUT
+Success and caught operational failures produce JSON on standard output with
+schema sys-init-static-v1 and a result of pass, fail or blocked.
+A failure also writes an escaped diagnostic on standard error.
+Success includes tool/source identities, file counts and Clippy diagnostics.
+Ordinary Rust warnings can remain visible without a Clippy-group failure.
+.Pp
+Formatting differences require source review using the pinned formatter
+options.
+Restore the reviewed tool installation or separately review a tool-lock update
+when identity checks fail; do not replace a digest merely to silence a
+failure.
+Source boundary drift requires renewed source review before updating its
+record.
+.Sh ENVIRONMENT
+The inherited PATH and rustup configuration locate the installed toolchain.
+The platform and machine determine which reviewed tool hashes apply.
+Temporary-file placement follows the host Python tempfile configuration.
+No tools are downloaded or installed.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa docs/static-tools.json
+Tool identities, source scope and compiler/formatter arguments.
+.It Pa docs/native-boundaries.json
+Reviewed native source hashes and textual boundary occurrences.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All scoped checks passed; also help and version.
+.It 1
+Caught source, format, lint, output-limit or other operational failure.
+.It 2
+A required tool or reviewed host is unavailable or mismatched, or a tool times
+out.
+.It 64
+Invalid arguments, with diagnostics on standard error.
+.El
+.Pp
+Unexpected interpreter failures or abrupt termination can produce a nonzero
+exit without a normal result.
+An absent result is not success.
+.Sh EXAMPLES
+From the sys-init repository root with prerequisites already provisioned:
+.Bd -literal -offset indent
+python3 scripts/check-static.py --help
+python3 scripts/check-static.py
+.Ed
+.Pp
+The first invocation prints usage and exits zero.
+The second prints the success JSON and exits zero only if its scoped checks
+pass.
+To exercise argument rejection without changing inputs:
+.Bd -literal -offset indent
+python3 scripts/check-static.py --unknown
+.Ed
+.Pp
+This prints diagnostics on standard error and exits 64.
+No root privileges are required by these examples.
+Use python3 scripts/check-all.py to retain the normal check and its logs.
+.Sh SEE ALSO
+Repository references: docs/STATIC-CHECKS.md and
+docs/NATIVE-BOUNDARY-REVIEW.md,
+docs/DEVELOPMENT-CHECKS.md and docs/DOCUMENTATION-INVENTORY.md.
+Render this source with the host mandoc tool for offline terminal reading.
+.Sh CAVEATS
+Independent technical and reader review, installed-target lookup and release
+approval remain separate.
+This check does not establish runtime conformance.
+.Sh RECORD VALIDATION
+Settings and boundary records require exact schemas, fields and types before
+any tool lookup.
+Each JSON input is limited to 1 MiB and 32 nesting levels; duplicate keys,
+non-finite values, invalid paths/digests and malformed fields reject.
+Collections have at most 1,000 entries and strings at most 4,096 characters.
+See docs/STATIC-RECORDS.md for complete rules and remaining filesystem limits.
+Malformed records follow the existing failed JSON and exit-1 contract.
+.Pp
+Decision 0114 requires ordinary selected source and JSON files, rejects symlink
+components within the supplied root, and checks identity around bounded reads.
+Record bytes captured before tools must match a final reread before success.
+This is not an atomic snapshot or a general filesystem-I/O deadline.

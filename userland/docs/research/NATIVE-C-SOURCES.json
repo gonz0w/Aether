@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-05",
+  "scope": "Working-file review; no sibling code changed or tests rerun",
+  "sources": [
+    {
+      "path": "/Users/cam/DEV/aether/.planning/STATE.md",
+      "sha256": "c601736702c78f11ae8d386911d5821fad8d3e484ddec46a2e4edecd6f7f3018"
+    },
+    {
+      "path": "/Users/cam/DEV/aether/.planning/M4-LIFECYCLE-V1.md",
+      "sha256": "eb9228f5daa3baf143a89ac5998d0bbe0ce442de4c95c8b0413ed5ac20d5d8bb"
+    },
+    {
+      "path": "/Users/cam/DEV/sys-init/.planning/STATE.md",
+      "sha256": "5788f98556772fc84bee195695bf80911f2e32ac8956909aabb356e414653317"
+    },
+    {
+      "path": "/Users/cam/DEV/pkg-mgr/.planning/STATE.md",
+      "sha256": "35f9518e61762c41a5ec954e7391c9b699af9e49e70dfe45e9d4b54a5857af35"
+    }
+  ]
+}

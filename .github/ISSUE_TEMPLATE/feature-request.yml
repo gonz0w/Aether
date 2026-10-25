@@ -1,0 +1,47 @@
+name: Feature or research proposal
+description: Propose a bounded improvement or a question worth investigating.
+title: "[Proposal] "
+labels: ["status:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome. Use Discussions if you want to explore the idea first.
+        A proposal is not an implementation assignment; the maintainer will check
+        scope, prerequisites and existing work before marking anything ready.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of proposal is this?
+      options:
+        - Behavior or feature
+        - Documentation or developer experience
+        - Bounded research question
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the Aether use case and who needs it. Link related issues or discussions.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Useful outcome
+      description: Describe observable behavior, or a concrete deliverable for research.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and alternatives
+      description: What would you leave out? Is there a simpler way to meet the need?
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: How could we check it?
+      description: Suggest acceptance conditions, known prerequisites, or evidence that would resolve the question. It is fine to name unknowns.

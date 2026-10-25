@@ -1,0 +1,6 @@
+{
+  "source": "Aether-userland/experiments/dash-native/workloads/substitution.sh",
+  "sha256": "e8b096d8eb2bab7497cabc85bcd56012a9d520cac50ed3aeaf1d299b7ea3adb4",
+  "expected_exit": 0,
+  "stdout_sha256": "5e1fbefff34947852f397607ecc21e74a3f39c35fcb2c457ced736865c760a81"
+}

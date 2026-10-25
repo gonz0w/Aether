@@ -1,0 +1,159 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECK-STANDARDS 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-standards
+.Nd verify pinned offline Aether foundations reference inputs
+.Sh SYNOPSIS
+.Nm python3 docs/check-standards.py
+.Sh DESCRIPTION
+This is a developer command in the sys-init source checkout, not an installed
+operator executable.
+Run with Python 3.10 or newer from the repository root.
+Inputs are resolved relative to the wrapper's location.
+It reads the local
+standards.lock, verifies selected vendored release bytes and then executes
+that
+release's conformance/check.py with the invoking Python executable.
+No sibling checkout or network source is used and no release is installed.
+.Pp
+The wrapper requires the exact lock field set, fixed format and source
+project,
+a vMAJOR.MINOR.PATCH version, a matching foundations/version release path and
+a lowercase 64-digit manifest digest.
+Duplicate fields are rejected.
+It rejects symlinks in the selected release root or inventory, validates the
+manifest grammar and safe unique paths, hashes every listed file, and requires
+the complete file inventory plus conformance/check.py before executing it.
+The pinned checker additionally checks source snapshots and local links.
+.Pp
+The current lock selects v0.1.0.
+A pass verifies only the stated offline scope;
+it does not certify sys-init runtime conformance, approve publication or adopt
+an unpublished standards candidate.
+Restore reviewed bytes when integrity fails;
+do not edit immutable release files or replace a digest merely to hide
+failure.
+.Sh ARGUMENTS
+There is no command-line parser, help mode, version mode, output option or
+release-selection operand.
+All arguments are ignored, including --help,
+--version and unknown arguments; they still run verification and the selected
+checker.
+Use the no-argument form.
+Change a pin only through a separate adoption
+review, not by passing an argument or pointing at a mutable sibling tree.
+.Sh OUTPUT
+The pinned reference checker output is captured as separate raw streams
+and replayed after capture ends.
+Output delivery is buffered.
+The wrapper does not add a JSON envelope or
+create a report directory.
+Diagnostics use standard error; exceptions from
+malformed input, missing files or a failing child can produce a traceback.
+Caught ValueError, OSError and KeyError become short exit messages.
+A failing subprocess raises CalledProcessError outside that catch and may
+produce a traceback instead of preserving the child's numeric exit status.
+.Pp
+The reference child has a 30-second deadline and a combined 4 MiB output cap.
+Use python3 scripts/check-all.py for the existing 60-second gate watchdog and
+retained stdout/stderr.
+A missing or interrupted result is not success.
+.Sh ENVIRONMENT
+The child uses the same Python executable with -I -S -B.
+Python environment options and import paths, user site and automatic site
+initialization are excluded; assertions are enabled and bytecode disabled.
+Non-Python environment values and the working directory are inherited.
+The parent interpreter is unchanged and remains a trusted host dependency.
+Temporary storage uses Python tempfile selection and is cleaned on unwinding.
+There is no downloader or OS sandbox.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa docs/standards.lock
+Local key=value consumer pin.
+This is an adoption input, not a service file.
+.It Pa docs/vendor/aether-foundations/v0.1.0/SHA256SUMS
+Currently selected manifest.
+Its exact raw bytes are hashed by the lock.
+.It Pa docs/vendor/aether-foundations/v0.1.0/
+Offline release files.
+The lock version selects this directory.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+The wrapper and invoked reference checker completed normally.
+Arguments are not validated, so this is not a help or usage acknowledgement.
+.It 1
+An explicit integrity rejection or ordinary uncaught Python/subprocess
+failure.
+Other interpreter or external-termination statuses remain possible.
+.It 130
+Python interruption, including SIGTERM handled during main-thread capture.
+.El
+.Pp
+There is no separate usage-error status or stable wrapper failure JSON.
+.Sh EXAMPLES
+From the repository root, with the tracked offline inputs present and ordinary
+assert-enabled Python execution:
+.Bd -literal -offset indent
+python3 docs/check-standards.py
+.Ed
+.Pp
+Expect the selected release's text results and exit zero if its checks pass.
+No root privileges are required.
+For logs retained by the aggregate runner:
+.Bd -literal -offset indent
+python3 scripts/check-all.py
+.Ed
+.Pp
+Do not use --help as a harmless query; it executes the same release checker.
+Do not alter release bytes to demonstrate a negative example in this checkout.
+.Sh SEE ALSO
+Repository references: docs/STANDARDS.md, docs/STANDARDS-RC1-REVIEW.md,
+docs/DEVELOPMENT-CHECKS.md and docs/DOCUMENTATION-INVENTORY.md.
+The selected offline release README explains its reference scope.
+.Sh CAVEATS
+Independent technical/reader review and target manual lookup remain pending.
+Unpublished candidates remain review inputs.
+No pin upgrade follows from this
+manual, and no shared renderer or runtime conformance is claimed.
+.Pp
+Decision 0120 limits each lock, manifest and payload to 1 MiB and release
+traversal to 2,000 entries including directories.
+Locks use ASCII text; ordinary files without symlink components are required.
+Nonblocking reads check descriptor identity and post-read size
+and modification time.
+These bounds do not provide an I/O deadline
+or atomic verification and execution.
+See docs/OFFLINE-LOCKS.md for the input contract and remaining limits.
+.Pp
+Decision 0121 rechecks lock/manifest bytes, complete release membership
+and payload digests before invocation and after a successful child.
+Persistent changes cause failure; child output may already have been printed.
+Use the wrapper exit status to determine success.
+Changes restored between comparisons and atomic execution remain outside scope.
+.Pp
+Decision 0122 runs verified payloads from a private temporary release tree,
+with a combined 64 MiB payload limit.
+The child uses Python -I -S -B, ignoring Python environment options and paths,
+skipping site initialization and suppressing bytecode writes.
+Assertions remain enabled for all families.
+Temporary copies are checked and cleaned on normal or error unwinding.
+This is not an OS sandbox or a guarantee of cleanup after abrupt termination.
+.Pp
+Decision 0123 bounds pipe draining and child exit together.
+Timeout and excess output fail; accepted raw prefixes are still replayed.
+Capture failure kills the owned process group and reaps the direct child
+before temporary-file cleanup.
+The deadline does not bound staging, filesystem I/O or blocked output replay.
+Escaped descendants and abrupt outer termination remain outside this guarantee.
+.Pp
+Decision 0124 maps active main-thread capture SIGTERM to interruption,
+with owned-group cleanup and direct-child reaping.
+The CLI prints reference check interrupted on stderr and exits 130.
+The previous handler is restored before output replay and staged-tree unwinding;
+background-thread calls do not change handlers.
+Startup, staging, postchecks and repeated signals after restoration remain
+outside this termination scope.

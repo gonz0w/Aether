@@ -1,0 +1,22 @@
+{
+  "scope": "Private delegated directories AF06/ABI26, same9/96 native workload and all existing resource/authority/time limits",
+  "engine_files": {
+    "user/storage/openzfs-volume/zpl-read.h": "eb7bdc9155369747c918944baba8f3b109951fff295273930a4df7cea0c7cc8a",
+    "user/storage/openzfs-volume/zpl-read.c": "bee69ab7d07fae3747dbe147513af1f74e9567fb087347c7fc5bed1f2a850e65",
+    "user/storage/openzfs-volume/zpl-write.h": "a96ea8a0ee84b50e04ac3716b38de87d9eec519dd7f06ac452c43076f145dc4b",
+    "user/storage/openzfs-volume/zpl-write.c": "7870e3841dc0c6b46dadd087c8db107367a461d62bd7bb068e5eab5beae1225d",
+    "user/storage/openzfs-volume/zpl-mutate.h": "5c0536af864584f002528b643c29dccc6f7180ad16feeac58814e8c273b58cbe",
+    "user/storage/openzfs-volume/zpl-mutate.c": "ca1b55b5674573745f5cbac38dac5acf0d3609bb649ab34680b2e721852655c5",
+    "user/storage/openzfs-volume/pool-lifetime.inc": "0e0aab003a0b7acc919eccafd70c810e06f1d07615081644c65c9cded9d31fc8",
+    "user/storage/openzfs-volume/pool-vdev-hooks.inc": "23b6dc994d51910b3ad589a84b7fc713a05210379baf8cb4357bdb1e2fd3ef0e",
+    "user/storage/openzfs-volume/pool-mixed-lifetime.h": "df6cb21815de8e76a2303c97310f9aca112505016e3f9e78e591cd30c4bb76b6",
+    "scripts/openzfs_fs_mixed.py": "a9787c9244d43efbcd5fd24e9d3463a0a472a08d7b527ab4cea698891561363d",
+    "user/storage/namespace-channel.rs": "a1dc19b635813bd1bc7df18b8ecb55174f53f4a9d103f92458c0936ae7f7e99e",
+    "user/storage/namespace-wait-channel.rs": "2a026f170dd3f1b5570d287762302172117b6a4a8efd4199255b9d40477f06a3",
+    "scripts/openzfs_fs_bulk.py": "3a35846bb2efdf54b33daabed9e250ef7a41ff085c38aa85cde7740928b5bfa3",
+    "user/storage/openzfs-volume/pool-bulk-lifetime.h": "6a5fb2e74b9f350f19220bcb44e826aad25bc8e69fe20df947dd02451c35d00d",
+    "user/storage/openzfs-volume/zpl-directories.c": "c46d737d6344e883e9e5121bbba4305a26c41d09aa24d2d278a1d7f9157165d8",
+    "user/storage/openzfs-volume/zpl-directories.h": "5f624fd6655c1be938dbabe2a7e54410b8dca93b3d642b9ed6fede74a41ba552"
+  },
+  "transport_inputs_sha256": "f200c7507b7fc300f9d4303191b0196acfa35dc7f9cffecd51e6a21e7933c82d"
+}

@@ -1,0 +1,148 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-TEST-LIFECYCLE-NATIVE 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-test-lifecycle-native
+.Nd consume experimental sys-init artifacts in an isolated Aether test workspace
+.Sh SYNOPSIS
+.Nm python3
+.Ar tests/lifecycle-native.py
+.br
+.Fl Fl aether Ar directory
+.br
+.Fl Fl work Ar directory
+.Nm python3
+.Ar tests/lifecycle-native.py
+.Fl Fl help
+.Sh DESCRIPTION
+This source-checkout developer command performs actual kernel builds and
+native
+QEMU smoke tests.
+It is not an installed operator command, a host-only model
+check or permission to test arbitrary images.
+Use trusted, independently reviewed
+inputs and tools matching the selected retained experiment.
+The command copies inputs to a new workspace and builds there rather than in
+the original kernel tree.
+Existing workspace paths are rejected.
+No root privileges, host service installation or physical target access is
+needed.
+.Pp
+Use Python 3.10 or newer, Rust 1.98.0 with x86_64-unknown-none and a
+producer-compatible Zig/QEMU toolchain with boot dependencies already
+available.
+The wrapper does not select a kernel revision for you or authenticate
+provenance
+merely by copying and hashing a mutable directory.
+Provision tools separately.
+The runner copies the kernel excluding common VCS/build/cache directories,
+then
+copies its .deps explicitly.
+It builds pass, wrong_detail and fault_entry clients
+and invokes Zig smoke with SMP disabled.
+The positive must return zero and show
+the lifecycle success marker.
+Wrong-detail requires its expected exit context
+and panic; fault-entry requires the expected supervisor panic.
+A generic failure
+is not sufficient.
+These are the legacy lifecycle-v1 fixtures only.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl aether Ar directory
+Trusted kernel source snapshot with matching boot dependencies.
+.It Fl Fl work Ar directory
+New workspace; must not already exist.
+.It Fl Fl help
+Print usage and exit without creating a workspace or launching tools.
+.El
+.Pp
+There is no --version option; argparse rejects it with exit 2.
+Relative input/work paths are resolved from the caller's working directory.
+Do not place the new workspace inside any input tree: the harness copies those
+trees and does not uniformly enforce that separation.
+Reserve a private path
+outside producer/SDK/dependency directories and preserve failed workspaces.
+.Sh OUTPUT AND FILES
+Per-case PASS/FAIL progress and successful client-builder output go to
+standard
+output.
+Errors can include tracebacks on standard error.
+The workspace contains
+source-sha256.json, clients/, aether/, per-case outputs/build logs and
+results.json.
+The final results file is a list, written in finally after the case loop
+starts;
+copy/setup failures can occur before it exists.
+A partial list is not a complete
+three-case pass.
+There is no schema-tagged aggregate result or stdout JSON.
+.Pp
+A running, missing, incomplete or failed report is not passing evidence.
+Do not erase unsuccessful attempts or substitute a previous passing report for
+current inputs.
+A passing guest run applies only to its selected frozen profile.
+.Sh LIMITS AND ENVIRONMENT
+The host environment selects tools through PATH; Python and producer smoke
+scripts can inherit other host settings.
+There is no downloader or hosted CI
+setup in this command.
+A copy/hash record alone is not a live sandbox guarantee.
+Zig/smoke calls have 120-second deadlines and a 4 MiB merged-output cap.
+Logs retain the accepted prefix on failure.
+Adjacent .log.json receipts record
+command, cwd, caller/helper hashes, bounds and actual outcomes.
+Nonzero exits
+remain available to the semantic oracle; timeout or overflow is never an
+invented expected-rejection exit.
+The helper kills the owned process group of
+trusted non-detaching tools on failure.
+Nested builders use independent compiler groups and deadlines; outer
+interruption does not prove complete cleanup of those nested groups.
+Lifecycle client builds have a 180-second outer bound.
+Their merged output is
+retained in variant-client.log and replayed on stdout after success; build-error
+detail remains in the log.
+Earlier direct streaming is no longer provided.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All selected cases completed successfully, or a supported help/version query.
+.It 1
+An ordinary Python exception or explicit semantic/build rejection.
+Other interpreter/signal termination statuses are possible.
+.It 2
+Invalid argparse usage, including --version.
+.El
+.Sh EXAMPLES
+From the repository root, inspect usage without starting a guest:
+.Bd -literal -offset left
+python3 tests/lifecycle-native.py --help
+.Ed
+.Pp
+A full invocation below starts real builds/QEMU.
+First set the quoted shell
+variables from an independently reviewed handoff; they are placeholders, not
+harness environment settings.
+WORK must name a new private directory outside
+all input trees.
+No root privileges are required.
+.Bd -literal -offset left
+python3 tests/lifecycle-native.py \e
+  --aether "$AETHER" --work "$WORK"
+.Ed
+.Pp
+Expect all selected cases, exit zero and the documented outputs on success.
+Retain the entire workspace on failure; do not rerun into an existing
+workspace.
+.Sh SEE ALSO
+Repository guides: docs/NATIVE-COVERAGE.md, docs/LIFECYCLE-V1.md,
+docs/NATIVE-SUPERVISION.md, docs/NATIVE-IO.md, docs/NATIVE-ADAPTER.md
+and docs/DOCUMENTATION-INVENTORY.md.
+Exact retained decisions define compatible
+producer inputs and test oracles; manuals do not replace those contracts.
+.Sh CAVEATS
+Independent technical/reader review and installed-target manual lookup remain
+pending.
+The native init profiles are experiments, not production POSIX init.

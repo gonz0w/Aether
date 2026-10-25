@@ -1,0 +1,53 @@
+{
+  "status": "proposed inert text; native rendering/delivery NOT RUN",
+  "files": [
+    {
+      "file": "capacity.txt",
+      "sha256": "137bdd04da9438f8b9aaf5be2b4b0f806b97a3bfd345b4c85b6e50a23ab64a80",
+      "bytes": 41,
+      "maximum_line_columns": 40,
+      "stream": "stderr",
+      "proposed_capacity": 256
+    },
+    {
+      "file": "denied.txt",
+      "sha256": "44e2fccd7bdfc6287b41ac5a4b15d1e18973e108546b45ea43588d244d051eeb",
+      "bytes": 37,
+      "maximum_line_columns": 36,
+      "stream": "stderr",
+      "proposed_capacity": 256
+    },
+    {
+      "file": "help.txt",
+      "sha256": "9d9fa6307db8cb15913d846edd8d7f0b67806caa0bfee1532f50f3d366fe05b4",
+      "bytes": 472,
+      "maximum_line_columns": 38,
+      "stream": "stdout",
+      "proposed_capacity": 512
+    },
+    {
+      "file": "unavailable.txt",
+      "sha256": "d751445e0bb08c7026a4e3c054b4f7267d65b870fd70cef7cc3c691b1e502db0",
+      "bytes": 32,
+      "maximum_line_columns": 31,
+      "stream": "stderr",
+      "proposed_capacity": 256
+    },
+    {
+      "file": "usage.txt",
+      "sha256": "f85e6477ab0fc0e28323652d2d40b613539b8f5b57baef8316482a2d5409d70b",
+      "bytes": 56,
+      "maximum_line_columns": 30,
+      "stream": "stderr",
+      "proposed_capacity": 256
+    },
+    {
+      "file": "version.txt",
+      "sha256": "9c2f49275621b9131dd035b0e038d18fb0ea977810687fed5ea18e628f0a95ab",
+      "bytes": 30,
+      "maximum_line_columns": 29,
+      "stream": "stdout",
+      "proposed_capacity": 512
+    }
+  ]
+}

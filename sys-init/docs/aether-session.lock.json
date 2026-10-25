@@ -1,0 +1,54 @@
+{
+  "schema": "sys-init-aether-session-lock-v1",
+  "profile": "ABI24/AENMX009 repaired serial shell candidate",
+  "files": {
+    "docs/evidence/owned-serial-session-2026-10-03/artifacts.tar.gz": "86f0034fa6c55735084a81b2be99f4d7e4a6a8e9ea303b34b2d9dd8886019ac1",
+    "docs/evidence/owned-serial-session-2026-10-03/artifacts.json": "e19f5d55a7e8aaace107caab4e33e870625735fb00ef8442eced77cbbf3eb766",
+    "docs/evidence/terminal-read-race-2026-10-04/artifacts.json": "02ab478a579902e54fb4b5ccbd8a94b2f7002a35d5b83be10e64b74c13f8c3fe",
+    "docs/evidence/terminal-read-race-2026-10-04/inspection/fixed-immediate/owner-stack.json": "49d0ef554be5c78c9ecbd30cf27f618aabc0fbc61b332fb7400518ff35148b2c",
+    "docs/evidence/terminal-read-race-2026-10-04/userland-review/workload.json": "1e9540b7be7a8cd6fd4fc2f1bc9ce43327281dd7355ae48f89195dc0f616de85",
+    "docs/evidence/terminal-read-race-2026-10-04/userland-review/oracle.py": "7e4bf98eaa6e07015bf8f60a32698013a6090aeba340642f129948b3913b0df3"
+  },
+  "archives": {
+    "docs/evidence/owned-serial-session-2026-10-03/artifacts.tar.gz": "docs/evidence/owned-serial-session-2026-10-03/artifacts.json"
+  },
+  "maintained": {
+    "prototypes/native-session/dispatch/user/native-capacity/session-owner.rs": "51701fc2c4bfde0e91ca87000e3c452d72d51cef9968bd477f105d383fe3e595",
+    "prototypes/native-session/dispatch/user/native-capacity/session_children.rs": "a61ff1a0598040618ecb53005a03094e1a83cdbc9ca93fb6f416cc7e06565a3d",
+    "prototypes/native-session/dispatch/user/native-capacity/session_exec.rs": "ddb0960949565bd634f7e3c345fc4caaca8bdba662d69e0140d1bebb6f04fb73",
+    "prototypes/native-session/dispatch/user/native-capacity/startup.rs": "eab6bc9b32b0b468f3e328c1a17f1c9ef100bc20577a9aa1cf26aa29361211f1",
+    "prototypes/native-session/dispatch/user/native-connections/exec_fds.rs": "0fae34150813b9d3e3404f74d0f61f013ee83a2633375b6f792d0a684ed037d3",
+    "prototypes/native-session/dispatch/user/native-connections/pipe.rs": "a33f3c63899139ae7b78cddcedd74b08a29e59ef68a786d03a786851ae2b4c13",
+    "prototypes/native-session/dispatch/user/native-connections/pipeline.rs": "57f4c0dcd6b7c0ae082830130b84424bee9096da1bc9d080a3f32053f26bd343",
+    "prototypes/native-session/init.rs": "0cc7f5d46655521928b33366e7ffebd0bee2b1ca80ff9b67411a49fd0342ba36",
+    "prototypes/native-session/owner.ld": "348c497883a3ac52c220748b1bb4c748a869afea44c9a82d2c2155fbaf048ab5"
+  },
+  "tools": {
+    "rustc": {
+      "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustc",
+      "sha256": "a11618eca0956a8aa4372c2bc898690b513cbdfa2cb9125b2a5301e360ed5b49",
+      "version": "rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: aarch64-apple-darwin\nrelease: 1.98.0\nLLVM version: 22.1.8\n"
+    },
+    "xorriso": {
+      "path": "/opt/homebrew/Cellar/xorriso/1.5.8.pl02/bin/xorriso",
+      "sha256": "d217ca8e759699dcaf36953822bd508f13587c57a890d2c1a71b19f6d0e8da86"
+    },
+    "qemu-system-x86_64": {
+      "path": "/opt/homebrew/Cellar/qemu/11.1.1/bin/qemu-system-x86_64",
+      "sha256": "25afcb2986e4a0f2c567de17273f55de3c99792b78a07c99e923bb62024c088f"
+    }
+  },
+  "expected": {
+    "raw": {
+      "sha256": "018193dae139b3a98b0e14e67911c5a5e92db55a78e2248d7a7d8142b32f6f6c",
+      "bytes": 15120
+    },
+    "elf": {
+      "sha256": "2e51f04b8b392f03ce42b4960926e4081829beab23688617b8afab080d292811",
+      "bytes": 45128
+    }
+  },
+  "workload": "docs/evidence/terminal-read-race-2026-10-04/userland-review/workload.json",
+  "stack": "docs/evidence/terminal-read-race-2026-10-04/inspection/fixed-immediate/owner-stack.json",
+  "oracle": "docs/evidence/terminal-read-race-2026-10-04/userland-review/oracle.py"
+}

@@ -1,0 +1,335 @@
+{
+  "schema": "aether-userland.adapter-errors-evidence.v1",
+  "scope": "Linux-emulated allocator object injection: raw brk ENOSYS; baseline versus strict metadata mprotect error handling; not native implementation",
+  "output": "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w",
+  "image_id": "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+  "source_sha256": "380603e3cee47f64529b4400113f228dab25225b554d85c4445d12d91856ce43",
+  "script_sha256": "d6af76d15d79b2f02288d9ff3443716d177417870a68f0466ceddfb69abf2f69",
+  "tools_lock_sha256": "2c72123a27ec11e2bdcae7e334be6493176ba6643f517a1478d5b55565547ac7",
+  "reference_evidence_sha256": "43fbf868436543852b46c117fda0d0d1c5a3ed76de27b34057abad4145ff6c8e",
+  "sdk_pin_evidence_sha256": "57abac9437e211b95d7c018c7ac98a3ad4db820d57ba4063dce35c410f552f86",
+  "runtime_identity_evidence_sha256": "24daf6b2040e007e8573b31f43365e5a71de1704b988bbf80caa1632f14d3548",
+  "elf_sha256": {
+    "baseline": "6d50a6c7964c01cb3429b9b85790b4e8a7ef6f92a910ddfe84e71f89e64424d1",
+    "strict": "f6cd0f229c06b0cc3f18bd56541dc4c092bf25855b86b5353fd011f0d9c9e1c8"
+  },
+  "archive_sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+  "strict_patch_sha256": "a62513f471675d7603d2a8ef9ab884bbf53cd4ee2313598260bb418872bf911f",
+  "injected_glue_sha256": "1383ed5a7e1297f22f005df4345e33ad1bf987311bdade878c4394064da80558",
+  "commands": [
+    {
+      "name": "compile",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-std=c11",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fstack-protector-strong",
+        "-fno-builtin",
+        "-nostdinc",
+        "-isystem",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/include",
+        "-c",
+        "/Users/cam/DEV/Aether-userland/experiments/musl-reference/adapter-errors.c",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/adapter-errors.o"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "malloc-baseline",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-std=c99",
+        "-O2",
+        "-nostdinc",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-strict-aliasing",
+        "-D_XOPEN_SOURCE=700",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/arch/x86_64",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/arch/generic",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/src/include",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/src/internal",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/include",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/include",
+        "-c",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/src/malloc/mallocng/malloc.c",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/malloc.o"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "link",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-fuse-ld=/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+        "-nostdlib",
+        "-static",
+        "-Wl,-z,noexecstack",
+        "-Wl,--no-undefined",
+        "-Wl,--wrap=mprotect",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crt1.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crti.o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/adapter-errors.o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/malloc.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/libc.a",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crtn.o",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/baseline.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "malloc-strict",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-std=c99",
+        "-O2",
+        "-nostdinc",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-strict-aliasing",
+        "-D_XOPEN_SOURCE=700",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/arch/x86_64",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/arch/generic",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/src/include",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/src/internal",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/include",
+        "-I",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/include",
+        "-c",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/musl-1.2.6/src/malloc/mallocng/malloc.c",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/malloc.o"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "link",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-fuse-ld=/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+        "-nostdlib",
+        "-static",
+        "-Wl,-z,noexecstack",
+        "-Wl,--no-undefined",
+        "-Wl,--wrap=mprotect",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crt1.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crti.o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/adapter-errors.o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/malloc.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/libc.a",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crtn.o",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/strict.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "undefined",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+        "--undefined-only",
+        "--extern-only",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/baseline.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "relocations",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-r",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/baseline.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "headers",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-h",
+        "-l",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/baseline.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "undefined",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+        "--undefined-only",
+        "--extern-only",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/strict.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "relocations",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-r",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/strict.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "headers",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-h",
+        "-l",
+        "/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w/strict.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "baseline-pass",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/baseline.elf",
+        "pass"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "baseline-eacces",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/baseline.elf",
+        "eacces"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "baseline-enosys",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/baseline.elf",
+        "enosys"
+      ],
+      "exit": 40
+    },
+    {
+      "name": "strict-enosys",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/adapter-errors-dvf_8z_w,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/strict.elf",
+        "enosys"
+      ],
+      "exit": 0
+    }
+  ],
+  "results": [
+    {
+      "case": "baseline-pass",
+      "exit": 0,
+      "trace_sha256": "509849dae39df9c97f2ef3db7ef5866821ba503309f1edd5fec759ffbdabe756"
+    },
+    {
+      "case": "baseline-eacces",
+      "exit": 0,
+      "trace_sha256": "71e9d528e2cb8853dad3c1b274690566c5c2e9775f3da9aa94988f20bea60b3e"
+    },
+    {
+      "case": "baseline-enosys",
+      "exit": 40,
+      "trace_sha256": "0089bd8e606aae7dcc22734a9fd570f708c2ec9b8095dc507102d994186cdd76"
+    },
+    {
+      "case": "strict-enosys",
+      "exit": 0,
+      "trace_sha256": "a7c09bac9928e61878fa40d3bafadce190208dd8ceb9df3467e331c4b903942f"
+    }
+  ]
+}

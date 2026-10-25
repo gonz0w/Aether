@@ -1,0 +1,598 @@
+{
+  "receipt_sha256": "9faa7eeb4725e57aebbd1b5bb26ed2bb92b82f9494004a800fcccaff1c4d6b64",
+  "scope": "53 reviewed finite/mapped owner outcomes; no complete public CLI acceptance",
+  "cases": {
+    "positive": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "empty-input": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "rejected-launch": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "partial-reservation": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "short-write": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "full-output": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=1",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=1",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "wrong-startup": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=64",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "wrong-status": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "skip-write": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=985 reclaimed=0"
+      ]
+    },
+    "bootstrap-reference": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=95",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "bootstrap-descriptor": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=95",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "bootstrap-rights": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=95",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "bootstrap-early-publication": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=97",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "reply-drop-read": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=84",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "reply-bad-read": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=84",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "reply-drop-close": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=84",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "reply-disabled-poison": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=94",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "launch-corpus": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "allow-launch-version": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=103"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "launch-eof-0": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1100 reclaimed=0"
+      ]
+    },
+    "launch-eof-1": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1101 reclaimed=0"
+      ]
+    },
+    "launch-eof-4": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1104 reclaimed=0"
+      ]
+    },
+    "launch-eof-16": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1116 reclaimed=0"
+      ]
+    },
+    "launch-eof-31": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1131 reclaimed=0"
+      ]
+    },
+    "launch-eof-32": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1132 reclaimed=0"
+      ]
+    },
+    "launch-eof-383": {
+      "negative": true,
+      "terminals": [],
+      "supervisor": [
+        "NATIVE supervisor result=1483 reclaimed=0"
+      ]
+    },
+    "pad-launch-eof": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=104"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "terminal-normal": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=134",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=134",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "terminal-fault": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=2 detail=134",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=2 detail=134",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "fault-as-exit": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=2 detail=134",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "startup-simple": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "startup-delimiter": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "startup-wide": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=29",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "startup-corrupt": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=80",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=53"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "mapped-0": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=0",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-1": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=1",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=1",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=1",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=1",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-2": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=2",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=2",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=2",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=2",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-64": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=64",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=64",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=64",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=64",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-125": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=125",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=125",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=125",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=125",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-126": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=126",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=126",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=126",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=126",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-127": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=127",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=127",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=127",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=127",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-134": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=134",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=134",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=134",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=134",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-255": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=255",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=255",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=1 detail=255",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=255",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-fault": {
+      "negative": false,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=2 detail=134",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=1",
+        "NATIVE terminal slot=1 generation=1 kind=1 detail=17",
+        "NATIVE terminal slot=2 generation=2 kind=2 detail=134",
+        "NATIVE terminal slot=0 generation=2 kind=1 detail=1",
+        "NATIVE terminal slot=1 generation=2 kind=1 detail=17"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=100 reclaimed=6"
+      ]
+    },
+    "mapped-ignore-kind": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=2 detail=134",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=134"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "mapped-force-zero": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=64",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=0"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "mapped-cleanup": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=1"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "uncertain-admission-lost": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=101"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "uncertain-admission-padding": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=101"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "uncertain-collection-lost": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=102"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "uncertain-collection-padding": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=102"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "uncertain-collection-receipt": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=102"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    },
+    "uncertain-retry": {
+      "negative": true,
+      "terminals": [
+        "NATIVE terminal slot=2 generation=1 kind=1 detail=0",
+        "NATIVE terminal slot=0 generation=1 kind=1 detail=109"
+      ],
+      "supervisor": [
+        "NATIVE supervisor result=970 reclaimed=0"
+      ]
+    }
+  }
+}

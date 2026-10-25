@@ -1,0 +1,84 @@
+{
+  "schema": "sys-init-aether-baseline-v1",
+  "profile": "AENSI001/ABI22",
+  "files": {
+    "docs/evidence/si07-loop-2026-10-03/consumer-sources.tar.gz": "f6ad2db2f4cb267395fb20fcd639bf1c584efdd187924b9afece7b26037bb5e7",
+    "docs/evidence/si07-loop-2026-10-03/consumer-sources.json": "d7c182b41f1648fe490190353e773ee539d166ba3438cef14100c2a6edf6f351",
+    "docs/evidence/si07-loop-2026-10-03/dependencies.json": "1699600ddb53c76e4a17342285e1403e2c93b6441c11ef4bb53911535a969a3f",
+    "docs/evidence/si07-loop-2026-10-03/normal/native-c.bin": "3241cda7af86447c76f3e5b918c2e7eaddadb84abf2224aed9c3b77a4b828e7d",
+    "docs/evidence/si07-loop-2026-10-03/normal/owner.raw": "84bf743cc1bac1f926b4a00997509a64b1a0f5a29c805a7ee7d48a27e3dfb4da",
+    "docs/evidence/si07-loop-2026-10-03/normal/owner.elf": "96bf4f50dc6523b0ce1943bbd850a24d26cb457ac7f9a6ebf0cfa11a7a862e2d",
+    "docs/evidence/si07-owner-2026-10-03/positive-2/startup.bin": "c2a8ef1406d04d618d8b2a9884a5244bb0998b9fa085f929d011a2c360c5a393",
+    "docs/evidence/service-table-2026-10-03/intake/owner.raw": "328f8b6c29075e4ec6cdc3e5951fe2f56530fb4be4a213fd3d8c53e9b2c12376",
+    "docs/evidence/service-table-2026-10-03/intake/owner.elf": "1671bfcb806f01722ec699f24123f57679cf932cc3f5006a24d2aef02aa18e1a",
+    "docs/evidence/service-table-2026-10-03/intake/owner-stack.json": "ddf41cf20dd8fdccc3b2a1b6936946b6cf5330c3da3b5717ec6b83f2581d0c56",
+    "docs/evidence/supervised-retry-2026-10-03/intake/owner.raw": "43c6586a2041b07ee11db81118228ab38bfb9b8fb88cecf5d66fc33f7abac890",
+    "docs/evidence/supervised-retry-2026-10-03/intake/owner.elf": "b354200740e294d8a93db6c755bfdda93a698e8dd7e0aa8f8d9ccdde3949becd",
+    "docs/evidence/supervised-retry-2026-10-03/intake/owner-stack.json": "471647acb6ed0e9274053ed30a8a41d5415cee7f346106c363d5551079361e58",
+    "docs/evidence/service-table-2026-10-03/sources/success.rs": "3fca2f592da0a3e4e32980a0c42a7ea5bbaab697257d0c9e147ff91f789d8786",
+    "docs/evidence/service-table-2026-10-03/sources/service_table.rs": "e68f414da377236f3391212e400946339f841b71b0e5726c0e11523bae21e339",
+    "docs/evidence/service-table-2026-10-03/sources/sustained_owner.rs": "d967feb1a1992297c122b75963be496b8dd4e4a0b4702f3391514b423c741dcf"
+  },
+  "maintained": {
+    "prototypes/native-command/success.rs": "26c8cdabdf32e2447b9923642abae7b3185d55e84211773461dc43c72eb80bc5",
+    "prototypes/native-command/sustained_owner.rs": "45759ce6624f50c3ffe92c7646f4f2452b4169982ebae6a3234bd2a24e5b3a36",
+    "prototypes/native-command/lifecycle.rs": "24ad02b6138f499bf1bc92e181ef480f73cd99795f9d1f05407a89ba4832dbc3",
+    "prototypes/native-command/byte_compare.rs": "7e1132b792f04cf0fb9276c555affd968b767e3526817733f6fab0e4989e4c52",
+    "prototypes/native-command/ownership_probe.rs": "04fd86c0cc4fd583c28adf79cf14e35146847e11f0cb10d4f13d6f2fe436f4d0",
+    "prototypes/native-supervisor/connection_owner.rs": "2b8501f0368583de48926bb48ddbd87ac77710ef0748a98bb3a0d8cda1272d26",
+    "prototypes/native-supervisor/service_owner.rs": "77a8e8df7866371658129797d073adbdef91ec565d2731a17d6917b5af33d09d",
+    "prototypes/native-command/service_table.rs": "45cb3a441e68f89a923bd4c946c6c700c485bfe98245e315aa37ce64fbea2dfc"
+  },
+  "tools": {
+    "rustc": {
+      "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustc",
+      "sha256": "a11618eca0956a8aa4372c2bc898690b513cbdfa2cb9125b2a5301e360ed5b49"
+    },
+    "zig": {
+      "path": "/opt/homebrew/Cellar/zig/0.16.0_1/bin/zig",
+      "sha256": "71cc3995a7586753ebf82c66dfb8bef43df446517550678781834586a960f8c9",
+      "version": "0.16.0"
+    },
+    "qemu": {
+      "path": "/opt/homebrew/Cellar/qemu/11.1.1/bin/qemu-system-x86_64",
+      "sha256": "25afcb2986e4a0f2c567de17273f55de3c99792b78a07c99e923bb62024c088f",
+      "version": "QEMU emulator version 11.1.1\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "xorriso": {
+      "path": "/opt/homebrew/Cellar/xorriso/1.5.8.pl02/bin/xorriso",
+      "sha256": "d217ca8e759699dcaf36953822bd508f13587c57a890d2c1a71b19f6d0e8da86"
+    },
+    "python": {
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+    }
+  },
+  "stack": {
+    "maximum": 2696,
+    "usable": 4088,
+    "evidence": "docs/evidence/si07-loop-2026-10-03/normal/owner-stack.json"
+  },
+  "service_table": {
+    "profile": "AENSI001/ABI22/service-table",
+    "owner_prefix": "docs/evidence/service-table-2026-10-03/intake/owner",
+    "stack": {
+      "maximum": 2712,
+      "usable": 4088,
+      "evidence": "docs/evidence/service-table-2026-10-03/intake/owner-stack.json"
+    }
+  },
+  "supervised": {
+    "profile": "AENSI001/ABI22/supervised",
+    "owner_prefix": "docs/evidence/supervised-retry-2026-10-03/intake/owner",
+    "stack": {
+      "maximum": 2744,
+      "usable": 4088,
+      "evidence": "docs/evidence/supervised-retry-2026-10-03/intake/owner-stack.json"
+    }
+  },
+  "compatibility_sources": [
+    "docs/evidence/service-table-2026-10-03/sources/success.rs",
+    "docs/evidence/service-table-2026-10-03/sources/service_table.rs",
+    "docs/evidence/service-table-2026-10-03/sources/sustained_owner.rs"
+  ]
+}

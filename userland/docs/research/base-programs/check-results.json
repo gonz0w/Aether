@@ -1,0 +1,26 @@
+{
+  "scope": "UL-064 documentation verification",
+  "matrix_groups": 39,
+  "required_command_coverage": "pass",
+  "local_links_checked": 6,
+  "quality_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "docs/quality/check.py"
+  ],
+  "exit": 0,
+  "stdout": "25 foundation release files, source snapshots and local links verified; implementation conformance is separate\n30 offline descriptor/graph/trust/measurement cases pass; no native runtime or cryptographic enforcement claim\nHearth dark: all text roles >= 4.5:1; minimum 5.90:1\nHearth light: all text roles >= 4.5:1; minimum 4.73:1\n14 release files verified; implementation conformance is separate\nPASS: pinned standards and documentation inventory structure\nNOT RUN: runtime, full source audit, reader and publication gates\n",
+  "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.007s\n\nOK\n",
+  "sources": {
+    "docs/research/BASE-PROGRAMS.md": "09ee4fcc20eb83ef5fc5422c478e9b90a18d8ce1ec33b530183b1acc6b117712",
+    "docs/research/PACKAGES.md": "88a8dd66a832c6c9ec9228740f8f3e3e794596977ab985126b357fca8f0784cd",
+    "docs/research/base-programs/change-review.md": "d690caad86add439356d0ea1888be7d278af409f6c440b22f09f0a98f4847a84",
+    "docs/research/base-programs/dash-builtins.def.in": "e8d01dda150290c7460718a18b8758568646df5a50e8d759b64244e8a01dec8f",
+    "docs/research/base-programs/review.json": "5330ef3e48a83ee8d0bdbfbeebea9960a36365386d3b3e55db292d7a3ab340f3"
+  },
+  "not_run": [
+    "Provider builds",
+    "Native runtime",
+    "Independent technical review"
+  ]
+}

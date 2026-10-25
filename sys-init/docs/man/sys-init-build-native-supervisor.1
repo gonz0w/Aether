@@ -1,0 +1,185 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-BUILD-NATIVE-SUPERVISOR 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-build-native-supervisor
+.Nd build an inert experimental Aether artifact from local inputs
+.Sh SYNOPSIS
+.Nm python3
+.Ar scripts/build-native-supervisor.py
+.Ar native output
+.Op Fl Fl variant Ar name
+.Nm python3 scripts/build-native-supervisor.py
+.Fl Fl help
+.Sh DESCRIPTION
+This source-checkout developer tool builds files only; it does not boot a
+guest,
+install a service or execute the generated image.
+Use Python 3.10 or newer on a
+POSIX development host, from the repository root.
+No root privileges are needed.
+A successful build establishes the recorded structural checks, not native
+runtime
+acceptance.
+Use the separately qualified runner and matching producer profile
+before making a target-behavior claim.
+.Pp
+Provision rustc through rustup with toolchain 1.98.0 and the
+x86_64-unknown-none target before offline use.
+The command invokes rustc +1.98.0
+with edition 2024, optimization level 2, aborting panics, static relocation
+and
+the repository linker script.
+It requires nonempty raw code at most 4096 bytes.
+The bounds belong to these legacy fixtures, not the newer init profiles or a
+production memory budget.
+The builder does not provision a toolchain itself.
+The input must be longer than 40 bytes and begin with AENATC01.
+This is only
+an initial envelope check; the builder does not fully validate its declared
+fields, authenticate its source or prove variant/input compatibility.
+It binds
+the input payload to the selected supervisor under AENSUP01 or AENFD001.
+.Pp
+Each compiler/tool invocation has a 180-second deadline and a 4 MiB
+merged-output
+limit.
+Failure kills only the owned group of trusted, non-detaching tools and
+retains the accepted log prefix.
+The command is not confinement against hostile
+tools or concurrent input mutation.
+Copying, hashing and other Python work are
+outside this per-tool deadline.
+.Sh OPTIONS AND OPERANDS
+.Bl -tag -width Ds
+.It Ar native
+Path to the reviewed native C envelope.
+This input is read, not executed.
+.It Ar output
+Output directory, created with parents as needed.
+Existing directories are
+allowed and files with the same names can be overwritten.
+Use a fresh private
+build directory.
+After failure, earlier artifacts may still exist; their presence
+is not proof that the latest build succeeded.
+.It Fl Fl variant Ar name
+Select a fixed fixture variant; the default is pass.
+Choices are listed below.
+.It Fl Fl help
+Print usage and exit without building or creating output.
+.El
+.Pp
+There is no --version option.
+Invalid usage exits 2.
+.Sh VARIANTS
+.Bl -item -compact
+.It
+pass
+.It
+fault_entry
+.It
+wrong_detail
+.It
+io
+.It
+io-stop
+.It
+io-stop-wrong-detail
+.It
+io-retained-stop
+.It
+io-retained-fault
+.It
+io-retained-wrong-kind
+.It
+io-ready-exit
+.It
+io-ready-fault
+.It
+io-unready-exit
+.It
+io-unready-fault
+.It
+io-unready-stop
+.It
+io-invent-ready
+.It
+io-authority
+.It
+io-authority-allow
+.It
+io-peer
+.It
+io-peer-reverse
+.It
+io-peer-wrong
+.El
+.Pp
+Names select fixed fixture paths and deliberate fault/rejection controls.
+They do not establish that an arbitrary native input is suitable for that
+path.
+.Sh OUTPUT AND FILES
+The successful command prints an artifact path on standard output.
+Compiler/linker output is retained in logs.
+Python and argument errors use
+standard error and may include tracebacks.
+Preserve the entire output directory,
+including failed attempts; a running/missing receipt is not a successful
+build.
+Output includes supervisor.raw, supervised.bin, build.json, compiler.log and
+compiler.log.json. build.json records the command, variant and
+input/raw/envelope
+hashes.
+The per-tool receipt additionally records caller/helper hashes and the
+bounded invocation outcome; it does not replace build.json.
+.Pp
+A post-compile size or structural failure can follow a successful tool
+attempt.
+Check the builder exit and final evidence, not just the compiler receipt.
+.Sh ENVIRONMENT
+The compiler inherits the parent environment.
+PATH and rustup configuration
+select the rustc proxy/toolchain.
+The shared scripts/bounded_tools.py helper is
+a host build dependency; its digest and the caller digest appear in tool
+receipts.
+Provision dependencies separately so offline builds cannot trigger setup work.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+The build and its final checks completed; also supported help/version queries.
+.It 1
+An explicit build rejection or ordinary uncaught tool/Python failure.
+Signal or abrupt termination can produce other statuses without final
+evidence.
+.It 2
+Invalid argparse usage, including --version.
+.El
+.Sh EXAMPLES
+From the repository root, inspect usage without launching tools:
+.Bd -literal -offset left
+python3 scripts/build-native-supervisor.py --help
+.Ed
+.Pp
+After setting NATIVE to a reviewed local envelope path, choose a fresh
+directory:
+.Bd -literal -offset left
+python3 scripts/build-native-supervisor.py \e
+  "$NATIVE" out/supervisor-review --variant pass
+.Ed
+.Pp
+Expected success is an artifact path and exit zero.
+These examples do not boot
+or execute the artifact.
+Do not reuse paths containing retained acceptance data.
+.Sh SEE ALSO
+Repository guides: docs/NATIVE-SUPERVISION.md, docs/QUALITY-PROCESS.md,
+docs/DOCUMENTATION-INVENTORY.md and the source script for exact build flags.
+.Sh CAVEATS
+The manual title is not an installed command.
+Independent technical/reader
+review and target manual lookup remain pending.
+Build success is not runtime
+conformance or authority to publish a release.

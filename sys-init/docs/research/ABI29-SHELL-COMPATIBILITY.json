@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-20",
+  "scope": "Read-only source/arithmetic compatibility review; no client build or native execution",
+  "sources": {
+    "userland_client": {
+      "path": "/Users/cam/DEV/Aether-userland/experiments/session-runtime/runtime.c",
+      "sha256": "9564e94fffcb2277d92a19402c0ba5bd9d1cf85df4f4fcbd6fa9bb78c601ff43"
+    },
+    "init_child_identity": {
+      "path": "/Users/cam/DEV/sys-init/prototypes/native-session/dispatch/user/native-capacity/session_children.rs",
+      "sha256": "a61ff1a0598040618ecb53005a03094e1a83cdbc9ca93fb6f416cc7e06565a3d"
+    },
+    "init_startup": {
+      "path": "/Users/cam/DEV/sys-init/prototypes/native-session/dispatch/user/native-capacity/startup.rs",
+      "sha256": "eab6bc9b32b0b468f3e328c1a17f1c9ef100bc20577a9aa1cf26aa29361211f1"
+    },
+    "kernel_identity": {
+      "path": "/Users/cam/DEV/Aether/kernel/arch/x86_64/native_c.zig",
+      "sha256": "cf680d24aa6d1cb93e4f5a597bb5edfe3c89c4c1d24711a76e3ff43d3af9ef4a"
+    }
+  },
+  "old_client_observations": [
+    "role accepts only0 or2..4",
+    "getpid must equal epoch*6+role+1",
+    "participant parent must equal shell_generation*6+1",
+    "waitpid decodes (pid-1)%6 and (pid-1)/6",
+    "memory auxv must match actual role and epoch"
+  ],
+  "combined_profile_domains": 7,
+  "selected_process": {
+    "generation": 1,
+    "native_slot": 1,
+    "native_pid": 9,
+    "old_client_role1_allowed": false,
+    "old_client_pid_if_honest_role1": 8
+  },
+  "conclusion": "Current client rejects ABI29 role1 before dependent startup; changing only local dispatcher labels/arithmetic cannot make this an accepted matched client. Client+dispatcher contracts must change together with fresh witnesses."
+}

@@ -1,0 +1,2 @@
+namespace	package_name	version	recipe_path	recipe_revision	source_hash	source_size	manifest_hash
+base	hello-local	0.1	recipes/hello-local/package.mk	fixture-v1	sha256:735aef1485e4d223e2f1cffb03395a8e1e7b865b14d31310da1dc8e7a3220610	105	sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

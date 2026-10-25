@@ -1,0 +1,20 @@
+[
+  {
+    "id": "FACT-001",
+    "date": "2026-06-21",
+    "fact": "The sys-init repository initially contained only docs/PRD-SEED-SYS-INIT.md.",
+    "source": "repository inspection"
+  },
+  {
+    "id": "FACT-002",
+    "date": "2026-06-21",
+    "fact": "The seed PRD file is a placeholder summary rather than the full detailed PRD content.",
+    "source": "docs/PRD-SEED-SYS-INIT.md"
+  },
+  {
+    "id": "FACT-003",
+    "date": "2026-06-21",
+    "fact": "User direction requires alignment with the Aether kernel project at ~/DEV/Aether and package manager at ~/DEV/pkg-mgr.",
+    "source": "user request"
+  }
+]

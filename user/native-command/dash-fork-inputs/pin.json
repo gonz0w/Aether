@@ -1,0 +1,6 @@
+{
+  "object": "jobs.o",
+  "sha256": "5fb548eecf1c97222e68318be9faf98b20c62d69e032e5e64fcff96507d42b24",
+  "origin": "docs/evidence/dash-command-config-2026-09-11/jobs-config-w5f0wrjq/results.json",
+  "scope": "explicit AETHER_NATIVE_FORK_EXEC configuration; producer candidate, not SDK publication"
+}

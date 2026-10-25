@@ -1,0 +1,92 @@
+# UL-067 independent normal-copy adoption
+
+2026-09-07. Consume the latest captured Toybox producer sources in a private build
+root. Retain the producer recipe and record a local execution adaptation: fixed
+paths, clean environment, pinned tools and existing owned process runner. Rebuild
+all baseline Toybox translation units from the retained source; do not rely on
+archived applet objects. SDK remains receipt-pinned. Reuse hash-checked owner
+payloads for this first consumer run; owner source rebuilding is a later gate.
+
+Scope: actual unmodified cat_main on binary32, empty and native short I/O, real
+startup/mask/TLS/allocator, callbacks and flush, three consuming closes and four
+native reclaims. Negative controls: skip copy, callback, flush and diagnostic close.
+Require exact statuses and supervisor diagnostics, never a generic panic. No
+filenames/options, public command registration, recursive/signal finalization,
+error/usage acceptance or full CAT-01–08 acceptance follows from this slice.
+
+Review Foundations O/I/E, C/CP/TD/TE and the existing quality process. Preserve
+native roles/poison/rights, upstream notices, existing output bytes, SDK/archive
+pins and smoke markers. No sibling implementation edits. Keep all attempts,
+argv/environment/tool/source/artifact identities and raw logs. Builds <=180s,
+guest watchdog30s; use the existing source-pinned native_smoke cleanup within an
+owned process group. Run affected native cases and quality before reporting.
+Review startup/finalization against docs/TOYBOX-NATIVE-CAT.md; document its remaining
+close-error diagnostic and recursion boundaries. Independent reader review stays
+pending. The release roadmap next step is native dash external command/pipeline.
+
+## Error and usage continuation
+
+Qualify captured errors (11 cases) and usage (20 cases) with the same source/SDK
+closure and rebuilt Toybox objects. Add receipt-verified recipes and the owner's
+recorded Rust build commands as separately pinned inputs. Errors rebuild the
+selected supervisor with toybox_applet expectations; backend remains a verified
+payload dependency. Usage reuses verified owner payloads. Resolve Rust directly
+from the existing lock, avoiding ambient rustup selection. Preserve all original
+case/status/prefix/poison and four-reclaim oracles. The whole-story producer rebuild,
+finalization gaps and broad regressions remain separate. Keep each execution's
+driver/recipe identity in a new directory so prior evidence is never overwritten.
+
+## Captured finalizer continuation
+
+The completed finalize delivery changes only the probe and opt-in owner branches.
+Use a new snapshot, preserving earlier receipts. Select its18 buffered/flush/close/
+status/re-entry/control cases and the7 normal-copy regressions. Rebuild all applet
+objects and selected finalizer owners; backend remains pinned reuse. The repeat
+hook guard is not a terminal re-entry policy. Final close-error diagnostics,
+uncertain-close/diagnostic-failure coverage and full CAT-06 acceptance remain open.
+Existing limits, original expected statuses, exact rejection contexts and four
+reclaims apply. Retain technical review findings rather than weaken requirements.
+
+## Fresh backend identity
+
+Rebuild normal and empty cat backend C/Rust sources from the captured finalizer
+snapshot, using recorded producer compile/link argv and pinned SDK/tools. Compare
+the resulting complete ELF bytes with the backend portion of each locally tested
+normal-copy and finalizer payload. Only exact equality supports reuse of those
+native results. A mismatch is an unresolved result requiring investigation and
+matched runtime tests; do not replace expected hashes. This closes backend build
+provenance for those cases, not full producer/regression or CAT-06 acceptance.
+
+## Complete captured producer regression
+
+Run the unmodified captured launch_smoke --command-runner suite against a private
+copy of the receipt-pinned SDK and existing locked tool wrappers. Require213
+native case outcomes, exact original semantic oracles and completed outer process
+cleanup. Each guest retains its30-second watchdog; each producer build180-second
+limit; outer suite1800 seconds matches the producer review ceiling. Keep clean
+environment, all logs and produced receipts, and verify the captured inventory
+again at completion. This qualifies the captured finalizer-era producer; it does
+not consume or accept the still-moving close-policy delivery. No benchmark claim.
+
+## Completed close-policy intake
+
+Capture the completed close handoff in a new snapshot and verify every handoff
+dependency. Select its27 cases and the recorded fresh upstream rebuild, without
+duplicating that rebuild in the local wrapper. Adopt `cat: close failed\n` as this
+candidate's exact diagnostic instead of the earlier unimplemented proposed text;
+preserve both historical evidence and original producer byte/status oracles.
+Review input/output-before-stderr ordering, uncertainty latch, nested no-effects
+and outer nonzero result, prior64 and applet-error composition. Rebuild selected
+owners and applet sources; native four-reclaim and exact mutant oracles remain.
+No broad CAT/M3 acceptance is inferred; assess remaining coverage after this run.
+
+## Current close revision broad regression
+
+Run the existing full 213-case captured producer suite on the isolated close
+snapshot. Select its exact close-execution receipt explicitly to verify the Rust
+wrapper; retain the old finalizer default for prior reproducibility. No producer
+source or oracle change. Require all213 cases, source inventory unchanged and
+owned outer cleanup, with the existing 1800-second outer bound/30-second guest
+watchdog. This closes the revision gap only; actual-applet matrix/independent
+review and native dash remain separate. Retain driver/receipt identities and run
+the local quality check after documentation updates.

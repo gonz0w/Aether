@@ -1,0 +1,44 @@
+{
+  "date": "2026-09-05",
+  "scope": "UL-064 provider research; no provider build or target execution",
+  "dash_archive_sha256": "40090101a2a491f13e901d3d48e90414f26634628b9bfff35ff540363c227a7d",
+  "dash_trust": "not-authenticated; HTTP source with matching HTTPS packaging digest; research only, UL-016 open",
+  "local_inputs": {
+    "experiments/dash-reference/source.lock.json": "b62e8653cf26f380bd486df655cb3a11c026315790605319fd573b0defbbb785",
+    "build/dash-reference-zx5wokn_/obj/src/builtins.def": "f94adce0c724f4b217ba0c770b679ec471c403e2795c9d3e708fa81d00c9376b",
+    "/Users/cam/DEV/pkg-mgr/README.md": "095895001e3cc26a608611791f6c883e2f4695d1bd3581fcd4c5ed15de559fc1",
+    "/Users/cam/DEV/pkg-mgr/mk/aether-boot-v2.sh": "a67ee7a54938c6f4e228712367fd427f3867817b850298146099ef5a7ad3e1cc",
+    "/Users/cam/DEV/pkg-mgr/mk/aether-boot.sh": "f350b4287d5e4e244bab68c9d9a4972f07e676ac7edd30b72ec736c21bb621b4",
+    "/Users/cam/DEV/pkg-mgr/mk/binary.sh": "75b069b48b2b43644edd1217e5e16df832525e4ea806549d3bf3cdd0f30febf0",
+    "/Users/cam/DEV/pkg-mgr/mk/check-root.sh": "f63dcb6e1b2cc5a99d6bace019d4db3138d7c1762095bb4f311446a649a369db",
+    "/Users/cam/DEV/pkg-mgr/mk/file-mode.sh": "14d1ad8515c2d4ee7062066fa996b9fb83a90396c9ac77d3e77a3e2913189c20",
+    "/Users/cam/DEV/pkg-mgr/mk/hello-phases.sh": "7b9984bb2e3284320813c2deaeb39128335fd852c51cc62c59c617785e882e31",
+    "/Users/cam/DEV/pkg-mgr/mk/package-evidence.sh": "f08e30caa583fadb7a29d70445cad7193c946195a58af7bb0f1e4860d9dbbdd2",
+    "/Users/cam/DEV/pkg-mgr/mk/phase.sh": "760ec192e2e5c9361f6d836f87d4552cdab73ba84c7db67e7fb698feb413bb20",
+    "/Users/cam/DEV/pkg-mgr/mk/replacement.sh": "390e33e2674354aa6eb0ee695f17ef6d34502e45d3e58e4606333b54584fcbad",
+    "/Users/cam/DEV/pkg-mgr/mk/state.sh": "fe010365e7cba8ce358ab152d6a354d6b2fb00e50c5e026cf2f65bb4a38bd845",
+    "/Users/cam/DEV/pkg-mgr/mk/update-observe.sh": "b17c1d67f2897f3df0be8e5d408fdb89c96a8842891842a65aed7ef355c9d63f",
+    "/Users/cam/DEV/pkg-mgr/mk/verify-metadata.sh": "719579c48785f8bd2beea606f5862aaa67e03b91de8890887abbf68349193033",
+    "/Users/cam/DEV/pkg-mgr/mk/cli-render.awk": "c00fc7f9b934f0ebbaebb61194682b8ecb5acb60a085d28a3a688f7001b1e724",
+    "/Users/cam/DEV/pkg-mgr/mk/state-schema.awk": "2b80447369f27e91219323c5fa331a1f7de1bac1a5c87cd5173bfbe268af1540",
+    "/Users/cam/DEV/pkg-mgr/mk/state-views.awk": "e944052b39f1ed77aa8e10836b03bfdde047723f0eb81d8da339949eb019cf0c",
+    "/Users/cam/DEV/pkg-mgr/mk/update-diff.awk": "ef8171a8c23caf4a906e292aef41fca9ba4420ae48884d8517a149c619973f77",
+    "/Users/cam/DEV/pkg-mgr/mk/update-three-way.awk": "cb421d80727f37b29834db593fbcc96594b7e176d8ea414ab4d722ce2fc5cc57",
+    "/Users/cam/DEV/pkg-mgr/mk/pkg.mk": "ea8c9666bcbb78f478c4ea89cf023ba35f5ed1d9e9ceb6c57246a55e083d4480"
+  },
+  "research_urls": [
+    "https://landley.net/toybox/status.html",
+    "https://landley.net/toybox/faq.html",
+    "https://github.com/onetrueawk/awk",
+    "https://invisible-island.net/mawk/",
+    "https://www.gnu.org/software/coreutils/manual/coreutils.html",
+    "https://uutils.org/coreutils/docs/platforms.html",
+    "https://busybox.net/license.html"
+  ],
+  "limitations": [
+    "Moving upstream pages are dated research, not source pins",
+    "Package scripts inspected statically; command closure not exhaustive",
+    "Native prerequisites remain open",
+    "No independent reviewer approval"
+  ]
+}

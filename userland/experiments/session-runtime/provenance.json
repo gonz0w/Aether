@@ -1,0 +1,19 @@
+{
+  "schema": "aether-session-runtime-origin-v1",
+  "source_packet": "/Users/cam/DEV/Aether-userland/docs/evidence/serial-session-consumer-2026-09-29",
+  "source_seal": "485c32579591d9ff3001c82fea6705e1a7a56fdb8d052da94a73ebaeda2d55a4",
+  "sources": {
+    "user/native-capacity/session-client.c": "fca43c4348e4f16811128d3ca1d1f64823547647151cc407c1f6dc021f5c470b",
+    "user/native-capacity/fork-stage.h": "33d0b46348450daed39a4f3ec0c8e106b70f1977496c21939b3e6a4b8fec9378",
+    "user/native-capacity/session-scratch-client.h": "b1b0205a30342bfa17bb211ed518b1b34fdf8246329e406dbc79e5f6f94ec57a",
+    "user/native-command/transport.h": "d4796885dc2a9c16a9fd6b848ebed0b2420063e1f126196e2404dc361c22cbbd",
+    "user/native-command/startup-adapter.h": "21911a4fbfd30a99ddb4f97545c29629ec97eea1915d85c5da26f92c89b6698e",
+    "user/native-command/stream-bootstrap.h": "532f4c28697da61048e253bf89f63cb53b0b33cb1ecb65d932aadb10b911fec3",
+    "user/native-command/cat-bootstrap.h": "4ecb11a2c7f9051d5f7e98ccc3db0b026a250c2df98229c426dd00839c300b98",
+    "user/native-memory/adapter.c": "bd9999e1ced23de9e9f5600d9429b20c08e36d3e750de8fa6faa55370a945cc5",
+    "user/native-memory/adapter.h": "6079074f08dc26143302e1b694055ee7a8a34eecf58feb9517b0da220200801b",
+    "user/native-connections/rebind.c": "930f2509c196500508d8c578bbfb4ec08414b025648c30caa23cf5dd898c4a83"
+  },
+  "license": "BSD-2-Clause; original Aether sources, notices retained",
+  "scope": "private AENMX008/ABI23; no general libc or service ownership"
+}

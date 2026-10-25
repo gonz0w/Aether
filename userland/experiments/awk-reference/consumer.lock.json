@@ -1,0 +1,7 @@
+{
+  "state-schema.awk": "2b80447369f27e91219323c5fa331a1f7de1bac1a5c87cd5173bfbe268af1540",
+  "LICENSE": "904f4df177e4f135c1c39893a81db4c5199909a3bd9a2f5ad7c449fab7e92c1c",
+  "cli-render.awk": "c00fc7f9b934f0ebbaebb61194682b8ecb5acb60a085d28a3a688f7001b1e724",
+  "update-three-way.awk": "cb421d80727f37b29834db593fbcc96594b7e176d8ea414ab4d722ce2fc5cc57",
+  "update-diff.awk": "ef8171a8c23caf4a906e292aef41fca9ba4420ae48884d8517a149c619973f77"
+}

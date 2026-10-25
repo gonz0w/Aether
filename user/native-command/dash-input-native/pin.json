@@ -1,0 +1,6 @@
+{
+  "object": "input.o",
+  "sha256": "b3ba65369b2befb50009b04bbe12f95e2556030e1d4bbcaeb639ff3de379588a",
+  "origin": "/Users/cam/DEV/Aether/docs/evidence/dash-console-2026-09-11/input-config-qgkf4t4i/results.json",
+  "scope": "AETHER_NATIVE_NO_TEE selects upstream one-byte input fallback; private producer candidate"
+}

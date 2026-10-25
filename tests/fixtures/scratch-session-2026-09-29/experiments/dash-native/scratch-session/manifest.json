@@ -1,0 +1,21 @@
+{
+  "scope": "UL-007 scratch persistent-session proposal; native execution NOT RUN",
+  "environment": {
+    "WITNESS": "value",
+    "LC_ALL": "C",
+    "PATH": "/nonexistent"
+  },
+  "expected_exit": 0,
+  "stdout_bytes": 52,
+  "stderr_bytes": 19,
+  "inputs": {
+    "experiments/dash-native/scratch-session/composed.sh": "9b008b0f4105759c06a50170882495621007cc7beb6f5f56e2d44a4f73432bdf",
+    "experiments/dash-native/scratch-session/expected.stdout": "383c2804c291450090c36243d351240f37222e41fd2310307891888968c78aea",
+    "experiments/dash-native/scratch-session/expected.stderr": "16f638c919892cf239496c10e1c05f460ee108d82e13c2686c1dff11a83f87ad",
+    "experiments/dash-native/scratch-session/initial-data.bin": "cdf0910fedce48000712b120772f30954a5b93f3c6f33f465811c132929536dc",
+    "experiments/dash-native/scratch-session/protected.bin": "4378f5f8c155589bc148ca4213669f0b620dd18942e10450eae5779ce6c59beb",
+    "experiments/dash-reference/helper.c": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+    "experiments/dash-native/SESSION-SCRATCH.md": "c27c84501c69de27a0221045769b400d3aa34823ca7bdd7737c19064dd4e8e6b"
+  },
+  "acceptance": "experiments/dash-native/SESSION-SCRATCH.md"
+}

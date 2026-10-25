@@ -1,0 +1,145 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-MEASURE-HOST 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-measure-host
+.Nd record exploratory host lifecycle measurements
+.Sh SYNOPSIS
+.Nm python3
+.Ar scripts/measure-host-runtime.py
+.Op Fl Fl output-root Ar directory
+.Nm python3 scripts/measure-host-runtime.py
+.Fl Fl help
+.Nm python3 scripts/measure-host-runtime.py
+.Fl Fl version
+.Sh DESCRIPTION
+Run exploratory, instrumented workloads with one or eight trusted Python child
+processes on a POSIX host with Python 3.10 or newer.
+Start from the repository
+root with the offline standards files already present.
+The command uses the
+host adapter's readiness, stop and reclamation paths, not host services or a
+native Aether guest.
+No root privileges are required.
+.Pp
+The runner checks three offline standards pins before workloads.
+Each workload
+runs two retained warmups and ten measured repetitions, sequentially, with a
+fresh interpreter and private working directory per repetition.
+A worker has
+a 20-second outer watchdog.
+A final silent-readiness control must spawn a child
+and then hit its one-second watchdog; it is failure-control evidence, not a
+latency sample.
+Owned process-group teardown applies to non-detaching fixtures.
+.Pp
+Measurements cover construction, start-to-observed-readiness,
+stop-to-reclamation,
+total workload time, manager and reaped-child CPU, traced manager allocation
+and the observed child count plus manager.
+The waiting coordinator is excluded.
+Timing uses perf_counter_ns; CPU uses getrusage user-plus-system deltas.
+Tracemalloc is enabled throughout every worker measurement.
+Memory excludes
+imports, interpreter RSS and child memory.
+Warmups do not control host caches,
+frequency, affinity or other workstation activity.
+.Pp
+Summaries report median, nearest-rank p95 and maximum of successful measured
+samples.
+With ten samples p95 is the maximum.
+Failures and warmups remain
+recorded; unsuccessful runs cannot become fast samples or passing results.
+These observations do not establish production thresholds or comparative
+speed.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl output-root Ar directory
+Parent for a new private run-* directory.
+Missing parent directories are
+created.
+The default is out/host-measurements under the repository root.
+Existing run directories are not reused or removed.
+Relative paths resolve
+from the caller's working directory.
+Retain the complete result directory.
+.It Fl Fl help
+Print usage and exit without creating a run or launching workloads.
+.It Fl Fl version
+Print the measurement-command version and exit.
+It is not a published release.
+.El
+.Pp
+Hidden --worker, --directory and --stall options are internal control modes.
+Worker count is restricted to 1 or 8 and requires a directory.
+Directory or
+stall without worker is invalid.
+These are not workload customization options.
+.Sh OUTPUT
+Standard output contains a JSON summary with schema
+sys-init-host-measurements-v1, result and the absolute results.json path.
+Progress is written to standard error.
+The report retains exact commands,
+host/Python identity, selected source hashes, instrumentation, checks, raw
+samples, failures, timeout-control results and summaries.
+.Pp
+A report starts in running state.
+Only a completed pass is success.
+Failed or interrupted attempts remain evidence.
+Source drift prevents success.
+Abrupt interruption or filesystem failure can leave a running or missing
+report.
+There is no automatic retry, evidence deletion or tool installation.
+.Sh ENVIRONMENT
+The invoking Python environment is inherited.
+Child checks receive
+PYTHONDONTWRITEBYTECODE=1 through the aggregate runner's helper.
+The worker passes AETHER_READY_FD to its own fixture child as part of the
+host adapter protocol; users should not configure that descriptor themselves.
+Load and host metadata are recorded, not stabilized by this runner.
+.Sh FILES
+.Pa out/host-measurements/run-*/results.json
+contains the complete attempt.
+Adjacent per-check stdout/stderr logs and
+per-repetition directories preserve raw evidence, including spawned.json.
+The selected source files and docs/*.lock are fingerprinted before and after.
+This is a scoped input record, not complete system dependency closure.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All required repetitions, checks and the timeout control passed and source
+identities remained unchanged; also help and version.
+.It 1
+The final report failed, or an ordinary interpreter/infrastructure error
+occurred.
+.It 64
+Invalid arguments or invalid internal option combinations.
+.It 130
+An interruption was caught while waiting for a child check; an interrupted
+report is retained and later work stops.
+.El
+.Pp
+An interruption elsewhere may leave a running report and does not guarantee
+this caught-interruption exit path.
+.Sh EXAMPLES
+From the repository root on the provisioned POSIX development host:
+.Bd -literal -offset indent
+python3 scripts/measure-host-runtime.py --help
+python3 scripts/measure-host-runtime.py
+.Ed
+.Pp
+The first command prints usage and exits zero without running fixtures.
+The second creates a fresh run directory and executes all repetitions and the
+expected timeout control.
+Expect a JSON pass summary and exit zero on success;
+retain all logs on failure.
+This command is separate from functional check-all.
+.Sh SEE ALSO
+Repository guides: docs/HOST-MEASUREMENTS.md, docs/HOST-RUNTIME.md,
+docs/DEVELOPMENT-CHECKS.md and docs/DOCUMENTATION-INVENTORY.md.
+.Sh CAVEATS
+The manual title is not an installed executable.
+Independent review and target
+lookup remain pending.
+These host observations are not a native init benchmark.

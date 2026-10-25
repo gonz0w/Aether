@@ -1,0 +1,18 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: hello-local-advisory
+DocumentNamespace: https://example.invalid/pkg-mgr/hello-local/advisory
+Creator: Tool: pkg-mgr-fixture
+Created: 1970-01-01T00:00:00Z
+
+PackageName: hello-local
+SPDXID: SPDXRef-Package-hello-local
+PackageVersion: 0.1
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageChecksum: SHA256: 735aef1485e4d223e2f1cffb03395a8e1e7b865b14d31310da1dc8e7a3220610
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Package-hello-local

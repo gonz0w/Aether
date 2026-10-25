@@ -1,0 +1,35 @@
+{
+  "schema": "aether-userland-sdk08-closure-v1",
+  "status": "not-run",
+  "waiver": false,
+  "consumer": {
+    "imported_target_sha256": "1b9c2fedc9cebba0785c4f4ec5157abaf580e886eae3cb8f809375a70062ab8e",
+    "libc_receipt_sha256": "f1d28e47b892ea8773afe0b48d9c6ba805dd012a1150222cfe7c939414b4bdb1",
+    "startup_elf_sha256": "d804589de3bf3f225d3ab301b5dadec0c8bbcc7e3890c1684e63e3cf4f908dbe",
+    "startup_elf_path": "build/sdk-startup-lefmmlgo/startup.elf",
+    "probe": "experiments/native-c/io_probe.c",
+    "probe_sha256": "e825c81bf3e3738ca4b517c4f01b937e74e125173dfe3b69589ac747c9842719",
+    "io_adapter_sha256": "65f29346be4c6eff2574397ec58405d8253cde14f99af38fb5bf4d7bf313f17c",
+    "memory_sources": {
+      "native_memory.c": "d71506d7bbc1018ec2af68719c1b7dcf3f9f1f8eb4a3cc36c8c3c08ea3df6667",
+      "memory_probe.c": "5c7bff530ba30eaa9234c950ddbe5be2f9359b70c413c69327ff0279a0a116dc"
+    },
+    "envelope": "AENATC01 + 32-byte bootstrap + ELF; packing is not execution"
+  },
+  "producer": {
+    "selected": false,
+    "historical_kernel_contract_sha256": "a0b97740e7437d22cdebf07ad696c2aca903379914cfbba3e4dd10f655bd637a",
+    "historical_snapshot_present": false,
+    "live_native_c_md": "/Users/cam/DEV/aether/docs/NATIVE-C.md",
+    "live_native_c_md_sha256": "44d449dc325364c0b797e58789d98cefe0db15e430194c9a2572842fc26b9298",
+    "live_tree_selected": false,
+    "sys_init_script": "/Users/cam/DEV/sys-init/scripts/build-native-supervisor.py",
+    "sys_init_script_sha256": "33a09f136055787b292b74bbadd3ef1e0d5908186935b69a762c95c3b5e42921",
+    "sys_init_is_pin": false
+  },
+  "intended_cases": [
+    {"id": "pass", "oracle": "AETHER NATIVE IO PASS and reclaim", "status": "not-run"},
+    {"id": "denial", "oracle": "native C profile rejected or consumer detail denial", "status": "not-run"},
+    {"id": "cleanup", "oracle": "supervisor reclaim recorded", "status": "not-run"}
+  ]
+}

@@ -1,0 +1,19 @@
+# Disposable retained demonstration roots, never package-manager authority.
+/.pkg-mgr-live-*/
+/.pkg-command-consumer-*/
+
+# Local development files (Git workflow baseline).
+.DS_Store
+__pycache__/
+*.pyc
+/.jj/
+/.tmp/
+.env
+.env.*
+!.env.example
+!.env.sample
+/work/
+/stage/
+/logs/
+/distfiles/
+/manifests/

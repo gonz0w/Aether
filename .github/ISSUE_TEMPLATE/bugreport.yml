@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible problem in the Aether source or tooling.
+title: "[Bug] "
+labels: ["status:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Aether easier to understand and use.
+        Search existing issues first. For a possible vulnerability, use
+        [private reporting](https://github.com/gonz0w/Aether/security/advisories/new).
+        Questions and open-ended investigations fit in Discussions.
+  - type: input
+    id: revision
+    attributes:
+      label: Source revision
+      description: Commit ID or the exact source snapshot you used.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and inputs
+      description: Host OS/architecture, relevant tool versions, and any local SDK or prepared inputs required.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: Give the exact command and smallest useful steps. Say whether it happens consistently.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result
+      description: Explain what you expected, what happened, and what you have already checked.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Relevant evidence
+      description: Share a short log excerpt and failed-attempt context. Redact secrets/private data; do not attach SDKs or disk/image bundles.
+      render: text
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact or workaround
+      description: What does this block? A workaround or related issue is useful if known.

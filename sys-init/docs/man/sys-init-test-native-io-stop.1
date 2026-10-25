@@ -1,0 +1,176 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-TEST-NATIVE-IO-STOP 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-test-native-io-stop
+.Nd consume experimental sys-init artifacts in an isolated Aether test workspace
+.Sh SYNOPSIS
+.Nm python3
+.Ar tests/native-io-stop.py
+.br
+.Fl Fl aether Ar directory
+.br
+.Fl Fl sdk Ar directory
+.br
+.Fl Fl receipt-pin Ar digest
+.br
+.Fl Fl work Ar directory
+.br
+.Op Fl Fl peer | Fl Fl authority
+.br
+.Op Fl Fl readiness | Fl Fl retained
+.Nm python3
+.Ar tests/native-io-stop.py
+.Fl Fl help
+.Nm python3
+.Ar tests/native-io-stop.py
+.Fl Fl version
+.Sh DESCRIPTION
+This source-checkout developer command performs actual kernel builds and
+native
+QEMU smoke tests.
+It is not an installed operator command, a host-only model
+check or permission to test arbitrary images.
+Use trusted, independently reviewed
+inputs and tools matching the selected retained experiment.
+The command copies inputs to a new workspace and builds there rather than in
+the original kernel tree.
+Existing workspace paths are rejected.
+No root privileges, host service installation or physical target access is
+needed.
+.Pp
+Use Python 3.10 or newer, Rust 1.98.0 with x86_64-unknown-none and a
+producer-compatible Zig/QEMU toolchain with boot dependencies already
+available.
+The wrapper does not select a kernel revision for you or authenticate
+provenance
+merely by copying and hashing a mutable directory.
+Provision tools separately.
+The SDK receipt digest, selected profile, bounded AENATC01 envelope and
+startup
+ELF/payload digests are validated before the workspace is created.
+The runner
+copies the kernel, SDK envelope/receipt and sys-init builder inputs, including
+the bounded_tools.py import.
+Captured files are hashed before commands and
+rechecked after successful completion.
+.Pp
+Default cases cover stop, wrong-detail, skip-zero and original-I/O
+compatibility.
+Retained mode covers retained-stop, retained-fault, wrong-kind and skip-zero.
+Readiness mode covers five exit/fault/stop orderings plus invent-ready and
+skip-zero.
+Authority mode covers authority, allow-notify and skip-zero.
+Peer
+mode covers peer, peer-reverse, wrong-peer and skip-zero.
+The runner uses SMP=false and native-memory=false, exact smoke exits/markers,
+selected semantic rejection contexts and real fault markers where required.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl aether Ar directory
+Trusted kernel source snapshot with matching boot dependencies.
+.It Fl Fl sdk Ar directory
+Reviewed SDK containing evidence.json and native-c.bin.
+.It Fl Fl receipt-pin Ar digest
+Externally retained SHA-256 of the SDK evidence.json.
+.It Fl Fl work Ar directory
+New workspace; must not already exist.
+.It Fl Fl retained
+Require an io-retained worker receipt and select retained-output cases.
+.It Fl Fl readiness
+Require io-readiness and select readiness/terminal ordering cases.
+.It Fl Fl authority
+Require io-authority and select caller-local authority cases.
+.It Fl Fl peer
+Require io-peer and select peer-readiness cases.
+.It Fl Fl help
+Print usage and exit without creating a workspace or launching tools.
+.It Fl Fl version
+Print the harness-command version and exit, not a published release version.
+.El
+.Pp
+All four profile flags are mutually exclusive, including across the two groups
+shown for wrapping in the synopsis.
+With no profile flag, require probe_variant io.
+Relative input/work paths are resolved from the caller's working directory.
+Do not place the new workspace inside any input tree: the harness copies those
+trees and does not uniformly enforce that separation.
+Reserve a private path
+outside producer/SDK/dependency directories and preserve failed workspaces.
+.Sh OUTPUT AND FILES
+Per-case [OK] progress goes to standard error; success prints JSON with result
+and report path on standard output. results.json starts with result running
+and
+contains commands, case oracles and artifact hashes.
+Its schema distinguishes
+stop, retained, readiness, authority and peer profiles. sources.json, copied
+SDK inputs, sys-init/, Aether/, clients/ and serial/tool logs remain
+available.
+A caught command timeout is recorded, then the outer exception path records
+final failure; an interruption caught in the command wait retains interrupted.
+Setup failure or abrupt termination can leave no final report.
+.Pp
+A running, missing, incomplete or failed report is not passing evidence.
+Do not erase unsuccessful attempts or substitute a previous passing report for
+current inputs.
+A passing guest run applies only to its selected frozen profile.
+.Sh LIMITS AND ENVIRONMENT
+The host environment selects tools through PATH; Python and producer smoke
+scripts can inherit other host settings.
+There is no downloader or hosted CI
+setup in this command.
+A copy/hash record alone is not a live sandbox guarantee.
+Tool commands have 120-second wait deadlines and owned sessions.
+Timeout/interruption cleanup kills the owned trusted, non-detaching process
+group.
+Logs stream to files without a separate size cap.
+Copying and hashing are outside
+these per-command deadlines; there is no overall suite deadline.
+Guest smoke
+watchdogs are separate producer-owned behavior, not a substitute for host
+bounds.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All selected cases completed successfully, or a supported help/version query.
+.It 1
+An ordinary Python exception or explicit semantic/build rejection.
+Other interpreter/signal termination statuses are possible.
+.It 64
+Invalid usage or incompatible required option combinations.
+.It 130
+Interruption caught while waiting for a child command.
+.El
+.Sh EXAMPLES
+From the repository root, inspect usage without starting a guest:
+.Bd -literal -offset left
+python3 tests/native-io-stop.py --help
+.Ed
+.Pp
+A full invocation below starts real builds/QEMU.
+First set the quoted shell
+variables from an independently reviewed handoff; they are placeholders, not
+harness environment settings.
+WORK must name a new private directory outside
+all input trees.
+No root privileges are required.
+.Bd -literal -offset left
+python3 tests/native-io-stop.py \e
+  --aether "$AETHER" --sdk "$SDK" \e
+  --receipt-pin "$RECEIPT_PIN" --work "$WORK"
+.Ed
+.Pp
+Expect all selected cases, exit zero and the documented outputs on success.
+Retain the entire workspace on failure; do not rerun into an existing
+workspace.
+.Sh SEE ALSO
+Repository guides: docs/NATIVE-COVERAGE.md, docs/LIFECYCLE-V1.md,
+docs/NATIVE-SUPERVISION.md, docs/NATIVE-IO.md, docs/NATIVE-ADAPTER.md
+and docs/DOCUMENTATION-INVENTORY.md.
+Exact retained decisions define compatible
+producer inputs and test oracles; manuals do not replace those contracts.
+.Sh CAVEATS
+Independent technical/reader review and installed-target manual lookup remain
+pending.
+The native init profiles are experiments, not production POSIX init.

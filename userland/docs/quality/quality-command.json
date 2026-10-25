@@ -1,0 +1,241 @@
+{
+  "schema": "userland-command-documentation-v1",
+  "id": "UD-quality-command",
+  "scope": "Experimental host tool; manual label does not allocate an installed command",
+  "command": [
+    "python3",
+    "-B",
+    "docs/quality/check.py"
+  ],
+  "version": "quality 0.1.0",
+  "source": {
+    "path": "docs/quality/check.py",
+    "sha256": "7eccb484cc7d194b8090630ae173b152cd55fbc4bcf1d2faee13ade4d291deee"
+  },
+  "manual": "man/man1/aether-userland-quality.1",
+  "options": [
+    {
+      "spelling": [
+        "-h",
+        "--help"
+      ],
+      "effect": "print help before verification",
+      "test": "QD-01-help"
+    },
+    {
+      "spelling": [
+        "--version"
+      ],
+      "effect": "print exact version before verification",
+      "test": "QD-02-version"
+    },
+    {
+      "spelling": [
+        "--release"
+      ],
+      "effect": "require complete inventory; no publication authorization",
+      "test": "QD-05-release"
+    }
+  ],
+  "operands": "none",
+  "parser_compatibility": [
+    "unambiguous long-option abbreviation",
+    "repeated boolean flags",
+    "help/version stop parsing"
+  ],
+  "cases": [
+    {
+      "id": "QD-01-help",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-02-version",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-03-unknown",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-03-operand",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-04-default",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-05-release",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-06-bad-pin",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-06-help",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-06-version",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-07-repeat",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-07-prefix",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-08-lint",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-08-ascii-78",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-08-ascii-50",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-08-html",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    },
+    {
+      "id": "QD-08-tool",
+      "family": "documentation/contract",
+      "layer": "host",
+      "stage": "local/before-merge",
+      "owner": "Aether-userland",
+      "plan": "docs/evidence/quality-manual-2026-09-06/PLAN.md",
+      "result": "docs/evidence/quality-process-2026-09-06/manual-regression/results.json",
+      "status": "pass"
+    }
+  ],
+  "missing": [
+    "independent technical/reader review",
+    "packaged target lookup",
+    "HTML browser visual inspection blocked by browser file URL policy"
+  ],
+  "follow_ons": [
+    "UL-061",
+    "UL-062",
+    "UL-063"
+  ],
+  "status": "draft",
+  "process_contract": {
+    "reference": "docs/quality/processes.py",
+    "receipts": "build/quality-process-*",
+    "scope": "POSIX trusted children in owned session; detached children and owner SIGKILL excluded",
+    "environment": "same absolute Python -B; fixed PATH/LC_ALL, private TMPDIR",
+    "limits": "30/60 seconds per child; bounded cleanup; 16 MiB per output file",
+    "reports": "separate retained byte streams replayed after cleanup"
+  },
+  "interpreter_qualification": {
+    "versions": [
+      "3.10.21",
+      "3.12.14",
+      "3.13.15",
+      "3.14.7"
+    ],
+    "evidence": "docs/evidence/python-qualification-2026-09-06/README.md",
+    "scope": "quality checker paths; not every patch version or complete Python/module compatibility"
+  },
+  "simplicity_adoption": {
+    "evidence": "docs/evidence/simplicity-adoption-2026-09-07/README.md",
+    "scope": "Additive snapshot integrity; earlier CLI/interpreter qualification records retain their original revision scope"
+  }
+}

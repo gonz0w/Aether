@@ -1,0 +1,363 @@
+[
+  {
+    "id": "OQ-001",
+    "date": "2026-06-21",
+    "question": "What process, signal, mount, device, event, namespace, credential, and security primitives will Aether expose to PID 1?",
+    "source": "project initialization",
+    "reviewed": "2026-09-05",
+    "review_source": "docs/OWNERSHIP-REVIEW.md",
+    "tracking": [
+      "BG-032",
+      "BG-033"
+    ],
+    "status": "open",
+    "latest_evidence": "docs/evidence/native-refresh-2026-09-05/README.md",
+    "partial_answer": "Retained native C supervision and bounded byte-stream witnesses extend lifecycle v1; POSIX process/TTY APIs, general services and recovery remain open. BG-055 refreshes current source compatibility. BG-055 now refreshes all nine existing native outcomes against frozen current inputs; extended contracts remain open."
+  },
+  {
+    "id": "OQ-002",
+    "date": "2026-06-21",
+    "question": "How should pkg-mgr install, enable, disable, upgrade, remove, and migrate services?",
+    "source": "project initialization",
+    "reviewed": "2026-09-05",
+    "review_source": "docs/research/PACKAGE-SERVICE-CONTRACT.md",
+    "tracking": [
+      "BG-035",
+      "BG-036",
+      "BG-037"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-003",
+    "date": "2026-06-21",
+    "question": "Which features belong in minimal PID 1 versus a supervisor, event daemon, logger, or package hook?",
+    "source": "docs analysis"
+  },
+  {
+    "id": "OQ-004",
+    "date": "2026-06-22",
+    "question": "What is the smallest runtime mechanism set and ownership model for launch, exit accounting, control, descriptors and authority, independent of implementation language?",
+    "source": "docs/archive/2026-09-05-planning-reset/.planning/phases/phase-1-prior-art-and-boundary-evidence/RESEARCH.md",
+    "tracking": [
+      "BG-028",
+      "BG-030"
+    ],
+    "reviewed": "2026-09-05",
+    "review_source": "docs/OWNERSHIP-REVIEW.md",
+    "latest_evidence": "docs/OWNERSHIP-REVIEW.md",
+    "partial_answer": "Host direct-parent/exclusive-wait, descriptor delegation, unknown-status, parent-death gap and exploratory measurements are consolidated. Production ownership enforcement and cross-host proof remain open."
+  },
+  {
+    "id": "OQ-005",
+    "date": "2026-06-22",
+    "question": "Should dependency graph validation be a tiny compiled tool, a constrained data parser, or a shell-readable convention backed by an offline validator?",
+    "source": "docs/archive/2026-09-05-planning-reset/.planning/phases/phase-1-prior-art-and-boundary-evidence/RESEARCH.md",
+    "tracking": [
+      "BG-021",
+      "BG-023"
+    ],
+    "reviewed": "2026-09-05",
+    "review_source": "docs/research/BOUNDARY-HANDOFF.md"
+  },
+  {
+    "id": "OQ-006",
+    "date": "2026-06-22",
+    "question": "Which readiness contracts and transports are needed, who may report readiness for an instance, and how are launch, method completion, readiness and ongoing health distinguished?",
+    "source": "docs/archive/2026-09-05-planning-reset/.planning/phases/phase-1-prior-art-and-boundary-evidence/RESEARCH.md",
+    "tracking": [
+      "BG-040",
+      "BG-041",
+      "BG-042",
+      "BG-032"
+    ],
+    "reviewed": "2026-09-05",
+    "review_source": "docs/OWNERSHIP-REVIEW.md",
+    "status": "open",
+    "partial_answer": "Host first-frame/delegated writer and native caller-local historical readiness are distinct tested mechanisms. Native terminal-plus-ready is not live readiness; general readiness/health policy remains open. BG-055 now refreshes all nine existing native outcomes against frozen current inputs; extended contracts remain open. Decision 0008 additionally witnesses explicit-stop terminal detail/kind with historical readiness, empty-stream EOF, stale-handle denial and a normal next generation.",
+    "latest_evidence": "docs/evidence/native-peer-2026-09-05/README.md"
+  },
+  {
+    "id": "OQ-007",
+    "date": "2026-09-05",
+    "question": "How should the intended POSIX init/PID 1 role map onto Aether native tasks, capabilities, and user-space services, and which compatibility/runtime facilities must exist first?",
+    "source": "docs/INTEGRATION.md; BG-025",
+    "reviewed": "2026-09-05",
+    "review_source": "docs/research/AETHER-RUNTIME-CONTRACT.md",
+    "tracking": [
+      "BG-032",
+      "BG-033"
+    ],
+    "status": "open",
+    "latest_evidence": "docs/LIFECYCLE-V1.md",
+    "partial_answer": "Lifecycle v1 fixed-image single-worker subset passes sys-init client; general runtime and supervisor recovery remain open."
+  },
+  {
+    "id": "OQ-008",
+    "date": "2026-09-05",
+    "question": "Which service records need durable storage, and what atomicity, concurrency and crash-recovery guarantees must their publication provide?",
+    "source": "docs/research/BOUNDARY-HANDOFF.md",
+    "tracking": [
+      "BG-031",
+      "BG-027"
+    ]
+  },
+  {
+    "id": "OQ-009",
+    "date": "2026-09-05",
+    "question": "What is the minimum executable recovery environment when shell, libraries, root filesystem or console services are unavailable?",
+    "source": "docs/research/BOUNDARY-HANDOFF.md",
+    "tracking": [
+      "BG-030",
+      "BG-025",
+      "BG-029"
+    ]
+  },
+  {
+    "id": "OQ-010",
+    "date": "2026-09-05",
+    "question": "How are native instance terminal reasons retained, observed and acknowledged across destruction, restart and observer failure?",
+    "source": "docs/research/AETHER-RUNTIME-CONTRACT.md; AR-04",
+    "tracking": [
+      "BG-032"
+    ],
+    "latest_evidence": "docs/evidence/native-peer-2026-09-05/README.md",
+    "status": "open",
+    "partial_answer": "Native supervision retains terminal detail/kind until explicit reclaim, with stale-handle tests. General multiple-observer/recovery contracts remain open; BG-055 refreshes changed kernel inputs. BG-055 now refreshes all nine existing native outcomes against frozen current inputs; extended contracts remain open. Decision 0008 additionally witnesses explicit-stop terminal detail/kind with historical readiness, empty-stream EOF, stale-handle denial and a normal next generation.",
+    "reviewed": "2026-09-05",
+    "review_source": "docs/OWNERSHIP-REVIEW.md"
+  },
+  {
+    "id": "OQ-011",
+    "date": "2026-09-05",
+    "question": "Who receives authority over surviving tasks, backing and diagnostic records when the bootstrap supervisor fails?",
+    "source": "docs/research/AETHER-RUNTIME-CONTRACT.md; AR-10",
+    "tracking": [
+      "BG-033"
+    ],
+    "latest_evidence": "docs/OWNERSHIP-REVIEW.md",
+    "status": "open",
+    "partial_answer": "Host SIGKILL survival and native supervisor-panic behavior are explicit evidence of missing recovery. Neither assigns a new owner after supervisor death.",
+    "reviewed": "2026-09-05",
+    "review_source": "docs/OWNERSHIP-REVIEW.md"
+  },
+  {
+    "id": "OQ-012",
+    "date": "2026-09-05",
+    "question": "Which component coordinates package/definition publication and runtime actions, and how does it recover ambiguous completion without repeating side effects?",
+    "source": "docs/research/PACKAGE-SERVICE-CONTRACT.md; PS-09/PS-10",
+    "tracking": [
+      "BG-036",
+      "BG-031"
+    ]
+  },
+  {
+    "id": "OQ-013",
+    "date": "2026-09-05",
+    "question": "How are old executable, library, helper and data artifacts retained while an earlier service revision runs, and when can removal safely release them?",
+    "source": "docs/research/PACKAGE-SERVICE-CONTRACT.md",
+    "tracking": [
+      "BG-036",
+      "BG-033"
+    ]
+  },
+  {
+    "id": "OQ-014",
+    "date": "2026-09-05",
+    "question": "Which immutable bootstrap configuration and diagnostic/recovery resources are available before a normal root, /usr, /var or shell can be used?",
+    "source": "docs/research/BOOT-AND-LAYOUT.md",
+    "tracking": [
+      "BG-033",
+      "BG-039"
+    ]
+  },
+  {
+    "id": "OQ-015",
+    "date": "2026-09-05",
+    "question": "What owned-resource proof, deadlines and authority permit graceful versus emergency system shutdown on each platform?",
+    "source": "docs/research/SHUTDOWN-AND-DIAGNOSTICS.md",
+    "tracking": [
+      "BG-043",
+      "BG-032",
+      "BG-033"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-016",
+    "date": "2026-09-05",
+    "question": "What bounded logging, retention and failure-report contract remains usable when storage, logger or console fails?",
+    "source": "docs/research/SHUTDOWN-AND-DIAGNOSTICS.md",
+    "tracking": [
+      "BG-044",
+      "BG-045",
+      "BG-031"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-017",
+    "date": "2026-09-05",
+    "question": "Which minimal identity, grant and aggregate resource guarantees can each launch adapter enforce without silent downgrade?",
+    "source": "docs/research/SECURITY-RESOURCES-AND-EVENTS.md",
+    "tracking": [
+      "BG-046",
+      "BG-032"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-018",
+    "date": "2026-09-05",
+    "question": "What event reconciliation and device quiescence evidence permits safe activation, removal and resource reuse on Aether?",
+    "source": "docs/research/SECURITY-RESOURCES-AND-EVENTS.md",
+    "tracking": [
+      "BG-047",
+      "BG-048",
+      "BG-032"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-019",
+    "date": "2026-09-05",
+    "question": "Which socket and timer activation semantics belong in initial scope, with what clock and endpoint contracts?",
+    "source": "docs/research/SECURITY-RESOURCES-AND-EVENTS.md",
+    "tracking": [
+      "BG-049",
+      "BG-032"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-020",
+    "date": "2026-09-05",
+    "question": "Are the initial runtime operation, deadline, retry and dependency rules internally consistent and sufficient for a bounded host prototype?",
+    "source": "docs/specs/RUNTIME-V0.md",
+    "tracking": [
+      "BG-053",
+      "BG-050",
+      "BG-054"
+    ],
+    "status": "open",
+    "partial_answer": "BG-053 passes bounded model traces and three negative controls; real process/transport enforcement and full state-space proof remain open.",
+    "review_source": "docs/RUNTIME-MODEL.md"
+  },
+  {
+    "id": "OQ-021",
+    "date": "2026-09-06",
+    "question": "Which exact producer profile and trusted binding can authorize sys-init caller scope, revocation and any reconnect without widening rights?",
+    "source": "Control authority producer review",
+    "status": "open",
+    "tracking": [
+      "BG-050",
+      "BG-032"
+    ],
+    "review_source": "docs/research/CONTROL-AUTHORITY-HANDOFF.md",
+    "partial_answer": "Owner-bound private channels exist; service policy and reconnect composition need independent consumer acceptance. Start with trusted A01\u2013A03 policy tests."
+  },
+  {
+    "id": "OQ-022",
+    "date": "2026-09-06",
+    "question": "How does the native effect driver acknowledge execution and preserve or reconcile ownership after ambiguous results or driver death?",
+    "source": "Control authority producer review",
+    "status": "open",
+    "tracking": [
+      "BG-033",
+      "BG-032",
+      "BG-050",
+      "BG-057",
+      "BG-058"
+    ],
+    "review_source": "docs/research/UNKNOWN-EFFECT-RECONCILIATION.md",
+    "partial_answer": "Decision 0042 separates confirmed ABI-6 returns, terminal/retained-wait facts and poisoned command replies. Reviewed profiles exclude general lost-result/replacement-owner reconciliation; no unknown slot can clear. BG-058 qualifies confirmed-result evidence next."
+  },
+  {
+    "id": "OQ-023",
+    "date": "2026-09-07",
+    "question": "How can sustained native attempt/history reuse preserve exact applied-cut provenance and unresolved ownership without unbounded retention?",
+    "source": "decision 0156 NC-07",
+    "tracking": [
+      "BG-060",
+      "BG-057",
+      "BG-033"
+    ],
+    "status": "open"
+  },
+  {
+    "id": "OQ-024",
+    "date": "2026-09-07",
+    "question": "Which bounded init profile or reviewed architecture should accommodate the composed native Terminal workload while preserving old limits, authority and stack guarantees?",
+    "source": "decision 0174 capacity study",
+    "tracking": [
+      "BG-061",
+      "BG-057",
+      "BG-058"
+    ],
+    "status": "resolved",
+    "partial_answer": "Decision 0175 accepts AENIN003/ABI 16, 1\u201316384 code bytes and unchanged 4 KiB stack for six actual Terminal paths. 214 consumer cases and 32 independently replayed producer-boundary cases pass; all 359 legacy builds are identical. Future stack headroom and general platform qualification are not claimed."
+  },
+  {
+    "id": "OQ-025",
+    "date": "2026-10-22",
+    "question": "How does authenticated tagged-FD fork staging reconcile kernel parent thaw at copy publication with the pinned broker frozen-parent inheritance precondition, and safely rebind only copied child context/TLS/auxv/file/channel/history state?",
+    "source": "docs/research/TAGGED-FORK-STAGING.md",
+    "tracking": [
+      "BG-067",
+      "BG-069",
+      "BG-070",
+      "BG-071"
+    ],
+    "status": "open",
+    "reviewed": "2026-10-22",
+    "review_source": "prototypes/native-filesystem-session/FORK.md",
+    "latest_evidence": "docs/evidence/abi30-owner-placement-2026-10-22/README.md",
+    "partial_answer": "Decision0204 adds mandatory actual owned pipe/source/history validation and exact-ready holder activation to existing FILE preflight/serialized-copy17/frame69. Corrected TLS85 passes our unchanged actual Aether parser (seven host tests), resolving missing TLS input. Full actual native copy/transport/child rebind/settlement/readiness/shutdown/whole-fit and fresh target witnesses remain BG-069/070 work. No blanket sibling dependency blocks local owner composition. Decision0205 adds capture before body/sequence decoding and native-channel request assembly. Full native owner is now blocked by measured writable placement (BG-072/OQ-027), not missing FILE/stream/TLS input. Decision0206: AENFS004/ABI30 bounded data contract and seven producer sources verified; entry capture, MaybeUninit-backed single-slot/workspace partition and fieldwise gate initializer pass four host tests/four compiling controls and host/native builds. Missing placement contract resolved. Full native owner, code/stack/resource fit and fresh permission/entry/transaction witnesses remain local BG-070/072 work, not complete."
+  },
+  {
+    "id": "OQ-026",
+    "date": "2026-10-22",
+    "question": "Which separately versioned pure ProcessFiles interface validates complete claimed FILE presence/cloexec against authoritative current parent view before copy without mutation or a shadow ledger?",
+    "source": "prototypes/native-filesystem-session/FORK.md",
+    "tracking": [
+      "BG-069",
+      "BG-070",
+      "BG-071"
+    ],
+    "status": "resolved",
+    "reviewed": "2026-10-22",
+    "review_source": "prototypes/native-filesystem-session/FORK.md",
+    "latest_evidence": "docs/evidence/authoritative-fork-file-view-2026-10-22/README.md",
+    "partial_answer": "Decision0203 consumes sealed additive file-view18 ProcessFiles.file_view_v1(current_process) and derives both complete remote-selector masks from the captured map at copy admission. Exact equality is mandatory; malformed/stale/retired state rejects without source/copy effect or reopening. Nine actual-library host tests/six compiling omissions and generic host/native builds qualify the local seam. Full native transaction/actual stream authority remains BG-069/070."
+  },
+  {
+    "id": "OQ-027",
+    "date": "2026-10-22",
+    "question": "Which opt-in bounded writable owner placement contract supplies the selected native FILE/stream gate and4096-byte RPC workspace without exceeding the current single stack page or inventing allocation authority?",
+    "source": "docs/OWNER-PLACEMENT-HANDOFF.md",
+    "tracking": [
+      "BG-070",
+      "BG-072"
+    ],
+    "status": "resolved",
+    "reviewed": "2026-10-22",
+    "review_source": "docs/decisions/0206-abi30-owner-placement.md",
+    "latest_evidence": "docs/evidence/abi30-owner-placement-2026-10-22/README.md",
+    "partial_answer": "Exact x86_64 layouts: native gate2968 plusworkspace4096=7064; Files2208+workspace alone=6304. Actual owner maps one4096-byte stack, entry usable4088, RO code and no writable data/supervisor allocation. Concrete unsent request: opted-in8192-byte private zeroed RW/NX region within existing128-page owner backing, preserving old profile/code/stack/global quotas. This is proposed placement, not permission or a complete fit proof. FILE/stream/TLS inputs resolved. Decision0206: AENFS004/ABI30 bounded data contract and seven producer sources verified; entry capture, MaybeUninit-backed single-slot/workspace partition and fieldwise gate initializer pass four host tests/four compiling controls and host/native builds. Missing placement contract resolved. Full native owner, code/stack/resource fit and fresh permission/entry/transaction witnesses remain local BG-070/072 work, not complete. Contract input resolved; full consuming qualification remains BG-072/070, separate constructor question OQ-028."
+  },
+  {
+    "id": "OQ-028",
+    "date": "2026-10-22",
+    "question": "Which safe bounded in-place opaque FILE broker constructor preserves source/ledger/greeting/partial-cleanup semantics while fitting ABI30 stack/code limits?",
+    "source": "docs/BROKER-INITIALIZATION-HANDOFF.md",
+    "tracking": [
+      "BG-070",
+      "BG-073"
+    ],
+    "status": "open",
+    "reviewed": "2026-10-22",
+    "review_source": "docs/decisions/0206-abi30-owner-placement.md",
+    "latest_evidence": "docs/evidence/abi30-owner-placement-2026-10-22/README.md",
+    "partial_answer": "Decision0206 consumes verified AENFS004/ABI30 owner mapping and seven exact producer sources. Entry capture/MaybeUninit single-slot workspace/gate fieldwise initialization pass four new host tests/four compiling omissions and20 prior regressions, strict host/native builds. Missing mapping-contract input resolved. Native selected construction now blocks at BG-073: by-value opaque FILE broker reserves6504 bytes in size-z against4096 stack; whole opt3/isolated opt3+size-z subsets require32008/19072 code against16384. No complete-owner lower-bound theorem or native execution claimed. Need safe bounded in-place broker constructor, then full local composition/fit/fresh native witnesses."
+  }
+]

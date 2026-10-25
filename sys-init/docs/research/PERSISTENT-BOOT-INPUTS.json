@@ -1,0 +1,165 @@
+{
+  "review_date": "2026-10-18",
+  "scope": "Read-only boot integration readiness review; not runtime inputs, independent native acceptance or sibling execution",
+  "observed_files": {
+    "Aether-userland/experiments/filesystem-service/README.md": {
+      "sha256": "6e413eae0b90450be581eeef770ad0b7435efb0af0830c76e6375b1c6ba7831a",
+      "bytes": 5380
+    },
+    "Aether-userland/experiments/filesystem-service/owner.rs": {
+      "sha256": "eb4f500f4be1253247df310311f134be168d8bab26e1204370f65e51168e9349",
+      "bytes": 15763
+    },
+    "Aether-userland/experiments/filesystem-service/bridge.rs": {
+      "sha256": "bae42aa93d2d65fdd36e4def3aa23bf6b44f4a35ff6dd0106f68e3ad2dad66b3",
+      "bytes": 9642
+    },
+    "Aether-userland/experiments/filesystem-service/native-probe.rs": {
+      "sha256": "ef6ca22d74951435b79f9f647dd9cc7612f29c6d45c8a4a8f8ba1fec8f8f99f5",
+      "bytes": 3200
+    },
+    "Aether-userland/docs/evidence/filesystem-policy-2026-10-18/summary.json": {
+      "sha256": "565de25954de357984ad8d70d7730bc91cde279c4f49a64517d523ac98c2dea7",
+      "bytes": 838
+    },
+    "Aether-userland/docs/evidence/filesystem-policy-2026-10-18/inputs.json": {
+      "sha256": "9825e6271620a6a730c8b338dda305ff0255d62c9e3f6f71123589cc3a45df82",
+      "bytes": 1423
+    },
+    "Aether/docs/OPENZFS-FEASIBILITY.md": {
+      "sha256": "ab6456fbba9c6c18648208260cfe37b145e379f2da06abcb69baa56037e3b3bd",
+      "bytes": 524751
+    },
+    "Aether/.planning/STATE.md": {
+      "sha256": "5cc5b0eb27499ac2a2e1b5e1ed8b08c53b53b5cb09c82e318c9fdb2da85f6077",
+      "bytes": 895490
+    },
+    "Aether-userland/.planning/STATE.md": {
+      "sha256": "b3f8348795b543a51ce0a22fea3f1744e5c1c8efb5b8ef2f498a5ba85c54c621",
+      "bytes": 235129
+    },
+    "Aether/kernel/arch/x86_64/native_c.zig": {
+      "sha256": "ee7b74995983f5a6232b277ecef8649c36fa7d86d40f4cb6ba747b5c26a12860",
+      "bytes": 140097
+    }
+  },
+  "producer_to_userland_matches": {
+    "user/storage/namespace.rs": {
+      "expected_sha256": "e36cf26ac0a15755d926a66338d03d0e2dbb89004bb8f11ac33063db14aebbd2",
+      "observed_sha256": "e36cf26ac0a15755d926a66338d03d0e2dbb89004bb8f11ac33063db14aebbd2",
+      "matches": true
+    },
+    "user/storage/namespace-wire.rs": {
+      "expected_sha256": "65b3e9ec61507dfe6cfd0a9bfac98686b5c8346b1527c34e08865ea92fad3b8d",
+      "observed_sha256": "65b3e9ec61507dfe6cfd0a9bfac98686b5c8346b1527c34e08865ea92fad3b8d",
+      "matches": true
+    },
+    "user/storage/openzfs-volume/zpl-write.h": {
+      "expected_sha256": "a96ea8a0ee84b50e04ac3716b38de87d9eec519dd7f06ac452c43076f145dc4b",
+      "observed_sha256": "a96ea8a0ee84b50e04ac3716b38de87d9eec519dd7f06ac452c43076f145dc4b",
+      "matches": true
+    },
+    "user/storage/openzfs-volume/zpl-read.h": {
+      "expected_sha256": "eb7bdc9155369747c918944baba8f3b109951fff295273930a4df7cea0c7cc8a",
+      "observed_sha256": "eb7bdc9155369747c918944baba8f3b109951fff295273930a4df7cea0c7cc8a",
+      "matches": true
+    },
+    "user/storage/openzfs-volume/zpl-write.c": {
+      "expected_sha256": "7870e3841dc0c6b46dadd087c8db107367a461d62bd7bb068e5eab5beae1225d",
+      "observed_sha256": "7870e3841dc0c6b46dadd087c8db107367a461d62bd7bb068e5eab5beae1225d",
+      "matches": true
+    },
+    "docs/evidence/zpl-native-pair-2026-10-18.json": {
+      "expected_sha256": "43596cdd21a4883171bb90a86b18ce2bded8209ecdbea1c899f3d7af384e09d8",
+      "observed_sha256": "43596cdd21a4883171bb90a86b18ce2bded8209ecdbea1c899f3d7af384e09d8",
+      "matches": true
+    }
+  },
+  "userland_reported_policy_result": {
+    "status": "private-policy-slice-implemented",
+    "ul": "UL-082",
+    "story_status": "active",
+    "rust_host_tests": 13,
+    "semantic_omissions_detected": 8,
+    "minimum_python": "3.10.21",
+    "current_python": "3.14.7",
+    "minimum_current_library_bytes_identical": true,
+    "no_std": true,
+    "unsafe_forbidden": true,
+    "production_panic": "abort",
+    "rustfmt": "pass",
+    "default_clippy_library_and_tests": "pass; no suppressions",
+    "quality_including_three_published_pins": "pass",
+    "syntax_and_whitespace": "pass",
+    "generated_roots_disposed": 6,
+    "retained_compact_records": 366,
+    "native_execution": false,
+    "public_wire_or_sdk_changed": false,
+    "independent_reader": "pending/deferred",
+    "next_local_work": "lifetime-safe private C engine bridge, then matched authenticated transport and native consumer",
+    "blocked": false
+  },
+  "session_lifetime_function": "return if (sustained) Sustained.generation_limit else if (pipeline_session) 15 else 3;",
+  "open_integration_items": [
+    "matched wider SESSION lifetime profile and userland clients",
+    "executable filesystem service with authenticated transport and provisioning contract",
+    "service readiness and shutdown/quiescence contract",
+    "filesystem-backed runner and persistent package composition"
+  ],
+  "native_runs_this_review": 0,
+  "local_validation": {
+    "command": [
+      "python3",
+      "scripts/check-all.py"
+    ],
+    "result": "pass",
+    "checks": [
+      {
+        "name": "standards",
+        "result": "pass"
+      },
+      {
+        "name": "experience",
+        "result": "pass"
+      },
+      {
+        "name": "distribution",
+        "result": "pass"
+      },
+      {
+        "name": "quality-process",
+        "result": "pass"
+      },
+      {
+        "name": "static",
+        "result": "pass"
+      },
+      {
+        "name": "native-evidence",
+        "result": "pass"
+      },
+      {
+        "name": "evidence",
+        "result": "pass"
+      },
+      {
+        "name": "sample-receipts",
+        "result": "pass"
+      },
+      {
+        "name": "model",
+        "result": "pass"
+      },
+      {
+        "name": "host",
+        "result": "pass"
+      }
+    ],
+    "sources_unchanged": true,
+    "retained_report": "out/checks/run-xvgzezob/results.json",
+    "report_sha256": "ce2457fff7614f005355375e37e7dcf73e9d1e6c2d6dc91757ec021b00741a73",
+    "intake_link_and_anchor_checks": 5,
+    "producer_identity_matches": 6,
+    "git_diff_check": "pass"
+  }
+}

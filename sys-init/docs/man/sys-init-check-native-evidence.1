@@ -1,0 +1,209 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECK-NATIVE-EVIDENCE 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-check-native-evidence
+.Nd audit recorded native experiment artifacts offline
+.Sh SYNOPSIS
+.Nm python3 scripts/check-native-evidence.py
+.Nm python3 scripts/check-native-evidence.py
+.Fl Fl help
+.Nm python3 scripts/check-native-evidence.py
+.Fl Fl version
+.Sh DESCRIPTION
+This is a source-checkout developer command.
+The manual title does not name an installed executable.
+Run with Python 3.10 or newer from the repository root.
+The command finds its catalog relative to the script location.
+It checks the catalog schema and uniqueness, retained manifests,
+producer/consumer
+artifact correspondence, required cases and exact success or rejection
+markers.
+It reads existing evidence and never launches QEMU or executes a native image.
+A passing audit does not qualify current native source changes.
+.Pp
+The checker writes no evidence or output directory.
+The catalog controls the retained bundles in scope; not every directory under
+docs/evidence is necessarily part of this catalog.
+Use the aggregate command to retain logs and apply its 60-second gate
+watchdog.
+The standalone audit has no separate elapsed-time or output cap.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl help
+Print usage and exit without performing the check.
+.It Fl Fl version
+Print the command version and exit.
+This is not a published sys-init release identifier.
+.El
+.Pp
+There are no ordinary operands, repair modes or output-directory options.
+.Sh OUTPUT
+Success prints JSON with schema sys-init-native-evidence-audit-v1,
+result pass, catalog digest, per-bundle counts, total recorded cases and
+native set to not-run on standard output.
+Caught integrity, marker, schema and file errors print a diagnostic prefixed
+by
+native evidence audit: on standard error, without a failure JSON object.
+Unlike the quality-record checker, this diagnostic is not escaped by the
+checker.
+.Pp
+A missing or mismatched artifact requires investigation of the exact retained
+bundle and catalog identity.
+Preserve failed attempts and historical manifests.
+Do not treat a generic smoke failure as the required semantic rejection or
+change expected markers simply to make an audit pass.
+.Sh ENVIRONMENT
+There are no command-specific environment configuration variables.
+Python uses its ordinary host environment.
+The command does not consult mutable sibling repositories or fetch artifacts.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa docs/native-coverage.json
+Catalog of selected immutable bundles, expected cases and manifest identities.
+.It Pa docs/evidence/
+Retained artifacts and raw logs referenced by the catalog.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All cataloged evidence checks passed; also help and version.
+.It 1
+A caught integrity, schema, marker, type or filesystem error.
+.It 64
+Invalid arguments, with diagnostics on standard error.
+.El
+.Pp
+Unexpected interpreter failures or abrupt termination can produce a nonzero
+exit without a normal result.
+An absent result is not success.
+.Sh EXAMPLES
+From the sys-init repository root with prerequisites already provisioned:
+.Bd -literal -offset indent
+python3 scripts/check-native-evidence.py --help
+python3 scripts/check-native-evidence.py
+.Ed
+.Pp
+The first invocation prints usage and exits zero.
+The second prints the success JSON and exits zero only if its scoped checks
+pass.
+To exercise argument rejection without changing inputs:
+.Bd -literal -offset indent
+python3 scripts/check-native-evidence.py --unknown
+.Ed
+.Pp
+This prints diagnostics on standard error and exits 64.
+No root privileges are required by these examples.
+Use python3 scripts/check-all.py to retain the normal check and its logs.
+.Sh SEE ALSO
+Repository references: docs/NATIVE-COVERAGE.md and docs/native-coverage.json,
+docs/DEVELOPMENT-CHECKS.md and docs/DOCUMENTATION-INVENTORY.md.
+Render this source with the host mandoc tool for offline terminal reading.
+.Sh CAVEATS
+Independent technical and reader review, installed-target lookup and release
+approval remain separate.
+This check does not establish runtime conformance.
+.Pp
+Decision 0126 validates the complete catalog before bundle reads.
+Catalog JSON is limited to 4 MiB and 32 nesting levels;
+exact fields, supported schemas, bounded collections and unique names apply.
+The reported catalog digest identifies the bytes parsed.
+Receipt validation and filesystem snapshot guarantees remain separate.
+See docs/NATIVE-EVIDENCE-RECORDS.md for exact field and size rules.
+.Pp
+Decision 0127 requires ordinary catalog and manifest files with bounded reads
+and descriptor identity checks.
+Manifest JSON is limited to 4 MiB and 10,000 entries, with strict names/digests
+and the catalog JSON parsing rules.
+The same captured manifest bytes supply both pin verification and parsing.
+Payload read limits, receipt validation and final consistency remain separate.
+.Pp
+Decision 0128 hashes ordinary payload files in chunks of at most 64 KiB,
+with a 64 MiB per-file ceiling and descriptor identity checks.
+This bounds digest reads only; JSON, serial and envelope content reads remain
+separate operations, without an atomic snapshot guarantee.
+.Pp
+Decision 0129 also bounds JSON, serial, envelope and helper-image content reads
+to 4 MiB ordinary files, with component and descriptor identity checks.
+Text retains host-default decoding and universal newline conversion.
+Hashing and semantic reads still occur separately; strict receipt schemas and
+hash-to-content identity remain open.
+.Pp
+Decision 0130 verifies each captured semantic buffer against the pinned manifest
+before decoding or parsing it.
+Receipt-correspondence digest reads must match the same manifest.
+Later filesystem changes and strict receipt schemas remain separate concerns;
+this is not an atomic tree snapshot.
+.Pp
+Decision 0131 requires complete bundle file membership and rejects symlink
+or special entries, with a 20,000-entry traversal limit including directories.
+Membership and manifest bytes are rechecked around hashing;
+each bundle is reverified after semantic checks and again before CLI success.
+Catalog bytes must remain identical to the parsed capture.
+These sequential comparisons do not establish an atomic filesystem view.
+.Pp
+Decision 0132 parses verified receipt/report JSON as UTF-8 object roots,
+with the 4 MiB and depth-32 limits.
+Duplicate keys, non-finite literals and numeric overflow to infinity reject.
+Finite numbers are preserved; complete receipt field validation remains open.
+Serial text continues to use host-default decoding.
+.Pp
+Decision 0133 validates consumer report, case and command fields before linked
+receipt access, including exact fields, digest types, booleans and integer
+exits.
+Reports allow at most 1,000 cases and 3,004 commands; command argv allows
+at most
+1,000 strings of 4,096 characters each, without ASCII controls or DEL.
+Only argv elements may be empty; init marker, context and expected_panic may
+be null.
+Worker pins must be paired and present for service-worker cases.
+Producer and worker receipt field validation remains separate work.
+.Pp
+Decision 0134 validates consumed producer summaries/reports, service-worker
+receipts and I/O supervisor build receipts before using their linked fields.
+Exact fields, digest maps, command argv, tool records and integer program-header
+rows are checked; the three retained producer summary variants remain supported.
+Recorded commands remain data.
+SDK recursion and additional artifact correspondence remain separate work.
+.Pp
+Decision 0135 compares I/O supervisor hashes with retained supervisor.raw files
+and requires worker SDK, tool-lock and libc digest fields to match input-map
+entries already verified against retained files.
+Init consumer ISO artifacts are not retained; their hashes remain structural
+claims rather than independently verified artifact identities.
+.Pp
+Decision 0136 checks exact AENFD001 layout, bounded image and supervisor sizes,
+reconstructed native-envelope hashes and embedded supervisor correspondence.
+Reconstructed bytes are neither written nor executed.
+SDK receipt semantics and unavailable historical ISOs remain separate limits.
+.Pp
+Decision 0137 validates direct and derived SDK receipt fields at fixed retained
+paths, including nested artifacts, headers, patches and input identities.
+Derived receipts follow one fixed SDK input and require the direct format there.
+Patch snippets allow tab, CR and LF within 65,536 characters; other text keeps
+its existing single-line bounds.
+Recorded patch, tool and ELF claims are structurally checked, not re-executed.
+.Pp
+Decision 0138 compares derived SDK input maps and startup/envelope hashes with
+retained files, and checks the embedded native image against the worker ELF.
+Unavailable direct SDK artifacts remain explicit evidence limits.
+.Pp
+Decision 0139 checks recorded producer init-case counts and producer/worker
+SDK, libc and tool-lock consistency when a service worker is consumed.
+Normalized summaries may omit case counts.
+Missing producer artifacts and source-archive member correspondence remain
+explicit limits.
+.Pp
+Decision 0140 compares source-archive members with the full summary input map.
+Gzip expansion is capped at 32 MiB, with at most 10,000 regular nonsparse files
+and 4 MiB per member; no filesystem extraction occurs.
+Duplicate, escaping, special, missing and contradictory members reject.
+Producer source-map omissions remain distinct from summary-map verification.
+.Pp
+Decision 0141 compares producer source maps with archive-verified summary
+inputs.
+Only ten historical metadata omissions are allowed, scoped to exact manifest
+pins, normalized schema, names and digests; new or repinned evidence gets no
+inherited exception.
+Conflicting present entries always reject.

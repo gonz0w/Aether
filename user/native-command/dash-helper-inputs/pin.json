@@ -1,0 +1,6 @@
+{
+  "source": "Aether-userland/experiments/dash-reference/helper.c",
+  "sha256": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+  "license": "BSD-2-Clause",
+  "scope": "Unchanged helper body; private main symbol for native wrapper; no DASH-argv acceptance"
+}

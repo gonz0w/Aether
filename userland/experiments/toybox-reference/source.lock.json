@@ -1,0 +1,8 @@
+{
+  "version": "0.8.14",
+  "archive": "build/toybox-0.8.14.tar.gz",
+  "sha256": "827e4cdfd69f5da973e00e2a59b30b3c9857fb7fae74c362fd0b4f96be7929b0",
+  "url": "https://landley.net/toybox/downloads/toybox-0.8.14.tar.gz",
+  "trust": "HTTPS acquisition and local byte pin; independent signature/authenticity and security-fix review pending UL-016",
+  "patches": []
+}

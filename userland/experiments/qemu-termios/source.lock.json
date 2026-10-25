@@ -1,0 +1,7 @@
+{
+  "version": "10.0.11",
+  "archive": "build/qemu-10.0.11.tar.xz",
+  "url": "https://download.qemu.org/qemu-10.0.11.tar.xz",
+  "sha256": "22e410fe784021c535756350a811ee78ae71356546ff90f5418493448a34b871",
+  "trust": "HTTPS acquisition; independent source authentication pending UL-016"
+}

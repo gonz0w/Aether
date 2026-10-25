@@ -1,0 +1,1 @@
+cat: this profile accepts stdin only

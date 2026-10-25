@@ -1,0 +1,15 @@
+{
+  "schema": "pkg-origins-inspection-v1",
+  "status": "inspection-only",
+  "record_sha256": "f77eab2d0d589ac2ba888e3766ef9cf3843dbe508388adfb7002b9cc38eb5ea2",
+  "package": "aether/example",
+  "version": "0.1",
+  "revision": 1,
+  "input_count": 2,
+  "dependency_count": 0,
+  "referenced_object_count": 5,
+  "byte_handoff": "within-16-mib",
+  "closure": "unresolved",
+  "profiles": "unresolved",
+  "eligibility": "not-evaluated"
+}

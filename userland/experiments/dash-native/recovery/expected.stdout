@@ -1,0 +1,5 @@
+epipe ok
+argv ok
+pipe data
+closed ok
+recovery ok

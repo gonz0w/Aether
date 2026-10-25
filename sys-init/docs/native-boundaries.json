@@ -1,0 +1,628 @@
+{
+  "schema": "sys-init-native-boundaries-v1",
+  "scope": "Textual inventory, not a semantic unsafe-code parser or complete soundness review",
+  "records": [
+    {
+      "file": "prototypes/aether-lifecycle/main.rs",
+      "sha256": "e9c9fb8274e85cc594c8451053a95495de4fdcb164ba1434e661502bad0cbe65",
+      "sites": [
+        {
+          "line": 15,
+          "text": "unsafe {"
+        },
+        {
+          "line": 22,
+          "text": "unsafe { asm!(\"int 0x80\", in(\"rax\") 0u64, in(\"rsi\") code, options(noreturn)); }"
+        },
+        {
+          "line": 55,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 56,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 57,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64, quota: u64, page: u64) -> ! {"
+        },
+        {
+          "line": 59,
+          "text": "unsafe { asm!(\"ud2\", options(noreturn)); }"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/adapter.rs",
+      "sha256": "b3d74dfe4bc988e01b338f6836ee70ee28f71c098798a7958aa5598f7a840918",
+      "sites": [
+        {
+          "line": 37,
+          "text": "unsafe { asm!(\"int 0x81\", inlateout(\"rax\") op => result, in(\"rdi\") h, in(\"rsi\") a,"
+        },
+        {
+          "line": 60,
+          "text": "pub fn fault_owner() -> ! { unsafe { asm!(\"ud2\", options(noreturn)); } }"
+        }
+      ],
+      "review": "active-source review",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/init.rs",
+      "sha256": "51048d2ba4de0ee9f0c5f89881e0daf762a75a7a1b646de1b4079f15aae5ab80",
+      "sites": [
+        {
+          "line": 41,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 42,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 43,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64, image: u64, other: u64, channels: u64, observer: u64) -> ! {"
+        }
+      ],
+      "review": "active-source review",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io.rs",
+      "sha256": "0dda211ccd85af792268b1b49ad70229c7cbf5d5f7bb78ab30d6d1633d0f71c8",
+      "sites": [
+        {
+          "line": 6,
+          "text": "unsafe{asm!(\"int 0x81\",inlateout(\"rax\") op=>result,in(\"rdi\") h,in(\"rsi\") v,lateout(\"rdx\") ready,lateout(\"rcx\") _,lateout(\"r8\") kind);}"
+        },
+        {
+          "line": 16,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 17,
+          "text": "#[unsafe(link_section=\".text.entry\")]"
+        },
+        {
+          "line": 18,
+          "text": "pub extern \"C\" fn _start(abi:u64,factory:u64)->! {"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_authority.rs",
+      "sha256": "b4e7d63d1337ab1ce8437532f35e78352f22ec3d01b7ce391968c30de9b32c0a",
+      "sites": [
+        {
+          "line": 7,
+          "text": "unsafe { asm!(\"int 0x81\", inlateout(\"rax\") op => result, in(\"rdi\") h,"
+        },
+        {
+          "line": 31,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 32,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 33,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64) -> ! {"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_peer.rs",
+      "sha256": "6b785fdf53f1d31550e3a34ba5d300e451ee832d1c0986cae0c86b51807851f9",
+      "sites": [
+        {
+          "line": 7,
+          "text": "unsafe { asm!(\"int 0x81\", inlateout(\"rax\") op => result, in(\"rdi\") h,"
+        },
+        {
+          "line": 43,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 44,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 45,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64) -> ! {"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_peer_worker.c",
+      "sha256": "90bedcb27acb0bcd470dc5f56f58484b482faa0c7f54d5a5b2a19857cc0250d2",
+      "sites": [
+        {
+          "line": 8,
+          "text": "__asm__ __volatile__(\"int $0x81\" : \"=a\"(result) : \"a\"(op), \"D\"(h), \"S\"(arg)"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_readiness.rs",
+      "sha256": "39b9a83b19fcdc3ce37e290775a13cfc2ca4f18ae066c02faadd205a1e478a67",
+      "sites": [
+        {
+          "line": 7,
+          "text": "unsafe { asm!(\"int 0x81\", inlateout(\"rax\") op => result, in(\"rdi\") h,"
+        },
+        {
+          "line": 24,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 25,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 26,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64) -> ! {"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_retained.rs",
+      "sha256": "6028108843bdfdc518bf61edecbb410cadd5c6824b0bebc572b44e4f8e3a9f79",
+      "sites": [
+        {
+          "line": 7,
+          "text": "unsafe { asm!(\"int 0x81\", inlateout(\"rax\") op => result, in(\"rdi\") h,"
+        },
+        {
+          "line": 24,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 25,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 26,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64) -> ! {"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_stop.rs",
+      "sha256": "afd48b417a0ba203a708e59d1b572000ba2a7e8772da5315eea0541e5bbb3758",
+      "sites": [
+        {
+          "line": 10,
+          "text": "unsafe {"
+        },
+        {
+          "line": 52,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 53,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 54,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64) -> ! {"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/io_worker.c",
+      "sha256": "5c627e1ef022db791261f4aaf8be342dab0a4d2cda2a86a110900e69e642e6b7",
+      "sites": [
+        {
+          "line": 9,
+          "text": "__asm__ __volatile__(\"int $0x81\" : \"=a\"(result) : \"a\"(op), \"D\"(0ul), \"S\"(0ul)"
+        },
+        {
+          "line": 17,
+          "text": "__asm__ __volatile__(\"int $0x81\" : \"=a\"(result) : \"a\"(op), \"D\"(holder), \"S\"(argument)"
+        },
+        {
+          "line": 53,
+          "text": "if (command == 'D') { __asm__ __volatile__(\"ud2\"); return 24; }"
+        },
+        {
+          "line": 57,
+          "text": "if (command == 'F') { __asm__ __volatile__(\"ud2\"); return 24; }"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/main.rs",
+      "sha256": "d06acaab363615394537bdc6f1dd3abd83d5901640eef2795b281310294dc021",
+      "sites": [
+        {
+          "line": 6,
+          "text": "unsafe {asm!(\"int 0x81\",inlateout(\"rax\") op=>result,in(\"rdi\") h,in(\"rsi\") v,lateout(\"rdx\") ready,lateout(\"rcx\") progress,lateout(\"r8\") kind);}"
+        },
+        {
+          "line": 15,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 16,
+          "text": "#[unsafe(link_section=\".text.entry\")]"
+        },
+        {
+          "line": 17,
+          "text": "pub extern \"C\" fn _start(abi:u64,factory:u64)->! {"
+        },
+        {
+          "line": 18,
+          "text": "if cfg!(fault_entry) {unsafe {asm!(\"ud2\",options(noreturn));}}"
+        }
+      ],
+      "review": "inventory only; profile-specific producer review pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-supervisor/service_worker.c",
+      "sha256": "82d051e5a673943cd306dcd816e81735f5ea3f58317efd733eb6fc7fff109c78",
+      "sites": [
+        {
+          "line": 12,
+          "text": "register unsigned long r10 __asm__(\"r10\") = 0;"
+        },
+        {
+          "line": 13,
+          "text": "register unsigned long r8 __asm__(\"r8\") = 0;"
+        },
+        {
+          "line": 14,
+          "text": "register unsigned long r9 __asm__(\"r9\") = 0;"
+        },
+        {
+          "line": 15,
+          "text": "__asm__ __volatile__(\"int $0x81\""
+        },
+        {
+          "line": 43,
+          "text": "if (!strcmp(argv[1], \"terminal-fault\")) __asm__ __volatile__(\"ud2\");"
+        }
+      ],
+      "review": "active-source review",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-056; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-command/byte_compare.rs",
+      "sha256": "7e1132b792f04cf0fb9276c555affd968b767e3526817733f6fab0e4989e4c52",
+      "sites": [
+        {
+          "line": 9,
+          "text": "#[cfg_attr(target_os = \"none\", unsafe(no_mangle))]"
+        },
+        {
+          "line": 10,
+          "text": "pub unsafe extern \"C\" fn memcmp(left: *const u8, right: *const u8, len: usize) -> i32 {"
+        },
+        {
+          "line": 14,
+          "text": "let a = unsafe { left.add(i).read_volatile() };"
+        },
+        {
+          "line": 15,
+          "text": "let b = unsafe { right.add(i).read_volatile() };"
+        }
+      ],
+      "review": "active-source review",
+      "reference": "docs/INIT-COMMAND-ADAPTER.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-067 partial-error qualification; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-session/init.rs",
+      "sha256": "0cc7f5d46655521928b33366e7ffebd0bee2b1ca80ff9b67411a49fd0342ba36",
+      "sites": [
+        {
+          "line": 11,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 12,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 13,
+          "text": "pub extern \"C\" fn _start(abi: u64, factory: u64, first: u64, second: u64,"
+        },
+        {
+          "line": 23,
+          "text": "unsafe {"
+        },
+        {
+          "line": 31,
+          "text": "if result != -16 { unsafe { asm!(\"ud2\", options(noreturn)) } }"
+        }
+      ],
+      "review": "active-source review: existing synchronous scalar/buffer traps and bounded failed-owner path; actual holder enforcement stays kernel-owned",
+      "reference": "docs/decisions/0183-owned-serial-session-entry.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-067 initial delayed failure diagnosis and complete composition qualification; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-session/dispatch/user/native-capacity/session-owner.rs",
+      "sha256": "51701fc2c4bfde0e91ca87000e3c452d72d51cef9968bd477f105d383fe3e595",
+      "sites": [
+        {
+          "line": 41,
+          "text": "unsafe {"
+        },
+        {
+          "line": 55,
+          "text": "unsafe { asm!(\"ud2\", options(noreturn)) }"
+        }
+      ],
+      "review": "Synchronous live frame buffers and scalar handles unchanged. Read EOF now requires fresh terminal observation for the same owned peer before existing reclaim; no status fabrication, replay or authority from EOF. Unsafe sites unchanged.",
+      "reference": "docs/decisions/0184-terminal-transport-interleaving.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-067 remaining composition/transport qualification and maintained recipe; precise older caller unavailable; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem/init.rs",
+      "sha256": "0a2907ac628d9d7606492bfb0d6ace78fd1c835a5b27391902cc06ca79d423bc",
+      "sites": [
+        {
+          "line": 15,
+          "text": "unsafe {"
+        },
+        {
+          "line": 51,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 52,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 53,
+          "text": "pub extern \"C\" fn _start("
+        },
+        {
+          "line": 70,
+          "text": "unsafe { asm!(\"ud2\", options(noreturn)) }"
+        }
+      ],
+      "review": "active-source review; host/structural candidate, native acceptance pending",
+      "reference": "docs/NATIVE-BOUNDARY-REVIEW.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-067 native consumer/failure witnesses; BG-056 boundary follow-up; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem-af07/init.rs",
+      "sha256": "0a2907ac628d9d7606492bfb0d6ace78fd1c835a5b27391902cc06ca79d423bc",
+      "sites": [
+        {
+          "line": 15,
+          "text": "unsafe {"
+        },
+        {
+          "line": 51,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 52,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 53,
+          "text": "pub extern \"C\" fn _start("
+        },
+        {
+          "line": 70,
+          "text": "unsafe { asm!(\"ud2\", options(noreturn)) }"
+        }
+      ],
+      "review": "Same ABI29 scalar/synchronous borrowed-buffer trap wrapper as accepted AF06 owner; AF07 policy selection only. No nomem/preserves_flags, no retained pointer; returned halt traps. Host/structural review only.",
+      "reference": "docs/decisions/0192-af07-filesystem-owner.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-067 matched AF07 native composition and failure/consumer witnesses; BG-056 boundary follow-up; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/af07_native.rs",
+      "sha256": "83e1fe13517b1f526fa52d49fefaec805df9af55f2e1aa071539657fa8a5d63a",
+      "sites": [
+        {
+          "line": 12,
+          "text": "unsafe {"
+        }
+      ],
+      "review": "Decision0211 extends the same scalar trap bridge with cancel_freeze: rax23005, rdi actual owned source, rsi exact observed token, rdx/r10/r8/r9 zero; supervisor raw0 stays distinct from parent-11. No new pointer, retained reference, asm option or unsafe site. Actual native root disassembly confirms registers/one trap. Native authority/composition and independent acceptance remain open. Decision0212 derives Clone for the zero-sized adapter only; no duplicated endpoint-close owner or additional native authority.",
+      "reference": "docs/decisions/0211-owner-structural-fit.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-067 actual composed native client/owner authority, stack/heap and failure witnesses; BG-056 unsafe boundary follow-up; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/owner_region.rs",
+      "sha256": "7d4ece34c7cdf0874c846ce9925541f16cfa9b516a8b95d484d508c2d7347b05",
+      "sites": [
+        {
+          "line": 79,
+          "text": "let owner = unsafe { &mut *head.as_mut_ptr().cast::<MaybeUninit<T>>() };"
+        },
+        {
+          "line": 82,
+          "text": "let workspace = unsafe { &mut *workspace.as_mut_ptr().cast::<[u8; WORKSPACE]>() };"
+        },
+        {
+          "line": 84,
+          "text": "let spare = unsafe {"
+        },
+        {
+          "line": 139,
+          "text": "pub unsafe fn claim(_: Binding) -> Result<Region<'static>, Error> {"
+        },
+        {
+          "line": 141,
+          "text": "let bytes = unsafe { core::slice::from_raw_parts_mut(BASE as *mut u8, BYTES) };"
+        },
+        {
+          "line": 145,
+          "text": "let storage = unsafe { core::slice::from_raw_parts_mut(BASE as *mut MaybeUninit<u8>, BYTES) };"
+        }
+      ],
+      "review": "Fresh AF07 inputs review2026-10-23: exact actual SESSION r9 c003; native and independent acceptance pending",
+      "reference": "docs/decisions/0206-abi30-owner-placement.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-070 complete native owner/stack/fit, fresh permissions/zeroing/isolation/entry witnesses; BG-056 unsafe review; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/owner_entry.rs",
+      "sha256": "b147f289c98a1a4aa363fafea6e2da0a2345f3fb48b9fffff69d244508a75a1d",
+      "sites": [
+        {
+          "line": 5,
+          "text": "unsafe extern \"C\" {"
+        },
+        {
+          "line": 21,
+          "text": "#[unsafe(naked)]"
+        },
+        {
+          "line": 22,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 23,
+          "text": "#[unsafe(link_section = \".text.entry\")]"
+        },
+        {
+          "line": 24,
+          "text": "pub unsafe extern \"C\" fn _start() -> ! {"
+        }
+      ],
+      "review": "Decision0213 scoped ABI31 entry/exec/readiness review; native and independent acceptance pending",
+      "reference": "docs/decisions/0206-abi30-owner-placement.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-070 complete native owner/stack/fit, fresh permissions/zeroing/isolation/entry witnesses; BG-056 unsafe review; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/fork_gate.rs",
+      "sha256": "e864e2fc117a187b1a34a64d1d64dabfcc7c248f87628b22f276cc3540f495da",
+      "sites": [
+        {
+          "line": 75,
+          "text": "unsafe {"
+        },
+        {
+          "line": 95,
+          "text": "let files = unsafe {"
+        },
+        {
+          "line": 103,
+          "text": "Ok(unsafe {"
+        }
+      ],
+      "review": "Decision0211 adds safe native supervisor0 refusal reconciliation sharing the prior gated logic; old parent-side-11 API remains. In-place constructors and all unsafe blocks/sites are byte-identical to HEAD4e32ff296. Typed initialization obligations remain, with new producer compact Descriptor layout reviewed in FS-BROKER-INIT. No new unsafe boundary. Callback errors/unwind stay closed; no native stop/reclaim/parent acknowledgment is inferred.",
+      "reference": "docs/decisions/0211-owner-structural-fit.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-070 complete native owner/stack/fit, fresh permissions/zeroing/isolation/entry witnesses; BG-056 unsafe review; no independent sign-off"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/owner_runtime.rs",
+      "sha256": "8b8435c632f09504e9b1a2525609c8586b1f1ad02759c1d49ec6dc4285d404d3",
+      "sites": [
+        {
+          "line": 127,
+          "text": "let gate = unsafe {"
+        },
+        {
+          "line": 133,
+          "text": "Ok(unsafe {"
+        }
+      ],
+      "review": "Decision0213 scoped ABI31 entry/exec/readiness review; native and independent acceptance pending",
+      "reference": "docs/decisions/0212-complete-native-owner.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-070 complete owner, guarded stack/native permissions/cleanup and independent review; no native acceptance"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/native_owner_control.rs",
+      "sha256": "f35a20f9acf1b6be9e76b2f0544b30b62ce82910a1c54cb30f2a712fc8f823fb",
+      "sites": [
+        {
+          "line": 13,
+          "text": "unsafe {"
+        }
+      ],
+      "review": "Decision0213 scoped ABI31 entry/exec/readiness review; native and independent acceptance pending",
+      "reference": "docs/decisions/0212-complete-native-owner.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-070 complete owner, guarded stack/native permissions/cleanup and independent review; no native acceptance"
+    },
+    {
+      "file": "prototypes/native-filesystem-session/native_owner.rs",
+      "sha256": "b7cd6a96eb08f3a3a1b8b995ebe1c3d53c1af73fad8151337b76c9039ed892ed",
+      "sites": [
+        {
+          "line": 11,
+          "text": "#[unsafe(no_mangle)]"
+        },
+        {
+          "line": 12,
+          "text": "pub extern \"C\" fn owner_main("
+        },
+        {
+          "line": 32,
+          "text": "let region = unsafe { owner_region::claim(binding)? };"
+        },
+        {
+          "line": 55,
+          "text": "unsafe { core::arch::asm!(\"ud2\", options(noreturn)) }"
+        }
+      ],
+      "review": "Decision0213 scoped ABI31 entry/exec/readiness review; native and independent acceptance pending",
+      "reference": "docs/decisions/0212-complete-native-owner.md",
+      "owner": "sys-init maintainer",
+      "follow_up": "BG-070 complete owner, guarded stack/native permissions/cleanup and independent review; no native acceptance"
+    }
+  ]
+}

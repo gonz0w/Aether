@@ -1,0 +1,10 @@
+1 arch_prctl(4098,2118696,0,8388608,0,131072) = 0
+1 set_tid_address(0x2053d8) = 1
+1 rt_sigprocmask(SIG_UNBLOCK,[33 34],NULL,8) = 0
+1 rt_sigaction(SIGSEGV,0x0000ffffab32ebb8,NULL) = 0
+1 mmap(NULL,8192,PROT_NONE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = 0x0000ffffac780000
+1 mprotect(0x0000ffffac781000,4096,PROT_READ|PROT_WRITE) = 0
+1 mmap(NULL,4096,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0) = 0x0000ffffac77f000
+1 munmap(0x0000ffffac77f000,4096) = 0
+1 write(1,0x200220,27) = 27
+1 exit_group(0)

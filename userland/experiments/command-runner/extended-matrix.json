@@ -1,0 +1,423 @@
+{
+  "schema": "aether-userland-extended-matrix-v1",
+  "scope": "Command-runner host extended tests and native compensation for missing pinned ASan. Not whole-repository coverage or a sanitizer waiver.",
+  "waiver": false,
+  "cases": [
+    {
+      "id": "PXE-01",
+      "family": "unit/property",
+      "layer": "host",
+      "stage": "local/extended",
+      "status": "pass",
+      "oracle": "existing parser controls, atomic publication",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-extended-2026-09-07/README.md",
+          "sha256": "85ddee320a17b572216de10bebf8126740b5d46769aa55217eeb7ccaf4072b0f"
+        }
+      ]
+    },
+    {
+      "id": "PXE-02",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "172038 fixed byte/length cases",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-extended-2026-09-07/README.md",
+          "sha256": "85ddee320a17b572216de10bebf8126740b5d46769aa55217eeb7ccaf4072b0f"
+        }
+      ]
+    },
+    {
+      "id": "PXE-03",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "reserved-byte defect exit 90 canonical-carrier",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-extended-2026-09-07/README.md",
+          "sha256": "85ddee320a17b572216de10bebf8126740b5d46769aa55217eeb7ccaf4072b0f"
+        }
+      ]
+    },
+    {
+      "id": "PXE-04",
+      "family": "memory/undefined behavior",
+      "layer": "host",
+      "stage": "extended",
+      "status": "blocked",
+      "oracle": "AddressSanitizer heap-buffer-overflow",
+      "evidence": [
+        {
+          "path": "docs/evidence/asan-host-2026-09-07/README.md",
+          "sha256": "c7f6fbfde2643a65e20e15e3025c6e5f52891e6827ec1a8691bf08667205b8b4"
+        }
+      ],
+      "compensation": {
+        "ids": ["NB-01", "NB-02", "NB-03", "NB-04"],
+        "covers": "native malformed bootstrap, lost/malformed replies, launch framing, terminal kind, reclaim counts",
+        "does_not_cover": "host heap OOB, use-after-free, pinned Clang 21.1.8 ASan on macOS 27",
+        "waiver": false
+      }
+    },
+    {
+      "id": "PXE-05",
+      "family": "memory/undefined behavior",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "UBSan signed integer overflow",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-extended-2026-09-07/README.md",
+          "sha256": "85ddee320a17b572216de10bebf8126740b5d46769aa55217eeb7ccaf4072b0f"
+        }
+      ]
+    },
+    {
+      "id": "PXR-01",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "retain and replay same oracle exit 90",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-replay-2026-09-07/README.md",
+          "sha256": "432cd8a20c0e17c3e3a4ff1be35574464770cc08086ac11942b5a3aff6b22c4b"
+        }
+      ]
+    },
+    {
+      "id": "PXR-02",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "local deletion/zero minimality",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-replay-2026-09-07/README.md",
+          "sha256": "432cd8a20c0e17c3e3a4ff1be35574464770cc08086ac11942b5a3aff6b22c4b"
+        }
+      ]
+    },
+    {
+      "id": "PXR-03",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "invalid replay and exclusive collisions exit 91",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-replay-2026-09-07/README.md",
+          "sha256": "432cd8a20c0e17c3e3a4ff1be35574464770cc08086ac11942b5a3aff6b22c4b"
+        }
+      ]
+    },
+    {
+      "id": "PXR-04",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "synthetic deletion, zero, non-reproducing, budget",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-replay-2026-09-07/README.md",
+          "sha256": "432cd8a20c0e17c3e3a4ff1be35574464770cc08086ac11942b5a3aff6b22c4b"
+        }
+      ]
+    },
+    {
+      "id": "PXR-04a",
+      "family": "fuzz",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "fixture error and mismatched retain abort reduction",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-reducer-review-2026-09-07/README.md",
+          "sha256": "1026fa06d50cab0ff89969861ca9132edf868b55ed2bb801729fcd6950068120"
+        }
+      ]
+    },
+    {
+      "id": "PXR-05",
+      "family": "unit/property",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "unchanged 172038 sweep and UBSan canary",
+      "evidence": [
+        {
+          "path": "docs/evidence/parser-replay-2026-09-07/README.md",
+          "sha256": "432cd8a20c0e17c3e3a4ff1be35574464770cc08086ac11942b5a3aff6b22c4b"
+        }
+      ]
+    },
+    {
+      "id": "PXS-01",
+      "family": "static/build",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "clang --analyze and clang-tidy silence",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXS-02",
+      "family": "static/build",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "null-deref canary diagnostic",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXB-01",
+      "family": "performance",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "observational ru_maxrss under 32 MiB",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXB-02",
+      "family": "performance",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "dirtied mmap raises RSS; reserve does not",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXC-01",
+      "family": "concurrency",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "eight forked children exit 0",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXC-02",
+      "family": "concurrency",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "hang timeout with complete cleanup",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXT-01",
+      "family": "stress/soak",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "256 exchanges, 3072 channel_raw calls",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXT-02",
+      "family": "fault/recovery",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "invalid size poisons without further channel_raw",
+      "evidence": [
+        {
+          "path": "docs/evidence/extended-host-2026-09-07/README.md",
+          "sha256": "828154f5be37d51cea28f4674215e443b91090eacf56bfc2dc5a0dba505ce66f"
+        }
+      ]
+    },
+    {
+      "id": "PXA-01",
+      "family": "memory/undefined behavior",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "pinned ASan empty-main deadlock sample AsanInitInternal/LockSlow",
+      "evidence": [
+        {
+          "path": "docs/evidence/asan-host-2026-09-07/README.md",
+          "sha256": "c7f6fbfde2643a65e20e15e3025c6e5f52891e6827ec1a8691bf08667205b8b4"
+        }
+      ]
+    },
+    {
+      "id": "PXA-02",
+      "family": "memory/undefined behavior",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "pinned UBSan empty main exits 0",
+      "evidence": [
+        {
+          "path": "docs/evidence/asan-host-2026-09-07/README.md",
+          "sha256": "c7f6fbfde2643a65e20e15e3025c6e5f52891e6827ec1a8691bf08667205b8b4"
+        }
+      ]
+    },
+    {
+      "id": "PXA-03",
+      "family": "memory/undefined behavior",
+      "layer": "host",
+      "stage": "extended",
+      "status": "pass",
+      "oracle": "Apple clang ASan comparison empty main exits 0; not a pin",
+      "evidence": [
+        {
+          "path": "docs/evidence/asan-host-2026-09-07/README.md",
+          "sha256": "c7f6fbfde2643a65e20e15e3025c6e5f52891e6827ec1a8691bf08667205b8b4"
+        }
+      ]
+    },
+    {
+      "id": "PXA-04",
+      "family": "memory/undefined behavior",
+      "layer": "host",
+      "stage": "extended",
+      "status": "blocked",
+      "oracle": "pinned ASan heap canary AddressSanitizer diagnostic",
+      "evidence": [
+        {
+          "path": "docs/evidence/asan-host-2026-09-07/README.md",
+          "sha256": "c7f6fbfde2643a65e20e15e3025c6e5f52891e6827ec1a8691bf08667205b8b4"
+        }
+      ],
+      "compensation": {
+        "ids": ["NB-01", "NB-02", "NB-03", "NB-04"],
+        "covers": "native denial, poison, framing, terminal kind, reclaim counts",
+        "does_not_cover": "host heap OOB, use-after-free, pinned Clang 21.1.8 ASan on macOS 27",
+        "waiver": false
+      }
+    },
+    {
+      "id": "NB-01",
+      "family": "fault/recovery",
+      "layer": "native",
+      "stage": "interface/authority",
+      "status": "pass",
+      "oracle": "malformed bootstrap, no traffic, reclaim 0",
+      "evidence": [
+        {
+          "path": "docs/evidence/native-bootstrap-userland-2026-09-06/summary.json",
+          "sha256": "3f9355dff78517b7cfa5a2b477c9684d1d02d64849b797c8b76f9ed1d840e97d"
+        }
+      ]
+    },
+    {
+      "id": "NB-02",
+      "family": "fault/recovery",
+      "layer": "native",
+      "stage": "interface/authority",
+      "status": "pass",
+      "oracle": "lost/malformed replies poison, no replay",
+      "evidence": [
+        {
+          "path": "docs/evidence/native-replies-userland-2026-09-06/summary.json",
+          "sha256": "3e2d33bd73a4946ec8e33295ca6fb3cc8e5339a130c8e35208c889e9ca4e0a4b"
+        }
+      ]
+    },
+    {
+      "id": "NB-03",
+      "family": "contract/integration",
+      "layer": "native",
+      "stage": "interface/authority",
+      "status": "pass",
+      "oracle": "malformed/partial launch frames",
+      "evidence": [
+        {
+          "path": "docs/evidence/native-launch-userland-2026-09-06/summary.json",
+          "sha256": "68f0b7074240fdbc9aeaea8da64471a87a647ae361487f64aa72d69032eac21a"
+        }
+      ]
+    },
+    {
+      "id": "NB-04",
+      "family": "contract/integration",
+      "layer": "native",
+      "stage": "interface/authority",
+      "status": "pass",
+      "oracle": "normal vs fault terminal kind, six reclaims",
+      "evidence": [
+        {
+          "path": "docs/evidence/native-terminal-userland-2026-09-06/summary.json",
+          "sha256": "fa78c758224f1a36f509b3909b505c1d894320507a860318ef04b295530d4ab6"
+        }
+      ]
+    }
+  ],
+  "exclusions": [
+    {
+      "family": "system/workflow",
+      "reason": "no assembled-image or shipped aether-run workflow in this inventory"
+    },
+    {
+      "family": "hardware",
+      "reason": "host/native layers only; no device matrix"
+    },
+    {
+      "family": "usability/accessibility",
+      "reason": "contributor checkers only; independent reader review is UL-061"
+    },
+    {
+      "family": "documentation/package",
+      "reason": "packaged lookup and manuals remain UL-061"
+    },
+    {
+      "family": "compatibility",
+      "reason": "POSIX edition matrix remains UL-013"
+    },
+    {
+      "family": "security",
+      "reason": "authority cases are native NB witnesses; no separate threat review here"
+    }
+  ]
+}

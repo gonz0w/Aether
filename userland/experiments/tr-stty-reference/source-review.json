@@ -1,0 +1,22 @@
+{
+  "scope": "source inspection only; not security or runtime acceptance",
+  "files": {
+    "coreutils": {
+      "src/tr.c": "628244248c6afe3777e965058a45c4a58fc3be79527efed120b0997af4c9e221",
+      "src/stty.c": "7bbc9708964847784d677e2528fc7fa8308f3ec5e721ac5ac6b06464727a7bc8",
+      "src/local.mk": "5d0a5e3a483cd6dcbaa26068e365a55316899847d8928a691996a35001b2853c",
+      "tests/tr/tr.pl": "b0756b5f8dca467c0cd1aba26200e851a1317be331f83fcb2586e653217a8f31",
+      "tests/tr/tr-case-class.sh": "39b0ccf392b43dd7158c3880b266da154930c413f10f7fd60e33f31e8bc407fa",
+      "tests/stty/stty-invalid.sh": "b0c9c0f00657c5c08635b411f0c9ad9331b0e2af951afd4937363750230f7175",
+      "COPYING": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    "busybox": {
+      "coreutils/tr.c": "8b79dd3ea31c4a2bf576cdc3bb8cf22113668a76dd9d1e5dca29da8bb0dced6e",
+      "coreutils/stty.c": "c781171612069209af8a8d34d72933b10e5154223c6d397d03805c74170f4fb2",
+      "libbb/read.c": "b1010bf714351d76eafd4bb78d9b7b7f096c33a9cafbad05670b75ada761f77e",
+      "libbb/xfuncs_printf.c": "d685d6f1343adcc0374657f00625e4e85e558d9364cd1ad49345cc7bc798a692",
+      "testsuite/tr.tests": "ca08db00b33f712fd82abcc089dd0eac0fc7ca778656023da047c6ada9fa958b",
+      "LICENSE": "bbfc9843646d483c334664f651c208b9839626891d8f17604db2146962f43548"
+    }
+  }
+}

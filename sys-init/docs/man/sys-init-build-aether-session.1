@@ -1,0 +1,52 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd October 4, 2026
+.Dt SYS-INIT-BUILD-AETHER-SESSION 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-build-aether-session
+.Nd build and test the pinned offline Aether serial-shell candidate
+.Sh SYNOPSIS
+.Nm python3 scripts/build-aether-session.py
+.Ar output
+.Op Fl Fl tools Ar paths.json
+.Op Fl Fl smoke Ar immediate|delayed
+.Op Fl Fl version
+.Sh DESCRIPTION
+Run from the source repository root with recorded macOS arm64 tools.
+Output must be fresh under existing out/ without symlink or traversal components.
+Locked inputs, complete archive membership and executable hashes are verified
+before staging. The owner is rebuilt to exact qualified raw and ELF bytes;
+sealed kernel/client/firmware binaries are reused. All six boot components are
+read back. This command does not fetch, install or modify sibling repositories.
+.Fl Fl tools
+relocates identical executable bytes without changing hashes.
+.Fl Fl smoke
+runs three fragmented prompt-driven commands through exact output, identity,
+terminal, cleanup and authorized-halt checks. Delayed input waits 35 seconds at
+the first prompt and two seconds at later prompts.
+.Sh OUTPUT
+Plain ASCII progress/errors use stderr. One result JSON uses stdout.
+Owned output retains result.json, phase logs, sources, notices and artifact hashes.
+Smoke retains serial.log, qemu.stderr and smoke.json. Failures retain their output.
+The result console_argv supports a separate manual serial development boot after
+artifact/tool freshness checks; it is not an acceptance oracle.
+.Sh EXIT STATUS
+0 success; 1 operational failure; 2 blocked precondition; 64 invalid usage;
+130 keyboard interruption. Help and version exit 0 on stdout.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+python3 scripts/build-aether-session.py out/my-session --smoke immediate
+python3 scripts/build-aether-session.py out/idle-session --smoke delayed
+.Ed
+.Sh LIMITATIONS
+This is a developer ABI24/AENMX009 candidate, not installed or released init.
+No automatic restart, login, general TTY/job control or persistence is provided.
+Tool bounds are 180 seconds/4 MiB; guest bounds are 90 seconds, 1 MiB UART and
+4 MiB stderr. Live owned groups are stopped and children reaped. Fatal/repeated
+signals and detached tools are outside this guarantee. Complete dependency closure,
+filesystem deadlines and host sandboxing are not claimed. Build-only success is
+not native acceptance. Remaining negative/cleanup qualification and independent
+assembled review are separate.
+.Sh SEE ALSO
+docs/AETHER-SESSION.md, docs/aether-session.lock.json,
+docs/SERIAL-BOOT-COMPOSITION.md

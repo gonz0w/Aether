@@ -1,0 +1,23 @@
+Run one command with delegated I/O.
+
+Usage:
+  aether-run --help
+  aether-run --version
+  aether-run [--] COMMAND [ARG ...]
+
+Arguments:
+  COMMAND  Available command name
+  ARG      Up to three child arguments
+
+Options:
+  --help     Show this help
+  --version  Show the version
+  --         End runner option parsing
+
+Example:
+  aether-run bytecount --decimal
+
+Limits:
+  No shell expansion or path lookup.
+  Each argument is at most 31 bytes.
+  Child environment: LC_ALL=C.

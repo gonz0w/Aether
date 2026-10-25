@@ -1,0 +1,178 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 6, 2026
+.Dt SYS-INIT-CHECKS 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-checks
+.Nd run offline development checks from a sys-init checkout
+.Sh SYNOPSIS
+.Nm python3 scripts/check-all.py
+.Op Fl Fl output-root Ar directory
+.Nm python3 scripts/check-all.py
+.Fl Fl help
+.Nm python3 scripts/check-all.py
+.Fl Fl version
+.Sh DESCRIPTION
+This manual describes the Python command in the source checkout.
+There is no installed executable named
+.Nm .
+Run from the repository root with POSIX Python 3.10 or newer and the
+separately provisioned Rust 1.98.0 toolchain.
+The static gate also requires rustfmt and Clippy whose executable identities
+match docs/static-tools.json on a reviewed host.
+The currently pinned static-tool host is macOS arm64.
+A missing or unsupported required tool cannot count as a passing check.
+.Pp
+The command creates a private run directory and runs ten required gates:
+standards, experience, distribution, quality-process, static,
+native-evidence, evidence, sample-receipts, model and host.
+Each gate has a 60-second watchdog.
+The first failing gate stops subsequent gates.
+The report records command arguments, logs, platform and source hashes.
+Source drift during the run prevents a passing result.
+.Pp
+These are trusted development fixtures, including real host child processes.
+They do not execute a native Aether guest or establish production readiness.
+Historical native evidence is checked offline; it does not replace a fresh
+consuming target witness for native behavior changes.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl Fl output-root Ar directory
+Parent for a new private run directory named run-*.
+The default is out/checks under the repository root.
+Missing parent directories are created.
+Existing runs are not reused or deleted.
+Choose a writable development directory; no root privileges are required.
+.It Fl Fl help
+Print usage and exit without running checks.
+.It Fl Fl version
+Print the development-check command version and exit.
+This version does not identify a published sys-init release.
+.El
+.Pp
+The exact worker invocations --evidence-worker and --sample-receipts-worker
+are internal harness entry points, not ordinary check modes.
+.Sh OUTPUT
+Standard error contains gate progress and child diagnostics in retained logs.
+Standard output contains a JSON summary with schema
+sys-init-development-checks-v1, result and the absolute results.json path.
+Inspect that report and adjacent stdout/stderr files after failure.
+An absent, incomplete or running report is not a passing result.
+Abrupt termination or filesystem failure can prevent the final summary.
+Each gate has a combined 4 MiB stdout/stderr capture limit and a 60-second
+deadline, including pipe draining and process exit.
+The two raw logs retain their accepted prefixes in per-stream order;
+ordering between streams is unspecified.
+A gate record adds output_limit_bytes and reports output-limit when excess
+bytes are observed, even if the child would otherwise exit zero.
+The aggregate stops and exits 1 for this result.
+This limit excludes child-created artifacts, source hashing and other files.
+On capture failure the runner sends SIGINT to its owned group and allows up
+to one additional second for the direct child to exit.
+Responsive Python wrappers can unwind and clean workers in separate groups.
+The runner then force-kills the remaining owned group and reaps the direct
+child.
+Gate records add cleanup_grace_seconds; the original failure outcome remains.
+Output during the grace is not newly drained, so pipe pressure can force
+fallback.
+Unresponsive detached groups, abrupt aggregate termination and deeper wrappers
+that kill intermediate owners remain outside this cleanup guarantee.
+.Sh ENVIRONMENT
+The runner inherits its environment and resolves tools through PATH and rustup.
+Provision tools before offline execution; the command does not install them.
+Child gates receive PYTHONDONTWRITEBYTECODE=1.
+Do not put credentials or secrets in fixture inputs or collected logs.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa out/checks/run-*/results.json
+Aggregate results, commands, source identities and not-run gates.
+.It Pa out/checks/run-*/*.stdout
+Per-gate standard output.
+.It Pa out/checks/run-*/*.stderr
+Per-gate standard error.
+.It Pa docs/static-tools.json
+Reviewed host formatter/linter identities and options.
+.It Pa docs/*.lock
+Offline shared-standard pins.
+.El
+.Pp
+Some gates also create private artifacts under other out subdirectories.
+The output-root option relocates the aggregate report, not every child artifact.
+.Sh EXIT STATUS
+.Bl -tag -width Ds
+.It 0
+All required gates passed and checked source identities remained unchanged;
+also used for help and version.
+.It 1
+A required check failed, timed out, was incomplete or detected source drift.
+An unhandled infrastructure exception may also exit nonzero without a summary.
+.It 2
+The aggregate command was invoked on a non-POSIX host.
+A child static-tool block becomes an aggregate failure, not this status.
+.It 64
+Invalid command-line usage.
+.It 130
+A recorded gate invocation was interrupted.
+During main-thread gate capture, SIGTERM follows the interrupted path.
+The temporary handler is restored after capture; secondary SIGTERM during
+cleanup is ignored.
+The startup/Popen window, between-gate work, SIGKILL and repeated SIGINT
+remain outside this guarantee.
+Background-thread calls do not install process-global signal handlers.
+Other abrupt termination is not guaranteed to produce a final report.
+.El
+.Sh EXAMPLES
+From the sys-init repository root, with tools already provisioned:
+.Bd -literal -offset indent
+python3 scripts/check-all.py --help
+python3 scripts/check-all.py
+.Ed
+.Pp
+The first command exits zero and prints usage.
+A successful second command prints ten passing gate results on standard error,
+then a JSON summary on standard output, and exits zero.
+On failure, retain the reported directory and diagnose the first failed gate
+before retrying; a retry does not erase earlier evidence.
+.Pp
+Render this source manual offline from the same working directory:
+.Bd -literal -offset indent
+mandoc -T ascii docs/man/sys-init-checks.1
+.Ed
+.Sh SEE ALSO
+.Nm python3
+and
+.Nm mandoc
+are host tools; their local manual availability depends on host packaging.
+.Pp
+Repository guides: docs/DEVELOPMENT-CHECKS.md, docs/STATIC-CHECKS.md,
+docs/QUALITY-PROCESS.md and SECURITY.md.
+.Sh CAVEATS
+This is a source-checkout manual, not an installed-target lookup claim.
+Hosted CI, other current tool hosts, native guest execution, independent
+reader review and publication authorization remain separate obligations.
+.Pp
+Decision 0143 bounds source snapshots to 200,000 traversed entries, 10,000
+selected files, 4 MiB per file and 64 MiB total, using 64 KiB digest reads.
+Symlink and special entries under scanned roots reject; archive directories
+remain excluded.
+Read identity and final selected membership are checked sequentially.
+These checks provide neither atomic snapshots nor blocking filesystem
+deadlines.
+.Pp
+Decision 0144 publishes reports by same-directory atomic replacement.
+Snapshot and expected I/O failures retain completed checks, omitted gates and
+bounded stage/type/message error details; initial snapshot failure has no
+hashes.
+Interruption returns 130; other failures return 1.
+If final publication fails, stderr receives an escaped error and no result
+summary
+is emitted; the last complete report may remain running.
+Atomic replacement does not promise power-loss durability.
+.Pp
+Decision 0145 reports output-directory startup failures without inventing a
+report path.
+Startup interruption returns 130; other errors return 1.
+Summary output is flushed; a broken summary pipe returns failure while keeping
+the saved check result.
+Broken progress output stops later gates and records the completed gate.
+Diagnostics are best effort when stderr is unavailable.

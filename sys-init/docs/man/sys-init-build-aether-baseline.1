@@ -1,0 +1,54 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd October 3, 2026
+.Dt SYS-INIT-BUILD-AETHER-BASELINE 1
+.Os sys-init experimental
+.Sh NAME
+.Nm sys-init-build-aether-baseline
+.Nd build and optionally boot a pinned offline Aether developer baseline
+.Sh SYNOPSIS
+.Nm python3 scripts/build-aether-baseline.py
+.Ar output
+.Fl Fl dependencies Ar directory
+.Op Fl Fl tools Ar paths.json
+.Op Fl Fl supervised
+.Op Fl Fl service-table
+.Op Fl Fl smoke
+.Sh DESCRIPTION
+Run from the source repository root using the recorded macOS arm64 tools.
+The output must be fresh below out/ with an existing parent and no symlink or
+parent-traversal components. Inputs and tool executable hashes are checked before
+staging. This command does not fetch, install or modify sibling repositories.
+.Fl Fl smoke
+boots one useful bytecount cycle and halt in a private QEMU guest.
+The startup test probe takes about 30 seconds.
+.Fl Fl service-table
+selects the qualified static three-role policy without the startup test probe.
+The default preserves the old baseline; table-only automatic retries remain zero.
+.Fl Fl supervised
+requires --service-table and selects one pre-effect command replacement after
+known cleanup. Failure after I/O or exhausted retry closes admission. This policy
+applies only to the frozen mediated bytecount workload.
+.Fl Fl tools
+relocates identical executables; it cannot change their locked hashes.
+.Sh OUTPUT
+Progress uses stderr. Success JSON uses stdout.
+The output retains result.json, phase logs, image hashes and, when requested,
+serial.log, qemu.log and smoke.json. Failures retain owned output; use a new output
+for a subsequent attempt.
+.Sh EXIT STATUS
+0 success; 1 operational failure; 2 blocked precondition; 64 invalid usage;
+130 keyboard interruption. Help and version exit 0 on stdout.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+python3 scripts/build-aether-baseline.py out/my-baseline \\
+  --dependencies out/si07-loop/.deps --smoke
+.Ed
+.Sh LIMITATIONS
+This is a developer ABI22 fixed-memory workload, not an installed product,
+interactive shell or authenticated console. Developer r/h input runs one cycle
+or halts between cycles. Build-only success is not target acceptance. Tool bounds
+are 180 seconds and 4 MiB per phase; the guest bounds are 90 seconds and 4 MiB.
+No host sandbox or complete shared-library closure is claimed.
+.Sh SEE ALSO
+docs/AETHER-BASELINE.md, docs/SI07-DISPOSITION.md,
+docs/aether-baseline.lock.json

@@ -1,0 +1,59 @@
+{
+  "review_date": "2026-09-05",
+  "scope": "Working-file snapshots, not clean Git revisions; no companion tests rerun. Some files reviewed by relevant excerpts.",
+  "local_sources": [
+    {
+      "path": "/Users/cam/DEV/aether/AGENTS.md",
+      "sha256": "43c12e57cb0fdf6df1ed47b25bd1231370a1cca859654815f11633b24eb360d8"
+    },
+    {
+      "path": "/Users/cam/DEV/aether/README.md",
+      "sha256": "d739b3c8a053339f9bda5f6fe0b69c757c446233a0fabf99a154a0bbf0ce3a38"
+    },
+    {
+      "path": "/Users/cam/DEV/aether/.planning/STATE.md",
+      "sha256": "07d936a3f0f032a51e980523494d78c6ada5e7da4c6a88f1c252755009968019"
+    },
+    {
+      "path": "/Users/cam/DEV/aether/.planning/M4-LIFECYCLE-V1.md",
+      "sha256": "eb9228f5daa3baf143a89ac5998d0bbe0ce442de4c95c8b0413ed5ac20d5d8bb"
+    },
+    {
+      "path": "/Users/cam/DEV/aether/docs/COMPANION-PROJECTS.md",
+      "sha256": "0d81fb376533cb66e47cbbc73081f8f188aa339dfb30587d3ad640e5b91e95e7"
+    },
+    {
+      "path": "/Users/cam/DEV/sys-init/AGENTS.md",
+      "sha256": "55298351d667dbb4a7abbaddad959191e21204d85fdc76790b6bea288ab205fe"
+    },
+    {
+      "path": "/Users/cam/DEV/sys-init/.planning/STATE.md",
+      "sha256": "bafa0eb12212815bb3f84f441e849a2c8c768ca1e34565dad7322207f87d3e58"
+    },
+    {
+      "path": "/Users/cam/DEV/sys-init/docs/INTEGRATION.md",
+      "sha256": "163445ab657f55ce3d3bfddf2363943f69d148019b371ad0aec9e476ef0d8d80"
+    },
+    {
+      "path": "/Users/cam/DEV/sys-init/docs/research/BOUNDARY-HANDOFF.md",
+      "sha256": "df098441d6c2a4c7c8ee86c302adaf1714ee5d2246d548cae36415742c9c3a5d"
+    },
+    {
+      "path": "/Users/cam/DEV/pkg-mgr/AGENTS.md",
+      "sha256": "c58c13bdf9f4274e55bd4d2e7b3b68b95f87a648c16a05f581ab521711d3f629"
+    },
+    {
+      "path": "/Users/cam/DEV/pkg-mgr/.planning/STATE.md",
+      "sha256": "dea25971f929e19390a53e906bb82e914a80d103b47466fb477c451817e62a34"
+    },
+    {
+      "path": "/Users/cam/DEV/pkg-mgr/docs/ARCHITECTURE.md",
+      "sha256": "225249a11ab77efa1a1e03acc2baef2e5667eb534af96cc6eec608107f2f27b6"
+    },
+    {
+      "path": "/Users/cam/DEV/pkg-mgr/recipes/zlib/package.mk",
+      "sha256": "d3d713505e0a28428a2d561ecf8ca282029ea7552280d9e13161cdfae177c2be"
+    }
+  ],
+  "external_sources": "See linked citations and access limitations in CLANG-MUSL.md and PACKAGES.md; moving documents are not dependency pins."
+}

@@ -1,0 +1,228 @@
+{
+  "schema": "aether-userland.allocator-metadata-evidence.v1",
+  "scope": "Linux emulation brk collision and injected metadata mmap ENOMEM; not native quota enforcement or complete metadata exhaustion",
+  "output": "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y",
+  "image_id": "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+  "source_sha256": "103719a54c537f9fd61fb7880bc1cd2a39a7c855b19fca549f2636d31619bba9",
+  "script_sha256": "1c18573e8411bacae66df08b6d1450973266ee3b33c91ebe914206cb0355bc78",
+  "tools_lock_sha256": "2c72123a27ec11e2bdcae7e334be6493176ba6643f517a1478d5b55565547ac7",
+  "reference_evidence_sha256": "43fbf868436543852b46c117fda0d0d1c5a3ed76de27b34057abad4145ff6c8e",
+  "sdk_pin_evidence_sha256": "57abac9437e211b95d7c018c7ac98a3ad4db820d57ba4063dce35c410f552f86",
+  "runtime_identity_evidence_sha256": "24daf6b2040e007e8573b31f43365e5a71de1704b988bbf80caa1632f14d3548",
+  "elf_sha256": "898868170e8c7832fd2e24e38541dd9ac1146c6872d4d102c957d836c77310cb",
+  "elf_bytes": 17880,
+  "commands": [
+    {
+      "name": "compile",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-std=c11",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fstack-protector-strong",
+        "-fno-builtin",
+        "-nostdinc",
+        "-isystem",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/include",
+        "-c",
+        "/Users/cam/DEV/Aether-userland/experiments/musl-reference/allocator-metadata.c",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y/allocator-metadata.o"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "link",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+        "--no-default-config",
+        "--target=x86_64-linux-musl",
+        "--sysroot=/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage",
+        "-fuse-ld=/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+        "-nostdlib",
+        "-static",
+        "-Wl,-z,noexecstack",
+        "-Wl,--no-undefined",
+        "-Wl,--wrap=__mmap",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crt1.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crti.o",
+        "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y/allocator-metadata.o",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/libc.a",
+        "/Users/cam/DEV/Aether-userland/build/musl-reference-q39nl2io/stage/usr/lib/crtn.o",
+        "-o",
+        "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y/allocator-metadata.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "undefined",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+        "--undefined-only",
+        "--extern-only",
+        "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y/allocator-metadata.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "relocations",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-r",
+        "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y/allocator-metadata.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "headers",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+        "-h",
+        "-l",
+        "/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y/allocator-metadata.elf"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "pass",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/allocator-metadata.elf",
+        "pass"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "deny-metadata",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/allocator-metadata.elf",
+        "deny-metadata"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "no-guard",
+      "argv": [
+        "/opt/homebrew/bin/podman",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=all",
+        "--memory=512m",
+        "--pids-limit=32",
+        "--security-opt=no-new-privileges",
+        "--user=65534:65534",
+        "--mount",
+        "type=bind,src=/Users/cam/DEV/Aether-userland/build/allocator-metadata-l83nxu0y,dst=/inputs,ro=true",
+        "--entrypoint=qemu-x86_64",
+        "8d0dff22866c67ea5de1d66ff04a54f17e610a11e3a5c970414820663c7649a4",
+        "-strace",
+        "/inputs/allocator-metadata.elf",
+        "no-guard"
+      ],
+      "exit": 20
+    }
+  ],
+  "results": [
+    {
+      "case": "pass",
+      "exit": 0,
+      "syscalls": [
+        "arch_prctl",
+        "set_tid_address",
+        "brk",
+        "mmap",
+        "brk",
+        "brk",
+        "mmap",
+        "mprotect",
+        "mmap",
+        "brk",
+        "munmap",
+        "mmap",
+        "munmap",
+        "munmap",
+        "write",
+        "exit_group"
+      ],
+      "trace_sha256": "4542aa1b775d6472ba8ca121edb01f8a353047b595bf69a2dcee1205a9e41b72"
+    },
+    {
+      "case": "deny-metadata",
+      "exit": 0,
+      "syscalls": [
+        "arch_prctl",
+        "set_tid_address",
+        "brk",
+        "mmap",
+        "brk",
+        "brk",
+        "mmap",
+        "mprotect",
+        "mmap",
+        "brk",
+        "munmap",
+        "mmap",
+        "munmap",
+        "munmap",
+        "write",
+        "exit_group"
+      ],
+      "trace_sha256": "08455c3bd046f3d85762c62d5e512a055c27e6a01f184d620d2d6fcf80e5e454"
+    },
+    {
+      "case": "no-guard",
+      "exit": 20,
+      "syscalls": [
+        "arch_prctl",
+        "set_tid_address",
+        "brk",
+        "brk",
+        "brk",
+        "mmap",
+        "mmap",
+        "munmap",
+        "exit_group"
+      ],
+      "trace_sha256": "9a23c9dbc6266a4ee9d2fc5caca87d2450e7c432a9cf94a8d408934f2ff24ff0"
+    }
+  ]
+}

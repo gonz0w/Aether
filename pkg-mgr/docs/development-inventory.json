@@ -1,0 +1,1459 @@
+{
+  "schema": "pkg-mgr-development-inventory-v1",
+  "status": "experimental; initial subsystem inventory, not release coverage approval",
+  "owner": "pkg-mgr maintainer",
+  "surfaces": [
+    {
+      "id": "cli",
+      "sources": [
+        "bin/*",
+        "mk/cli-*",
+        "tests/cli*"
+      ],
+      "references": [
+        "docs/CLI.md",
+        "docs/EXPERIENCE.md",
+        "man/pkg-mgr.1"
+      ],
+      "tests": [
+        "tests/cli.sh",
+        "tests/cli-interruption.sh",
+        "tests/cli-output.sh",
+        "tests/cli-interruption.py",
+        "tests/cli-output.py",
+        "tests/cli-dispatch.py",
+        "tests/cli-populated.py",
+        "tests/binary-package.sh"
+      ],
+      "oracle": "Human/TSV, escaping, statuses and retained interrupted receipts",
+      "gap": "First CLI manual has host lint/render/example coverage; independent reader and packaged lookup pending"
+    },
+    {
+      "id": "build",
+      "sources": [
+        "mk/pkg.mk",
+        "mk/phase.sh",
+        "mk/hello-phases.sh",
+        "mk/check-root.sh",
+        "mk/package-evidence.sh",
+        "recipes/*/*",
+        "tests/phase-*",
+        "tests/source-recipes.sh",
+        "tests/package-boundary.sh",
+        "tests/bytecount*",
+        "tests/zlib*",
+        "tests/zpipe*"
+      ],
+      "references": [
+        "docs/BUILD-FIXTURE.md",
+        "docs/ZLIB-PACKAGE.md",
+        "docs/BYTECOUNT-PACKAGE.md"
+      ],
+      "tests": [
+        "tests/phase-2-happy-path.sh",
+        "tests/phase-3-safety-failure.sh",
+        "tests/package-boundary.sh",
+        "tests/source-recipes.sh",
+        "tests/bytecount-integration.sh",
+        "tests/zlib-integration.sh",
+        "tests/zpipe-roundtrip.sh"
+      ],
+      "oracle": "Ordered phases, pinned source, staged compiler outputs and license preservation",
+      "gap": "Host compiler workflows opt-in; GNU Make only; upstream bytecount source owned by userland"
+    },
+    {
+      "id": "state",
+      "sources": [
+        "mk/state*",
+        "mk/file-mode.sh",
+        "tests/package-state.sh"
+      ],
+      "references": [
+        "docs/PACKAGE-STATE.md",
+        "man/pkg-state.5"
+      ],
+      "tests": [
+        "tests/package-state.sh",
+        "tests/check-manuals.py"
+      ],
+      "oracle": "Records/world, regular file hashes/modes, dependency and ownership views",
+      "gap": "Concurrent writers and hostile path races unsupported"
+    },
+    {
+      "id": "transactions",
+      "sources": [
+        "mk/binary.sh",
+        "mk/replacement.sh",
+        "mk/update-*",
+        "tests/binary-package.sh",
+        "mk/sdk-profile.sh",
+        "mk/sdk-rebuild-plan.sh",
+        "mk/sdk-rebuild-plan.awk",
+        "tests/sdk-rebuild-plan.py",
+        "tests/sdk-profile.py",
+        "tests/sdk-transport.py"
+      ],
+      "references": [
+        "docs/BINARY-PACKAGE.md",
+        "docs/IMPORT-RECOVERY.md",
+        "docs/UPDATE-PREFLIGHT.md",
+        "docs/REPLACEMENT-POLICY.md",
+        "man/pkg-binary.5",
+        "docs/SDK-PROFILE.md",
+        "docs/SDK-TRANSPORT.md",
+        "docs/SDK-REBUILD-PLAN.md",
+        "docs/SDK-REAL-PLAN.md"
+      ],
+      "tests": [
+        "tests/binary-package.sh",
+        "tests/check-manuals.py",
+        "tests/sdk-profile.py",
+        "tests/sdk-transport.py",
+        "tests/sdk-rebuild-plan.py"
+      ],
+      "oracle": "Pinned bundle integrity, traversal/type rejection, retained replacement and interruption recovery; twelve comparison/observation/sort failures reject without partial preflight reports or target mutation; six record-comparison errors stop preflight/prepare/finish before reports or mutation; ten intent hash failures stop preparation/revalidation without receipts, pending publication or target changes; nine binary descriptor hash failures stop export/import before publication or receipts; four final preflight hash failures stop before report bytes even with plausible failed-tool output; thirteen binary metadata/identity reader failures reject plausible output before export/import publication; SDK read-only planning compares exact bindings and conservative reverse closure without root mutation",
+      "gap": "Storage-full, physical power loss, durable activation and real-prefix install unproven"
+    },
+    {
+      "id": "trust",
+      "sources": [
+        "mk/verify-metadata.sh",
+        "tests/distinfo*",
+        "tests/trust-*",
+        "tests/origins-source-handoff.py",
+        "tests/origins_source_record.py",
+        "tests/origins-source-records.py",
+        "tests/origins_closure.py",
+        "tests/origins-closure-cases.py"
+      ],
+      "references": [
+        "docs/ARCHITECTURE.md",
+        "docs/DISTRIBUTION.md",
+        "docs/ORIGINS-CONSUMER.md",
+        "docs/ORIGINS-SOURCE-INSPECTION.md",
+        "docs/ORIGINS-CLOSURE.md"
+      ],
+      "tests": [
+        "tests/distinfo-parser-fixtures.sh",
+        "tests/trust-metadata-source.sh",
+        "tests/trust-metadata-snapshot.sh",
+        "tests/trust-metadata-records.sh",
+        "tests/trust-metadata-corpus.py",
+        "tests/origins-source-handoff.py",
+        "tests/origins-source-records.py",
+        "tests/origins-closure-cases.py"
+      ],
+      "oracle": "Malformed metadata rejects before extraction; exact digests and advisory records; 71 deterministic source-key/order/value mutations with exact diagnostics and unchanged target bytes; eight hash-tool failures preserve input bytes, clean temporary files and stop before signer invocation; OC-H1 exact pinned exporter bytes and semantic corruption/size failures, failed-export consumer gate and unchanged private state; OC-H2 bounded canonical inert JSON inspection, exact negative diagnostics and no admission/state effects; OC-H3 pinned local selection/release/source/SDK/evidence declared-closure graph and object validation",
+      "gap": "Signatures can be tool-unavailable in research helper; remote eligibility/freshness not enforced; origins OC-01\u201308 consumer review pending producer/shared disposition; OC-H1 host byte-only handoff; source admission, time and durable trust integration not implemented; OC-H2 inspection only; materialization, SDK/release graph, provenance and trust semantics unresolved; OC-H3 synthetic host-review schemas only, real owner acceptance and SDK completeness pending"
+    },
+    {
+      "id": "native",
+      "sources": [
+        "mk/aether-*",
+        "tests/aether-*",
+        "tests/native-*",
+        "tests/native-command-oracles.json"
+      ],
+      "references": [
+        "docs/AETHER-HANDOFF.md",
+        "docs/BOOT-HANDOFF-V2.md",
+        "docs/SUPERVISED-HANDOFF.md",
+        "docs/NATIVE-MEMORY-TRANSPORT.md",
+        "docs/NATIVE-LAUNCH-TRANSPORT.md",
+        "docs/NATIVE-COMMAND-CONSUMPTION.md",
+        "docs/SERVICE-HANDOFF.md",
+        "docs/NATIVE-PACKAGE-PREREQUISITES.md"
+      ],
+      "tests": [
+        "tests/aether-boot.sh",
+        "tests/aether-boot-v2.sh",
+        "tests/aether-supervised.sh",
+        "tests/native-memory-integration.py",
+        "tests/native-launch-integration.py",
+        "tests/native-command-preflight.py",
+        "tests/native-command-preflight-fixtures.py",
+        "tests/native-command-integration.py",
+        "tests/native-command-outcome-fixtures.py"
+      ],
+      "oracle": "Bounded parser controls plus separately pinned producer/consumer QEMU witnesses",
+      "gap": "Synthetic transport checks do not replace native witnesses; no general native package installation"
+    },
+    {
+      "id": "development",
+      "sources": [
+        "tests/check*",
+        "docs/check-*.py"
+      ],
+      "references": [
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "docs/DEVELOPMENT.md",
+        "docs/STANDARDS.md",
+        "docs/STANDARDS-RC1-REVIEW.md",
+        "docs/HOST-RELEASE.md",
+        "docs/AETHER-RELEASE.md",
+        "docs/SOURCE-SNAPSHOT.md",
+        "docs/RELEASE-CONTENTS.md",
+        "docs/HOST-SETUP.md",
+        "docs/PUBLIC-SOURCE.md",
+        "docs/TEST-PLAN.md",
+        "docs/READER-REVIEW.md",
+        "SECURITY.md",
+        "docs/RUNNER-HANDOFF.md",
+        "docs/SDK-OWNER-REVIEW.md",
+        "docs/SDK-ADMISSION-PROPOSAL.md",
+        "docs/SDK-REVIEW.md",
+        "docs/evidence/simplicity-adoption-2026-09-07/snapshot/README.md",
+        "docs/ISO-PACKAGE-TEST.md"
+      ],
+      "tests": [
+        "tests/check.sh",
+        "tests/check-standards.sh",
+        "tests/check-development.py",
+        "tests/check-watchdog-fixtures.py",
+        "tests/check-manuals.py",
+        "tests/check-source-snapshot.py",
+        "tests/check-host-setup.py",
+        "tests/check-public-source.py",
+        "tests/check-coverage-fixtures.py",
+        "tests/check-source-snapshot-fixtures.py"
+      ],
+      "oracle": "Pinned releases, local coverage references, source syntax and failed watchdog startup receipts",
+      "gap": "Draft release acceptance, CI and extended runners pending"
+    }
+  ],
+  "exclusions": [
+    "docs/vendor: immutable releases",
+    "docs/archive: historical evidence",
+    "docs/evidence: retained observations, never rewritten for style",
+    "fixtures, manifests, distfiles: data/upstream inputs, not first-party source",
+    "recipes/bytecount/bytecount.c: unchanged userland-owned source; preserve origin and style"
+  ],
+  "coverage_cases": [
+    {
+      "id": "SRC-CANONICAL",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "run_expect 'direct canonical source' zero",
+      "clauses": [
+        "Coding:CS-01",
+        "Testing:TE-01"
+      ],
+      "oracle": "Exact source-bytes-match line, zero status and empty stderr",
+      "forbidden": "Different bytes or success diagnostics",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "SRC-REQUIRED",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "run_invalid_record 'missing required key'",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing source_size rejects with its named diagnostic and no downstream artifacts",
+      "forbidden": "Extraction or normalized missing key",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "SRC-DIGEST",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "assert_no_downstream_artifacts \"$tmp_root\" 'digest mismatch'",
+      "clauses": [
+        "Distribution:TR-01",
+        "Testing:TE-01"
+      ],
+      "oracle": "Same-size corruption rejects and produces no downstream artifacts",
+      "forbidden": "Hash mismatch accepted because size matches",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "SNAPSHOT-HASH",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-snapshot.sh",
+      "anchor": "for hash_stage in self index; do",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Failed hash providers reject even when output looks plausible, before signature invocation",
+      "forbidden": "Failed-tool output interpreted as a valid hash",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "RECORD-PATHS",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-records.sh",
+      "anchor": "# Every local reference is rooted, regular, non-symlinked, and byte-consistent.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Invalid local references reject; canonical exact records pass",
+      "forbidden": "Unbound or linked input accepted as evidence",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "BUNDLE-INNER",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for mutation in blob mode traversal extra symlink hardlink target dependency; do",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Rebound outer hashes cannot hide invalid inner inventory, modes, paths or dependencies",
+      "forbidden": "Import of invalid inner payload",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "RECOVERY-KILL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# A killed importer cannot run its cleanup trap. Exercise both publication gaps.",
+      "clauses": [
+        "Distribution:DS-03",
+        "Testing:TE-01"
+      ],
+      "oracle": "Killed import retains exact stage for explicit pinned recovery",
+      "forbidden": "Deletion or repair of a mismatching retained stage",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "PREFLIGHT-LOCAL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# Locally changed bytes are reported and preserved, never overwritten.",
+      "clauses": [
+        "Distribution:FS-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Preflight reports local change and preserves payload",
+      "forbidden": "Mutation by read-only preflight",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "REPLACEMENT-IO",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for failure in partial-copy rename; do",
+      "clauses": [
+        "Distribution:DS-03",
+        "Testing:TE-01"
+      ],
+      "oracle": "Injected status 73 preserves prior records/world; partial record rejects and rename retry is idempotent",
+      "forbidden": "False complete receipt, old-payload loss or silent partial-copy repair",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "MANUAL-NAMES",
+      "surface": "development",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/check-manuals.py",
+      "anchor": "raise ValueError('manual/help command or option coverage mismatch')",
+      "clauses": [
+        "Documentation:DS-03",
+        "Testing:TE-01"
+      ],
+      "oracle": "All 13 command names and seven option names agree with canonical mdoc",
+      "forbidden": "Missing or invented advertised command/option",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "MANUAL-STATE",
+      "surface": "development",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/check-manuals.py",
+      "anchor": "raise ValueError('state manual evidence key/order coverage mismatch')",
+      "clauses": [
+        "Documentation:DM-02",
+        "Testing:TE-01"
+      ],
+      "oracle": "All 19 evidence keys appear in schema order",
+      "forbidden": "Reordered, missing or undocumented evidence key",
+      "limits": "Bounded existing host fixture; location validation does not establish execution, authenticity or native conformance."
+    },
+    {
+      "id": "CLI-SIGNALS",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli-interruption.py",
+      "anchor": "def run_case(base, mode, sig, group):",
+      "clauses": [
+        "Testing:TE-02"
+      ],
+      "oracle": "Twelve mode/signal/scope cases require 128+signal, UNKNOWN without OK, exact TSV or human receipt, pending state and no wrapper scratch",
+      "forbidden": "Lost intent, false success, lost diagnostics or scratch leak",
+      "limits": "Controlled helper and host process groups; no native session or durable transaction proof"
+    },
+    {
+      "id": "CLI-OUTPUT",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli-output.py",
+      "anchor": "for failure in ('stdout', 'stderr', 'both', 'SIGINT', 'SIGHUP', 'SIGTERM'):",
+      "clauses": [
+        "Distribution:CT-04"
+      ],
+      "oracle": "Eighteen delivery/interruption cases retain exactly one mode-0700 output root, complete raw receipt/diagnostics, helper status and pending state",
+      "forbidden": "Discarded receipt, incorrect helper status, public retained output or false OK",
+      "limits": "Controlled helper; output acceptance is not display, durability or whole-wrapper cancellation proof"
+    },
+    {
+      "id": "NATIVE-RECEIPT",
+      "surface": "native",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "opt-in",
+      "layer": "model",
+      "test": "tests/native-command-preflight-fixtures.py",
+      "anchor": "def test_schema_and_case_controls(self):",
+      "clauses": [
+        "Coding:CE-07"
+      ],
+      "oracle": "Accept the exact 53-case shape; reject wrong schema, failed/skipped/duplicate/missing cases, integer polarity, missing artifacts and disabled required flags",
+      "forbidden": "Invalid receipt accepted as a complete handoff",
+      "limits": "Synthetic receipts; no artifact execution or producer approval"
+    },
+    {
+      "id": "NATIVE-PATH-PIN",
+      "surface": "native",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "opt-in",
+      "layer": "host",
+      "test": "tests/native-command-preflight-fixtures.py",
+      "anchor": "def test_paths_and_digest(self):",
+      "clauses": [
+        "Coding:CE-05"
+      ],
+      "oracle": "Exact ordinary payload passes; traversal, absolute/noncanonical paths, alias, modified bytes and malformed digest reject",
+      "forbidden": "Unbound or linked payload accepted",
+      "limits": "Disposable host files; no hostile path-race confinement claim"
+    },
+    {
+      "id": "NATIVE-DUPLICATE-KEY",
+      "surface": "native",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "opt-in",
+      "layer": "model",
+      "test": "tests/native-command-preflight-fixtures.py",
+      "anchor": "def test_duplicate_json(self):",
+      "clauses": [
+        "Coding:CE-05"
+      ],
+      "oracle": "Duplicate status keys reject before one value can hide another",
+      "forbidden": "Last-key-wins normalization of critical fields",
+      "limits": "Synthetic JSON parser control"
+    },
+    {
+      "id": "NATIVE-OUTCOME",
+      "surface": "native",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "opt-in",
+      "layer": "model",
+      "test": "tests/native-command-outcome-fixtures.py",
+      "anchor": "def test_outcomes_and_mutations(self):",
+      "clauses": [
+        "Distribution:EV-02"
+      ],
+      "oracle": "All 53 expected log shapes pass; altered cleanup, duplicate marker/terminal and missing success or unrelated panic reject",
+      "forbidden": "Generic crash or incomplete cleanup counted as expected rejection",
+      "limits": "Synthetic logs do not prove any boot executed"
+    },
+    {
+      "id": "NATIVE-ADMISSION-ORDER",
+      "surface": "native",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "opt-in",
+      "layer": "model",
+      "test": "tests/native-command-outcome-fixtures.py",
+      "anchor": "def test_admission_scheduling(self):",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Allowed single optional child observation passes and duplicate child terminal rejects",
+      "forbidden": "Duplicate terminal accepted as scheduling variation",
+      "limits": "Synthetic scheduling observations, not native concurrency coverage"
+    },
+    {
+      "id": "NATIVE-PACKAGE-BOOT",
+      "surface": "native",
+      "owner": "pkg-mgr maintainer",
+      "family": "contract/rejection",
+      "stage": "opt-in",
+      "layer": "target",
+      "test": "tests/native-command-integration.py",
+      "anchor": "        outcome(serial.read_text(), expected, name)",
+      "clauses": [
+        "Distribution:EV-02"
+      ],
+      "oracle": "Exact verified package-stage images boot to the per-case terminal, supervisor/reclaim and panic/success oracle with unchanged tool/input hashes",
+      "forbidden": "Changed payload or generic boot failure accepted as target evidence",
+      "limits": "Requires pinned owner artifacts/tools and QEMU; not run by this documentation update and not native shell/package persistence"
+    },
+    {
+      "id": "STATE-READONLY",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "# Re-registration and all read-only views preserve every authoritative byte.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Re-registration is idempotent and before/after authoritative hashes match",
+      "forbidden": "Changed record or payload from a read-only view",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "STATE-WORLD",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "# World order has no effect; malformed or unknown roots produce no report.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "World order preserves orphan results; duplicate/unknown roots reject without reports",
+      "forbidden": "Root normalization or partial report on invalid world",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "STATE-OWNER",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "# Same path owned by another package is refused before publication.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Conflicting ownership reports state-conflict before record publication",
+      "forbidden": "Overlapping ownership accepted",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "STATE-MODES",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "# Permission-only changes are observable without changing content or size.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Mode drift reports mode-mismatch; registration rejects and prior record stays intact",
+      "forbidden": "Content equality hides permission drift",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "STATE-SCHEMA",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "for mutation in duplicate traversal unknown fingerprint mode; do",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Malformed critical rows reject list and orphan output",
+      "forbidden": "Malformed records become authoritative views",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "STATE-CYCLES",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "# Dependency cycles terminate and follow world closure; no pruning or deletion.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Rooted cycle retains reachable packages; empty world reports all three orphans",
+      "forbidden": "Infinite traversal, lost reachability or payload pruning",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "STATE-PUBLISH",
+      "surface": "state",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-state.sh",
+      "anchor": "# Publication failure leaves the record set and prior bytes unchanged.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Failed rename preserves records, creates no pending package and removes owned temporary publication",
+      "forbidden": "Partial registration or leaked publication temporary",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "RECORD-DIGEST",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "format/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-records.sh",
+      "anchor": "# Canonical digest representation is never prefixed, case-folded, trimmed, or repaired.",
+      "clauses": [
+        "Coding:CE-07",
+        "Testing:TE-01"
+      ],
+      "oracle": "Invalid digest representation/algorithm rejects without normalization",
+      "forbidden": "Unbound or repaired digest accepted",
+      "limits": "Private host fixtures only; no full format coverage, concurrent writer, native storage or durability claim."
+    },
+    {
+      "id": "BUNDLE-DESCRIPTOR-FAIL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for descriptor_field in package.tsv target.kv modes.tsv dependencies.tsv; do",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Four import descriptor hash failures require the injected diagnostic, empty stdout, no package publication and unchanged target snapshot",
+      "forbidden": "Failed hash-tool output accepted as a descriptor pin",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "BUNDLE-READER-FAIL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for reader_key in target_runtime dependency_base_record_sha256 host_os host_arch compiler_target uname-s uname-m version; do",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Eight import reader failures with plausible output require injected diagnostics, no app payload/record and unchanged target snapshot",
+      "forbidden": "Plausible bytes from a failed reader accepted as identity",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "PREFLIGHT-RECEIPT-HASH",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for report_record in old new; do",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Four old/new record hash faults with empty or plausible digest output reject with injected diagnostic, no report bytes and unchanged target snapshot",
+      "forbidden": "Partial report or plausible failed hash accepted",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "PREFLIGHT-PRODUCER-FAIL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for seam in diff three-way observe diff-sort three-way-sort observe-sort; do",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Twelve producer/sort faults with empty or partial output reject with injected diagnostic, no report and unchanged target snapshot",
+      "forbidden": "Partial producer output becomes a successful report",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "REPLACEMENT-COMPARE-FAIL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# cmp status 1 means different; tool/read errors must not select a branch.",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Statuses 2 and 73 in preflight, prepare and finish require comparison-error and injected diagnostics, no report and unchanged target snapshots",
+      "forbidden": "Read/tool error treated as equality or ordinary difference",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "REPLACEMENT-INTENT-HASH",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# Every intent digest must succeed before publishing or accepting the intent.",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Five intent-field hash faults each in prepare and finish reject with injected diagnostic, empty stdout and unchanged target snapshots; prepare creates no pending intent",
+      "forbidden": "Failed hashing publishes or accepts a replacement intent",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "REPLACEMENT-PUBLICATION-KILL",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "for boundary in displaced staged record-copy recorded archived; do",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Five publication boundaries return shell status resolving to KILL with no completion output; two retries yield exact new app/base/world and retained old bytes, then state verification passes",
+      "forbidden": "Lost retained old payload, incorrect authority or non-idempotent retry",
+      "limits": "Controlled host process interruption and shell kill -l interpretation; no storage durability, native or all-shell qualification."
+    },
+    {
+      "id": "REPLACEMENT-STALE",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# Stale payload and changed world after preparation are preserved and refused.",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Private probe verification reports exactly size-mismatch/app/app; stale finish returns 1 without output; changed world returns 1 with its exact diagnostic. Both preserve target file paths, hashes and modes without displacement",
+      "forbidden": "Stale plan moves old payload",
+      "limits": "Private host fixtures; payload rejection cause checked in a separate probe because finish suppresses its verifier report. No directory metadata, concurrent-writer, path-race or durability proof."
+    },
+    {
+      "id": "PREFLIGHT-REVERSE-DEPENDENT",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# A changed base record has a reverse dependent and needs a coordinated plan.",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Changed base preflight returns exactly 2 and names app as a reverse-dependent blocker",
+      "forbidden": "Uncoordinated base replacement reported without its dependent blocker",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "PREFLIGHT-OWNERSHIP",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "transaction/rejection",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# A package present only at the destination owns the proposed new path.",
+      "clauses": [
+        "Coding:CE-04",
+        "Testing:TE-01"
+      ],
+      "oracle": "Destination-only ownership conflict reports state-conflict, emits no stdout and leaves target snapshot unchanged",
+      "forbidden": "Conflicting owner overwritten or partial report emitted",
+      "limits": "Existing private host fixture; synthetic receipts and controlled faults, not complete format, concurrency, power-loss or native coverage."
+    },
+    {
+      "id": "SRC-CORPUS-REQUIRED",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-corpus.py",
+      "anchor": "# Each required field must be present once and have a nonempty value.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing, duplicate and empty variants for each of eight required fields return exactly 1, exact diagnostic and fail receipt; target bytes remain unchanged",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Fixed seed 20260906; sentinel checks selected evaluation forms, not all possible side effects."
+    },
+    {
+      "id": "SRC-CORPUS-ORDER",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-corpus.py",
+      "anchor": "    shuffled = rows.copy()",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Sixteen seeded field-order permutations return 0, exact pass receipt and empty stderr without modifying target bytes",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Fixed seed 20260906; sentinel checks selected evaluation forms, not all possible side effects."
+    },
+    {
+      "id": "SRC-CORPUS-UNKNOWN",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-corpus.py",
+      "anchor": "    key = 'unknown_' + ''.join(rng.choice('abcdef0123456789') for _ in range(12))",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Sixteen seeded unknown keys return 1 with exact key-specific diagnostic and fail receipt; target bytes remain unchanged",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Fixed seed 20260906; sentinel checks selected evaluation forms, not all possible side effects."
+    },
+    {
+      "id": "SRC-CORPUS-SIZE",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-corpus.py",
+      "anchor": "for value in ('-1', '+105', '0105', '1e2', '105x'):",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Five noncanonical size strings return 1 with exact decimal-size diagnostic and fail receipt; target bytes remain unchanged",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Fixed seed 20260906; sentinel checks selected evaluation forms, not all possible side effects."
+    },
+    {
+      "id": "SRC-CORPUS-HASH-LENGTH",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-corpus.py",
+      "anchor": "for length in (0, 1, 63, 65, 4096):",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Empty, short, long and 4096-character digests return 1 with the exact empty-value or digest-shape diagnostic; target bytes remain unchanged",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Fixed seed 20260906; sentinel checks selected evaluation forms, not all possible side effects."
+    },
+    {
+      "id": "SRC-CORPUS-INERT",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-corpus.py",
+      "anchor": "marker = root / 'must-not-exist'",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Four URI values including shell-like substitutions and 65536 characters pass byte verification without creating the sentinel or modifying target bytes",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Fixed seed 20260906; sentinel checks selected evaluation forms, not all possible side effects."
+    },
+    {
+      "id": "SRC-MISSING-INPUTS",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "# Missing inputs fail with stable labels.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing record and target reject with their distinct exact one-line failure labels and required diagnostic substrings",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Shell helper checks nonzero negatives and diagnostic substrings, not exact negative status/stderr bytes."
+    },
+    {
+      "id": "SRC-SIZE-MISMATCH",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "run_expect 'size mismatch' nonzero",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Larger payload rejects with exact source-size-mismatch line and size diagnostic; no downstream artifacts appear in the private fixture root",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Shell helper checks nonzero negatives and diagnostic substrings, not exact negative status/stderr bytes."
+    },
+    {
+      "id": "SRC-OPTIONAL-PATCH",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "record=$tmp_root/valid-patch-hash.kv",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Canonical optional patch hash passes with exact receipt and empty stderr; malformed hash rejects with invalid-metadata line and required diagnostic",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Shell helper checks nonzero negatives and diagnostic substrings, not exact negative status/stderr bytes. Patch hash syntax does not prove patch bytes were consumed."
+    },
+    {
+      "id": "SRC-SPACED-TARGET",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "parser/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-source.sh",
+      "anchor": "run_expect 'target path with spaces' zero",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Explicit target path containing spaces passes with exact source-bytes-match line and empty stderr",
+      "forbidden": "Wrong receipt, accepted invalid metadata, unexpected evaluation or target-byte mutation within the described fixture",
+      "limits": "Host verification only; no source authenticity, extraction, target runtime, universal bounds or fresh fuzz exploration. Shell helper checks nonzero negatives and diagnostic substrings, not exact negative status/stderr bytes."
+    },
+    {
+      "id": "SNAPSHOT-SCHEMA",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-snapshot.sh",
+      "anchor": "# Snapshot records are strict inert data.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing, duplicate, unknown, empty and malformed metadata plus unsupported digest syntax reject with exact failure labels and required diagnostics; changed self-hash rejects before signature acceptance",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification."
+    },
+    {
+      "id": "SNAPSHOT-INDEX",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-snapshot.sh",
+      "anchor": "# The exact Phase 2 index schema and C ordering are mandatory before index binding.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Header, column, digest, size and sorting errors reject as index-metadata-invalid; a changed structurally valid index rejects as mix-and-match",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification."
+    },
+    {
+      "id": "SNAPSHOT-COMMAND",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-snapshot.sh",
+      "anchor": "run_expect 'unsafe minisign override' nonzero",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "A command string containing arguments rejects with signer-command-invalid and the one-command diagnostic",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification."
+    },
+    {
+      "id": "SNAPSHOT-SIGNATURE",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-snapshot.sh",
+      "anchor": "# Live cryptographic assertions are additive and conditional.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "When minisign exists, exact fixture signature yields signature-not-sufficient warning; altered self hash, rehash without resigning and corrupt signature reject at their named boundaries",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification. Conditional: absence emits an explicit skip; suite completion alone does not prove cryptographic execution. Fixture-generated keys are not repository authority."
+    },
+    {
+      "id": "MANIFEST-DETERMINISTIC",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-records.sh",
+      "anchor": "# Stable, C-sorted package manifests preserve spaces and bind exact bytes.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Repeated manifests are identical and C-sorted; two rows have exact shape, spaces survive, expected file digest/size appears, empty stage is empty and changed bytes change the manifest",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification."
+    },
+    {
+      "id": "MANIFEST-PATH-REJECT",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-records.sh",
+      "anchor": "run_expect 'tab filename' nonzero",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Tab and newline filenames reject with manifest-path-invalid and required diagnostic; neither publishes output",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification."
+    },
+    {
+      "id": "MANIFEST-HASH-FAIL",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-records.sh",
+      "anchor": "run_expect 'forced hash failure' nonzero",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Injected hash-tool failure rejects with manifest-hash-unavailable and required diagnostic without publishing a manifest",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification."
+    },
+    {
+      "id": "SBOM-ADVISORY",
+      "surface": "trust",
+      "owner": "pkg-mgr maintainer",
+      "family": "metadata/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/trust-metadata-records.sh",
+      "anchor": "# The checked-in bounded SPDX 2.3 sample is advisory even when structurally valid.",
+      "clauses": [
+        "Coding:CE-05",
+        "Testing:TE-01"
+      ],
+      "oracle": "Canonical sample returns sbom-completeness-not-proven through direct and make adapters; missing, duplicate, malformed time and incorrect relationship fields reject with named diagnostics",
+      "forbidden": "Incorrect failure label, publication after rejected inputs, or promotion of advisory evidence to authority",
+      "limits": "Bounded host fixture; negative helper requires nonzero status, exact result line and diagnostic substring. No complete schema, repository authenticity, freshness, native storage or release qualification. Bounded SPDX sample validation is not SBOM completeness or payload/license coverage."
+    },
+    {
+      "id": "BUILD-ORDER",
+      "surface": "build",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-boundary.sh",
+      "anchor": "pm -j8 package build manifest > \"$scratch/parallel.out\"",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Serial and -j8 multi-goal builds produce identical phase logs, path manifests and payload; failed rebuild preserves prior payload/manifest and conflicting clean/init goals reject",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Several rejection checks accept any nonzero status; quoted path/mode and preservation assertions are bounded, not hostile race or power-loss proof."
+    },
+    {
+      "id": "BUILD-COPIED-SOURCE",
+      "surface": "build",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-boundary.sh",
+      "anchor": "# A failed rebuild must preserve the prior final stage and manifest.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Same-size corruption of fetched copy yields source-hash-mismatch while preserving prior final payload/manifest; fresh-root corruption logs verify-failure with no extraction, work payload or final manifest",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Several rejection checks accept any nonzero status; quoted path/mode and preservation assertions are bounded, not hostile race or power-loss proof."
+    },
+    {
+      "id": "BUILD-PUBLISH",
+      "surface": "build",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-boundary.sh",
+      "anchor": "# A failed publication tool must leave the prior path manifest intact.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Injected manifest tool failure preserves prior manifest, logs manifest-failure and leaves no temporary manifest files",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Several rejection checks accept any nonzero status; quoted path/mode and preservation assertions are bounded, not hostile race or power-loss proof."
+    },
+    {
+      "id": "BUILD-ROOT-GUARDS",
+      "surface": "build",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-boundary.sh",
+      "anchor": "# Reject unsafe parameters before logging, copying, or cleanup.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Unsafe assignments reject package and clean without changing the guarded root; wrong permissions, root links, missing marker and nonempty initialization reject while preserving sentinel",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Several rejection checks accept any nonzero status; quoted path/mode and preservation assertions are bounded, not hostile race or power-loss proof."
+    },
+    {
+      "id": "BUILD-LINK-GUARDS",
+      "surface": "build",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/package-boundary.sh",
+      "anchor": "# Existing links at any depth must block builds and cleanup, preserving outsiders.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Symlink, dangling link, hardlink and FIFO entries reject selected build/clean operations; outside sentinel remains intact in the symlink case; build succeeds after removal of test entries",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Several rejection checks accept any nonzero status; quoted path/mode and preservation assertions are bounded, not hostile race or power-loss proof."
+    },
+    {
+      "id": "CLI-USAGE",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli.sh",
+      "anchor": "reject64 --root /tmp --plain --color=always list",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing command, conflicting presentation flags, unsupported progress/remove and control-bearing root arguments return exactly 64",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Selected options and diagnostic substrings only; no complete terminal/accessibility or all mutating-command proof."
+    },
+    {
+      "id": "CLI-MACHINE-VIEWS",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli.sh",
+      "anchor": "for action in list owners verify orphans; do",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Four empty-root read-only commands emit byte-identical helper stdout and empty stderr in TSV mode",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Selected options and diagnostic substrings only; no complete terminal/accessibility or all mutating-command proof."
+    },
+    {
+      "id": "CLI-COLOR",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli.sh",
+      "anchor": "for color in auto never always; do",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing-root failures return 1; redirected auto/never diagnostics contain no ESC, explicit always includes ESC despite NO_COLOR",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Selected options and diagnostic substrings only; no complete terminal/accessibility or all mutating-command proof."
+    },
+    {
+      "id": "CLI-ESCAPING",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli.sh",
+      "anchor": "# Escape controls in human diagnostics; never let helper text control the terminal.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Human diagnostic test includes literal escapes for ESC and CR; plain diagnostic test includes deterministic escapes for the tested UTF-8 bytes",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Selected options and diagnostic substrings only; no complete terminal/accessibility or all mutating-command proof."
+    },
+    {
+      "id": "CLI-FAILURE-STREAMS",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "workflow/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli.sh",
+      "anchor": "# Preserve helpers' failure status and byte streams in machine mode.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Missing-root list preserves exact helper status/stdout/stderr; a pending replacement causes verify to return 1 with the pending diagnostic",
+      "forbidden": "Loss of preserved payload/manifest, unsafe-root effects or changed machine streams within the asserted boundary",
+      "limits": "Existing host fixture, not native execution, concurrency confinement, complete command/format coverage or release acceptance. Selected options and diagnostic substrings only; no complete terminal/accessibility or all mutating-command proof."
+    },
+    {
+      "id": "CLI-DISPATCH",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "dispatch/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli-dispatch.py",
+      "anchor": "        for command, (helper, arguments) in COMMANDS.items():",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "All 13 commands select the correct helper and exact argv; TSV output/error/status preserved for 0/2/73. Twenty-two arity errors return exact usage rejection before helper invocation; no wrapper scratch remains.",
+      "forbidden": "Wrong helper, reordered/split arguments, lost streams/status, helper invocation for invalid arity or temporary leak",
+      "limits": "Controlled helpers, not populated package state, actual transaction success, terminal rendering or native readiness."
+    },
+    {
+      "id": "CLI-POPULATED",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "state/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/cli-populated.py",
+      "anchor": "    missing = compare(['files', 'missing'], 1)",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Seven populated views preserve helper status and exact streams; explicit list/dependency/orphan values match. Missing package and mode drift return exact failures; every helper and CLI call preserves target entry types, modes and file hashes.",
+      "forbidden": "Changed records/payloads, incorrect dependency/root classification, lost error status or rewritten TSV streams",
+      "limits": "Three synthetic packages registered by real helpers in a private host root; no mutating CLI, human renderer, concurrency or native persistence proof."
+    },
+    {
+      "id": "CLI-BINARY-LIFECYCLE",
+      "surface": "cli",
+      "owner": "pkg-mgr maintainer",
+      "family": "artifact/contract",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/binary-package.sh",
+      "anchor": "# CLI recovery adopts a copied interrupted stage; original fault path stays pending.",
+      "clauses": [
+        "Testing:TE-01"
+      ],
+      "oracle": "Real base/app CLI exports have exact pinned receipts; CLI imports produce exact imported rows. Recovery adopts a copied interrupted app stage with exact receipt and empty stderr, preserves base/world, verifies state and repeats without changing snapshot.",
+      "forbidden": "Wrong receipt, damaged dependency/world, changed retry state or lost interrupted payload",
+      "limits": "Synthetic host packages and process interruption; no native persistence, power-loss, remote authenticity, human presentation or release approval."
+    },
+    {
+      "id": "SDK-PLAN-SELECTION",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "SDK binding/plan",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/sdk-rebuild-plan.py",
+      "anchor": "    invoke('changed-sdk-closure', selection=expected)",
+      "clauses": [
+        "Testing:TE-01",
+        "Foundations:I-02",
+        "Foundations:I-05"
+      ],
+      "oracle": "Exact complete TSV matches hand-written direct/transitive sets for chains, diamond, cycle and the package named record; unrelated packages excluded, equal candidate selection empty",
+      "forbidden": "Incorrect selection or successful invalid report; planner mutation of private root bytes/types/modes or unrelated sentinels",
+      "limits": "Synthetic registered private roots; no rebuild, scheduling, admission, native execution, hostile concurrency or production durability. Exact positive boundaries for all metadata limits, physical output exhaustion and SIGKILL are not established by this fixture."
+    },
+    {
+      "id": "SDK-PLAN-BINDING",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "SDK binding/plan",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/sdk-rebuild-plan.py",
+      "anchor": "    for label, (data, diagnostic) in mutations.items():",
+      "clauses": [
+        "Testing:TE-01",
+        "Foundations:I-02",
+        "Foundations:I-05"
+      ],
+      "oracle": "Manifest-bound malformed versions, fields, bytes, paths and hashes reject with exact diagnostics and empty stdout; missing/stale binding also rejects unchanged candidate",
+      "forbidden": "Incorrect selection or successful invalid report; planner mutation of private root bytes/types/modes or unrelated sentinels",
+      "limits": "Synthetic registered private roots; no rebuild, scheduling, admission, native execution, hostile concurrency or production durability. Exact positive boundaries for all metadata limits, physical output exhaustion and SIGKILL are not established by this fixture."
+    },
+    {
+      "id": "SDK-PLAN-LIMITS",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "SDK binding/plan",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/sdk-rebuild-plan.py",
+      "anchor": "    receipt_size(1048576)",
+      "clauses": [
+        "Testing:TE-01",
+        "Foundations:I-02",
+        "Foundations:I-05"
+      ],
+      "oracle": "One-MiB receipt succeeds and one byte over rejects; package, edge, world, per-record and aggregate over-limit fixtures reject before state parsing",
+      "forbidden": "Incorrect selection or successful invalid report; planner mutation of private root bytes/types/modes or unrelated sentinels",
+      "limits": "Synthetic registered private roots; no rebuild, scheduling, admission, native execution, hostile concurrency or production durability. Exact positive boundaries for all metadata limits, physical output exhaustion and SIGKILL are not established by this fixture."
+    },
+    {
+      "id": "SDK-PLAN-DRIFT",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "SDK binding/plan",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/sdk-rebuild-plan.py",
+      "anchor": "    CASES.append('world-drift')",
+      "clauses": [
+        "Testing:TE-01",
+        "Foundations:I-02",
+        "Foundations:I-05"
+      ],
+      "oracle": "Injected world change at second verification rejects before output; only injected world bytes differ and no repair occurs",
+      "forbidden": "Incorrect selection or successful invalid report; planner mutation of private root bytes/types/modes or unrelated sentinels",
+      "limits": "Synthetic registered private roots; no rebuild, scheduling, admission, native execution, hostile concurrency or production durability. Exact positive boundaries for all metadata limits, physical output exhaustion and SIGKILL are not established by this fixture."
+    },
+    {
+      "id": "SDK-PLAN-FAILURES",
+      "surface": "transactions",
+      "owner": "pkg-mgr maintainer",
+      "family": "SDK binding/plan",
+      "stage": "before-merge",
+      "layer": "host",
+      "test": "tests/sdk-rebuild-plan.py",
+      "anchor": "    for injection in ['write', 'signal']:",
+      "clauses": [
+        "Testing:TE-01",
+        "Foundations:I-02",
+        "Foundations:I-05"
+      ],
+      "oracle": "Final report delivery failure and TERM return nonzero with empty output and scratch cleanup; plausible failed hash/header tools reject rather than accept output",
+      "forbidden": "Incorrect selection or successful invalid report; planner mutation of private root bytes/types/modes or unrelated sentinels",
+      "limits": "Synthetic registered private roots; no rebuild, scheduling, admission, native execution, hostile concurrency or production durability. Exact positive boundaries for all metadata limits, physical output exhaustion and SIGKILL are not established by this fixture."
+    }
+  ]
+}

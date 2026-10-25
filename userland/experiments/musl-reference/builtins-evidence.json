@@ -1,0 +1,10 @@
+{
+  "output": "/Users/cam/DEV/Aether-userland/build/compiler-rt-dw59lg43",
+  "archive": "/Users/cam/DEV/Aether-userland/build/compiler-rt-dw59lg43/obj/lib/linux/libclang_rt.builtins-x86_64.a",
+  "sha256": "f9aeb6a0e14ba915c7988a3159faccf55da5852c5465d199ad8339d79672f6bc",
+  "bytes": 260164,
+  "scope": "builtins archive built; arithmetic witness still required",
+  "members": 173,
+  "input_lock_sha256": "cd06e9960c38412694a7269ee6b7f31c0bcfb0deb0948eb3741328479530fbef",
+  "script_sha256": "af6529e1702c7e05673179a51865055eabc839f7835f4b47d64137fabe71b919"
+}

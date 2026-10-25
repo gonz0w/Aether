@@ -1,0 +1,8 @@
+{
+  "origin": "prototypes/native-session/dispatch/user/native-connections/pipe.rs",
+  "origin_sha256": "a33f3c63899139ae7b78cddcedd74b08a29e59ef68a786d03a786851ae2b4c13",
+  "license": "BSD-2-Clause; original notice retained",
+  "selection": "Production prefix before original cfg(test) modules; remove two unused aliases, collapse one equivalent nested if for scoped Clippy, add read-only parent_view_v1. Ring/holder/generation algorithms unchanged. Original source/owner stays unchanged.",
+  "original_provenance": "prototypes/native-session/provenance.json",
+  "follow_up": "Decision0212 generalizes the pure metadata view to the already authenticated caller for actual stream routing. Original ring/holder/generation algorithms and provenance remain unchanged."
+}

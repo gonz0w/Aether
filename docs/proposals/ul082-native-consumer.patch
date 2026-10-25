@@ -1,0 +1,549 @@
+diff --git a/experiments/filesystem-service/check-native-handoff.py b/experiments/filesystem-service/check-native-handoff.py
+new file mode 100644
+--- /dev/null
++++ b/experiments/filesystem-service/check-native-handoff.py
+@@ -0,0 +1,217 @@
++# SPDX-License-Identifier: BSD-2-Clause
++"""Review one pinned retained Aether receipt; never launch a guest or sibling code."""
++import argparse
++import copy
++import hashlib
++import json
++from pathlib import Path
++import re
++import sys
++
++RECEIPT = '93126506aa78231106b73f93c0f5f954179ed28c82bd291078d35d3a43dd05b4'
++SEAL = '5dd5f492dd2ab2c57321a8fd610f1f6fa488dece4c4b40466a37236bf24144c4'
++OBJECT = 'dab564abbcc70ca93cebec7fec8d6017c569367dde8419abbf2d2701401150b1'
++SIZES = {'normal': 3868, 'lost-reply': 3292,
++         'partial-request': 3900, 'close-failure': 3868}
++ROLES = ('baseline', 'writer', 'reader')
++
++
++def require(condition, reason):
++    if not condition:
++        raise ValueError(reason)
++
++
++def pairs(values):
++    result = {}
++    for key, value in values:
++        require(key not in result, 'duplicate JSON key')
++        result[key] = value
++    return result
++
++
++def load(data):
++    require(len(data) <= 2 * 1024 * 1024, 'receipt size')
++    require(hashlib.sha256(data).hexdigest() == RECEIPT, 'receipt identity')
++    return json.loads(data, object_pairs_hook=pairs)
++
++
++def review(record):
++    """Check retained evidence, not freshness, full-log replay or human sign-off."""
++    matrix = record['native_matrix']
++    require(record['status'] == matrix['status'] == 'pass', 'matrix result')
++    require(matrix['native_attempted'] is True and
++            matrix['vm_stop_confirmed'] is True, 'execution/stop')
++    require(matrix['final_sources_drift'] == matrix['final_tools_drift'] == [],
++            'input drift')
++    require(matrix['owned_outputs_disposed'] is True and
++            len(set(matrix['disposed_roots'])) == 10, 'owned disposal')
++    admission = matrix['pre_execution_admission']
++    require(all(admission[key] is True for key in (
++        'all_six_distinct_images_prepared_before_any_guest',
++        'all_twelve_launch_roles_sealed',
++        'baseline_recovery_engines_and_supervisors_match_positive')),
++        'prelaunch admission')
++    require(admission['controllers'] == SIZES, 'controller bounds')
++    service = matrix['service_selection']
++    require(service['manifest_sha256'] == SEAL and
++            len(service['inputs']) == 345 and
++            service['inputs'][service['object']] == OBJECT, 'service identity')
++    require(len(record['native_matrix_attempts']) == 2 and
++            all(attempt['native_attempted'] is False
++                for attempt in record['native_matrix_attempts']),
++            'pre-guest attempt history')
++    require('unqualified' in record['coverage_correction']['initial_positive'],
++            'initial coverage correction')
++    require(set(matrix['phases']) == set(SIZES), 'case closure')
++    rows = []
++    for name in SIZES:
++        phase = matrix['phases'][name]
++        require(phase['status'] == 'pass' and
++                phase['filesystem_service_case'] == name, 'case selection')
++        require(phase['assigned_target_txg'] == 788 and
++                phase['recovered_pool_txg'] == 798 and
++                phase['fresh_vm_readback_qualified'] is True and
++                phase['reader_media_unchanged'] is True, 'fresh recovery')
++        cases = phase['cases']
++        require([case['role'] for case in cases] == list(ROLES), 'role closure')
++        require(set(phase['traces']) == set(phase['vm_commands']) == set(ROLES),
++                'trace/command closure')
++        writer_hash = cases[1]['disk_sha256']
++        require(cases[0]['disk_sha256'] != writer_hash and
++                cases[2]['disk_sha256'] == writer_hash and
++                cases[2]['admitted_media']['sha256'] == writer_hash,
++                'writer/recovery media linkage')
++        for case in cases:
++            role = case['role']
++            writer = role == 'writer'
++            bound, ticks = (60, 6000) if writer else (30, 3000)
++            require(case['status'] == 'pass' and
++                    case['vm_run_returned'] is True and
++                    case['small_peer_image_denial'] is True,
++                    'guest result/denial')
++            require(case['watchdog_seconds'] == bound and
++                    case['kernel_tick_limit'] == ticks, 'guest bounds')
++            require(case['generations'] == case['reclaimed'] == 3 and
++                    case['final_live_workers'] == 0 and
++                    case['cleanup_trace_version'] == 1 and
++                    case['cleanup_boundaries_per_generation'] == 7,
++                    'guest cleanup projection')
++            require(case['namespace_bytes_verified'] == 780248 and
++                    case['namespace_media']['outside_region_canaries_match'] is True and
++                    case['namespace_media']['sha256'] == case['disk_sha256'],
++                    'file/media verification')
++            if writer:
++                require(case['assigned_target_txg'] == 788 and all(
++                    case[key] is True for key in (
++                        'ordered_provider_witness', 'assigned_DMU_transaction',
++                        'clean_export_observed')), 'writer ordering/export')
++            if role == 'reader':
++                require(case['readonly_data_readback'] is True and
++                        case['readonly_pool_retired'] is True and
++                        case['recovered_pool_txg'] == 798, 'reader result')
++            trace = phase['traces'][role]
++            require(trace['sha256'] == case['serial_sha256'], 'trace identity')
++            tail = trace['tail']
++            cleanup = re.findall(
++                r'^NATIVE CLEANUP v=1 slot=0 generation=(\d+) phase=(\d+) '
++                r'selected=(\d+) pages=8192 reclaimed=(\d+)$', tail, re.M)
++            expected = [(str(g), str(p), '0' if p == 1 else '2',
++                         str(g if p == 7 else g - 1))
++                        for g in range(1, 4) for p in range(1, 8)]
++            require(cleanup == expected, 'retained cleanup trace')
++            require(re.findall(
++                r'^NATIVE terminal slot=0 generation=(\d+) kind=1 detail=0$',
++                tail, re.M) == ['1', '2', '3'], 'retained terminal trace')
++            require(tail.count('AETHER NATIVE BLOCK PASS\n') == 1 and
++                    tail.count('NATIVE supervisor result=100 reclaimed=3\n') == 1,
++                    'retained native marker')
++            command = phase['vm_commands'][role]
++            args = command['argv']
++            retained = {key: value for key, value in command.items() if key != 'sha256'}
++            encoded = (json.dumps(retained, indent=2) + '\n').encode()
++            require(hashlib.sha256(encoded).hexdigest() ==
++                    command['sha256'], 'command identity')
++            require(args[0] == 'qemu-system-x86_64' and
++                    args[args.index('-smp') + 1] == '1' and
++                    args[args.index('-m') + 1] == '256M' and
++                    args[args.index('-nic') + 1] == 'none' and
++                    command['entropy'] is True and
++                    command.get('writer_watchdog_seconds', 30) == bound, 'VM profile')
++            build = matrix['builds'][name + '/writer' if writer else 'normal/' + role]
++            require(build['status'] == 'pass' and
++                    build['pool_zpl_writer_budget'] is writer, 'build writer bound')
++            if writer:
++                origins = build['fs_service_origins']
++                require(origins['aether_fs_service_run'] == service['object'] and
++                        all(origins[symbol].endswith('/zpl-write.o') for symbol in (
++                            'aether_zpl_close', 'aether_zpl_root',
++                            'aether_zpl_lookup', 'aether_zpl_read',
++                            'aether_zpl_open_write', 'aether_zpl_write')),
++                        'original engine/Rust origins')
++                require(build['fs_service_case'] == name, 'writer build case')
++            rows.append(name + '/' + role)
++    return rows
++
++
++def controls(record):
++    changes = [
++        (('native_matrix', 'status'), 'fail', 'matrix result'),
++        (('native_matrix', 'vm_stop_confirmed'), False, 'execution/stop'),
++        (('native_matrix', 'final_sources_drift'), ['changed'], 'input drift'),
++        (('native_matrix', 'owned_outputs_disposed'), False, 'owned disposal'),
++        (('native_matrix', 'pre_execution_admission', 'all_twelve_launch_roles_sealed'), False, 'prelaunch admission'),
++        (('native_matrix', 'pre_execution_admission', 'controllers', 'normal'), 4097, 'controller bounds'),
++        (('native_matrix', 'service_selection', 'manifest_sha256'), '0' * 64, 'service identity'),
++        (('coverage_correction', 'initial_positive'), 'all covered', 'initial coverage correction'),
++        (('native_matrix', 'phases', 'normal', 'recovered_pool_txg'), 787, 'fresh recovery'),
++        (('native_matrix', 'phases', 'normal', 'cases', 1, 'watchdog_seconds'), 120, 'guest bounds'),
++        (('native_matrix', 'phases', 'normal', 'cases', 1, 'small_peer_image_denial'), False, 'guest result/denial'),
++        (('native_matrix', 'phases', 'normal', 'cases', 1, 'final_live_workers'), 1, 'guest cleanup projection'),
++        (('native_matrix', 'phases', 'normal', 'cases', 1, 'namespace_bytes_verified'), 16, 'file/media verification'),
++        (('native_matrix', 'phases', 'normal', 'cases', 1, 'clean_export_observed'), False, 'writer ordering/export'),
++        (('native_matrix', 'phases', 'normal', 'cases', 2, 'admitted_media', 'sha256'), '0' * 64, 'writer/recovery media linkage'),
++        (('native_matrix', 'phases', 'normal', 'traces', 'writer', 'tail'), 'AETHER NATIVE BLOCK PASS\n', 'retained cleanup trace'),
++        (('native_matrix', 'phases', 'normal', 'vm_commands', 'writer', 'sha256'), '0' * 64, 'command identity'),
++        (('native_matrix', 'builds', 'normal/writer', 'fs_service_case'), 'lost-reply', 'writer build case'),
++        (('native_matrix', 'builds', 'normal/writer', 'fs_service_origins', 'aether_zpl_write'), '/fake/fixture.o', 'original engine/Rust origins'),
++    ]
++    for path, value, reason in changes:
++        changed = copy.deepcopy(record)
++        cursor = changed
++        for part in path[:-1]:
++            cursor = cursor[part]
++        cursor[path[-1]] = value
++        try:
++            review(changed)
++        except ValueError as error:
++            require(str(error) == reason, 'wrong negative oracle: ' + reason)
++        else:
++            raise ValueError('accepted negative control: ' + reason)
++    return len(changes)
++
++
++class Parser(argparse.ArgumentParser):
++    def error(self, message):
++        self.print_usage(sys.stderr)
++        self.exit(64, '[FAIL] ' + ascii(message) + '\n')
++
++
++def main():
++    parser = Parser(description=__doc__)
++    parser.add_argument('receipt', type=Path, help='explicit pinned producer JSON receipt')
++    args = parser.parse_args()
++    with args.receipt.open('rb') as stream:
++        record = load(stream.read(2 * 1024 * 1024 + 1))
++    rows = review(record)
++    count = controls(record)
++    print('[PASS] Retained producer evidence: ' + str(len(rows)) + ' guest roles; ' +
++          str(count) + ' semantic rejection controls')
++    print('[NOT RUN] Independent native execution, full-report replay and release acceptance')
++
++
++if __name__ == '__main__':
++    try:
++        main()
++    except (ValueError, OSError, KeyError, TypeError, IndexError) as error:
++        print('[FAIL] ' + ascii(str(error)), file=sys.stderr)
++        sys.exit(1)
+diff --git a/docs/evidence/filesystem-native-consumption-2026-10-20/README.md b/docs/evidence/filesystem-native-consumption-2026-10-20/README.md
+new file mode 100644
+--- /dev/null
++++ b/docs/evidence/filesystem-native-consumption-2026-10-20/README.md
+@@ -0,0 +1,88 @@
++# UL-082 native handoff consumption review
++
++Requirement: verify the exact Aether producer receipt for the delivered Rust
++service before changing userland runtime policy. Scope is retained producer
++evidence consumption and blocker reconciliation, not a new VM run, independent
++human sign-off or UL-082/R1 completion.
++
++Applicable clauses: Foundations O-01/O-04/O-05, I-03/I-04/I-05/I-06,
++E-01/E-04/E-05/E-06/E-08; local quality TD/TE and Python CP rules.
++Read only the explicitly selected receipt after its fixed digest verifies; do not
++execute sibling code or follow mutable sibling defaults. Check the four current
++cases,12 guest roles, actual retained cleanup/terminal tails, command/profile
++bounds, object provenance, target/media linkage and failure/coverage corrections.
++Reject semantic tampering with named controls. The72-byte service report is
++checked by the engine adapter but not completely projected in retained logs;
++consumer review cannot reconstruct it or attest discarded binaries/full serials.
++
++Ownership/bounds: Aether keeps engine/block enforcement and exact native profile;
++userland keeps Rust client/context/UTC/POSIX and uncertain-result policy. Sys-init
++activation and pkg-mgr installation remain separate. No service code, wire,
++provider-call/transaction count, watchdog, memory, observer or capability changes.
++New checker is offline Python3.10+ standard library, bounded2MiB inert JSON, no
++execution of paths in input, no runtime dependency or source-tree/SDK/archive copy.
++BSD-2-Clause for original tool/docs; existing seals/notices/pins stay unchanged.
++
++Tests: exact current receipt and in-memory semantic corruption controls; CLI
++help/usage/failure streams and syntax on actual installed interpreter; local
++quality gate and links/whitespace after integration. No full runtime/VM suite
++for this host consumer/doc-only slice. Preserve all failed attempts compactly.
++
++Simplicity: manually reading the status alone would miss contradictory trace,
++profile or artifact evidence. A small one-receipt verifier uses retained owner
++data without copying the engine/harness or adding a new framework. No existing
++runtime path is obsolete or removed. No numerical guard is relaxed.
++
++Critical next compatibility finding: current private producer
++aether_pool_lifetime_retire accepts exactly4096 staged bytes after consumed C
++context; current AFSRPC01 service writes at most16 bytes and forbids observer
++recycling. The private lifetime profile and service profile are exclusive. A
++matched producer/consumer contract and fixed native workload must precede lifting
++userland one-write/context; simply removing write_used or resetting history is
++forbidden. Further implementation/owner decisions remain separate.
++
++Technical review: contributor self-review; independent human reader and native
++consumer execution pending. Existing deferred reader review does not become a
++new local coding gate. Completion means only this retained-evidence review.
++
++## Result and remaining profile boundary
++
++The exact producer receipt SHA256 is
++`93126506aa78231106b73f93c0f5f954179ed28c82bd291078d35d3a43dd05b4`.
++All12 retained guest roles qualify: normal/lost-reply/partial-request/injected
++close-failure, each pristine/writer/fresh reader at788/798. Consumer checks bind
++the service object and original C origins, per-role60s/6000 or30s/3000, fixed
++controller sizes, whole-file/media linkage, and all21 actual retained cleanup
++lines/three successful terminal records per guest. Exact retained QEMU-command
++JSON hashes are recomputed. This verifies retained producer evidence; full images
++and serial logs were deliberately disposed, so neither byte rebuild nor a fresh
++independent native run is implied. Source/ABI policy remains unchanged.
++
++Run offline with the explicitly selected exact producer receipt:
++
++```sh
++python3 -B experiments/filesystem-service/check-native-handoff.py ../Aether/docs/evidence/fs-service-native-2026-10-19.json
++```
++
++The tool reads at most2MiB, verifies the fixed digest before parsing, rejects
++JSON duplicate keys, executes no input paths and creates no outputs. Help/results
++use stdout, invalid usage64/errors1 use escaped ASCII stderr. No new JSON output
++schema or boot markers.19 named semantic corruption controls must reject on the
++expected reason. See `summary.json` for actual commands, attempts and source hash.
++
++The initial owner positive's inherited small-image flag remains unqualified;
++the current matrix restored the actual denial. Both build-only failed batches
++remain in the producer record and launched no guests. The first consumer test
++incorrectly hashed argv alone; producer native_smoke.py writes a complete command
++object with indent2/newline. The checker now recomputes those actual bytes. That
++host-only failure is retained and never triggered a guest or changed engine code.
++
++UL-082 remains active. The current old selector/timeout notes are superseded by
++this exact review, not by updating the immutable candidate. Next Aether work is a
++matched small-write retirement producer contract/profile; next userland work is
++safe repeated-context/provider integration retaining actual progress even if close,
++retirement, reopen or response fails. Do not reset observer/error history, retry
++uncertain mutations or infer quiescence from endpoint closure. Namespace operations,
++service idle/lifecycle delivery, matching sys-init and persistent Zsh/packages/ISO
++remain open. Reader sign-off and source/full-native/whole-stack/power-loss coverage
++are explicitly pending, not inferred from this checker.
+diff --git a/.planning/STATE.md b/.planning/STATE.md
+--- a/.planning/STATE.md
++++ b/.planning/STATE.md
+@@ -1,4 +1,25 @@
+ # Current state
++
++## 2026-10-20 — UL-082 retained native handoff consumed; lifetime profile mismatch next
++
++[Consumer review](../docs/evidence/filesystem-native-consumption-2026-10-20/README.md)
++verifies the exact Aether receipt for the existing25-member service candidate.
++All12 retained pristine/writer/recovery roles across normal, lost-reply, partial
++request and injected close-failure pass788/798, full-file/media linkage and all21
++actual cleanup lines/three terminal records per guest.19 semantic corruption
++controls reject. Original C/Rust provenance, fixed controller/VM bounds and actual
++command-object hashes are checked. This is retained producer evidence review,
++not a fresh independent VM run, whole-report replay, human sign-off or UL-082/R1
++completion. Old builder-rejection/30s-timeout notes below are historical.
++
++One-write/context remains enforced. The concrete next gap spans owners: the
++Aether trusted lifetime-retirement hook accepts4096 staged bytes and is absent
++from this one-write service profile; the service frame supports16-byte writes.
++A matched small-write producer profile and safe userland consume/retire/reopen
++contract must precede repeated service writes. Neither removing write_used nor
++resetting history is valid. Namespace mutations, operational executable/provisioning/
++readiness/shutdown/idle wait and matched init/runner/package/Zsh assembly remain.
++No runtime, candidate seal, released pin, sys-init or pkg-mgr changes in this slice.
+ 
+ ## 2026-10-19 — UL-082 service transport implemented; matched native profile next
+ 
+diff --git a/.planning/ROADMAP.md b/.planning/ROADMAP.md
+--- a/.planning/ROADMAP.md
++++ b/.planning/ROADMAP.md
+@@ -816,3 +816,19 @@
+ [Concrete delivered proposal](../docs/proposals/FS-SERVICE-TRANSPORT.md); UL-082 active,
+ M3/R1 and launch/native enforcement/recovery remain incomplete. No sibling edits,
+ SDK/pin/old delivery changes, review approval or native service acceptance inferred.
++
++
++## UL-082 retained native handoff consumption — 2026-10-20
++
++[Consumer review](../docs/evidence/filesystem-native-consumption-2026-10-20/README.md)
++verifies the exact producer four-case/12-guest receipt, actual retained cleanup,
++whole-file/recovery-media linkage, origins, commands and unchanged bounds. Old
++writable+IPC selector/timeout blockers are superseded for this artifact. This is
++host retained-evidence consumption, not fresh target execution or owner sign-off.
++Current one-write/context and sealed delivery remain unchanged. The next repeated
++service slice needs a matched small-write producer retirement profile: the tested
++trusted4096-byte retire hook is incompatible with current16-byte service writes.
++Then implement success-only consumed-context/record retirement/reopen with retained
++progress on post-write failure, preserving uncertain/lost-reply stop/no replay.
++Namespace/lifecycle/idle service delivery and exact init/runner/package/Zsh assembly
++remain UL-082/M3/R1 gates; no completion follows from this review.
+diff --git a/.planning/BACKLOG.md b/.planning/BACKLOG.md
+--- a/.planning/BACKLOG.md
++++ b/.planning/BACKLOG.md
+@@ -1600,3 +1600,16 @@
+ [Concrete delivered proposal](../docs/proposals/FS-SERVICE-TRANSPORT.md); UL-082 active,
+ M3/R1 and launch/native enforcement/recovery remain incomplete. No sibling edits,
+ SDK/pin/old delivery changes, review approval or native service acceptance inferred.
++
++
++### UL-082 next action — native handoff consumption, 2026-10-20
++
++The [retained producer review](../docs/evidence/filesystem-native-consumption-2026-10-20/README.md)
++clears the historical current-selector/timeout wait for the exact service artifact.
++Next coordinate a matched Aether small-write retirement profile, then implement
++safe repeated-context/provider lifetime in Rust. Existing retire accepts4096 bytes;
++AFSRPC01 payload is16 and current profile has no retire hook. Keep one-write/context
++until the matched contract/native witness exists. Preserve progress after close/
++retire/reopen/reply errors and never replay unknown effects. Follow with service
++namespace operations, idle/lifecycle delivery and matched sys-init/runner/packages/
++Zsh acceptance. Userland owns policy; Aether owns producer/native qualification.
+diff --git a/docs/proposals/FS-SERVICE-TRANSPORT.md b/docs/proposals/FS-SERVICE-TRANSPORT.md
+--- a/docs/proposals/FS-SERVICE-TRANSPORT.md
++++ b/docs/proposals/FS-SERVICE-TRANSPORT.md
+@@ -1,3 +1,10 @@
++> Current review2026-10-20: [consumer evidence](../evidence/filesystem-native-consumption-2026-10-20/README.md)
++> verifies Aether's exact normal/negative/recovery producer matrix for this sealed
++> candidate. Original not-launched/build-rejection statements below describe the
++> handoff at delivery time. One-write/context and the immutable delivery remain
++> unchanged; repeated service use needs a matched small-write retirement profile.
++> Retained evidence review is not fresh native execution or operational acceptance.
++
+ # Private filesystem service transport handoff — UL-082, 2026-10-19
+ 
+ Status: implemented and host/object tested here; **not selected, launched or
+diff --git a/experiments/filesystem-service/README.md b/experiments/filesystem-service/README.md
+--- a/experiments/filesystem-service/README.md
++++ b/experiments/filesystem-service/README.md
+@@ -141,3 +141,18 @@
+ and full original-engine/recovery/cleanup qualification precede sys-init assembly.
+ No sibling edits, guard bypass, retries, released pins, old readonly wire or immutable
+ bridge delivery changes. No continuous service, POSIX, durability or R1 acceptance.
++
++
++## Retained native producer review — 2026-10-20
++
++The exact Aether normal/lost-reply/partial-request/injected-close-failure matrix
++now passes [consumer retained-evidence checks](../../docs/evidence/filesystem-native-consumption-2026-10-20/README.md).
++Run `python3 -B experiments/filesystem-service/check-native-handoff.py
++../Aether/docs/evidence/fs-service-native-2026-10-19.json` from the userland root.
++This checker creates no outputs or guests and reads only an explicitly selected
++receipt after its fixed digest verifies. All12 roles and19 semantic corruptions
++are covered; no independent target run, complete report replay or sign-off follows.
++Runtime policy remains one nonempty call/context. The next matched producer
++retirement profile must support service16-byte writes; existing engine lifetime
++qualification only retires4096-byte writes after context consumption. Keep current
++bounds/retained progress/no-replay and delivery bytes until separately qualified.
+diff --git a/docs/EXPERIENCE.md b/docs/EXPERIENCE.md
+--- a/docs/EXPERIENCE.md
++++ b/docs/EXPERIENCE.md
+@@ -116,3 +116,13 @@
+ change; no target renderer conformance is claimed. Revisit before public contributor
+ CLI promotion, with explicit stream/usage/help/recovery controls and reader review.
+ The Rust policy library has no presentation behavior; no shared pin changes.
++
++
++## Scoped filesystem native receipt checker — 2026-10-20
++
++The contributor-only `experiments/filesystem-service/check-native-handoff.py`
++uses stdout help/results and escaped ASCII stderr for errors; invalid usage64,
++operational failure1. Bracketed textual status, no color/animation or boot-output
++change. It creates no guest or output files. This scoped tool adoption does not
++claim general renderer conformance; CLI checks belong to the linked
++[review](evidence/filesystem-native-consumption-2026-10-20/README.md).
+diff --git a/docs/quality/coverage.json b/docs/quality/coverage.json
+--- a/docs/quality/coverage.json
++++ b/docs/quality/coverage.json
+@@ -1154,7 +1154,8 @@
+         "docs/evidence/filesystem-bridge-2026-10-18/README.md",
+         "docs/evidence/filesystem-bridge-2026-10-18/review.md",
+         "docs/evidence/filesystem-transport-2026-10-19/README.md",
+-        "docs/evidence/filesystem-transport-2026-10-19/review.md"
++        "docs/evidence/filesystem-transport-2026-10-19/review.md",
++        "docs/evidence/filesystem-native-consumption-2026-10-20/README.md"
+       ],
+       "reviewer": null,
+       "exclusion": null
+diff --git a/docs/evidence/filesystem-native-consumption-2026-10-20/summary.json b/docs/evidence/filesystem-native-consumption-2026-10-20/summary.json
+new file mode 100644
+--- /dev/null
++++ b/docs/evidence/filesystem-native-consumption-2026-10-20/summary.json
+@@ -0,0 +1,91 @@
++{
++  "scope": "Consumer verification of retained producer evidence; no fresh independent native run, source rebuild, full-report replay or human sign-off",
++  "producer_receipt_sha256": "93126506aa78231106b73f93c0f5f954179ed28c82bd291078d35d3a43dd05b4",
++  "service_manifest_sha256": "5dd5f492dd2ab2c57321a8fd610f1f6fa488dece4c4b40466a37236bf24144c4",
++  "service_object_sha256": "dab564abbcc70ca93cebec7fec8d6017c569367dde8419abbf2d2701401150b1",
++  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
++  "python_executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
++  "python_sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
++  "source_sha256": "43483e1ee0b4cdca107029e5d432e7c04231f1b42968145a273d07121d975708",
++  "reviewed_guest_roles": [
++    "normal/baseline",
++    "normal/writer",
++    "normal/reader",
++    "lost-reply/baseline",
++    "lost-reply/writer",
++    "lost-reply/reader",
++    "partial-request/baseline",
++    "partial-request/writer",
++    "partial-request/reader",
++    "close-failure/baseline",
++    "close-failure/writer",
++    "close-failure/reader"
++  ],
++  "semantic_rejection_controls": 19,
++  "attempts": [
++    {
++      "phase": "initial host checker",
++      "argv": [
++        "/opt/homebrew/opt/python@3.14/bin/python3.14",
++        "-B",
++        "/var/folders/2k/hbwvd2qn4cb988kpjk1wcn800000gn/T/aether-ul082-consume-tj2ehyb_/check-native-handoff.py",
++        "docs/evidence/fs-service-native-2026-10-19.json"
++      ],
++      "status": 1,
++      "stderr": "[FAIL] 'command identity'\n",
++      "cause": "Used hash of argv alone; actual command file hashes complete dictionary encoded indent2/newline. Corrected before owner writes; no guest."
++    },
++    {
++      "name": "receipt",
++      "argv": [
++        "/opt/homebrew/opt/python@3.14/bin/python3.14",
++        "-B",
++        "/var/folders/2k/hbwvd2qn4cb988kpjk1wcn800000gn/T/aether-ul082-consume-tj2ehyb_/files/experiments/filesystem-service/check-native-handoff.py",
++        "/Users/cam/DEV/Aether/docs/evidence/fs-service-native-2026-10-19.json"
++      ],
++      "status": 0,
++      "stdout": "[PASS] Retained producer evidence: 12 guest roles; 19 semantic rejection controls\n[NOT RUN] Independent native execution, full-report replay and release acceptance\n",
++      "stderr": ""
++    },
++    {
++      "name": "help",
++      "argv": [
++        "/opt/homebrew/opt/python@3.14/bin/python3.14",
++        "-B",
++        "/var/folders/2k/hbwvd2qn4cb988kpjk1wcn800000gn/T/aether-ul082-consume-tj2ehyb_/files/experiments/filesystem-service/check-native-handoff.py",
++        "--help"
++      ],
++      "status": 0,
++      "stdout": "usage: check-native-handoff.py [-h] receipt\n\nReview one pinned retained Aether receipt; never launch a guest or sibling\ncode.\n\npositional arguments:\n  receipt     explicit pinned producer JSON receipt\n\noptions:\n  -h, --help  show this help message and exit\n",
++      "stderr": ""
++    },
++    {
++      "name": "usage",
++      "argv": [
++        "/opt/homebrew/opt/python@3.14/bin/python3.14",
++        "-B",
++        "/var/folders/2k/hbwvd2qn4cb988kpjk1wcn800000gn/T/aether-ul082-consume-tj2ehyb_/files/experiments/filesystem-service/check-native-handoff.py"
++      ],
++      "status": 64,
++      "stdout": "",
++      "stderr": "usage: check-native-handoff.py [-h] receipt\n[FAIL] 'the following arguments are required: receipt'\n"
++    },
++    {
++      "name": "identity",
++      "argv": [
++        "/opt/homebrew/opt/python@3.14/bin/python3.14",
++        "-B",
++        "/var/folders/2k/hbwvd2qn4cb988kpjk1wcn800000gn/T/aether-ul082-consume-tj2ehyb_/files/experiments/filesystem-service/check-native-handoff.py",
++        "/var/folders/2k/hbwvd2qn4cb988kpjk1wcn800000gn/T/aether-ul082-consume-tj2ehyb_/cli-anvz8r3h/bad.json"
++      ],
++      "status": 1,
++      "stdout": "",
++      "stderr": "[FAIL] 'receipt identity'\n"
++    }
++  ],
++  "status": "pass",
++  "input_rejections": 3,
++  "cli_cases": 4,
++  "grammar": "Python3.10 syntax accepted; execution on actual3.14.7 only",
++  "end_utc": "2026-10-20T00:33:40.600155+00:00"
++}

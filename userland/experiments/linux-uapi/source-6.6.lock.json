@@ -1,0 +1,16 @@
+{
+  "linux": {
+    "version": "6.6.156",
+    "archive": "build/linux-6.6.156.tar.xz",
+    "sha256": "aee2264a4eaf4a14344b47a0469bd42e8b4885b24f110b724262b3da956f411d",
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.156.tar.xz",
+    "trust": "HTTPS bytes; independent authentication pending UL-016"
+  },
+  "make": {
+    "version": "4.4.1",
+    "archive": "build/make-4.4.1.tar.gz",
+    "sha256": "dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3",
+    "url": "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz",
+    "trust": "HTTPS bytes; independent authentication pending UL-016"
+  }
+}

@@ -1,0 +1,513 @@
+{
+  "schema": "sys-init-documentation-inventory-v1",
+  "scope": "21 explicit developer entry points; static source inventory, not execution or public ABI",
+  "commands": [
+    {
+      "source": "docs/check-distribution.py",
+      "sha256": "6751b8952722ad707d32fb3da6e73cb60e56bcdefcb6e36d5ab75cc0a742f93e",
+      "reference": "docs/DISTRIBUTION.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0124 active SIGTERM interruption and cleanup; manual and real-signal controls; independent review pending",
+      "arguments": [],
+      "manual": "docs/man/sys-init-check-distribution.1"
+    },
+    {
+      "source": "docs/check-experience.py",
+      "sha256": "3b79d09a7b3cf326abd7661c8e2692de57a6cd6176f7aa16ba9267de1857e409",
+      "reference": "docs/EXPERIENCE.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0124 active SIGTERM interruption and cleanup; manual and real-signal controls; independent review pending",
+      "arguments": [],
+      "manual": "docs/man/sys-init-check-experience.1"
+    },
+    {
+      "source": "docs/check-standards.py",
+      "sha256": "fc3199b63ddb28d11569b6d491775174f26bfe7d276615ead99af7227a0fc2c1",
+      "reference": "docs/STANDARDS.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0124 active SIGTERM interruption and cleanup; manual and real-signal controls; independent review pending",
+      "arguments": [],
+      "manual": "docs/man/sys-init-check-standards.1"
+    },
+    {
+      "source": "scripts/build-lifecycle.py",
+      "sha256": "be0afa6565479c178328a87baa22b5d18c3780ab43a06dd24cb5ec522d783ab0",
+      "reference": "docs/LIFECYCLE-V1.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual; current CLI probes and fresh build/structural evidence; independent review, target lookup and full variant qualification separate",
+      "arguments": [
+        {
+          "line": 37,
+          "declaration": "parser.add_argument('output', type=Path)"
+        },
+        {
+          "line": 38,
+          "declaration": "parser.add_argument('--variant', choices=['pass', 'fault_entry', 'wrong_detail'], default='pass')"
+        }
+      ],
+      "manual": "docs/man/sys-init-build-lifecycle.1"
+    },
+    {
+      "source": "scripts/build-native-io-worker.py",
+      "sha256": "4b0589351edd16bce3af3254f1f4dd3ec46e1e12ee07653843346198fcf17e99",
+      "reference": "docs/NATIVE-IO.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual; current CLI probes and fresh build/structural evidence; independent review, target lookup and full variant qualification separate",
+      "arguments": [
+        {
+          "line": 64,
+          "declaration": "p.add_argument('--version', action='version', version='sys-init native I/O worker 1')"
+        },
+        {
+          "line": 65,
+          "declaration": "p.add_argument('--'+name, type=Path, required=True)"
+        },
+        {
+          "line": 66,
+          "declaration": "p.add_argument('--receipt-pin', required=True)"
+        },
+        {
+          "line": 68,
+          "declaration": "profile.add_argument('--peer', action='store_true', help='build known-live-peer readiness worker')"
+        },
+        {
+          "line": 69,
+          "declaration": "profile.add_argument('--authority', action='store_true', help='build caller-local readiness authority worker')"
+        },
+        {
+          "line": 70,
+          "declaration": "profile.add_argument('--readiness', action='store_true', help='build controlled readiness/terminal ordering worker')"
+        }
+      ],
+      "manual": "docs/man/sys-init-build-native-io-worker.1"
+    },
+    {
+      "source": "scripts/build-native-service-worker.py",
+      "sha256": "16a8a1b42cc853f5ce6fbecc40aea36ed827fe292e0db21398cd0bb9e47b4f48",
+      "reference": "docs/NATIVE-SERVICE.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual; current CLI probes and fresh build/structural evidence; independent review, target lookup and full variant qualification separate",
+      "arguments": [
+        {
+          "line": 63,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init native service worker 1')"
+        },
+        {
+          "line": 64,
+          "declaration": "parser.add_argument('--sdk', type=Path, required=True)"
+        },
+        {
+          "line": 65,
+          "declaration": "parser.add_argument('--tools-lock', type=Path, required=True)"
+        },
+        {
+          "line": 66,
+          "declaration": "parser.add_argument('--receipt-pin', required=True)"
+        },
+        {
+          "line": 67,
+          "declaration": "parser.add_argument('--output', type=Path, required=True)"
+        }
+      ],
+      "manual": "docs/man/sys-init-build-native-service-worker.1"
+    },
+    {
+      "source": "scripts/build-native-supervisor.py",
+      "sha256": "33a09f136055787b292b74bbadd3ef1e0d5908186935b69a762c95c3b5e42921",
+      "reference": "docs/NATIVE-SUPERVISION.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual; current CLI probes and fresh build/structural evidence; independent review, target lookup and full variant qualification separate",
+      "arguments": [
+        {
+          "line": 7,
+          "declaration": "p.add_argument('native',type=Path)"
+        },
+        {
+          "line": 7,
+          "declaration": "p.add_argument('output',type=Path)"
+        },
+        {
+          "line": 7,
+          "declaration": "p.add_argument('--variant',choices=['pass','fault_entry','wrong_detail','io','io-stop','io-stop-wrong-detail','io-retained-stop','io-retained-fault','io-retained-wrong-kind','io-ready-exit','io-ready-fault','io-unready-exit','io-unready-fault','io-unready-stop','io-invent-ready','io-authority','io-authority-allow','io-peer','io-peer-reverse','io-peer-wrong'],default='pass')"
+        }
+      ],
+      "manual": "docs/man/sys-init-build-native-supervisor.1"
+    },
+    {
+      "source": "scripts/check-all.py",
+      "sha256": "86eef32acdc1a3df49781810b4ea4d677a8415652d3648acd9653090c136f074",
+      "reference": "docs/DEVELOPMENT-CHECKS.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0145: bounded snapshots, atomic reports, startup and broken-pipe outcomes; fatal/repeated signals, blocked I/O and independent review remain; decision 0167 captures private Rust reservation inputs without CLI changes",
+      "arguments": [
+        {
+          "line": 309,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init development checks 1')"
+        },
+        {
+          "line": 310,
+          "declaration": "parser.add_argument('--output-root', type=Path, default=ROOT / 'out/checks',\n                        help='parent for a newly created private run directory')"
+        }
+      ],
+      "manual": "docs/man/sys-init-checks.1"
+    },
+    {
+      "source": "scripts/check-host-runtime.py",
+      "sha256": "06f7a7d8339e3419c7aad2d289846683fe2718d66ddb00cefb5e8849c2674014",
+      "reference": "docs/HOST-RUNTIME.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0109: bounded inner capture, real-child failure controls and updated manual; independent review and target lookup pending",
+      "arguments": [],
+      "manual": "docs/man/sys-init-check-host.1"
+    },
+    {
+      "source": "scripts/check-native-evidence.py",
+      "sha256": "4ee6a071c85818f6810a71f2d681521804950901c99a27f5619a136fef98b2f3",
+      "reference": "docs/NATIVE-COVERAGE.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0132 strict native receipt JSON parsing; controls and manual; field validation/review pending",
+      "arguments": [
+        {
+          "line": 856,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init native evidence audit 1')"
+        }
+      ],
+      "manual": "docs/man/sys-init-check-native-evidence.1"
+    },
+    {
+      "source": "scripts/check-quality-process.py",
+      "sha256": "002e658e69e5f9423d7bea145561b691697c47ca8e7439bbbb5a91e3468d4783",
+      "reference": "docs/QUALITY-PROCESS.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0118 bounded input reads and ordinary reference files; source reference and tests; independent review pending",
+      "arguments": [
+        {
+          "line": 289,
+          "declaration": "parser.add_argument('--version', action='version',\n                        version='sys-init quality process 1')"
+        }
+      ],
+      "manual": "docs/man/sys-init-check-quality.1"
+    },
+    {
+      "source": "scripts/check-runtime-model.py",
+      "sha256": "1dfcce2edb934c56a25fecea21fe81892a0f912f93fb43229d5bc5d7d76c5e48",
+      "reference": "docs/RUNTIME-MODEL.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0109: bounded inner capture, real-child failure controls and updated manual; independent review and target lookup pending; decision 0157 includes pure cut-coordinator sources and tests without CLI changes; decision 0158 includes retirement model inputs without CLI changes; decision 0160 includes Launched adapter input without CLI changes; decision 0161 adds Terminal adapter source without CLI changes; decision 0162 adds Cleaned adapter source without CLI changes",
+      "arguments": [
+        {
+          "line": 490,
+          "declaration": "parser.add_argument('--output', type=Path, default=ROOT/'out/runtime-model/results.json')"
+        },
+        {
+          "line": 491,
+          "declaration": "parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)"
+        }
+      ],
+      "manual": "docs/man/sys-init-check-model.1"
+    },
+    {
+      "source": "scripts/check-static.py",
+      "sha256": "63973d732f402de0f92ec110fbe8f9761db93fe3ef2e05e499a2948a86a2965c",
+      "reference": "docs/STATIC-CHECKS.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "Decision 0114 input file and metadata identity checks; focused controls and reference; independent review pending",
+      "arguments": [
+        {
+          "line": 385,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init static checks 1')"
+        }
+      ],
+      "manual": "docs/man/sys-init-check-static.1"
+    },
+    {
+      "source": "scripts/measure-host-runtime.py",
+      "sha256": "483f0fc225a76baba5c056f1b1e7b9ce5e19fcb41fa0c59ee0d22202a45efaee",
+      "reference": "docs/HOST-MEASUREMENTS.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual and narrative; CLI/render evidence; independent review and target lookup pending",
+      "arguments": [
+        {
+          "line": 88,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init host measurements 1')"
+        },
+        {
+          "line": 89,
+          "declaration": "parser.add_argument('--output-root', type=Path, default=ROOT / 'out/host-measurements',\n                        help='parent for a new private run directory')"
+        },
+        {
+          "line": 91,
+          "declaration": "parser.add_argument('--worker', type=int, choices=(1, 8), help=argparse.SUPPRESS)"
+        },
+        {
+          "line": 92,
+          "declaration": "parser.add_argument('--directory', type=Path, help=argparse.SUPPRESS)"
+        },
+        {
+          "line": 93,
+          "declaration": "parser.add_argument('--stall', action='store_true', help=argparse.SUPPRESS)"
+        }
+      ],
+      "manual": "docs/man/sys-init-measure-host.1"
+    },
+    {
+      "source": "tests/lifecycle-native.py",
+      "sha256": "92dc4e75e943a49ac893b0e78c3663e1d39170b0ae55a6a3ac4867c6cfb57d65",
+      "reference": "docs/LIFECYCLE-V1.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "decision 0107 bounded command/log receipts; native semantic oracles unchanged; manual updated",
+      "arguments": [
+        {
+          "line": 66,
+          "declaration": "parser.add_argument('--aether', type=Path, required=True)"
+        },
+        {
+          "line": 67,
+          "declaration": "parser.add_argument('--work', type=Path, required=True, help='new, non-existing output directory')"
+        }
+      ],
+      "manual": "docs/man/sys-init-test-lifecycle-native.1"
+    },
+    {
+      "source": "tests/native-init.py",
+      "sha256": "caae80d7272c9e7a8e266e69f81a7df2962fb1721e180782c8118ef9857184ab",
+      "reference": "docs/NATIVE-ADAPTER.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual and CLI probes; retained target evidence remains profile-specific; independent/target manual review pending; decision 0154 adds native history errno cases without CLI changes; decision 0155 adds closed terminal history probes without CLI changes; decision 0165 adds actual launch-to-history probes without CLI changes; decision 0165 adds actual launch-to-history probes without CLI changes; decision 0165 adds actual launch-to-history probes without CLI changes; decision 0168 adds native reservation binding probes without CLI changes; decision 0170 adds native Launched application cases without CLI changes; decision 0171 adds generated-launch execution cases without CLI changes; decision 0172 adds retained-launch retirement cases without CLI changes; decision 0175 adds explicit composed profile and six Terminal cases; profile/envelope and option-conflict controls; decision 0176 adds ten reclaim/Cleaned probes with LTO only for the three Cleaned cases; decision 0177 adds four full-pair probes with the explicit LTO profile; BG-064 adds three composed simple-owner cases with unchanged CLI and ordinary compiler profile; BG-065 adds four direct pair cases with ordinary compiler options and unchanged CLI",
+      "arguments": [
+        {
+          "line": 70,
+          "declaration": "p.add_argument('--version',action='version',version='sys-init native init consumer 1')"
+        },
+        {
+          "line": 72,
+          "declaration": "profiles.add_argument('--init-composed',action='store_true',help='explicit AENIN003/ABI 16 profile; 16 KiB code, 4 KiB stack')"
+        },
+        {
+          "line": 73,
+          "declaration": "profiles.add_argument('--init-large',action='store_true',help='explicit AENIN002/ABI 15 profile; default remains ABI 6')"
+        },
+        {
+          "line": 74,
+          "declaration": "p.add_argument('--producer',type=Path,required=True)"
+        },
+        {
+          "line": 75,
+          "declaration": "p.add_argument('--summary-pin',required=True)"
+        },
+        {
+          "line": 76,
+          "declaration": "p.add_argument('--deps',type=Path,help='required for ABI 6; ABI 15 uses archived pinned boot dependencies')"
+        },
+        {
+          "line": 77,
+          "declaration": "p.add_argument('--service-worker',type=Path,\n                   help='explicit sys-init service-worker build directory')"
+        },
+        {
+          "line": 79,
+          "declaration": "p.add_argument('--service-worker-pin',help='SHA256 of service worker evidence.json')"
+        },
+        {
+          "line": 80,
+          "declaration": "p.add_argument('--work',type=Path,required=True,help='new private directory')"
+        }
+      ],
+      "manual": "docs/man/sys-init-test-native-init.1"
+    },
+    {
+      "source": "tests/native-io-stop.py",
+      "sha256": "955a21dfe03edcefbb31fd0c62fa246e1bc64839adc04e38f8e8b57754d56669",
+      "reference": "docs/NATIVE-IO.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "source manual and CLI probes; retained target evidence remains profile-specific; independent/target manual review pending",
+      "arguments": [
+        {
+          "line": 53,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init native I/O stop fixture 1')"
+        },
+        {
+          "line": 54,
+          "declaration": "parser.add_argument('--aether', type=Path, required=True, help='trusted kernel source tree with pinned boot dependencies')"
+        },
+        {
+          "line": 55,
+          "declaration": "parser.add_argument('--sdk', type=Path, required=True, help='I/O SDK from a verified producer build')"
+        },
+        {
+          "line": 56,
+          "declaration": "parser.add_argument('--receipt-pin', required=True, help='externally retained SHA-256 of SDK evidence.json')"
+        },
+        {
+          "line": 57,
+          "declaration": "parser.add_argument('--work', type=Path, required=True, help='new private work directory; must not exist')"
+        },
+        {
+          "line": 59,
+          "declaration": "profile.add_argument('--peer', action='store_true', help='run known-live-peer readiness cases')"
+        },
+        {
+          "line": 60,
+          "declaration": "profile.add_argument('--authority', action='store_true', help='run worker-local readiness authority cases')"
+        },
+        {
+          "line": 61,
+          "declaration": "profile.add_argument('--readiness', action='store_true', help='run readiness/terminal ordering cases')"
+        },
+        {
+          "line": 62,
+          "declaration": "profile.add_argument('--retained', action='store_true', help='use sys-init retained-output worker and stop/fault controls')"
+        }
+      ],
+      "manual": "docs/man/sys-init-test-native-io-stop.1"
+    },
+    {
+      "source": "tests/native-supervision.py",
+      "sha256": "47a5b5ed27b05563a14e13e12a23b016532bafa3d6b72c5ddea69d4da8a3d86f",
+      "reference": "docs/NATIVE-SUPERVISION.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; not installed operator command",
+      "coverage": "decision 0107 bounded command/log receipts; native semantic oracles unchanged; manual updated",
+      "arguments": [
+        {
+          "line": 14,
+          "declaration": "p.add_argument('--aether',type=Path,required=True)"
+        },
+        {
+          "line": 14,
+          "declaration": "p.add_argument('--native',type=Path,required=True)"
+        },
+        {
+          "line": 14,
+          "declaration": "p.add_argument('--work',type=Path,required=True)"
+        }
+      ],
+      "manual": "docs/man/sys-init-test-native-supervision.1"
+    },
+    {
+      "source": "scripts/check-extended-host.py",
+      "sha256": "379ec3ba0e165daa11861fbdae7aa69f2953089e7025029a4fc9cd32ed8becfe",
+      "reference": "docs/EXTENDED-HOST-TESTS.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; local trusted host campaign",
+      "coverage": "Decision 0147: campaign/replay, identity, budgets, reports and failure controls; manual; independent review pending",
+      "arguments": [
+        {
+          "line": 219,
+          "declaration": "parser.add_argument('--version', action='version', version='sys-init extended host 1')"
+        },
+        {
+          "line": 220,
+          "declaration": "parser.add_argument('--plan', type=Path, default=ROOT / 'docs/extended-host-plan.json')"
+        },
+        {
+          "line": 221,
+          "declaration": "parser.add_argument('--output-root', type=Path, default=ROOT / 'out/extended-host')"
+        },
+        {
+          "line": 222,
+          "declaration": "parser.add_argument('--seed', help='replay exactly one seed from the plan')"
+        },
+        {
+          "line": 223,
+          "declaration": "parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)"
+        },
+        {
+          "line": 224,
+          "declaration": "parser.add_argument('--plan-sha256', help=argparse.SUPPRESS)"
+        }
+      ],
+      "manual": "docs/man/sys-init-check-extended-host.1"
+    },
+    {
+      "source": "scripts/build-aether-baseline.py",
+      "sha256": "a1633dea812b2e04cfe90d3a96ab5d3ecd69e3881499182ff94053a6782c4085",
+      "reference": "docs/AETHER-BASELINE.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; pinned offline ABI22 composition, not installed operator command",
+      "coverage": "Eleven focused tests, ten real compiler policy cases, five fresh supervised native cases, frozen baseline/table identity and manual; independent reader review pending",
+      "arguments": [
+        {
+          "line": 309,
+          "declaration": "parser.add_argument('--version', action='version', version=VERSION)"
+        },
+        {
+          "line": 310,
+          "declaration": "parser.add_argument('output', type=Path, help='fresh private output directory; parent must exist')"
+        },
+        {
+          "line": 311,
+          "declaration": "parser.add_argument('--dependencies', type=Path, required=True, help='offline .deps directory matching the baseline lock')"
+        },
+        {
+          "line": 312,
+          "declaration": "parser.add_argument('--tools', type=Path, help='JSON tool paths with the exact locked executable hashes')"
+        },
+        {
+          "line": 313,
+          "declaration": "parser.add_argument('--supervised', action='store_true', help='with --service-table, allow one cleaned pre-effect command retry')"
+        },
+        {
+          "line": 314,
+          "declaration": "parser.add_argument('--service-table', action='store_true', help='explicit ABI22 inert-table profile without the startup test probe')"
+        },
+        {
+          "line": 315,
+          "declaration": "parser.add_argument('--smoke', action='store_true', help='boot one useful command cycle and authorized halt')"
+        }
+      ],
+      "manual": "docs/man/sys-init-build-aether-baseline.1"
+    },
+    {
+      "source": "scripts/build-aether-session.py",
+      "sha256": "596dc7a1412b6c4e2a3818bdf0f43e9f6d1683f3ab784d6ed6ea465c6e80ad3a",
+      "reference": "docs/AETHER-SESSION.md",
+      "owner": "sys-init maintainer",
+      "scope": "developer/experimental; offline ABI24 candidate, not installed operator command",
+      "coverage": "Focused recipe/CLI/oracle/failure controls and fresh consuming immediate/delayed witnesses; independent review pending",
+      "arguments": [
+        {
+          "line": 141,
+          "declaration": "parser.add_argument('output', type=Path)"
+        },
+        {
+          "line": 142,
+          "declaration": "parser.add_argument('--tools', type=Path, help='relocate tools without changing executable hashes')"
+        },
+        {
+          "line": 143,
+          "declaration": "parser.add_argument('--smoke', choices=('immediate', 'delayed'), help='run the bounded shell workload')"
+        },
+        {
+          "line": 144,
+          "declaration": "parser.add_argument('--version', action='version', version=VERSION)"
+        }
+      ],
+      "manual": "docs/man/sys-init-build-aether-session.1"
+    }
+  ],
+  "exclusions": [
+    "bounded_tools.py is an internal host helper, not a CLI",
+    "test_*.py unittest modules are test entry points covered by their test runner, not individual operator commands",
+    "vendored releases, historical evidence and archives retain their original documentation",
+    "production service descriptors, init CLI, installed manuals and native POSIX APIs are not implemented interfaces",
+    "docs/examples/host-descriptor.py is a runnable documentation fixture, covered by test_host_descriptor_contract.py, not a supported CLI",
+    "serial_session_smoke.py is an internal bounded workload/oracle helper, not a CLI"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "date": "2026-09-05",
+  "scope": "Local executable pins, not full host shared-library or source-provenance closure",
+  "tools": {
+    "clang": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang-21",
+      "sha256": "625165a3accc542dafef0264b5bbd18721b8e765c7ec819742ec7d7afd2491f6",
+      "version": "Homebrew clang version 21.1.8"
+    },
+    "lld": {
+      "path": "/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+      "resolved_path": "/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/lld",
+      "sha256": "c2e13eb403e01855c711c3dec8f1df64a725b51435a865650a47558069eeb5f5",
+      "version": "Homebrew LLD 21.1.8 (compatible with GNU linkers)"
+    },
+    "ar": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
+      "sha256": "0ae5701cb4be028b9906be4fbe9211800d7aa41b4c049bc72a59eb737409d152",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "ranlib": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ranlib",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
+      "sha256": "0ae5701cb4be028b9906be4fbe9211800d7aa41b4c049bc72a59eb737409d152",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "readelf": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readobj",
+      "sha256": "928d7a8b16ef4e97e10731b1a2ef80a3ff78bbdd2acc9f70162ae640409b38c4",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "nm": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+      "sha256": "2fdfcd6fe14e1f354d252a70275dbc5bd78e93ba4ae0d0449fc5e90de1983da4",
+      "version": "llvm-nm, compatible with GNU nm"
+    },
+    "objdump": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-objdump",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-objdump",
+      "sha256": "57df889beb6133ffd405ffb84795941c068a13a09dba0a40546d3b740666b9b7",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "make": {
+      "path": "/usr/bin/make",
+      "resolved_path": "/usr/bin/make",
+      "sha256": "1685f2c90307faa05ef5ae8f707d3a18a519c9dad75882768f66abb475f1b3d7",
+      "version": "GNU Make 3.81"
+    }
+  }
+}

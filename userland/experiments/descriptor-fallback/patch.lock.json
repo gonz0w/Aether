@@ -1,0 +1,14 @@
+{
+  "scope": "experimental single-threaded checked fallback; not adopted in native libc; no atomicity claim",
+  "sha256": "bcfa3b3fb01be18ff7a0e6e3ed6e380d49ddc2d767b6d7bf2d6db88b3705d305",
+  "files": {
+    "src/fcntl/fcntl.c": {
+      "before": "6dbdeac47ffce25607ce4b1ea6dcb6205ba7e03489ffc10e3ba5946a9c655cf7",
+      "after": "0cf3b6e28ba9aaa942a4909d11e51dbbf62e38d009016c3ab7a0554485712def"
+    },
+    "src/unistd/pipe2.c": {
+      "before": "4eed462d9419cbaedeea23869fc24cd764ea5cdca6a219ad111a0c35a9a5d919",
+      "after": "fe0b32d992836f06c3ce85190d83d45d80fb1ab236d3a0dd78b474f563faaa77"
+    }
+  }
+}

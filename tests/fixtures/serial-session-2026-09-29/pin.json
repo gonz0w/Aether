@@ -1,0 +1,16 @@
+{
+  "experiments/dash-native/serial-session/README.md": "16538157d8c1cd11cb8bd02052a1f908aae7aa01de2b3856b14c1bd42d177cf5",
+  "experiments/dash-native/serial-session/command-1.sh": "985c96f1f1d4660dde3a08cc8cd4f5b4971febc493840aed59660a53c4e58aaf",
+  "experiments/dash-native/serial-session/command-2.sh": "1db63cd7e6156b5c50df36b7551e3380b6b7e8b9fbf980eb6d26ba3cfb9595e2",
+  "experiments/dash-native/serial-session/command-3.sh": "fdc5d4946348f3b910bb584dd42c774cc1f8b7b797889dceae4a99d9bd33d966",
+  "experiments/dash-native/serial-session/exchange.json": "a63554e56e5cba31ef8fbbb66562d7520472326d43a63d14240b1a6d6e18b4a5",
+  "experiments/dash-native/serial-session/expected.stderr": "bedec5c40043515e48d87e3cb292087342a4bc2d1ababb6d8c2f3c2afa009a75",
+  "experiments/dash-native/serial-session/expected.stdout": "1ce618850d679001b403ab163a67b8758105fe338f1af2b670825b326a0203f4",
+  "experiments/dash-native/serial-session/expected.uart": "0e1b25ffb5711bc81b4324faaf5b82e0412e7dc128043202033c252b8eca375e",
+  "experiments/dash-native/serial-session/prompt.bin": "e5b111ba26d5bb1cc89d8a3d74fad4cf1ebd5701c29877969c322b456d0784a3",
+  "experiments/dash-native/SESSION-SERIAL.md": "3f6e31ed9564a6b8fb01b6d85e6a1a63db63c217e70f6b36b4b586e68faba1f7",
+  "experiments/dash-native/session/composed.sh": "7198674f3caddffb414eede635dc99554cdfa8aa0f78f11dfbec0a8769084aaf",
+  "experiments/dash-reference/helper.c": "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8",
+  "experiments/dash-native/serial-session/reference.sh": "636baade0cb175ef3593083b7e3188f99864ab664cd0d4f2e0ecceb10bbcffda",
+  "experiments/dash-native/serial-session/manifest.json": "168777b7eebadcc512d0f5c15c45a8557f05094e0533f06c90d565822fb3ff2a"
+}

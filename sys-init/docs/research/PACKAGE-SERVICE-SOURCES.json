@@ -1,0 +1,13 @@
+{
+  "observed": "2026-09-05",
+  "repository": "/Users/cam/DEV/pkg-mgr",
+  "head": "f9f5b16f890d7aa9d2f7f1594360cdf82116dc13",
+  "scope": "Inspected working-file content; no companion runtime tests; not necessarily committed HEAD content.",
+  "files": {
+    "docs/ARCHITECTURE.md": "4d3626e994a2993bee3ff7e4649eca1c201c8deb1f296cae59a23e4a102a0b3e",
+    "docs/PACKAGE-STATE.md": "da7f2ebfe5ef99bf3ec8ee51be450b9a8ec292d6e6d82faba6a8f12a01edd667",
+    ".planning/STATE.md": "56f674fbb37f7024ad4e9544983d4c84821c0813ad6d1c4a7077c508cecf0dd6",
+    "mk/state.sh": "bd5b37dd08679c89db348091b8f38a227a3db347f7bd697ead556044f5eab39e",
+    "mk/state-schema.awk": "67cc720c8be757e1e5c0e489d927acb17f8287a213d3670530bc1dee648c827d"
+  }
+}

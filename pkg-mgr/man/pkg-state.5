@@ -1,0 +1,177 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd September 7, 2026
+.Dt PKG-STATE 5
+.Os "pkg-mgr 0.1.0 experimental"
+.Sh NAME
+.Nm pkg-state
+.Nd private staged-package records and requested roots
+.Sh DESCRIPTION
+Package state records describe observed files beneath an initialized private root.
+They do not grant capability authority, activate services or describe a live system
+installation.
+The state helper requires a single writer and a caller-controlled filesystem.
+.Pp
+The authoritative files are
+.Pa state/packages/NAME.tsv
+and
+.Pa state/world .
+There is no authoritative database or generated view cache.
+Registration leaves world unchanged.
+Use the package commands rather than editing generated package records.
+.Sh RECORD FORMAT
+New records use pkg-state-v2.
+Fields are separated by literal tabs; writers terminate rows with newline.
+The first three rows are:
+.Bd -literal -offset indent
+format<TAB>pkg-state-v2
+package<TAB>NAME<TAB>VERSION
+build-record<TAB>SHA256
+.Ed
+.Pp
+SHA256 is the 64-character lowercase hexadecimal hash of the canonical embedded
+build record.
+The next 19 rows have the shape
+.Ql evidence<TAB>KEY<TAB>VALUE
+in the order specified below.
+Dependencies follow evidence, then files follow dependencies.
+.Bl -tag -width Ds
+.It Li dependency<TAB>NAME
+A package identifier, in strictly increasing byte order with no duplicates.
+The named package must already be registered, or be the candidate itself.
+Cycles are allowed; no version constraints or solver are implemented.
+.It Li file<TAB>SHA256<TAB>SIZE<TAB>PATH<TAB>MODE
+A regular-file row.
+Paths are in strictly increasing byte order with no duplicates.
+SIZE is zero or a decimal number without leading zeros.
+MODE is four octal digits from 0000 through 0777.
+SHA256 covers file bytes; the mode is a separate local observation.
+.El
+.Pp
+Unknown, missing, duplicate, reordered or malformed rows fail validation.
+Evidence identity must match the package header.
+Fingerprints are recomputed when records are loaded; hash consistency alone does
+not establish publisher authenticity or reproducibility.
+.Sh BUILD EVIDENCE
+Keys appear in this exact order.
+All values are nonempty printable ASCII.
+.Bl -tag -width Ds
+.It Li record_type
+Must be build.
+.It Li repo_origin
+Advisory repository origin.
+.It Li namespace
+Advisory namespace.
+.It Li package_name
+Must equal NAME in the package header.
+.It Li version
+Must equal VERSION in the package header.
+.It Li recipe_path
+Advisory recipe reference.
+.It Li recipe_revision
+Advisory recipe revision.
+.It Li source_hash_alg
+Must be sha256.
+.It Li source_hash
+64 lowercase hexadecimal characters.
+.It Li manifest_hash
+The prefix sha256: followed by 64 lowercase hexadecimal characters.
+Bound to canonical file-content manifest rows.
+.It Li materials_ref
+Advisory materials reference.
+.It Li material_path
+Advisory material path.
+.It Li sbom_ref
+Advisory software bill of materials reference.
+.It Li builder_label
+Advisory builder label.
+.It Li phase_label
+Advisory build phase label.
+.It Li command_label
+Advisory command label; never evaluated as shell code.
+.It Li provenance_confidence
+Must be advisory.
+.It Li verification_result
+Must be warn.
+.It Li result_label
+Must be reproducible-build-success-not-proven.
+.El
+.Pp
+Registration does not rerun a build or resolve these advisory references.
+The schema is implemented by
+.Pa mk/state-schema.awk ;
+the state helper additionally verifies manifest/build fingerprints, the package
+graph and logical ownership conflicts.
+.Sh IDENTIFIERS AND PATHS
+Package names and versions start with an ASCII letter or digit, followed by
+letters, digits, dot, underscore, plus or minus.
+Paths are relative and allow those characters, spaces and slash.
+Empty, dot and parent path components are forbidden.
+Tabs, newlines, backslashes and other characters are unsupported.
+.Pp
+Directories are containers only.
+Symlinks, hard-linked files and special files are unsupported.
+Set-ID and sticky mode bits are rejected.
+Owner/group, ACLs, extended attributes, directory modes, empty directories and
+configuration semantics are not recorded.
+Readable content is required even if its recorded permissions are otherwise valid.
+.Sh WORLD AND DEPENDENCIES
+The world file and registration dependency input contain one exact package name
+per line, blank lines, or full-line comments beginning with #.
+Do not indent names or add inline comments.
+Duplicate names are rejected and order is immaterial.
+Unknown world roots and dangling dependencies block inspection.
+Dependency input is canonicalized during registration; world is not rewritten.
+.Pp
+List output labels world members explicit and all other packages dependency,
+including unrooted orphan packages.
+Orphan reporting follows the transitive dependency closure of world, including
+cycles, and reports candidates without deleting them.
+.Sh VERIFICATION AND RECOVERY
+Verification checks only registered package stages and never repairs files.
+Missing, changed, unreadable, unowned or unsupported entries fail verification.
+Invalid records and graphs fail before payload inspection and produce no partial
+inspection or orphan results.
+Files outside registered stages are not inventoried.
+.Pp
+Identical registration is idempotent; changed evidence for an existing name is
+rejected.
+A validated record is published through an adjacent temporary copy and rename.
+This is not a multi-record transaction or power-loss durability guarantee.
+Pending replacement guards normal operations.
+Use the separately pinned replacement procedure; do not repair a pending record
+by editing it to match the desired outcome.
+.Sh COMPATIBILITY
+Legacy pkg-state-v1 uses four fields in file rows and records no mode.
+It remains inspectable, but verification reports mode-untracked and fails for
+its files.
+No migration infers trusted permissions from possibly changed payloads.
+Use a fresh private root for new registration and v2 transport.
+Mixed-version inspection is supported; binary export requires full verification.
+.Sh EXAMPLES
+After following the hello-local registration example in
+.Xr pkg-mgr 1 ,
+set the requested root and inspect it:
+.Bd -literal -offset indent
+printf 'hello-local\en' > "$root/state/world"
+bin/pkg-mgr --root "$root" list
+bin/pkg-mgr --root "$root" --format tsv orphans
+.Ed
+.Pp
+The list labels hello-local explicit.
+The orphan report has its non-deleting header and no orphan rows.
+The write changes only the world file in the disposable example root.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa state/packages/NAME.tsv
+Generated package record.
+.It Pa state/world
+Editable requested roots.
+.It Pa stage/NAME
+The corresponding staged payload.
+.El
+.Sh SEE ALSO
+.Xr pkg-mgr 1
+.Pp
+See docs/PACKAGE-STATE.md for helper commands and validation context,
+docs/REPLACEMENT-POLICY.md for replacement, and docs/BINARY-PACKAGE.md for
+transport binding.

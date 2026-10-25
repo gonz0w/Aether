@@ -1,0 +1,6 @@
+{
+  "source": "Aether-userland/experiments/dash-native/workloads/signal-table.sh",
+  "sha256": "b045be40cb78c024171761b4ee884b7e7aeddbcbd5786fd85414358c8f02de08",
+  "license": "BSD-2-Clause",
+  "workloads_sha256": "71ea1275afcc8269b66d412c5d64c2e9c22f74b4200e22b98b25ea90a2249785"
+}
