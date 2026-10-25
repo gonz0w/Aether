@@ -207,6 +207,11 @@
       "status": "experimental-reference",
       "validation": "python3 scripts/libc_clock_smoke.py --libc-build .deps/native-current/sdk --tools-lock .deps/native-current/sdk/tools.lock.json; zig build test; retained raw source/wait probes use current inputs, historical archive replay retired.",
       "gap": "BSP q35 only; UTC/TSC/physical/SMP, POSIX timed-condition/SDK adoption, full engine and independent acceptance remain open."
+    },
+    "docs/NATIVE-ZSH-APPLICATION.md": {
+      "status": "experimental-reference",
+      "validation": "Issue69 selected host plan: actual-path unittest test_fs_application_profile.py, affected kernel models/guards, actual Zsh/envelope parser and configured kernel-check footprint; final zig build test with exact private prerequisites/current associations.",
+      "gap": "No guest, native heap/stack/IRQ/copy latency, TTY/jobs/persistence or ISO qualification. Private SDK/artifact receipts remain local."
     }
   },
   "tools": {
@@ -2444,6 +2449,26 @@
       "invariants": "Authenticated required module/terminal closure, actual target providers, isolated host generators, no target execution or success stubs, preserved ABI/protections and ordinary-process limits.",
       "oracle": "Actual compiler/link/parser outcomes, source/tool/input rechecks and applicable semantic controls; baseline and separately selected size-only comparison retain blocked admission and missing coverage honestly.",
       "gaps": "No public replay without private inputs; exact artifact and SDK measurements remain local. No native TTY/jobs/heap/stack/IRQ or ISO qualification; current admission blocker remains issue65."
+    },
+    {
+      "id": "AT-ZSH-APPLICATION",
+      "reference": "docs/NATIVE-ZSH-APPLICATION.md",
+      "owner": "Aether / Aether-userland / sys-init",
+      "budget_seconds": 300,
+      "command": "python3 -B -m unittest discover -s tests -p test_fs_application_profile.py -v; selected pure-kernel and actual-image host/compile controls; final zig build test with exact private inputs. Each selected aggregate retains its own declared scope and budget; no guest.",
+      "invariants": "Explicit application selector,1.5MiB/384 image+stack/640 total per five slots,45MiB assigned inside64MiB; old defaults/seals/authority unchanged; preflight before effects and complete private reclaim.",
+      "oracle": "Actual parser/envelope/body behavior, meaningful wrong-profile/bounds/grant/exhaustion/rollback denials, module/provider/TLS inventory, actual kernel/staging geometry and source/tool freezes.",
+      "gaps": "Trial reserve capacity is not measured native workload sufficiency. No public replay without private prerequisites, no guest/TTY/jobs/persistence/ISO acceptance."
+    },
+    {
+      "id": "AT-FS-HOST-ASSOCIATION",
+      "reference": "docs/FILESYSTEM-HOST-INPUTS.md",
+      "owner": "Aether / Aether-userland",
+      "budget_seconds": 300,
+      "command": "python3 -B -m unittest discover -s tests -p test_fs_consumer_association.py -v; exact retained-artifact/current-consumer parser/model controls and final complete zig build test with explicit local dependency/association selection. No guest.",
+      "invariants": "Original seals and seven-tool catalog unchanged; default stale rejection; current source ROOT never routes; exact actual producer inputs remain pinned; current host evidence and finite consumer changes are explicit.",
+      "oracle": "Real-root/member and exact source/tool/evidence checks; meaningful stale/malformed/extra/missing/provider/producer-logic and alias/copy denials; current parser semantic controls and complete process cleanup.",
+      "gaps": "No public replay without private retained bytes, no cryptographic proof of execution or native authority from a receipt hash, no new guest/runtime/ISO qualification."
     }
   ]
 }

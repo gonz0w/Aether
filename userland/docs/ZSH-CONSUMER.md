@@ -157,3 +157,7 @@ public inventory still depends on omitted historical/private inputs.
 The subsequent [Aether target-link status](ZSH-TARGET-LINK.md) records the public
 outcome and remaining admission/runtime boundaries. Its exact SDK and artifact
 qualification evidence stays local; the linked GitHub issue owns continuation.
+
+The owner-approved [bounded application profile](../../docs/NATIVE-ZSH-APPLICATION.md)
+defines a separate host-only admission profile under issue69. Its trial resource
+allowance is not native Zsh, TTY or heap/stack qualification.

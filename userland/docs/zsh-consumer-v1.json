@@ -212,5 +212,7 @@
     "ncurses:ncurses/tinfo/read_entry.c": "161ede223dbabeb8137c4ddcbca7f6fe8d4edea2f4d0bcb9132c6f0c990cbd56",
     "ncurses:ncurses/tinfo/db_iterator.c": "b822256e5f9a806c0e608bf608f5f0e271ce38897bffa28e9beb764b537b76ca",
     "ncurses:misc/terminfo.src": "75673b421c25032306f7cdf26df57978c86ed9cf3d3fb16a6479233775f4f961"
-  }
+  },
+  "application_profile": "../../docs/native-zsh-application-v1.json",
+  "application_profile_scope": "Owner-approved distinct resource trial under issue69; no native qualification or guest. Old ordinary profile remains unchanged."
 }

@@ -60,3 +60,9 @@ public engine admission. Passing correctness checks do not establish latency.
 Current unmap clears user PTEs and restores kernel alias write permission under
 IF-clear, flushes CR3, then zeros/reuses storage before returning to user execution.
 It does not separately flush before restoring that kernel-only write permission.
+
+## Separate Zsh application composition
+
+The explicitly selected [bounded Zsh profile](NATIVE-ZSH-APPLICATION.md) retains
+this profile's existing defaults and grants. It defines a distinct application
+image and backing allowance; host checks do not establish native workload fit.

@@ -179,6 +179,8 @@ def route(arg):
         return '-fmacro-prefix-map=' + route(left) + '=' + right
     for name in roots:
         old = str(ROOT / 'zig-out' / name)
+        legacy = '/Users/cam/DEV/Aether/zig-out/' + name
+        arg = re.sub(re.escape(legacy) + r'(?=/|$)', old, arg)
         if name.endswith('wait-clocks-2026-10-05'):
             arg = arg.replace(old + '/build-attempt-2', str(CURRENT / 'previous-build'))
         arg = arg.replace(old, str(CURRENT))

@@ -32,7 +32,8 @@ FRAME_FILES = {'pool-launch-label.su','metadata-provider.su','filesystem-import.
 
 
 def closure(directory, expected, count=None):
-    root = Path(directory).absolute()
+    from fs_host_dependencies import retained_root
+    root = retained_root(Path(directory).absolute())
     if root.resolve() != root or not root.is_dir():
         raise ValueError('AF07 launch requires a real directory')
     manifest = root/'SHA256SUMS'
@@ -134,12 +135,17 @@ def intake(directory, expected):
     recorded_inputs = {str(relocate(n)): h for n, h in record.get('inputs', {}).items()}
     if len(recorded_inputs) != len(record.get('inputs', {})):
         raise ValueError('AF07 launch relocated input collision')
-    if not record.get('commands') or any(recorded_inputs.get(n)!=h for n,h in owner['inputs'].items()):
+    from fs_consumer_association import verify_inputs
+    from fs_launch_intake import actual_digest
+    associated = verify_inputs('af07', root, expected, record)
+    current_inputs = associated if associated is not False else recorded_inputs
+    if not record.get('commands') or any(current_inputs.get(n)!=h for n,h in owner['inputs'].items()):
         raise ValueError('AF07 launch missing consumed closure')
     check_frames(record.get('local_frames',{}))
-    for name, checksum in record['inputs'].items():
-        if not Path(name).is_absolute() or metadata.digest(dependency_input(name, checksum)) != checksum:
-            raise ValueError('AF07 launch consumed input drift: '+name)
+    if associated is False:
+        for name, checksum in record['inputs'].items():
+            if not Path(name).is_absolute() or actual_digest(dependency_input(name, checksum)) != checksum:
+                raise ValueError('AF07 launch consumed input drift: '+name)
     return dict(manifest_sha256=expected,elf=str(root/'filesystem.elf'),elf_sha256=members['filesystem.elf'],
                 members=len(members),executed=False,native_acceptance=False,
                 scope='AF07 linked/loader candidate only; operational native and sys-init qualification pending')

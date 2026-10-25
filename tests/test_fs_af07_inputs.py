@@ -34,7 +34,8 @@ class Inputs(unittest.TestCase):
                 with self.assertRaises(ValueError):inputs.selection()
 
     def test_exact_historical_artifact_bytes_are_not_live_admission(self):
-        members=inputs.checked_members(inputs.ORIGINAL,inputs.ORIGINAL_SEAL)
+        from fs_host_dependencies import retained_root
+        members=inputs.checked_members(retained_root(inputs.ORIGINAL),inputs.ORIGINAL_SEAL)
         self.assertIn('owner.raw',members)
         with tempfile.TemporaryDirectory(prefix='aether-af07-members-') as folder:
             root=Path(folder).resolve();(root/'x').write_bytes(b'body')

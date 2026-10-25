@@ -39,4 +39,5 @@ def dependency_input(path, expected):
         if frozen.is_symlink() or hashlib.sha256(frozen.read_bytes()).hexdigest() != expected:
             raise ValueError('migration tooling provenance changed')
         return frozen
-    return path
+    from fs_host_dependencies import retained_input
+    return retained_input(path)

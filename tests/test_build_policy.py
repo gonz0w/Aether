@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    'native-fs-application-profile',  # Approved distinct five640-page application pools; old profiles intact, release rejected.
     'native-fs-owner-stack',  # Separate approved ABI31 stack/measured code profile; same backing, release rejected.
     'native-fs-owner-data',  # Approved ABI30 private8192-byte owner mapping; same backing, release rejected.
     'native-fs-session-init',  # Explicit16384 immutable owner; same combined quotas; release rejected.

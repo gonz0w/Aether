@@ -363,3 +363,9 @@ The [wait without a deadline](NATIVE-C.md#native-wait-without-a-deadline-contrac
 uses the same registration and word pin. Only matching wake, clear-TID wake or
 domain-stop cancellation removes that registration; timer progress alone cannot
 release its pin. The existing experiment-wide watchdogs remain in force.
+
+## Separate Zsh application composition
+
+The explicitly selected [bounded Zsh profile](NATIVE-ZSH-APPLICATION.md) retains
+this profile's existing defaults and grants. It defines a distinct application
+image and backing allowance; host checks do not establish native workload fit.

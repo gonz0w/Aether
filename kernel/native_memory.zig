@@ -545,3 +545,28 @@ test "validated ranges retain context pin boundaries and pin-before-hole errors"
     try std.testing.expectError(error.Exhausted, range(&pages, plan.address, 2 * page_size, 0, 0));
     try std.testing.expectEqualDeep(before, pages);
 }
+
+test "640-record application view clamps defaults exhaustion ranges and pins" {
+    const Service = Arena(8192);
+    var pages = [_]Page{.{}} ** 640;
+    // Image and existing stack consume records even outside the anonymous arena.
+    for (pages[0..384], 0..) |*p, i| p.* = .{ .address = 0x200000 + i * page_size, .flags = 5 | nx };
+    const before = pages;
+    try std.testing.expectEqual(@as(usize, 384), Service.used(&pages));
+    try std.testing.expectError(error.Exhausted, Service.map(&pages, 257 * page_size, 3, .{}));
+    for ([_]Service.Limits{ .{ .backing = 384 }, .{ .records = 384 }, .{ .arena = 0 }, .{ .table_available = false }, .{ .fail_after = 255 } }) |limits| {
+        try std.testing.expectError(error.Exhausted, Service.map(&pages, 256 * page_size, 3, limits));
+        try std.testing.expectEqualDeep(before, pages);
+    }
+    const plan = try Service.map(&pages, 256 * page_size, 3, .{});
+    var slots = plan.freeSlots(&pages);
+    for (0..256) |i| pages[slots.next().?] = .{ .address = plan.address + i * page_size, .flags = 7 | nx, .anonymous = true };
+    try std.testing.expectEqual(@as(usize, 640), Service.used(&pages));
+    try std.testing.expectError(error.Exhausted, Service.map(&pages, page_size, 0, .{}));
+    _ = try Service.range(&pages, base, 256 * page_size, 0, 0);
+    try std.testing.expectError(error.Denied, Service.range(&pages, base + 640 * page_size, page_size, 0, 0));
+    try std.testing.expectError(error.Denied, Service.range(&pages, base, page_size, base + page_size, 0));
+    try std.testing.expectError(error.Denied, Service.range(&pages, base, page_size, 0, base + 16));
+    try std.testing.expectError(error.Denied, Service.range(&pages, 0x200000, page_size, 0, 0));
+    try std.testing.expectError(error.Denied, Service.map(&pages, page_size, 7, .{}));
+}

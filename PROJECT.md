@@ -78,6 +78,24 @@ them. The owner decides product, support, languages, consequential architecture,
 authority, resource exceptions and policy changes. Agents resolve routine details
 inside accepted scope. File order or upstream recency cannot override a requirement.
 
+## Bounded Zsh application trial —2026-10-25
+
+The owner approved implementing and host-testing the separately reviewed
+[application profile](https://github.com/gonz0w/Aether/issues/69): a distinct
+1.5 MiB application ELF cap, 384 image-plus-existing-stack pages and 640 total
+backing pages in each of five fork-capable application slots. The engine retains 8192 pages and
+the owner retains 128. This assigns 45 MiB within the existing 64 MiB backing
+reservation; 19 MiB remains ungranted. The selected application image window is
+`0x200000..0x400000`. Existing capability, TLS, stack/bootstrap and ownership
+checks remain binding; older profiles retain their defaults, selectors and seals.
+
+At the admitted image limit, at least 256 backing pages remain for all later
+runtime allocations, including TLS and allocator overhead. This is a bounded
+trial resource decision, not evidence of Zsh heap/stack sufficiency. Routine
+implementation and host verification follow the finite issue scope, required
+checks and separate review. No guest, native prompt or ISO qualification is
+authorized by this decision. Exact SDK/artifact qualification evidence stays local.
+
 ## Settled choices
 
 | Area | Decision and canonical reference |

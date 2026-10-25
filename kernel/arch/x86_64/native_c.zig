@@ -21,6 +21,7 @@ const combined_profile = @hasDecl(@import("build_options"), "native_fs_session")
 const combined_init = @hasDecl(@import("build_options"), "native_fs_session_init") and @import("build_options").native_fs_session_init;
 const combined_owner_data = @hasDecl(@import("build_options"), "native_fs_owner_data") and @import("build_options").native_fs_owner_data;
 const combined_owner_stack = @hasDecl(@import("build_options"), "native_fs_owner_stack") and @import("build_options").native_fs_owner_stack;
+const combined_application_profile = @hasDecl(@import("build_options"), "native_fs_application_profile") and @import("build_options").native_fs_application_profile;
 fn threadedSlot(slot: usize) bool {
     return @import("build_options").native_threads and (!combined_profile or FsRoles.threaded(slot));
 }
@@ -134,7 +135,8 @@ var states: [if (combined_profile) FsRoles.domain_count else if (pipeline_capaci
 var backing_pool: if (external_backing) @import("backing_pool.zig").Pool else void = if (external_backing) .{} else {};
 var backing_partitions: [if (external_backing) states.len else 0]@import("backing_pool.zig").Partition = undefined;
 var service_records: if (service_memory) [8192]Page else void = if (service_memory) @splat(.{}) else {};
-var small_records: if (service_memory) [if (combined_profile) 6 else 3][128]Page else void = if (service_memory) @splat(@splat(.{})) else {};
+var small_records: if (service_memory) [if (combined_application_profile) 1 else if (combined_profile) 6 else 3][128]Page else void = if (service_memory) @splat(@splat(.{})) else {};
+var application_records: if (combined_application_profile) [FsRoles.process_count][FsRoles.application_pages]Page else void = if (combined_application_profile) @splat(@splat(.{})) else {};
 var service_children: if (service_workers) [82]Child else void = if (service_workers) @splat(.{}) else {};
 var small_children: if (service_workers) [if (combined_profile) 6 else 3][if (combined_profile) 0 else 2]Child else void = if (service_workers) @splat(@splat(.{})) else {};
 fn bindChildren(state: *State) void {
@@ -149,7 +151,7 @@ fn arenaEnd(s: *const State) usize {
 fn bindRecords(state: *State) void {
     if (!service_memory) return;
     const owner = backingOwner(state);
-    state.pages = if (owner == 0) &service_records else &small_records[owner - 1];
+    state.pages = if (owner == 0) &service_records else if (combined_application_profile and FsRoles.process(owner)) &application_records[owner - 1] else &small_records[if (combined_application_profile) 0 else owner - 1];
     require(state.pages.len == backing_partitions[owner].count);
 }
 fn bindPayload(state: *State, address: usize) void {
@@ -177,7 +179,7 @@ fn prepareBacking(hhdm: u64, map: *const @import("../../limine.zig").MemoryRespo
         physical < 1 << 32 and image_bytes <= (1 << 32) - physical and
         (region.physical + region.bytes <= physical or physical + image_bytes <= region.physical));
     for (&states, 0..) |*state, owner| {
-        backing_partitions[owner] = (if (combined_profile) @import("backing_pool.zig").Partition.filesystemSession(owner, states.len) else if (service_memory) @import("backing_pool.zig").Partition.service(owner, states.len) else @import("backing_pool.zig").Partition.init(owner, states.len, arena.page_count)) catch @panic("native backing owner geometry rejected");
+        backing_partitions[owner] = (if (combined_application_profile) @import("backing_pool.zig").Partition.filesystemApplication(owner, states.len) else if (combined_profile) @import("backing_pool.zig").Partition.filesystemSession(owner, states.len) else if (service_memory) @import("backing_pool.zig").Partition.service(owner, states.len) else @import("backing_pool.zig").Partition.init(owner, states.len, arena.page_count)) catch @panic("native backing owner geometry rejected");
         bindRecords(state);
         bindChildren(state);
         bindPayload(state, backing_boot_alias + backing_partitions[owner].first * 4096);
@@ -324,7 +326,8 @@ fn supervisorSlot() usize {
 fn workerCount() usize {
     return supervisorSlot();
 }
-var third_bytes: [1024 * 1024]u8 = undefined;
+const application_image_bytes = if (combined_application_profile) elf.application_limits.file_bytes else 1024 * 1024;
+var third_bytes: [application_image_bytes]u8 = undefined;
 var third_len: usize = 0;
 var third_image: elf.Image = undefined;
 var observation: @import("../../native_wait.zig").Wait = .{};
@@ -338,7 +341,7 @@ fn initChannels() Channels {
 fn channelCount() usize {
     return if (combined_profile) FsRoles.channel_count else if (@import("build_options").native_service_channel) 2 else if (pipeline_capacity) 10 else if (connections_profile) (if (@import("build_options").native_coexist_small_pool) @as(usize, 4) else 6) else if (coexist_profile) (if (@import("build_options").native_coexist_small_pool) @as(usize, 2) else 4) else if (file_profile) 2 else 1;
 }
-var second_bytes: [1024 * 1024]u8 = undefined;
+var second_bytes: [application_image_bytes]u8 = undefined;
 var second_len: usize = 0;
 var second_image: elf.Image = undefined;
 var io_profile = false;
@@ -387,7 +390,7 @@ var block_closed = false;
 var block_rights: u64 = 7;
 var block_recipient: ?struct { slot: usize, generation: u64 } = null;
 var console_recipient: ?struct { slot: usize, generation: u64 } = null;
-var service_bytes: [if (@import("build_options").native_image_large and !combined_profile) 8 * 1024 * 1024 else 1024 * 1024]u8 = undefined;
+var service_bytes: [if (@import("build_options").native_image_large and !combined_profile) 8 * 1024 * 1024 else application_image_bytes]u8 = undefined;
 var service_len: usize = 0;
 var service_image: elf.Image = undefined;
 var engine_bytes: [if (combined_profile) 8 * 1024 * 1024 else 0]u8 = undefined;
@@ -528,10 +531,14 @@ fn select() *const Frame {
     return &s.context().frame;
 }
 pub fn start(pbase: u64, vbase: u64, envelope: []const u8, hhdm: u64, map: *const @import("../../limine.zig").MemoryResponse) noreturn {
+    // Reject the selected complete composition before reservation or device setup.
+    if (combined_application_profile) {
+        _ = FsSession.parseApplication(envelope) catch @panic("invalid filesystem application envelope");
+    }
     require(envelope.len > 40);
     const service_block = @import("build_options").native_service_block;
     const service_channel = @import("build_options").native_service_channel;
-    const service_magic = if (combined_profile) (if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
+    const service_magic = if (combined_profile) (if (combined_application_profile) FsSession.application_magic else if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
     if (service_memory) require(std.mem.eql(u8, envelope[0..8], if (service_channel) service_magic else if (service_block) "AENBD002" else "AENSUP01"));
     const direct_native = std.mem.eql(u8, envelope[0..8], "AENATC01") or
         std.mem.eql(u8, envelope[0..8], "AENSUP01") or
@@ -1570,7 +1577,27 @@ fn parseStartup(bytes: []const u8) !elf.Image {
     return image;
 }
 
+// Cached images and source metadata remain kernel-owned under IF=0. Reject
+// capacity/table failures before reset, zeroing, alias edits or publication.
+fn imagePreflight(s: *const State, image: *const elf.Image) bool {
+    const count = launch.backingPages(image) catch return false;
+    if (count > s.pages.len or count > s.backing.len) return false;
+    launch.layout(image) catch return false;
+    if (combined_application_profile and FsRoles.process(backingOwner(s))) {
+        if (count > elf.application_limits.pages) return false;
+        elf.applicationWindow(image) catch return false;
+    }
+    return true;
+}
+fn copyPreflight(source: *const State, child: *const State) bool {
+    // The five application slots have equal private pools. No source can borrow
+    // another role's metadata/backing, including the ungranted reservation tail.
+    if (source.pages.len != child.pages.len or source.backing.len != source.pages.len or child.backing.len != child.pages.len or
+        source.count > source.pages.len or source.pt_count > source.pts.len or source.pt_count > child.pts.len) return false;
+    return true;
+}
 fn load(s: *State, bytes: []const u8, image: *const elf.Image, entropy: []const u8, instance: usize) void {
+    require(imagePreflight(s, image));
     mapKernel(s);
     s.root[0] = phys(&s.pdpt) | 7;
     s.pdpt[0] = phys(&s.pd) | 7;
@@ -1761,7 +1788,7 @@ fn startSupervised(envelope: []const u8) noreturn {
     require(envelope.len >= 48);
     var supervisor_code: []const u8 = undefined;
     if (combined_profile) {
-        const bundle = (if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
+        const bundle = (if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
         engine_len = bundle.engine.len;
         @memcpy(engine_bytes[0..engine_len], bundle.engine);
         engine_image = parseStartup(engine_bytes[0..engine_len]) catch @panic("invalid filesystem engine ELF");
@@ -1772,9 +1799,9 @@ fn startSupervised(envelope: []const u8) noreturn {
         @memcpy(service_bytes[0..service_len], bundle.session.images[0]);
         @memcpy(second_bytes[0..second_len], bundle.session.images[1]);
         @memcpy(third_bytes[0..third_len], bundle.session.images[2]);
-        service_image = elf.parse(service_bytes[0..service_len]) catch unreachable;
-        second_image = elf.parse(second_bytes[0..second_len]) catch unreachable;
-        third_image = elf.parse(third_bytes[0..third_len]) catch unreachable;
+        service_image = (if (combined_application_profile) elf.parseApplication(service_bytes[0..service_len]) else elf.parse(service_bytes[0..service_len])) catch unreachable;
+        second_image = (if (combined_application_profile) elf.parseApplication(second_bytes[0..second_len]) else elf.parse(second_bytes[0..second_len])) catch unreachable;
+        third_image = (if (combined_application_profile) elf.parseApplication(third_bytes[0..third_len]) else elf.parse(third_bytes[0..third_len])) catch unreachable;
         @memcpy(bootstrap[0..bundle.session.entropy.len], bundle.session.entropy);
         supervisor_code = bundle.session.supervisor;
     } else if (launch_profile) {
@@ -2607,6 +2634,10 @@ fn copyOperation(f: *const Frame) *const Frame {
         result(caller, -13);
         return select();
     }
+    if (!copyPreflight(source, child)) {
+        result(caller, -12);
+        return select();
+    }
     // Identical fixed pools bound every source live page and leaf directory. The
     // source metadata is kernel-owned and validated at each map/load operation.
     const prior_generation = child.generation;
@@ -2750,6 +2781,10 @@ fn execOperation(f: *const Frame) *const Frame {
     };
     const image = if (f.rdx == 0xc001) &service_image else if (f.rdx == 0xc002) &second_image else &third_image;
     const bytes = if (f.rdx == 0xc001) service_bytes[0..service_len] else if (f.rdx == 0xc002) second_bytes[0..second_len] else third_bytes[0..third_len];
+    if (!imagePreflight(s, image)) {
+        result(caller, -12);
+        return select();
+    }
     // Boot-validated immutable image and fixed pools: no recoverable operation
     // follows this point. We execute under IF=0 on the supervisor's CR3.
     const next = s.execution.forImage(image.entry, 0x0800c000);
@@ -2813,12 +2848,16 @@ fn launchOperation(f: *const Frame) *const Frame {
     };
     const slot: usize = @intCast(f.rdx);
     const s = &states[slot];
-    const generation = s.generation + 1;
-    resetState(s);
-    s.generation = generation;
     const second = f.rsi == 0xc002;
     const third = program_profile and f.rsi == 0xc003;
     const image = if (third) &third_image else if (second) &second_image else &service_image;
+    if (!imagePreflight(s, image)) {
+        result(caller, -12);
+        return select();
+    }
+    const generation = s.generation + 1;
+    resetState(s);
+    s.generation = generation;
     load(s, if (third) third_bytes[0..third_len] else if (second) second_bytes[0..second_len] else service_bytes[0..service_len], image, &bootstrap, slot);
     if (transferring) {
         require(ownedChannel(active, f.r8).?.transfer(active, f.r8, slot));

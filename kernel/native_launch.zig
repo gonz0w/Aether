@@ -36,20 +36,25 @@ pub fn pipelineBundle(raw: []const u8) Error!Bundle {
 
 fn threeImageBundle(raw: []const u8, header: usize) Error!Bundle {
     const limit: usize = if (raw.len >= 8 and (std.mem.eql(u8, raw[0..8], "AENMX005") or std.mem.eql(u8, raw[0..8], "AENMX006") or std.mem.eql(u8, raw[0..8], "AENMX007") or std.mem.eql(u8, raw[0..8], "AENMX008") or std.mem.eql(u8, raw[0..8], "AENMX009"))) 24576 else if (raw.len >= 8 and !std.mem.eql(u8, raw[0..8], "AENMX001") and !std.mem.eql(u8, raw[0..8], "AENPG001")) 16384 else 8192;
-    return threeImageBundleLimit(raw, header, limit);
+    return threeImageBundleLimit(raw, header, limit, 1024 * 1024);
 }
 /// Only the separately selected ABI31 filesystem owner accepts this nested wire.
 pub fn ownerStackBundle(raw: []const u8) Error!Bundle {
     if (raw.len < 8 or !std.mem.eql(u8, raw[0..8], "AENMX010")) return error.InvalidLaunch;
-    return threeImageBundleLimit(raw, 112, @import("arch/x86_64/native_fs_roles.zig").owner_stack_code_limit);
+    return threeImageBundleLimit(raw, 112, @import("arch/x86_64/native_fs_roles.zig").owner_stack_code_limit, 1024 * 1024);
 }
-fn threeImageBundleLimit(raw: []const u8, header: usize, limit: usize) Error!Bundle {
+/// Selected application composition only; old bundle entry points reject it.
+pub fn applicationBundle(raw: []const u8) Error!Bundle {
+    if (raw.len < 8 or !std.mem.eql(u8, raw[0..8], "AENMX011")) return error.InvalidLaunch;
+    return threeImageBundleLimit(raw, 112, @import("arch/x86_64/native_fs_roles.zig").owner_stack_code_limit, elf.application_limits.file_bytes);
+}
+fn threeImageBundleLimit(raw: []const u8, header: usize, limit: usize, image_limit: usize) Error!Bundle {
     if (raw.len < header) return error.InvalidLaunch;
     const a: usize = std.mem.readInt(u32, raw[8..12], .little);
     const b: usize = std.mem.readInt(u32, raw[12..16], .little);
     const c: usize = std.mem.readInt(u32, raw[16..20], .little);
     const d: usize = std.mem.readInt(u32, raw[20..24], .little);
-    if (a == 0 or a > 1024 * 1024 or b == 0 or b > 1024 * 1024 or c == 0 or c > 1024 * 1024 or d == 0 or d > limit or std.mem.readInt(u64, raw[24..32], .little) != 0 or raw.len != header + a + b + c + d) return error.InvalidLaunch;
+    if (a == 0 or a > image_limit or b == 0 or b > image_limit or c == 0 or c > image_limit or d == 0 or d > limit or std.mem.readInt(u64, raw[24..32], .little) != 0 or raw.len != header + a + b + c + d) return error.InvalidLaunch;
     return .{ .images = .{ raw[header..][0..a], raw[header + a ..][0..b], raw[header + a + b ..][0..c] }, .supervisor = raw[header + a + b + c ..], .entropy = raw[32..header] };
 }
 
@@ -348,4 +353,27 @@ test "image backing preflight includes stack and separates large from small owne
     try std.testing.expectError(error.InvalidLaunch, backingPages(&image));
     image.count = image.segments.len + 1;
     try std.testing.expectError(error.InvalidLaunch, backingPages(&image));
+}
+
+test "selected application envelope is explicit and caps each image independently" {
+    const cap = elf.application_limits.file_bytes;
+    const raw = try std.testing.allocator.alloc(u8, 112 + cap + 1 + 1 + 1 + 1);
+    defer std.testing.allocator.free(raw);
+    for (0..3) |selected| {
+        @memset(raw, 0);
+        @memcpy(raw[0..8], "AENMX011");
+        for (0..3) |i| std.mem.writeInt(u32, raw[8 + i * 4 ..][0..4], @intCast(if (i == selected) cap else 1), .little);
+        raw[20] = 1;
+        const exact = raw[0 .. raw.len - 1];
+        const parsed = try applicationBundle(exact);
+        try std.testing.expectEqual(cap, parsed.images[selected].len);
+        try std.testing.expectError(error.InvalidLaunch, ownerStackBundle(exact));
+        try std.testing.expectError(error.InvalidLaunch, pipelineBundle(exact));
+        try std.testing.expectError(error.InvalidLaunch, bundle(exact));
+        std.mem.writeInt(u32, raw[8 + selected * 4 ..][0..4], @intCast(cap + 1), .little);
+        try std.testing.expectError(error.InvalidLaunch, applicationBundle(raw));
+    }
+    @memset(raw, 0);
+    @memcpy(raw[0..8], "AENMX010");
+    try std.testing.expectError(error.InvalidLaunch, applicationBundle(raw));
 }

@@ -1,0 +1,71 @@
+{
+  "format": "aether-native-zsh-application-v1",
+  "status": "experimental-host-only; native-qualification-pending",
+  "decision": "PROJECT.md#bounded-zsh-application-trial-2026-10-25",
+  "issue": "https://github.com/gonz0w/Aether/issues/69",
+  "selection": {
+    "build_flag": "native-fs-application-profile",
+    "outer_magic": "AENFS006",
+    "nested_magic": "AENMX011",
+    "requires": "Existing complete ABI31 filesystem/session owner-stack composition; explicit application profile. Incomplete, old-envelope and release-artifact selections reject.",
+    "owner_abi": 31,
+    "filesystem_protocol": "AFSRPC09",
+    "file_wire": "AEFW0001",
+    "old_profiles": "Ordinary defaults and AENFS002/003/004/005, AENMX009/010, existing exact seals and their limits remain unchanged."
+  },
+  "application": {
+    "slots": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "file_bytes": 1572864,
+    "image_plus_existing_stack_pages": 384,
+    "total_backing_pages": 640,
+    "image_window": {
+      "low": 2097152,
+      "high_exclusive": 4194304
+    },
+    "anonymous_window": {
+      "low": 268435456,
+      "high_exclusive": 271056896
+    },
+    "minimum_runtime_reserve_pages_at_image_cap": 256,
+    "runtime_reserve": "Shared by all later allocations, including TLS, malloc metadata and guards; capacity is not workload sufficiency.",
+    "tls_template_limit_bytes": 4096,
+    "mapped_stack_pages": 16,
+    "stack_low": 134217728,
+    "stack_high_exclusive": 134283264,
+    "initial_rsp": 134266880,
+    "initial_downward_stack_bytes": 49152,
+    "leaf_table_limit": 32,
+    "contexts_per_application": 1
+  },
+  "composition": {
+    "domains": 7,
+    "channels": 12,
+    "process_channels": 10,
+    "engine_slot": 0,
+    "engine_backing_pages": 8192,
+    "engine_loader_pages": 2048,
+    "engine_file_bytes": 8388608,
+    "owner_slot": 6,
+    "owner_backing_pages": 128,
+    "owner_code_bytes": 49152,
+    "owner_resident_bytes": 8192,
+    "owner_stack_bytes": 8192,
+    "assigned_backing_pages": 11520,
+    "assigned_backing_bytes": 47185920,
+    "reserved_backing_pages": 16384,
+    "reserved_backing_bytes": 67108864,
+    "ungranted_tail_pages": 4864,
+    "ungranted_tail_bytes": 19922944
+  },
+  "authority": "Resources are not authority. Existing caller/generation-bound memory and delegated SESSION grants remain enforced. Engine thread/worker/block/entropy and process/owner factories retain their role checks. No application borrowing from engine/owner/tail.",
+  "loading": "Explicit selected parsers validate file, LOAD+stack, image-window and all existing ELF/PHDR/TLS/RELRO/layout/permission rules. Launch/exec/copy preflight precedes reset/publication or partial effects.",
+  "copy_and_reclaim": "All five application pools equal640 pages. Existing private copy preserves page/anonymous metadata, immutable aliases, execution/TLS state and checked auxv/TID/descriptor/channel rebind. Failed staging stays unpublished and is zeroed. Confirmed terminal/reclaim invalidates grants and zeroes entire owned pool. No COW/shared-code or new mutable process table.",
+  "staging": "Only selected profile permits three1.5MiB application buffers; engine staging remains8MiB. Include additional1.5MiB staging, metadata and envelope/module bytes in kernel/boot footprint inspection; existing64MiB kernel mapping remains bounded.",
+  "qualification": "Required actual-image/host/parser/body/negative checks and separate review precede integration. No guest or native IRQ/heap/stack/TTY/jobs/persistence/ISO qualification from host checks; matched native gate remains issue64."
+}

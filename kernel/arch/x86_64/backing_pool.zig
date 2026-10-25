@@ -24,6 +24,11 @@ pub const Partition = struct {
         if (owners != roles.domain_count) return error.Invalid;
         return .{ .first = roles.firstPage(owner) catch return error.Invalid, .count = roles.pages(owner) catch return error.Invalid };
     }
+    pub fn filesystemApplication(owner: usize, owners: usize) geometry.Error!Partition {
+        const roles = @import("native_fs_roles.zig");
+        if (owners != roles.domain_count) return error.Invalid;
+        return .{ .first = roles.applicationFirstPage(owner) catch return error.Invalid, .count = roles.applicationPages(owner) catch return error.Invalid };
+    }
     pub fn frame(p: Partition, plan: geometry.Plan, index: usize) geometry.Error!u64 {
         if (index >= p.count) return error.Invalid;
         return plan.frame(p.first + index);
@@ -131,4 +136,24 @@ test "filesystem SESSION partitions expose exactly 35 MiB without changing old q
     try std.testing.expectError(error.Invalid, Partition.filesystemSession(0, 4));
     try std.testing.expectError(error.Invalid, Partition.service(0, 7));
     try std.testing.expectError(error.Invalid, Partition.init(0, 7, 128));
+}
+
+test "selected application partitions cannot borrow engine owner or ungranted tail" {
+    const plan = try geometry.Plan.init(0x123000, geometry.bytes, 0xffff800000123000);
+    var stop: usize = 0;
+    for (0..7) |owner| {
+        const p = try Partition.filesystemApplication(owner, 7);
+        try std.testing.expectEqual(stop, p.first);
+        try std.testing.expectEqual(plan.physical + stop * 4096, try p.frame(plan, 0));
+        try std.testing.expectEqual(plan.physical + (stop + p.count - 1) * 4096, try p.frame(plan, p.count - 1));
+        try std.testing.expectError(error.Invalid, p.frame(plan, p.count));
+        try std.testing.expectEqual(geometry.base + stop * 4096, p.alias());
+        stop += p.count;
+    }
+    try std.testing.expectEqual(@as(usize, 11520), stop);
+    try std.testing.expectEqual(@as(usize, 4864), geometry.pages - stop);
+    try std.testing.expectError(error.Invalid, Partition.filesystemApplication(7, 7));
+    try std.testing.expectError(error.Invalid, Partition.filesystemApplication(0, 4));
+    try std.testing.expectError(error.Invalid, Partition.service(0, 7));
+    try std.testing.expectError(error.Invalid, Partition.init(0, 7, 640));
 }

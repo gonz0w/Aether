@@ -19,6 +19,20 @@ fn inside(offset: usize, length: usize, total: usize) bool {
 }
 pub const Limits = struct { file_bytes: usize = 1024 * 1024, pages: usize = 128 };
 pub const large_limits = Limits{ .file_bytes = 8 * 1024 * 1024, .pages = 2048 };
+// Explicit trial profile; ordinary and engine admission remain unchanged.
+pub const application_limits = Limits{ .file_bytes = 1536 * 1024, .pages = 384 };
+pub const application_low = 0x200000;
+pub const application_end = 0x400000;
+pub fn applicationWindow(image: *const Image) Error!void {
+    try valid(image.count > 0 and image.count <= image.segments.len);
+    for (image.segments[0..image.count]) |segment|
+        try valid(segment.address >= application_low and segment.address < application_end and segment.memsz <= application_end - segment.address);
+}
+pub fn parseApplication(b: []const u8) Error!Image {
+    const image = try parseWithLimits(b, application_limits);
+    try applicationWindow(&image);
+    return image;
+}
 pub fn parse(b: []const u8) Error!Image {
     return parseWithLimits(b, .{});
 }
@@ -220,4 +234,48 @@ test "large file limit preserves static and permission rejection" {
     std.mem.writeInt(u16, b[16..18], 2, .little);
     putHeader(b, 2, 1, 7, 4096, 0x201000, 1, 1);
     try std.testing.expectError(error.InvalidImage, parseWithLimits(b, large_limits));
+}
+
+test "selected application file page and window caps preserve old admission" {
+    var b = fixture();
+    putHeader(&b, 3, 1, 6, 8192, 0x202000, 4, 366 * 4096);
+    _ = try parseApplication(&b); // 368 image pages plus the existing sixteen.
+    try std.testing.expectError(error.InvalidImage, parse(&b));
+    putHeader(&b, 3, 1, 6, 8192, 0x202000, 4, 367 * 4096);
+    try std.testing.expectError(error.InvalidImage, parseApplication(&b));
+    b = fixture();
+    putHeader(&b, 2, 1, 5, 4096, 0x3ff000, 1, 4096);
+    std.mem.writeInt(u64, b[24..32], 0x3ff000, .little);
+    _ = try parseApplication(&b); // Exclusive window end may be reached exactly.
+    putHeader(&b, 2, 1, 5, 4096, 0x3ff000, 1, 4097);
+    _ = try parseWithLimits(&b, application_limits);
+    try std.testing.expectError(error.InvalidImage, parseApplication(&b));
+    const large = try std.testing.allocator.alloc(u8, application_limits.file_bytes + 1);
+    defer std.testing.allocator.free(large);
+    @memset(large, 0);
+    b = fixture();
+    @memcpy(large[0..b.len], &b);
+    _ = try parseApplication(large[0..application_limits.file_bytes]);
+    try std.testing.expectError(error.InvalidImage, parseApplication(large));
+    try std.testing.expectError(error.InvalidImage, parse(large[0..application_limits.file_bytes]));
+    _ = try parseWithLimits(large, large_limits);
+    for ([_]usize{ 0, 4, 5, 7, 16, 18, 20, 52, 54, 56 }) |at| {
+        b = fixture();
+        b[at] = 0xff;
+        try std.testing.expectError(error.InvalidImage, parseApplication(&b));
+    }
+    for ([_]u32{ 2, 3, 0xffffffff }) |kind| {
+        b = fixture();
+        putHeader(&b, 6, kind, 4, 512, 0x200200, 8, 8);
+        try std.testing.expectError(error.InvalidImage, parseApplication(&b));
+    }
+    b = fixture();
+    putHeader(&b, 4, 7, 4, 8192, 0x202000, 4, 4097);
+    try std.testing.expectError(error.InvalidImage, parseApplication(&b));
+    b = fixture();
+    putHeader(&b, 5, 0x6474e551, 7, 0, 0, 0, 0);
+    try std.testing.expectError(error.InvalidImage, parseApplication(&b));
+    b = fixture();
+    putHeader(&b, 2, 1, 7, 4096, 0x201000, 1, 1);
+    try std.testing.expectError(error.InvalidImage, parseApplication(&b));
 }

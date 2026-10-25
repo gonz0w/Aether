@@ -537,7 +537,8 @@ def sha(path):
 
 def sealed(root, expected, count):
     """Check path/type before hashing: manifests are inert data, never code."""
-    root = Path(root).absolute()
+    from fs_host_dependencies import retained_root
+    root = retained_root(Path(root).absolute())
     if root.is_symlink() or (root / 'SHA256SUMS').is_symlink():
         raise ValueError('symlink seal root')
     seal = root / 'SHA256SUMS'
