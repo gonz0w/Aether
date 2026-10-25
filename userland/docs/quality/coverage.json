@@ -1895,6 +1895,23 @@
       ],
       "reviewer": null,
       "exclusion": null
+    },
+    {
+      "id": "UD-zsh-target-link",
+      "surface": "Aether Zsh target-link status with blocked ordinary-process admission; private qualification details remain local",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/ZSH-TARGET-LINK.md",
+        "docs/ZSH-CONSUMER.md"
+      ],
+      "evidence": [
+        "docs/ZSH-TARGET-LINK.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
     }
   ]
 }

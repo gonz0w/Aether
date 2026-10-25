@@ -141,8 +141,9 @@ zle/bindkey/compctl builtins; basic keymap/completion tables were inspected and
 loading omitted `zsh/net/tcp` failed. The binary contains the termcap functions
 from the exact local static archive; its dynamic dependencies are host libiconv
 and libSystem. Global startup files and dynamic loading are disabled in final
-configuration. All 50 object inputs were retained as compact names, sources stayed
-pristine and owned outputs/process groups were removed.
+configuration. The receipt retains 50 module-object names from `stamp-modobjs`
+and the separate `Src/main.o` link input: 51 Zsh objects in this host build.
+Sources stayed pristine and owned outputs/process groups were removed.
 
 Earlier attempts remain retained locally: default wide-library naming selected
 the wrong archive target; optional curses discovery introduced a system library;
@@ -152,3 +153,7 @@ No host terminal session, UTF-8 behavior, target ELF, Aether syscall support,
 native resource fit or ISO boot was qualified. Upstream archive/signature checks,
 source/configuration review and scoped inventory checks passed; the complete
 public inventory still depends on omitted historical/private inputs.
+
+The subsequent [Aether target-link status](ZSH-TARGET-LINK.md) records the public
+outcome and remaining admission/runtime boundaries. Its exact SDK and artifact
+qualification evidence stays local; the linked GitHub issue owns continuation.
