@@ -66,7 +66,7 @@ history. Idle means the host fixture reaches a receive boundary with no submitte
 request; it does not prove native event parking, elapsed idle time or a new timer.
 The native owner already observes then parks when a poll cycle makes no progress.
 
-## Required drain cutpoint and current implementation gap
+## Parent-terminal admission and settlement
 
 The selected stronger cutpoint is the first authenticated terminal observation
 recorded for parent1 by `Runtime::terminal(0)` during `poll(0)`. Before polling
@@ -76,12 +76,22 @@ exec, stream request or new process admission may occur after that observation.
 An operation already synchronously admitted before the observation keeps its
 original effect/outcome obligations; this is not rollback or permission to replay.
 
-This cutpoint is **required and unimplemented**; [issue60](https://github.com/gonz0w/Aether/issues/60) owns implementation. Current `run_inner` polls all
-indices0..3, calls stream `retire_idle`, then checks the parent's terminal field.
-Thus a child's ordinary request can still be dispatched after parent terminal was
-observed earlier in that iteration. The host tests below do not qualify this
-Runtime boundary. Moving only the final `if` is insufficient unless required
-settlement remains possible and is tested.
+[Issue60](https://github.com/gonz0w/Aether/issues/60) implements this cutpoint
+in the actual Runtime. `run_inner` launches the parent, then its private inlined
+`run_session` polls index0 first. A recorded parent terminal branches directly to
+settlement before indices1..3, ordinary decoding or idle stream retirement.
+One private non-inlined terminal helper keeps cleanup scratch off the active
+polling call chain. No Runtime fields, extra ledger or authority were added.
+
+Settlement reuses authenticated `stopped`, child wait abandonment and native
+reclaim; the parent is reclaimed only afterward. Pending read/stream frames mean
+`Completion::Pending`, whose contract guarantees no effects. Confirmed terminal
+clears those slots and releases their holders. After all records settle, a final
+`retire_idle([false;4])` releases idle pipe objects before checked shutdown.
+Unread queued child bytes remain unadmitted; they are distinct from a partially
+consumed exchange or unknown effect, which already fails and retains obligations.
+Host tests exercise this production path; matched native enforcement remains
+unqualified by these changes.
 
 Do not use `gate.retire()` as graceful drain. `fork_gate::Owner::admit` requires
 Idle; Retired rejects the operations that confirmed terminal handling, final
@@ -89,8 +99,8 @@ holder settlement, stream cleanup, reclaim and checked source disconnect still
 need. Runtime's present error path deliberately retires the gate and retains
 native obligations. That failure outcome must remain distinct from clean drain.
 
-The bounded next runtime slice must preserve the current sole gate/ledgers and
-provide this settlement-only path, without a second authority table:
+The implemented settlement path preserves the sole gate/ledgers and these
+obligations, without a second authority table:
 
 1. Observe authenticated parent terminal; stop ordinary decoding/admission before
    any subsequent child poll can admit work. Only the existing authenticated terminal encodings are accepted: normal
@@ -109,11 +119,14 @@ provide this settlement-only path, without a second authority table:
    closed. Any gate failure must retain the unresolved obligations and prevent
    a clean source/export/quiescence claim.
 
-The first follow-up must test parent-terminal plus a queued child FILE write,
-fork/exec or stream request in one poll cycle; no request may reach its provider
-or allocate after the cutpoint. It must also test existing pending work/children
-settling successfully, failed close/reclaim and unknown mutation completion,
-with no forged success from irreversible failure retirement.
+The actual Runtime tests queue child FILE write, exec, fork and stream frames
+at the parent-terminal boundary. No later child byte is consumed, no reply or
+provider effect occurs and no new native object is allocated. Additional cases
+settle a no-effect read and reserved parent wait, require final pipe retirement,
+and retain failed close/reclaim, nonterminal stop, partial exchange and unknown
+mutation outcomes. Named compiling omissions restore child polling or remove
+final idle retirement and must fail their specific assertions. The fixture calls
+the private production session path, without a second drain state machine.
 
 ## Checked shutdown, export and quiescence
 
@@ -154,8 +167,8 @@ requests and then asking for disconnect is exhaustion, not clean drain.
 Preserve seven domains, twelve channels,35MiB backing, engine 8192 backing pages,
 owner 128 backing pages, owner 49152 code/8192 resident including 4096 workspace,
 8184 usable stack, engine ELF8MiB/2048 loader pages and process ELF1MiB/128 pages.
-Current measured owner 8160 conservative stack leaves 24 bytes; no spare capacity
-or native peak-stack result follows. Existing writer 60s/6000 delivered ticks,
+The current complete owner measures 8056 conservative stack bytes of 8184 usable,
+leaving 128 bytes in that static inspection; no native peak-stack result follows. Existing writer 60s/6000 delivered ticks,
 reader 30s/3000 and 64KiB capture remain native qualification ceilings; no guest is
 selected here. An interactive lifetime beyond those diagnostic limits is not
 silently authorized by the phrase boot session.
@@ -169,7 +182,16 @@ observed sequence and explicit deadline, preserve event-before-park and terminal
 races, distinguish deadline/event results and fail rather than restarting its
 budget. [Issue61](https://github.com/gonz0w/Aether/issues/61) owns this typed adapter; it does not select a new timer, larger limits or a
 claim that a work counter bounds elapsed drain. Until implemented and checked,
-finite elapsed drain and the stronger admission cutpoint remain open coverage.
+finite elapsed drain remains open coverage. The admission cutpoint is host-tested;
+its matched native enforcement and elapsed timing remain separate qualification.
+
+The existing observation returns the authoritative delivered-interrupt tick count,
+not diagnostic UTC or guaranteed wall time during missing interrupt delivery. A
+whole-drain bound must also cover source-channel waits before the disconnect
+verifier: observe before each nonblocking transfer, retain that sequence on
+EAGAIN, and park against the same fixed phase deadline. A verifier-only deadline
+would leave earlier handle/disconnect exchanges unbounded. Check expiry during
+continuous progress too; wakes and new frames cannot renew the phase allowance.
 
 ## Focused current-code host proof
 
@@ -201,7 +223,7 @@ The lead owns workflow/quality registration and separate review before integrati
 
 Use one 300-second host aggregate, each leaf at most180 seconds, bounded4MiB
 streams and the existing owned-process helper. Keep failed attempts and short
-logs; remove owned compiled outputs. Full native qualification, stronger Runtime
+logs; remove owned compiled outputs. Full native qualification of Runtime
 drain, typed elapsed deadlines, operational reopen/provisioning, long-lived Zsh
 and assembled persistent ISO acceptance remain separate from these host checks.
 
@@ -210,3 +232,31 @@ local disconnect a service lifetime. It misses the new cutpoint and settlement
 obligations. Reuse the actual gate/source, synchronous ownership and existing
 native stop/reclaim/park mechanisms; no new manager, daemon, ledger, runtime
 dependency or authority abstraction is selected.
+
+## Current Runtime verification —2026-10-25
+
+From the system root, the maintained component entry point is
+`PYTHONOPTIMIZE=1 python3 -B sys-init/scripts/check-home-owner.py`.
+It registers nine home-owner methods and named admission/idle-retirement
+omissions alongside the existing construction, File receipt and failure controls.
+Exact tools, SDK inputs and private formatting policy are owner-provided
+prerequisites. A public checkout alone cannot replay this complete gate. Current
+local measurement uses declared read-only dependency routing; private inputs and
+raw receipts are never published or substituted with successful stubs.
+
+The focused actual-runtime suite passes nine home methods, three concrete-runtime
+regressions, four internal exec regressions and both new omission controls, plus
+strict host/native compilation, Clippy and Rustfmt. The complete current owner
+links at 47576/49152 code bytes, 7784/8192 runtime-plus-workspace bytes and 8056/8184
+conservative stack bytes. Sources/tools were frozen, all 131 recorded commands
+completed in 18.345 seconds under the 300-second aggregate and owned outputs were
+removed. This is offline ELF/layout/call-graph measurement, not native peak or
+execution evidence.
+
+The first measured layout exceeded the stack ceiling by 32 bytes. Outlining only
+terminal settlement reduced active poll scratch and restored fit without larger
+limits. All failed attempts remain local, including initial fixture/compilation
+errors and a confounded early regression attempt. The final named omission
+provides the direct old-child-polling regression proof. Historical seals remain
+unchanged; #56 legacy guarded coverage, #61 elapsed deadlines and a fresh matched
+native witness remain separate.

@@ -2414,6 +2414,16 @@
       "invariants": "Pinned upstream signatures/checksums, explicit static module allowlist and local libtinfo; no optional function corpus, forced target API success or host-as-native claims.",
       "oracle": "Source-derived requirement matrix plus final module/config/link inspection and separate handoff review; preserve every failed attempt and clean owned outputs.",
       "gaps": "Actual Aether ELF/API/TTY/process, frontend/terminfo selection, code/memory fit and assembled ISO qualification remain separate."
+    },
+    {
+      "id": "AT-FS-PARENT-TERMINAL",
+      "reference": "userland/docs/proposals/FS-SERVICE-LIFETIME.md",
+      "owner": "sys-init/Aether-userland",
+      "budget_seconds": 300,
+      "command": "From system root: PYTHONOPTIMIZE=1 python3 -B sys-init/scripts/check-home-owner.py. Actual Runtime host controls, strict host/native builds and offline complete owner fit; exact private prerequisites required; no guest.",
+      "invariants": "Parent poll/terminal cutpoint before child dispatch; existing gate/ledgers retain failure obligations and stop/abandon/reclaim settlement, then final idle retirement. No new fields, authority, ABI or resource limits.",
+      "oracle": "Queued FILE/exec/fork/stream consume no child bytes or allocate; pending no-effect work settles only after confirmed terminal; failed close/reclaim/nonterminal stop/partial exchange/unknown outcomes cannot export. Named old-poll and missing-retire controls plus exact complete owner code/resident/conservative-stack measurement.",
+      "gaps": "No native Runtime enforcement, peak stack, elapsed drain deadline or assembled Zsh/ISO acceptance. Private SDK/style/evidence unavailable publicly; legacy guarded coverage remains issue56."
     }
   ]
 }
