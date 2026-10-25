@@ -18,6 +18,12 @@ implementation from historical queues.
 - Component [userland](../userland/README.md), [sys-init](../sys-init/README.md)
   and [pkg-mgr](../pkg-mgr/README.md) guides: responsibility and scoped commands.
 
+- Filesystem checkpoints: [offline AF09 integration](https://github.com/gonz0w/Aether/issues/3),
+  [bounded native qualification](https://github.com/gonz0w/Aether/issues/4), and the
+  [operational lifetime contract](https://github.com/gonz0w/Aether/issues/9).
+  [The dated witness](../userland/docs/proposals/FS-HOME-PREP.md#bounded-native-witness-2026-10-25)
+  describes the private experiment's scope; GitHub owns live selection and status.
+
 ## Historical records
 
 Component STATE/BACKLOG/PRIORITY files and legacy work records preserve stable

@@ -285,7 +285,7 @@ Zsh/TTY/ISO are still R1 work. This remains the process/system-shell foundation.
 
 ## AF09 offline home preparation
 
-[Issue3](https://github.com/gonz0w/Aether/issues/3) owns live integration. The
+[Issue3](https://github.com/gonz0w/Aether/issues/3) records public offline integration. The
 [AF09 preparation contract](../userland/docs/proposals/FS-HOME-PREP.md) defines
 the separate AF09 engine, explicit FILE helper, guarded owner inputs and two
 independent read-only reader images. It preserves the old AF07/AF08 paths and
@@ -313,6 +313,15 @@ The three preparation CLIs provide ASCII help/version on stdout and JSON results
 on stdout, with escaped diagnostics on stderr:0 success,1 operational failure,
 2 blocked prerequisite and64 invalid usage. Keep a failed run's compact receipt,
 correct its prerequisite and select a new unused output; never rewrite old results.
+
+Dated native witness,2026-10-25: the separately authorized sequence in issue4
+passed pristine read, the fixed bootstrap/FILE write and independent fresh recovery.
+The complete metadata comparison, unchanged reader media, stopped-writer recovery
+media, lifecycle/reclaim and host shutdown checks passed. See the
+[bounded witness](../userland/docs/proposals/FS-HOME-PREP.md#bounded-native-witness-2026-10-25)
+for scope and retention. Private receipts and generated artifacts are unavailable
+publicly. This is not operational-service, installed-home, Zsh or release acceptance,
+and it adds no execution option to the preparation command.
 
 ## Fresh AF07 inputs and guarded qualification —2026-10-23
 

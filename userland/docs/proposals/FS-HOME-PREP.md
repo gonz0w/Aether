@@ -314,7 +314,34 @@ streams remain. No automatic retry or guest permission follows.
 These are dated private results, not public-clone replay or native acceptance.
 Private compact receipts, artifact identities and earlier failures remain with
 the owner; none of their raw contents or generated artifacts are published here.
-Issue3 owns remaining public source review, affected checks and integration.
-Issue56 is separate guarded legacy coverage; issue4 requires fresh exact native
-disposition. Native recovery/durability, full SDK cold rebuild, native peak,
-physical/extended coverage, interactive Zsh and release qualification remain open.
+Public source integration is recorded in issue3. Issue56 is separate guarded
+legacy coverage. General recovery and power-loss durability, full SDK cold rebuild,
+native peak, physical/extended coverage, interactive Zsh and release qualification
+remain open. The separate bounded native witness below does not close those gates.
+
+## Bounded native witness —2026-10-25
+
+[Issue4](https://github.com/gonz0w/Aether/issues/4) records one authorized
+pristine-reader -> writer -> fresh-recovery QEMU sequence. All three roles passed.
+The writer completed the fixed bootstrap and C FILE workload with the required
+helper, parent and engine terminal outcomes. Independent recovery checked the
+home/probe payload, original file and complete preserved-metadata digest.
+Both reader runs left the whole media unchanged; recovery consumed the exact
+confirmed stopped-writer media. Strict wait, terminal, reclaim and host shutdown
+checks passed. Source, tool and artifact verification remained valid.
+
+A separately reviewed temporary execution driver supplied the AF09 serial input
+and used the existing strict transcript/media oracles. Offline controls tested
+sequence failure, stale inputs, capture bounds, partial writes, deadline accounting
+and unknown shutdown. All guest process groups were confirmed absent before owned
+outputs were removed. Current dependencies and compact evidence remain private;
+the consumed prepared images and temporary execution files were disposed.
+Retained hashes do not make those artifact bytes available for replay.
+
+This is bounded native bootstrap, FILE-write and fresh-recovery evidence.
+It does not qualify general operational uptime, installed-home/login policy,
+power-loss durability, interactive Zsh or R1. The public preparation qualifier
+still has no execution option. Another native run needs fresh reviewed artifacts
+and its own disposition. The next service-lifetime contract is tracked by
+[issue9](https://github.com/gonz0w/Aether/issues/9); that issue owns selection and
+acceptance rather than this dated witness.
