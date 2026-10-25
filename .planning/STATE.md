@@ -2,12 +2,12 @@
 
 ## System work index
 
-This compatibility index holds navigation, not live status or priority. Apply
-[PROJECT's cutover rule](../PROJECT.md#public-onboarding-cutover): Issues become
-the sole live work authority only after verified onboarding and migration are
-recorded. Repository creation, issue links in a draft or a CI result alone do not
-establish that cutover. Until then the one approved onboarding bootstrap record
-owns that operation; do not start public implementation from historical queues.
+This compatibility index holds navigation, not live status or priority.
+[PROJECT's verified cutover](../PROJECT.md#public-onboarding-cutover) makes GitHub
+Issues the sole live work authority when the onboarding completion PR merges.
+Source, hosted checks, settings and issue migration are recorded in the
+[onboarding issue](https://github.com/gonz0w/Aether/issues/1). Do not start public
+implementation from historical queues.
 
 - [GitHub Issues](https://github.com/gonz0w/Aether/issues): live scope, ownership,
   dependencies and continuation after cutover.
