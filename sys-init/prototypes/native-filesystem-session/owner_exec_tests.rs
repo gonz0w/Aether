@@ -55,6 +55,13 @@ impl af07_transport::Kernel for Mock {
     }
 }
 impl Control for Mock {
+    fn park_events(
+        &mut self,
+        sequence: u64,
+        _: Option<owner_control::Deadline>,
+    ) -> owner_control::Status {
+        self.ctl(0x2a001, 0xe002, sequence)
+    }
     fn ctl(&mut self, op: u64, handle: u64, arg: u64) -> owner_control::Status {
         let mut s = self.0.borrow_mut();
         s.events.push(op);

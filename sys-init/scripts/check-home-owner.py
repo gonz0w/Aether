@@ -64,7 +64,7 @@ def check(record,work,proc,tools):
     for compiler in ("rustc","clippy-driver"):
         run(compiler+"-home-owner-test-build",[tools[compiler]["path"],*COMMON,*flags,*deps(folder,producer,imports),"--test",P/"owner_runtime.rs","-o",work/(compiler+"-home-owner-tests")])
     result=run("home-owner-tests",[work/"rustc-home-owner-tests","home_tests::","--test-threads=1"])
-    require(b"9 passed; 0 failed" in result.stdout,"nine matched home-owner cases executed")
+    require(b"16 passed; 0 failed" in result.stdout,"sixteen matched home-owner cases executed")
     # Compiling omission controls exercise named behavior, not generic panics.
     test="runtime_keeps_whole_file_event_before_error_and_never_overwrites_on_second_run"
     independent="independent_admission_and_delivery_errors_are_retained_before_return"
@@ -80,6 +80,8 @@ def check(record,work,proc,tools):
         ("runtime-once","owner_runtime.rs","require(!self.started)?;","let _=self.started;",test,"OWNER_ONCE_ONLY"),
         ("parent-terminal-admission","owner_runtime.rs","let mut progress = self.poll(0, workspace)?;","let mut progress = self.poll(0, workspace)?; for index in 1..4 { progress |= self.poll(index, workspace)?; }","parent_terminal_cuts_off_queued_child_file_exec_fork_and_stream","DRAIN_NO_CHILD_BYTES"),
         ("parent-terminal-pipe-retire","owner_runtime.rs",".admit(|_, streams| streams.retire_idle([false; 4]))",".admit(|_, streams| { let _ = streams; })","pending_no_effect_read_and_reserved_wait_settle_then_retire_pipe","DRAIN_FINAL_PIPE_RETIRE"),
+        ("source-deadline-check","owner_runtime.rs","match deadline.check(self.observer.observe_events())","match { let _ = deadline; Ok::<u64,i64>(self.sequence) }","continuous_source_progress_cannot_outlive_fixed_drain_deadline","DRAIN_SOURCE_EXPIRED_IO"),
+        ("source-event-sequence","owner_runtime.rs","self.observer.park_events(self.sequence, Some(deadline))","{ let observed = self.observer.observe_events(); self.observer.park_events(observed.1, Some(deadline)) }","source_wait_keeps_pretransfer_sequence_and_one_deadline_across_events","DRAIN_PRETRANSFER_SEQUENCE"),
     ]
     record["home_owner_controls"]=[]
     for label,filename,before,after,case,marker in controls:
@@ -108,6 +110,33 @@ def check(record,work,proc,tools):
         rejected=run(label+"-rejected",[control/"tests","--exact",name,"--nocapture"],expected=101)
         require(name.encode() in rejected.stdout and b"1 failed" in rejected.stdout and marker.encode() in rejected.stderr,"named home-owner control: "+label)
         record["home_owner_controls"].append({"label":label,"file":filename,"before":before,"after":after,"test":name,"marker":marker,"sha256":runner["sha"](source/filename)})
+    # Execute the actual Native adapter body with only the trap boundary replaced.
+    trap=[*COMMON,"--cfg","owner_control_host_trap",*deps(folder,producer,["af07_transport"]),"--test"]
+    for compiler in ("rustc","clippy-driver"):
+        run(compiler+"-typed-park-build",[tools[compiler]["path"],*trap,P/"owner_control.rs","-o",work/(compiler+"-typed-park")])
+    typed=run("typed-park-tests",[work/"rustc-typed-park","--test-threads=1"])
+    require(b"2 passed; 0 failed" in typed.stdout,"two actual Native argument/deadline controls executed")
+    control=work/"typed-park-rdx-control";control.mkdir()
+    original=(P/"native_owner_control.rs").read_text()
+    before="deadline.map_or(0, super::Deadline::get)"
+    require(original.count(before)==1,"unique typed RDX control")
+    (control/"owner_control.rs").symlink_to(P/"owner_control.rs")
+    (control/"native_owner_control.rs").write_text(original.replace(before,"{ let _ = deadline; 0 }",1))
+    run("typed-park-rdx-build",[tools["rustc"]["path"],*trap,control/"owner_control.rs","-o",control/"tests"])
+    rejected=run("typed-park-rdx-rejected",[control/"tests","--exact","host_trap::actual_native_park_routes_deadline_in_rdx_and_preserves_generic_ctl","--nocapture"],expected=101)
+    require(b"TYPED_PARK_RDX" in rejected.stderr and b"1 failed" in rejected.stdout,"typed park RDX omission rejected")
+    record["native_deadline_controls"]=[{"label":"typed-park-rdx","before":before,"after":"{ let _ = deadline; 0 }","sha256":runner["sha"](control/"native_owner_control.rs"),"marker":"TYPED_PARK_RDX"}]
+    record["transport_configuration_denials"]=[]
+    for stage,extra in (("host",[]),("native",NATIVE)):
+        selected=work/("home-owner-"+stage);producer2=work/("matched-"+stage)
+        denied=run(stage+"-host-trap-denied",[tools["rustc"]["path"],*COMMON,*extra,*deps(selected,producer2,["af07_transport"]),"--cfg","owner_control_host_trap","--crate-type=lib",P/"owner_control.rs","-o",selected/"forbidden.rlib"],expected=1)
+        require(b"owner control host trap requires host tests and forbids native target" in denied.stderr,"host trap cannot become a production/native artifact")
+        for name,kind,result in (("client","filesystem_client::Client<T>","filesystem_client::Error"),("process","filesystem_remote_descriptors::ProcessFiles<T>","filesystem_remote_descriptors::ProcessError")):
+            probe=work/(stage+"-"+name+"-transport-loan.rs")
+            probe.write_text("#![no_std]\npub fn leak<T:filesystem_service::Channel>(value:&mut "+kind+")->Result<(),"+result+">{value.configure_channel(|channel|Ok(channel))}\n")
+            denied=run(stage+"-"+name+"-transport-loan-denied",[tools["rustc"]["path"],*COMMON,*extra,*deps(selected,producer2,imports),"--crate-type=lib",probe,"-o",selected/"forbidden.rlib"],expected=1)
+            require(b"E0308" in denied.stderr and b"configure_channel" in denied.stderr,"scoped transport configuration loan cannot escape")
+            record["transport_configuration_denials"].append({"stage":stage,"type":name,"sha256":runner["sha"](probe)})
     # Reject incomplete construction selections before either host or target use.
     for stage,extra in (("host",[]),("native",NATIVE)):
         folder=work/("home-owner-"+stage);producer=work/("matched-"+stage)
@@ -203,7 +232,8 @@ def check(record,work,proc,tools):
         result=measure(SYSTEM,output,Path(tools["rustc"]["path"]),tools,byte_run,deps(old,producer,imports),["-Clink-arg="+str(obj)],True)
         record["old_owner_measurements"][profile]=result
         require(result["resident_fits"] and result["code_fits"] and result["stack"]["status"]=="pass",profile+" old complete owner fits")
-    run("home-owner-rustfmt",[tools["rustfmt"]["path"],"--edition=2024","--check",*[P/n for n in ("fork_gate.rs","owner_dispatch.rs","owner_runtime.rs","owner_exec_tests.rs","native_owner.rs","home_owner_tests.rs")]])
+    run("home-owner-rustfmt",[tools["rustfmt"]["path"],"--edition=2024","--check",*[P/n for n in ("fork_gate.rs","owner_dispatch.rs","owner_runtime.rs","owner_control.rs","native_owner_control.rs","owner_exec_tests.rs","native_owner.rs","home_owner_tests.rs")]])
+    run("deadline-source-rustfmt",[tools["rustfmt"]["path"],"--edition=2021","--check",S/"client.rs",S/"process-descriptors.rs"])
     if not (measured["resident_fits"] and measured["code_fits"] and measured["stack"]["status"]=="pass"):
         raise runner["PreconditionError"]("complete home owner exceeds resource gate; inspect retained measurement")
 

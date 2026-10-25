@@ -166,6 +166,16 @@ impl<T: Channel> Client<T> {
         }
     }
 
+    /// Trusted sole owner configures only its transport under exclusive admission.
+    /// The callback cannot return a channel loan. No protocol operation, replay,
+    /// authority change or reconnection is performed by this method.
+    pub fn configure_channel(
+        &mut self,
+        configure: impl FnOnce(&mut T) -> Result<()>,
+    ) -> Result<()> {
+        self.active()?;
+        configure(&mut self.channel)
+    }
     fn active(&self) -> Result<()> {
         if self.cleanup.is_some() {
             Err(Error::Closed)

@@ -156,42 +156,70 @@ progress, failed verification, nonzero local close, failed reclaim or unknown
 stop prevents clean acceptance. Do not retry a mutation, reconnect, reset a
 counter or reinterpret a retained failure receipt as clean shutdown.
 
-## Bounds and elapsed deadline gap
+## Bounds and one drain deadline
 
-Keep current root 3/home 15 rights, four service connections,16 total handles,
-4096-byte transfer/workspace limits,96 cumulative requests and9 cumulative
-provider mutation attempts including bootstrap and teardown. Caller selection
-must reserve request capacity for closes and disconnect; consuming all 96 work
-requests and then asking for disconnect is exhaustion, not clean drain.
+Keep current root 3/home 15 rights, four service connections, 16 total handles,
+4096-byte transfer/workspace limits, 96 cumulative requests and 9 cumulative
+provider mutation attempts including bootstrap and teardown. Reserve request
+capacity for closes and disconnect; exhausting all work slots is not clean drain.
 
-Preserve seven domains, twelve channels,35MiB backing, engine 8192 backing pages,
-owner 128 backing pages, owner 49152 code/8192 resident including 4096 workspace,
+Preserve seven domains, twelve channels, 35MiB backing, engine 8192 backing pages,
+owner 128 backing pages, owner 49152 code/ 8192 resident including 4096 workspace,
 8184 usable stack, engine ELF8MiB/2048 loader pages and process ELF1MiB/128 pages.
-The current complete owner measures 8056 conservative stack bytes of 8184 usable,
-leaving 128 bytes in that static inspection; no native peak-stack result follows. Existing writer 60s/6000 delivered ticks,
-reader 30s/3000 and 64KiB capture remain native qualification ceilings; no guest is
-selected here. An interactive lifetime beyond those diagnostic limits is not
-silently authorized by the phrase boot session.
+The deadline-enabled complete owner measures 49016 code bytes, 7800 resident bytes
+including workspace and 8072 conservative stack bytes. This leaves 136 code bytes
+and 112 static stack bytes; no native peak measurement follows. Existing writer
+60s/6000 delivered ticks, reader 30s/3000 and 64KiB capture remain native qualification
+ceilings. A longer interactive lifetime needs its own selected profile.
 
-Runtime's `remaining` is a finite work allowance consumed by polls/transfers;
-it is **not elapsed time**. `Control::ctl` currently passes its third scalar in
-RSI and fixes RDX at zero. The kernel's existing `0x2a001` event-park operation
-accepts an optional absolute tick deadline in RDX; the current owner adapter
-therefore selects no deadline. A later typed adapter must carry the existing
-observed sequence and explicit deadline, preserve event-before-park and terminal
-races, distinguish deadline/event results and fail rather than restarting its
-budget. [Issue61](https://github.com/gonz0w/Aether/issues/61) owns this typed adapter; it does not select a new timer, larger limits or a
-claim that a work counter bounds elapsed drain. Until implemented and checked,
-finite elapsed drain remains open coverage. The admission cutpoint is host-tested;
-its matched native enforcement and elapsed timing remain separate qualification.
+[Issue61](https://github.com/gonz0w/Aether/issues/61) selects one 500-delivered-tick
+allowance for this finite drain experiment. After authenticated parent terminal,
+`begin_drain` obtains one successful owner observation and checks addition before
+constructing a nonzero absolute `Deadline`. It arms the sole source once through
+the existing gate, before any child stop/reclaim or final FILE close. No wake,
+frame, child or verifier renews that deadline. Startup and healthy-session waits
+retain their existing profile; this allowance begins at the observed cutpoint.
 
-The existing observation returns the authoritative delivered-interrupt tick count,
-not diagnostic UTC or guaranteed wall time during missing interrupt delivery. A
-whole-drain bound must also cover source-channel waits before the disconnect
-verifier: observe before each nonblocking transfer, retain that sequence on
-EAGAIN, and park against the same fixed phase deadline. A verifier-only deadline
-would leave earlier handle/disconnect exchanges unbounded. Check expiry during
-continuous progress too; wakes and new frames cannot renew the phase allowance.
+`Control::observe_events` uses existing operation 0x2a000; `Observation::checked`
+accepts only successful results before reading sequence/tick. Typed native
+`park_events` passes the observed sequence in RSI and the absolute deadline in
+RDX to 0x2a001, keeping selector 0xe002 and other input scalars fixed. The generic
+`ctl` argument mapping is unchanged. Event, deadline (-110), cancellation (-125)
+and invalid/native errors keep their existing result meanings; invalid auxiliary
+registers never become a successful clock observation. `Deadline` cannot encode
+zero, and zero allowance or overflow fails before source arming.
+
+Only the source is wrapped by private `DrainIo`; its optional deadline and saved
+sequence cost 16 native resident bytes. Common Endpoints, child Peers, Channel/Io,
+Store/Descriptions and kernel interfaces stay unchanged. The source snapshots
+owner events **before** each nonblocking transfer. On EAGAIN it parks using that
+saved sequence and the original deadline, without a new observation between the
+failed transfer and park. An event in that interval therefore remains visible.
+
+The trusted `Client::configure_channel` and `ProcessFiles::configure_channel`
+callbacks configure this owned transport under exclusive admission. Their
+void/result interface cannot return a channel loan, and retired-source access
+fails. The actual callback only arms the private adapter; it performs no RPC,
+reconnection, authority change, receipt collection or mutation replay.
+
+The same deadline passes through confirmed child stop, handle settlement,
+disconnect exchange and engine-terminal/export verification. Fresh checkpoints
+on progress paths and before final acceptance/reclaim/halt prevent continuously
+positive transfers from evading expiry. Work counters remain independent finite
+work bounds, not elapsed timers. Timeout, cancellation, partial frames and unknown
+mutation/delivery outcomes fail the drain and retain obligations. Both owned
+source-close attempts still occur on Client failure, even after expiry.
+
+Known completed facts stay accurate: if engine reclaim and stale-handle proof
+succeed before a later expiry check, `engine=0` records that fact while the drain
+still fails and halt is forbidden. A timeout never fabricates terminal/reclaim,
+clean export, block quiescence or permission to retry a mutation.
+
+The kernel observation is an authoritative **delivered-interrupt tick** count.
+It is not diagnostic UTC or a wall-clock guarantee during missing/delayed IRQs.
+Kernel deadline precedence wins event ties. The whole-role wall watchdogs remain
+separate. Matched native enforcement, timing and peak evidence belongs to
+[issue64](https://github.com/gonz0w/Aether/issues/64); no guest is selected here.
 
 ## Focused current-code host proof
 
@@ -224,7 +252,7 @@ The lead owns workflow/quality registration and separate review before integrati
 Use one 300-second host aggregate, each leaf at most180 seconds, bounded4MiB
 streams and the existing owned-process helper. Keep failed attempts and short
 logs; remove owned compiled outputs. Full native qualification of Runtime
-drain, typed elapsed deadlines, operational reopen/provisioning, long-lived Zsh
+drain/deadlines, operational reopen/provisioning, long-lived Zsh
 and assembled persistent ISO acceptance remain separate from these host checks.
 
 The simpler alternative is retaining the current finite entry and calling its
@@ -233,21 +261,22 @@ obligations. Reuse the actual gate/source, synchronous ownership and existing
 native stop/reclaim/park mechanisms; no new manager, daemon, ledger, runtime
 dependency or authority abstraction is selected.
 
-## Current Runtime verification —2026-10-25
+## Parent-terminal host checkpoint —2026-10-25 (PR63)
 
 From the system root, the maintained component entry point is
 `PYTHONOPTIMIZE=1 python3 -B sys-init/scripts/check-home-owner.py`.
-It registers nine home-owner methods and named admission/idle-retirement
-omissions alongside the existing construction, File receipt and failure controls.
+At PR63 it registered nine home-owner methods and named admission/idle-retirement
+omissions alongside construction, File receipt and failure controls. The deadline
+checkpoint below adds its current cases to the same maintained checker.
 Exact tools, SDK inputs and private formatting policy are owner-provided
 prerequisites. A public checkout alone cannot replay this complete gate. Current
 local measurement uses declared read-only dependency routing; private inputs and
 raw receipts are never published or substituted with successful stubs.
 
-The focused actual-runtime suite passes nine home methods, three concrete-runtime
+The focused actual-runtime suite at PR63 passed nine home methods, three concrete-runtime
 regressions, four internal exec regressions and both new omission controls, plus
-strict host/native compilation, Clippy and Rustfmt. The complete current owner
-links at 47576/49152 code bytes, 7784/8192 runtime-plus-workspace bytes and 8056/8184
+strict host/native compilation, Clippy and Rustfmt. That checkpoint’s complete owner
+linked at 47576/ 49152 code bytes, 7784/ 8192 runtime-plus-workspace bytes and 8056/ 8184
 conservative stack bytes. Sources/tools were frozen, all 131 recorded commands
 completed in 18.345 seconds under the 300-second aggregate and owned outputs were
 removed. This is offline ELF/layout/call-graph measurement, not native peak or
@@ -258,5 +287,45 @@ terminal settlement reduced active poll scratch and restored fit without larger
 limits. All failed attempts remain local, including initial fixture/compilation
 errors and a confounded early regression attempt. The final named omission
 provides the direct old-child-polling regression proof. Historical seals remain
-unchanged; #56 legacy guarded coverage, #61 elapsed deadlines and a fresh matched
-native witness remain separate.
+unchanged. #56 legacy guarded coverage and #64 matched native qualification remain
+separate; the next section records the implemented deadline checkpoint.
+
+## Whole-drain deadline host checkpoint —2026-10-25
+
+The full maintained component check body passes 911 commands in 188.399 seconds:
+367 positive Rust test executions, 56 semantic controls, four host/native channel
+loan denials and both host-trap guards. Strict host/native compilation, Clippy and
+Rustfmt pass. Exact private input routing and compact receipts remain local;
+public source alone cannot replay the complete gate. All used sources/tools were
+frozen and rechecked, diagnostic bytes stayed below 4MiB, and all owned processes
+and generated outputs were removed.
+
+Actual Runtime/source framing cases cover pre-transfer event retention on EAGAIN,
+repeated wakes without renewal, positive-progress expiry, child stop, final handle
+settlement, disconnect and export expiry, post-reclaim bookkeeping, cancellation,
+malformed/denied observations, zero/overflow, partial frames and unknown outcomes.
+The Native implementation’s argument routing is exercised through a host-only
+trap substitute; omitting RDX fails the named assertion. Trap selection is
+rejected for non-test host and native target builds. This supplies no native
+interrupt-timing witness or successful substitute syscall.
+
+| Complete owner profile | Code bytes / 49152 | Resident+workspace / 8192 | Conservative stack / 8184 |
+| --- | ---: | ---: | ---: |
+| Current home | 49016 | 7800 | 8072 |
+| AF07 | 43144 | 7544 | 7088 |
+| AF08 | 47008 | 7640 | 7088 |
+
+Existing actual-kernel-body controls also pass in 17.598 seconds: two positive
+variants and three expected semantic negatives, with unchanged kernel sources.
+All six owned commands, including pinned Zig identification, complete cleanup.
+These are host executions of selected kernel bodies, not native authority or
+elapsed IRQ qualification.
+
+Failed attempts remain retained, including setup/fixture errors, the initial
+stack overflow and two private kernel-harness errors. The range-guard omission
+correctly triggers a named runtime integer-conversion panic; the private harness
+was corrected to recognize it without weakening the maintained no-compile-error
+checks. A direct Native observation call removes an unnecessary forwarding frame
+and restores fixed-limit fit. No ABI, historical seal, generic transport/store
+contract or resource ceiling changed. Issue 64 retains the matched native gate;
+operational reopen/provisioning, Zsh/TTY and the assembled ISO remain open.

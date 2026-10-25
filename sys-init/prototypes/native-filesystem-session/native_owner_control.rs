@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: BSD-2-Clause
+#[cfg(all(owner_control_host_trap, test, not(target_os = "none")))]
+use super::host_trap::Native;
 use super::{Control, Status};
+#[cfg(target_os = "none")]
 use af07_transport::native::Native;
+#[cfg(not(owner_control_host_trap))]
 use core::arch::asm;
+#[cfg(not(owner_control_host_trap))]
 #[inline(never)]
 fn call(op: u64, args: [u64; 6]) -> Status {
     let status: i64;
@@ -17,7 +22,27 @@ fn call(op: u64, args: [u64; 6]) -> Status {
     }
     (status, second, third)
 }
+#[cfg(all(owner_control_host_trap, test, not(target_os = "none")))]
+fn call(op: u64, args: [u64; 6]) -> Status {
+    super::host_trap::call(op, args)
+}
 impl Control for Native {
+    fn observe_events(&mut self) -> Status {
+        call(0x2a000, [0xe002, 0, 0, 0, 0, 0])
+    }
+    fn park_events(&mut self, sequence: u64, deadline: Option<super::Deadline>) -> Status {
+        call(
+            0x2a001,
+            [
+                0xe002,
+                sequence,
+                deadline.map_or(0, super::Deadline::get),
+                0,
+                0,
+                0,
+            ],
+        )
+    }
     fn exec(&mut self, process: u64, token: u64, arguments: &[u8; 272]) -> i64 {
         call(
             0x23007,

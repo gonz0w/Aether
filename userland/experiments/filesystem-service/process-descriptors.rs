@@ -138,6 +138,19 @@ impl<T: Channel> ProcessFiles<T> {
         }
         Ok(slot as usize - 1)
     }
+    /// Sole owner transport configuration, under its existing admission gate.
+    /// No loan escapes and no process/description/source ownership is changed.
+    pub fn configure_channel(
+        &mut self,
+        configure: impl FnOnce(&mut T) -> core::result::Result<(), filesystem_client::Error>,
+    ) -> Result<()> {
+        self.active()?;
+        self.files
+            .source
+            .client
+            .configure_channel(configure)
+            .map_err(|error| ProcessError::Files(Failure::Source(error)))
+    }
     /// Check a trusted opaque key without selecting an FD or source operation.
     pub fn validate_binding(&self, process: Process) -> Result<()> {
         self.exact(process).map(|_| ())

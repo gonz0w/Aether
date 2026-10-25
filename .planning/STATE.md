@@ -26,8 +26,10 @@ implementation from historical queues.
 
 - Zsh source/configuration handoff: [issue7](https://github.com/gonz0w/Aether/issues/7)
   and [consumer contract](../userland/docs/ZSH-CONSUMER.md). Filesystem runtime
-  follow-ups: [admission cutpoint](https://github.com/gonz0w/Aether/issues/60) and
-  [elapsed drain deadline](https://github.com/gonz0w/Aether/issues/61).
+  contracts: [admission cutpoint](https://github.com/gonz0w/Aether/issues/60) and
+  [elapsed drain deadline](https://github.com/gonz0w/Aether/issues/61). Matched native
+  qualification: [issue64](https://github.com/gonz0w/Aether/issues/64). The first
+  Aether Zsh target-link/loader-fit experiment is [issue65](https://github.com/gonz0w/Aether/issues/65).
 
 ## Historical records
 
