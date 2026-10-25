@@ -176,3 +176,32 @@ Before closing onboarding, independently review the curated source and notices,
 check public links, read back settings, verify migrated issue coverage, and retain
 the hosted check result and exact public source identity. Keep unresolved limits
 in the owning issue. Hosting completion does not close the OS release gates.
+
+## Verified bootstrap — 2026-10-25
+
+The approved clean source was published as commit
+`8218ce23c0dd06f16c383374d3bb4aaca849c7bf`, tree
+`a3caa55267907a70b2e71710b2dec3d14e9dbd26`: 4146 files, about29MB.
+Private standards content, historical bundles, companion copies, old Git history
+and unaccepted AF09 work were excluded; local originals were preserved. A separate
+peer-agent review passed after one captured-adoption privacy finding was resolved.
+
+[The initial hosted run](https://github.com/gonz0w/Aether/actions/runs/40188343629)
+passed Source integrity and Kernel models. Main requires those exact checks from
+the GitHub Actions app, an up-to-date PR, resolved conversations and linear history.
+Deletion and force pushes are blocked, with no bypass actor. Only squash merges
+are enabled. Solo-owner review approval count is zero; separate project review
+remains required.
+
+Actual API readback confirms collaborator-only PR submission, sole collaborator
+`gonz0w`, public issues, Discussions, private vulnerability reporting, secret
+scanning/push protection, dependency alerts and read-only Actions without PR
+approval or automatic dependency PRs. The owner created the Wiki's first page
+and confirmed collaborator-only editing; the prepared navigation was then published.
+The restriction was read back, but no second-account submission was attempted.
+
+All52 planned-work issues were reconciled, with real prerequisites and R1/M4
+capability milestones. On merge of the completion PR, PROJECT's public cutover
+policy makes Issues the sole live work authority. The onboarding issue records
+the final source/PR identity and checks; this dated summary is not a live queue.
+Private qualification inputs and the full/native gates remain outside hosted CI.

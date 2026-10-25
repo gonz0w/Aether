@@ -1,5 +1,7 @@
 # Aether
 
+[![Source checks](https://github.com/gonz0w/Aether/actions/workflows/ci.yml/badge.svg)](https://github.com/gonz0w/Aether/actions/workflows/ci.yml)
+
 Aether is a hobby operating system built to learn how a small, understandable
 system can fit together. It is an experimental x86_64 capability multikernel,
 with a Zig kernel and Rust user-space services.

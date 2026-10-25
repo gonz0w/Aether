@@ -11,16 +11,21 @@ and routing decisions; their historical branch targets are not public assignment
 
 The owner authorized `gonz0w/Aether` with a new clean `main` from the reviewed
 consolidation `0c84f5463abeb25b9cb776ad6d52d41e02f979d7`, curated source and
-compact evidence, excluding AF09. Standards content remains private too. Source
-publication still requires final checks and separate review; this policy does not
-claim the bootstrap or hosted verification is complete.
+compact evidence, excluding AF09. Standards content remains private too.
+The initial public commit is `8218ce23c0dd06f16c383374d3bb4aaca849c7bf`;
+its separate review, actual hosted checks and settings readback are recorded in
+[onboarding issue #1](https://github.com/gonz0w/Aether/issues/1).
 
-GitHub Issues become the sole authority for live work only after the maintainer
-records verified onboarding and migration, with the exact public source identity
-and canonical issue links. Until that cutover, the one approved onboarding
-bootstrap record owns that operation. Existing private work keeps its original
-scope and authority in the private workspace; these public drafts do not select,
-complete or renew it. Do not select new public work from a historical queue.
+The verified source and tracker cutover takes effect when the onboarding
+completion PR merges. GitHub Issues are then the sole authority for live work,
+priority, dependencies, ownership and continuation. All 52 planned-work issues
+were reconciled against the retained legacy IDs before that handoff. This is
+repository onboarding, not an OS release or native qualification.
+
+Private AF09 work keeps its original scope, authority, pending gates and local
+artifacts. It must be ported through a separately reviewed public PR after its
+integration prerequisites are satisfied; this cutover neither completes nor
+renews it. Do not select new public work from a historical queue.
 
 After cutover, `.planning/STATE.md` is compatibility navigation to Issues and
 contracts. Component STATE, BACKLOG, PRIORITY and captured-story files are
