@@ -9,12 +9,32 @@ use filesystem_bridge::{
         Completion, Error, Handle, Identity, Kind, Mutation, NamespaceObservation, Owner, Rights,
         Session,
     },
-    RuntimeUtc, Spa,
+    Spa,
 };
 use filesystem_service::{
     channel::{Framed, Io},
     Stop,
 };
+
+#[cfg(not(fs_home_probe_three))]
+use filesystem_bridge::RuntimeUtc as EntryUtc;
+/// The fixed preparation profile accepts only observations in its recorded
+/// half-open UTC window. This delegates to the real shared provider and keeps
+/// no state, adjustment, reset authority or independent mutation ledger.
+#[cfg(fs_home_probe_three)]
+struct EntryUtc;
+#[cfg(fs_home_probe_three)]
+impl filesystem_bridge::policy::Clock for EntryUtc {
+    fn utc(&mut self) -> Result<filesystem_bridge::policy::Utc, Error> {
+        let value = filesystem_bridge::policy::Clock::utc(&mut filesystem_bridge::RuntimeUtc)?;
+        if !(1791290040..1791290100).contains(&value.seconds) || value.nanoseconds >= 1_000_000_000
+        {
+            return Err(Error::Clock);
+        }
+        Ok(value)
+    }
+}
+const _: () = assert!(core::mem::size_of::<EntryUtc>() == 0);
 
 /// Selected private native channel trap, derived from pinned namespace-channel.
 /// # Safety
@@ -312,7 +332,7 @@ pub unsafe extern "C" fn aether_fs_home_run(
     let mut spa = unsafe { Spa::from_raw(NonNull::new(spa).unwrap()) };
     let setup = spa
         .open(name)
-        .and_then(|backend| Owner::new(backend, RuntimeUtc, reader));
+        .and_then(|backend| Owner::new(backend, EntryUtc, reader));
     let mut owner = match setup {
         Ok(owner) => owner.with_namespace_identity(Identity::new(uid, gid).unwrap()),
         Err(error) => {
@@ -349,7 +369,7 @@ pub unsafe extern "C" fn aether_fs_home_run(
         reader,
         || {
             use filesystem_bridge::policy::Clock;
-            if RuntimeUtc.utc().is_err() {
+            if EntryUtc.utc().is_err() {
                 return -5;
             }
             // SAFETY: scalar worker-local ready operation, no retained pointers.

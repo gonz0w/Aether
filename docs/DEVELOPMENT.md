@@ -257,6 +257,22 @@ check. Keep dependency setup separate from offline execution. Full-file/media,
 ordered export/drain, cleanup and fresh-reader gates apply at either budget; no
 budget or passing inventory checker establishes release readiness.
 
+
+AF09 host-gate disposition,2026-10-25: [issue2](https://github.com/gonz0w/Aether/issues/2)
+records the separately reviewed private attempt05 complete `zig build test` pass:
+530.184 seconds within a one-run900-second aggregate,976 Python tests with
+terminal OK, final source/tool and accepted legacy-pair checks,9115 prepared
+input hashes, six image/kernel identities and owned cleanup. Attempts01–04 remain
+failed and preserved privately. The exception is consumed; the default300-second
+host ceiling,180-second leaf/auxiliary bounds and4MiB diagnostic streams remain.
+It grants no automatic retry or guest. Private receipts, standards and dependencies
+are unavailable in this public snapshot; this dated result is not public replay.
+[Issue3](https://github.com/gonz0w/Aether/issues/3) owns public AF09 integration;
+[issue56](https://github.com/gonz0w/Aether/issues/56) owns the separate guarded
+legacy-profile gap, and [issue4](https://github.com/gonz0w/Aether/issues/4) owns
+any later native qualification after a fresh exact disposition.
+
+
 ## Source conventions
 
 | Language | Current owner profile |

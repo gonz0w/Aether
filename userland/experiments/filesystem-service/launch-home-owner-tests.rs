@@ -4,6 +4,7 @@ use std::{cell::RefCell, vec::Vec};
 #[derive(Default)]
 struct State {
     mode: u32,
+    attempts: Option<u64>,
     calls: usize,
     closes: Vec<u64>,
 }
@@ -44,7 +45,11 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.phase = 0;
     state.home.error_kind = 0;
     state.home.flags = 63;
-    state.home.mutation_attempts = 2;
+    state.home.mutation_attempts = STATE.with(|s| {
+        s.borrow()
+            .attempts
+            .unwrap_or(if cfg!(fs_home_probe_three) { 3 } else { 2 })
+    });
     state.phases = 8191;
     state.home.mkdir = BootstrapReceipt {
         provider: 1,
@@ -61,7 +66,7 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
         ..state.home.mkdir
     };
     state.home.service.ready = 1;
-    state.home.service.requests = 1;
+    state.home.service.requests = 2;
     if mode == 5 {
         state.home.flags &= !ORDERED;
     }
@@ -169,5 +174,30 @@ fn malformed_launch_prefix_cannot_enter_callback() {
             22
         );
         assert!(state.home.canonical_initial(false));
+    }
+}
+
+#[test]
+fn fixed_home_probe_requires_three_attempts_only_when_selected() {
+    for attempts in [2, 3, 4] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                ..State::default()
+            }
+        });
+        let mut state = state();
+        state.phases = 0;
+        // The engine stub's field is varied below through its ordinary test mode.
+        STATE.with(|s| s.borrow_mut().attempts = Some(attempts));
+        assert_eq!(
+            run(&mut state),
+            if cfg!(fs_home_probe_three) && attempts != 3 {
+                5
+            } else {
+                0
+            },
+            "HOME_PROBE_THREE"
+        );
     }
 }

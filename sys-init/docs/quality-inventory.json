@@ -1694,6 +1694,22 @@
       "oracle": "Matched two-grant final-slot owner; exact receipt/admission/delivery/cleanup before fail-stop, current sole-source cleanup independent of receipt/FILE closes, child/current generation/rebind and once-only retention; named compiling controls and old composed-owner/profile regression. Complete Native ELF/code/resident/conservative call-graph stack under unchanged ABI31 limits. Model headroom is not native peak/authority/recovery acceptance.",
       "evidence": "docs/evidence/home-owner-fit-2026-10-24/README.md",
       "stage": "Offline source/host/no_std and complete conservative fit qualified; separate peer review/integration recorded in owning item. No guest/native activation."
+    },
+    {
+      "id": "Q-AF09-HOME-PREP",
+      "owner": "Aether system integration",
+      "status": "experimental",
+      "layer": "host",
+      "reference": "prototypes/native-filesystem-session/README.md",
+      "tests": [
+        "scripts/home_owner_build.py",
+        "tests/home_owner_build_tests.py",
+        "scripts/qualify-home-owner.py",
+        "tests/home_owner_qualifier_tests.py"
+      ],
+      "oracle": "Current owner reconstruction and actual code/resident/conservative-stack fit; distinct AF09 engine and guarded artifact/source associations, independent pristine/recovery readers and full metadata digest comparison. Controlled transcripts qualify parser behavior only. Issue3 owns live integration; userland FS-HOME-PREP retains the durable contract and dated private result summary.",
+      "evidence": "prototypes/native-filesystem-session/README.md",
+      "stage": "Offline source/target, conservative fit and prepared images qualified privately. Exact receipts, SDK/dependencies and standards are unavailable publicly. Issue3 owns public integration; issue4 native qualification and issue56 guarded legacy coverage remain separate. No guest, native peak, recovery, interactive Zsh or release acceptance."
     }
   ],
   "gaps": [

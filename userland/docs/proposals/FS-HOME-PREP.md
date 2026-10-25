@@ -2,15 +2,19 @@
 
 ## Selected scope — 2026-10-24
 
+Live continuation is owned by [GitHub issue3](https://github.com/gonz0w/Aether/issues/3),
+with the complete host gate in [issue2](https://github.com/gonz0w/Aether/issues/2)
+and native disposition in [issue4](https://github.com/gonz0w/Aether/issues/4).
+The separate guarded legacy-profile gap belongs to
+[issue56](https://github.com/gonz0w/Aether/issues/56).
+This record retains contracts and dated evidence, not a second live queue.
+
 The maintainer requested continued integration until blocked. Following the
 [integrated native producer](FS-HOME-NATIVE.md#observed-integration-and-continuation),
-this record owns one offline composition: the real AF09 engine, one explicit
+this contract describes one offline composition: the real AF09 engine, one explicit
 FILE home-write helper, matched guarded owner/shell inputs, pristine/recovery
 read-only oracles and exact prepared images. Owner: system integration agent,
 preserving userland service/FILE, sys-init lifecycle and root native build roles.
-Selection base `37be3401b3961769cab026449737a021e3e78b28`; target remains
-`codex/consolidate-system`. Use `codex/fs-home-prep` after reviewed documentation
-closure, recording its exact base before source/test changes. Main stays unchanged.
 
 This is preparation, not guest execution. Prior dispositions are consumed. Stop
 before any guest; only after concrete reviewed artifacts and a prospective exact
@@ -18,22 +22,29 @@ sequence are ready can a fresh disposition be requested. No installation, login,
 initial CWD, libc/routed-write activation, package/Zsh/ISO release or durability
 claim. Fixed diagnostic names are not an installed home layout.
 
-Apply PROJECT/METHOD/STATE, selected Codex routing, DEVELOPMENT, affected component
-guidance/contracts and Foundations O/I/E, local CE/CD/CR/CA/TD/SE. Read native
-loader/ABI31/AENFS005/AENMX010, existing FILE/context/table/guard contracts,
-Distribution's proposed boot/persistence/observability clauses and Experience.
-Existing pins, old selections/receipts/seals and smoke/emergency markers stay exact.
+Apply root PROJECT/METHOD, the owning issue, selected Codex routing, DEVELOPMENT
+and affected component guidance/contracts. Preserve native loader/ABI31/AENFS005/
+AENMX010 and FILE/context/table/guard contracts, exact consumer pins, old
+selections/receipts/seals and smoke/emergency markers. Applicable private standards
+and Experience inputs remain owner-provided prerequisites; this contract does not
+republish or replace their normative content.
 
-Separate read-only temper_analyst inspected the actual builders and prerequisite
-paths. Requested mapping gpt-6-astra/high; observed role/model/effort unavailable.
-No required owner policy choice or missing dependency was established. This is
-read-only planning evidence, not verified capacity, execution or acceptance.
+## Input and qualification availability
 
-## Required composition before code
+The public source includes the bounded tools, source contracts and tests. It does
+not include private producer/helper/owner qualification receipts, SDK copies,
+OpenZFS/runtime build inputs, standards release/review bytes or prepared images.
+Obtain the exact applicable inputs from the owner before dependent qualification.
+A missing input is blocked coverage, not the expected semantic rejection or a pass.
+See the [public-source boundary](../../../docs/PUBLIC-SOURCE.md). Historical
+qualification below describes private execution; source-only CI does not replay it.
 
-Add distinct explicit preparation paths:
+## Required composition
 
-- `scripts/fs_home_launch.py --checked <producer receipt> --output .deps/fs-launch-af09-*`
+The distinct explicit preparation paths are:
+
+- `scripts/fs_home_launch.py --checked <producer receipt> --probe-checked <helper/clock receipt>
+  --output .deps/fs-launch-af09-*`
   builds and intakes the new engine. Do not weaken AF07/AF08 builders or defaults.
 - `scripts/fs_home_inputs.py --engine <directory> --engine-seal <sha256>
   --producer-receipt <receipt> --owner-receipt <receipt> --output .deps/fs-owner-af09-*`
@@ -103,8 +114,9 @@ parallel state model. This explicitly exercises the FILE seam; it does not turn
 on libc FILE writes or routed writes for arbitrary applications.
 
 Exactly two bootstrap provider attempts plus one write must be observed. Add
-`fs_home_probe_three` only to the launch success predicate after the real engine
-returns: selected success additionally requires HomeResult.mutation_attempts==3.
+`fs_home_probe_three` with its count check only in the launch success predicate
+after the real engine returns: selected success additionally requires
+HomeResult.mutation_attempts==3.
 Keep foundation default behavior unchanged. Manifest/source/object association
 requires this selection. Selected tests hold other valid fields constant:3 passes,
 2/4 fail, invalid lifecycle/receipts still fail; unselected2 remains allowed.
@@ -120,7 +132,9 @@ ABI31 and existing AENFS005/AENMX010 envelope bytes. Actual kernel parsers inspe
 the final engine/owner/shell/helper, TLS, permissions, lengths and stack admission.
 No symlink/path escape, duplicate JSON fields, extra/missing files, old AF07/08
 fallback or inferred selection from labels. Measure exact engine/helper pages;
-the old1329/33 and1331/34 constants cannot qualify AF09.
+the old1329/33 and1331/34 constants cannot qualify AF09. A freshly measured count
+may coincide with an older count; its current artifact, profile and parser result
+must still be checked together, with no cached-constant fallback.
 
 Build two fixed read-only native oracles using original OpenZFS read/SA/ZAP APIs,
 independent of the writer's Rust bootstrap/FILE path and in a separate fresh SPA.
@@ -144,6 +158,41 @@ Do not assume pristine root timestamps, guess inode/TXG/time values, widen a bou
 to hide a failure, or reuse the old changed-zstd recovery hash. If the existing
 clock contract cannot justify an interval, that oracle coverage stays blocked
 rather than skipping timestamp validation.
+
+### Bounded oracle refinements before dependent production
+
+HPET elapsed time is not bounded by delivered PIT interrupts. Enforce the fixed
+profile's half-open seconds window `1791290040 <= seconds < 1791290100`, with
+legal nanoseconds, through a zero-state delegate to the real RuntimeUtc before
+both bootstrap calls, every request mutation and readiness publication. Outside
+the window return Clock before effects; default RuntimeUtc stays unchanged. Bind
+selection, bounds and fixed RTC input in the engine/prepared manifest. This is an
+enforced acceptance window, not an elapsed/physical drift proof or fabricated time.
+The independent reader uses the same half-open convention and actual guaranteed
+operation-time relationships. Test both boundaries and Clock/no-provider receipts.
+
+Old textual zdb summaries do not provide exact pristine SA nanoseconds/ACL bytes.
+The independent oracle returns a32-byte preserved-metadata SHA256 through separate
+initialized output: `aether_home_readback(spa, recovered, utc_min, utc_max, digest32)`.
+Use canonical ordered, length-delimited scalar/blob fields, never C struct padding
+or unstable ZAP order. Compare the full pristine/recovery digest; independently
+check the original zstd content SHA256 against its known fixed value. Exclude only
+root size/links/mtime/ctime required to change. Normalize root flags by ORing
+ZFS_ARCHIVE|ZFS_AV_MODIFIED for hashing and require both bits in recovery; all
+other flag bits remain preserved. This is mutation_parent's exact allowed delta.
+
+The new reader checks/buffers its existing32 phase/resource observations internally
+(including eight configuration-hash and eight TXG byte observations).
+Only after successful read-only close/evict/drain/runtime shutdown and final TLS/status
+checks, emit exactly32 eight-byte observation writes carrying the full digest in
+their first bytes, with no earlier healthy stdout. Existing numeric kernel rows
+then expose32 bytes at offsets0..248 within256 output bytes/32 observations. Old
+reader/profile bytes, kernel ABI and quotas stay unchanged; generations2/3 retain
+bounded reuse/reclaim checks through their existing B/N/R denial rows, emitted
+only after their own runtime/TLS checks, with no digest. Test phase/resource
+rejection and late emission.
+Controlled transcripts prove parser behavior only. The prospective qualifier must
+compare both full metadata digests and retain all media/lifecycle/cleanup checks.
 
 Prepare the prospective fixed pristine-reader -> writer -> fresh recovery sequence
 without running it. Bind exact images, source/tool/dependency seals, fixed script,
@@ -190,9 +239,9 @@ rewritten old receipt. Freeze sources during qualified builds; perform omission
 tests first. Full SDK cold-build, native peak, physical, extended and release
 evidence remain outside this bounded preparation.
 
-Update owning record, component READMEs/Experience/quality inventories, root workflow
-and STATE; separate source/control/evidence/reader review before normal-hooks
-consolidation integration. Preserve all failures, commands, hashes and short logs;
+Record live acceptance and continuation in issue3; keep component references and
+root workflow consistent with this contract. Separate source/control/evidence/
+reader review precedes integration under public PROJECT policy. Preserve all failures, commands, hashes and short logs;
 remove owned generated work. Keep only the single current verified dependency and
 exact pending artifact set needed for the next disposition, not historical image/
 binary/SDK/source bundles. After a run finishes remove owned outputs per retention.
@@ -204,24 +253,68 @@ logic with explicit new associations and a fixed workload, preserving old inputs
 No generic filesystem, provisioning, rollback, parser platform or new authority.
 No obsolete sealed path is removed yet; limit added mechanisms to this executable
 experiment. Unix responsibilities remain separate while one integration agent
-composes them. No unrequired product policy question blocks offline preparation.
+composes them.
 
-## Status
+## Offline commands
 
-Contract prepared before source/test changes. Separate read-only temper_reviewer
-pre-code contract/reader review passes after the exact namespace/parent metadata/
-UTC oracle clarification. It verifies prior integration identities, unchanged main,
-17 links/anchors, payload16/marker13, retained prerequisites, loader limits and
-300/300/1800 budgets. No owner-policy/resource/authority blocker remains. Requested
-gpt-6.1-sol/high; actual role/model/effort metadata unavailable. No implementation,
-build, suite or VM acceptance follows from this ordinary peer review.
-Exact implementation base follows documentation closure. Guest disposition remains
-the later operational gate, after concrete reviewed inputs exist.
+With exact private prerequisites available, run from the system root and choose
+unused output directories:
 
+```sh
+PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-probe.py
+PYTHONOPTIMIZE=1 python3 -B scripts/check_fs_home_prep.py
+python3 -B scripts/fs_home_launch.py --checked PRODUCER_RECEIPT --probe-checked HELPER_CLOCK_RECEIPT --output .deps/fs-launch-af09-NAME
+python3 -B scripts/fs_home_inputs.py --engine .deps/fs-launch-af09-NAME --engine-seal ENGINE_SEAL --producer-receipt PRODUCER_RECEIPT --owner-receipt OWNER_RECEIPT --output .deps/fs-owner-af09-NAME
+python3 -B sys-init/scripts/qualify-home-owner.py --inputs .deps/fs-owner-af09-NAME --seal INPUTS_SEAL --prepare
+```
 
-Documentation closure checks: workflow41 references/37 tools/194 groups and
-whitespace pass. Component quality/pin inputs and coverage inventories are unchanged
-from the passing native producer CLI/quality01; reuse only those unchanged checks,
-with new prose/links examined by the separate reader. No broad suite or native
-run is selected for documentation closure. The new executable tools will receive
-actual entry-point registration, quality coverage and CLI checks before execution.
+The two checkers retain their own host-check contracts. The three preparation
+CLIs provide `--help`/`--version` on stdout and JSON success results on stdout,
+with escaped operational diagnostics on stderr. Their exits are0 success,
+1 operational failure,2 blocked prerequisite and64 usage. Preparation has no
+execution option. Retain the compact failed receipt, correct the prerequisite
+and select a fresh unused output; never edit an old result into success.
+
+## Unconfirmed host-process cleanup
+
+If an owned child cannot confirm shutdown, fail preparation and retain its work
+and related outputs. The failed compact receipt reports unresolved cleanup and
+retained paths; a nested intake propagates that state to the outer builder.
+An interruption before the process helper returns also leaves shutdown
+unconfirmed. Do not remove or reuse those paths until shutdown is confirmed.
+A failed command with confirmed shutdown keeps the ordinary owned cleanup path.
+Receipt publication failure must preserve the original failure and retained work.
+
+The public host wrappers enforce this failure behavior with mocked direct,
+imported and nested-child controls. These controls create no orphan or guest.
+The corresponding target source, compilation arguments and native limits are
+unchanged; the dated private qualification below remains tied to its original
+source maps. The public port has separate affected host checks and source review,
+not a new complete private gate or public native qualification.
+
+## Private offline qualification summary —2026-10-25
+
+Private preparation produced three exact images after2072 bounded children,
+including six expected normal exit1 linker denials. Source/tool/receipt and
+publication checks passed, with owned intermediate cleanup. The complete owner
+measured47384/49152 code,7784/8192 resident including4096 workspace, and8160/8184
+conservative stack. Writer loader geometry is engine1334/shell81/helper34 pages;
+each independent reader admits1318 engine pages. The reader controller is1012
+bytes. Conservative fit is not native peak evidence; its24-byte stack margin
+confers no additional capacity.
+
+[Issue2](https://github.com/gonz0w/Aether/issues/2) records the separately reviewed
+complete unfiltered host attempt05:530.184 seconds within its one-run900-second
+aggregate,976 Python tests with terminal OK, final sources/tools and accepted
+legacy-pair checks,9115 prepared inputs, six image/kernel identities and owned
+cleanup. Attempts01–04 remain failed and preserved privately. The900-second
+exception is consumed; default host300, leaf/auxiliary180 and live4MiB diagnostic
+streams remain. No automatic retry or guest permission follows.
+
+These are dated private results, not public-clone replay or native acceptance.
+Private compact receipts, artifact identities and earlier failures remain with
+the owner; none of their raw contents or generated artifacts are published here.
+Issue3 owns remaining public source review, affected checks and integration.
+Issue56 is separate guarded legacy coverage; issue4 requires fresh exact native
+disposition. Native recovery/durability, full SDK cold rebuild, native peak,
+physical/extended coverage, interactive Zsh and release qualification remain open.

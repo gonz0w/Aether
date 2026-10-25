@@ -1844,6 +1844,23 @@
       ],
       "reviewer": null,
       "exclusion": null
+    },
+    {
+      "id": "UD-filesystem-home-prep",
+      "surface": "Explicit offline AF09 engine, guarded FILE helper/count/UTC selection, actual owner/artifact admission and independent pristine/recovery reader preparation; no guest or persistence acceptance",
+      "kind": "subsystem",
+      "owner": "Aether-userland/sys-init/Aether",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME-PREP.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/proposals/FS-HOME-PREP.md"
+      ],
+      "reviewer": null,
+      "exclusion": "Only a dated private qualification summary is public. Raw receipts, prepared images, SDK/dependencies and standards inputs are unavailable; missing required inputs remain blocked coverage. Issue3 owns integration; no guest, recovery or release acceptance."
     }
   ]
 }

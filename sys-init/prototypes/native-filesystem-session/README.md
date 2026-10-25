@@ -1,5 +1,28 @@
 # ABI29 dispatcher startup and child/wait core
 
+[Issue3](https://github.com/gonz0w/Aether/issues/3) owns live AF09 integration;
+[FS-HOME-PREP](../../../userland/docs/proposals/FS-HOME-PREP.md) retains the durable
+composition contract and dated private qualification summary. `scripts/home_owner_build.py`
+reconstructs the actual matched owner and measures unchanged code, resident and
+conservative-stack ceilings. The system guarded-input builder consumes it with
+matching shell/helper artifacts and current kernel parser admission.
+
+From `sys-init/`, with exact private receipts, SDK/OpenZFS/runtime dependencies
+and applicable standards inputs available, prepare the prospective images with:
+
+```sh
+python3 -B scripts/qualify-home-owner.py --inputs ../.deps/fs-owner-af09-NAME --seal INPUTS_SEAL --prepare
+```
+
+From the system root, prefix the script with `sys-init/` and use a root-relative
+input path. Preparation executes no guest and has no execution option. It emits
+JSON on stdout, escaped diagnostics on stderr, and exits0 success,1 operational
+failure,2 blocked prerequisite or64 usage; `--help` and `--version` exit0.
+Keep the compact receipt and correct failed prerequisites before a fresh output.
+Private inputs and qualification receipts are unavailable in this public snapshot;
+missing inputs remain blocked coverage. Issue4 owns later native qualification;
+issue56 retains the separate guarded legacy-profile gap.
+
 Decision0224 selects the private `fs_home_owner` composition with matching
 home/in-place/FILE-write dependencies. Gate and Runtime consume both AF09 grants
 in final storage through `connect_home_in_place`; old constructors remain scoped

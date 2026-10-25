@@ -83,7 +83,7 @@ def check(record, work, proc, tools, deadline):
                         *selected, *deps(folder, imports), '--test', S / filename,
                         *(['-Clink-arg=' + str(fixture), '-Clink-arg=' + str(ubsan)] if filename == 'native-home.rs' else []), '-o', binary])
                 tested = run('home-tests-' + filename, [folder / ('rustc-' + filename + '-tests'), '--test-threads=1'])
-                count = 19 if filename == 'native-home.rs' else 4
+                count = 19 if filename == 'native-home.rs' else 5
                 require((str(count) + ' passed; 0 failed').encode() in tested.stdout, 'named home methods executed: ' + filename)
             else:
                 artifact = folder / (filename + '.o')
