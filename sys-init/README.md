@@ -16,6 +16,12 @@ Standards releases/review snapshots and imported hooks remain private; see the
 uses available local policy; affected normative work requires the owner and exact
 private inputs. Aggregates that require those inputs remain blocked without them.
 
+The [boot-session filesystem lifetime contract](../userland/docs/proposals/FS-SERVICE-LIFETIME.md)
+describes the parent-terminal admission cutpoint, confirmed stop/holder/reclaim
+settlement and focused actual-Runtime controls. [Issue60](https://github.com/gonz0w/Aether/issues/60)
+owns this change; [issue61](https://github.com/gonz0w/Aether/issues/61) retains the
+elapsed-deadline work. Host tests and offline owner fit do not qualify native drain.
+
 
 The init and service lifecycle project for the Aether operating-system effort, alongside the [Aether kernel](../README.md) and [pkg-mgr](../pkg-mgr/README.md).
 

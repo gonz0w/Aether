@@ -3,7 +3,6 @@
 from pathlib import Path
 import runpy
 import json
-import shutil
 import re
 import sys
 import time
@@ -65,7 +64,7 @@ def check(record,work,proc,tools):
     for compiler in ("rustc","clippy-driver"):
         run(compiler+"-home-owner-test-build",[tools[compiler]["path"],*COMMON,*flags,*deps(folder,producer,imports),"--test",P/"owner_runtime.rs","-o",work/(compiler+"-home-owner-tests")])
     result=run("home-owner-tests",[work/"rustc-home-owner-tests","home_tests::","--test-threads=1"])
-    require(b"5 passed; 0 failed" in result.stdout,"five matched home-owner cases executed")
+    require(b"9 passed; 0 failed" in result.stdout,"nine matched home-owner cases executed")
     # Compiling omission controls exercise named behavior, not generic panics.
     test="runtime_keeps_whole_file_event_before_error_and_never_overwrites_on_second_run"
     independent="independent_admission_and_delivery_errors_are_retained_before_return"
@@ -79,13 +78,18 @@ def check(record,work,proc,tools):
         ("runtime-context","owner_runtime.rs","identity,\n            generation,\n            event,","identity,\n            generation:{let _=generation;31},\n            event,",test,"OWNER_NATIVE_CONTEXT"),
         ("source-cleanup","owner_runtime.rs","self.gate.cleanup()","None",test,"OWNER_SOURCE_CLEANUP"),
         ("runtime-once","owner_runtime.rs","require(!self.started)?;","let _=self.started;",test,"OWNER_ONCE_ONLY"),
+        ("parent-terminal-admission","owner_runtime.rs","let mut progress = self.poll(0, workspace)?;","let mut progress = self.poll(0, workspace)?; for index in 1..4 { progress |= self.poll(index, workspace)?; }","parent_terminal_cuts_off_queued_child_file_exec_fork_and_stream","DRAIN_NO_CHILD_BYTES"),
+        ("parent-terminal-pipe-retire","owner_runtime.rs",".admit(|_, streams| streams.retire_idle([false; 4]))",".admit(|_, streams| { let _ = streams; })","pending_no_effect_read_and_reserved_wait_settle_then_retire_pipe","DRAIN_FINAL_PIPE_RETIRE"),
     ]
     record["home_owner_controls"]=[]
     for label,filename,before,after,case,marker in controls:
         original=(P/filename).read_text();require(original.count(before)==1,"unique home-owner control: "+label)
         control=work/("owner-control-"+label);control.mkdir()
         source=control/"source";source.mkdir()
-        for path in P.glob("*.rs"):shutil.copy2(path,source/path.name)
+        # Unchanged modules remain the frozen source inputs, not copied trees.
+        for path in P.glob("*.rs"):
+            if path.name != filename:
+                (source/path.name).symlink_to(path)
         (source/filename).write_text(original.replace(before,after,1))
         # Rebuild dependent Sys crates only for the Gate mutation; other controls
         # replace a single router or the directly compiled runtime test crate.

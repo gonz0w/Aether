@@ -683,37 +683,54 @@ impl<K: Control> Runtime<K> {
     #[inline(never)]
     fn run_inner(&mut self, workspace: &mut [u8; 4096]) -> Result<()> {
         self.launch_parent(workspace)?;
+        self.run_session(workspace)?;
+        self.shutdown()
+    }
+    #[inline(always)]
+    fn run_session(&mut self, workspace: &mut [u8; 4096]) -> Result<()> {
         loop {
             let observed = self.observe()?;
-            let mut progress = false;
-            for index in 0..4 {
+            let mut progress = self.poll(0, workspace)?;
+            // First authenticated parent terminal closes ordinary admission in
+            // this cycle. Pending frames have no effects; only confirmed child
+            // terminal may clear their slots and stream holders below.
+            if self.records[0].terminal.is_some() {
+                self.settle_after_parent_terminal()?;
+                break;
+            }
+            for index in 1..4 {
                 progress |= self.poll(index, workspace)?;
             }
             let pending = core::array::from_fn(|i| self.records[i].pending.is_some());
             self.gate
                 .admit(|_, streams| streams.retire_idle(pending))
                 .map_err(|_| Error::Gate)?;
-            if self.records[0].terminal.is_some() {
-                for index in 1..4 {
-                    if self.records[index].identity.is_some() {
-                        self.stopped(index)?;
-                        if !self.records[index].collected {
-                            self.children
-                                .abandon_after_parent_terminal(child(self.records[index].id()?)?)
-                                .map_err(|_| Error::Protocol)?;
-                            self.records[index].collected = true;
-                        }
-                        self.reclaim(index)?;
-                    }
-                }
-                self.reclaim(0)?;
-                break;
-            }
             if !progress {
                 self.park(observed)?;
             }
         }
-        self.shutdown()
+        Ok(())
+    }
+    // Keep terminal-only settlement scratch off the active dispatch call chain.
+    #[inline(never)]
+    fn settle_after_parent_terminal(&mut self) -> Result<()> {
+        for index in 1..4 {
+            if self.records[index].identity.is_some() {
+                self.stopped(index)?;
+                if !self.records[index].collected {
+                    self.children
+                        .abandon_after_parent_terminal(child(self.records[index].id()?)?)
+                        .map_err(|_| Error::Protocol)?;
+                    self.records[index].collected = true;
+                }
+                self.reclaim(index)?;
+            }
+        }
+        self.reclaim(0)?;
+        self.gate
+            .admit(|_, streams| streams.retire_idle([false; 4]))
+            .map_err(|_| Error::Gate)?;
+        Ok(())
     }
     // Keep terminal source-close scratch off the live polling call chain.
     #[inline(never)]

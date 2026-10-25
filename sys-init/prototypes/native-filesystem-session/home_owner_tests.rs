@@ -18,6 +18,11 @@ struct Seen {
     fail_send: Option<usize>,
     closes: Vec<u64>,
     controls: usize,
+    drain: bool,
+    drain_fault: u8,
+    stopped: bool,
+    reaped: Vec<u64>,
+    operations: Vec<(u64, u64)>,
 }
 #[derive(Clone)]
 struct Mock(Rc<RefCell<Seen>>);
@@ -71,6 +76,13 @@ impl af07_transport::Kernel for Mock {
     }
     fn close(&mut self, endpoint: u64) -> i64 {
         self.0.borrow_mut().closes.push(endpoint);
+        if self.0.borrow().drain {
+            return if self.0.borrow().drain_fault == 4 && endpoint == 102 {
+                -91
+            } else {
+                0
+            };
+        }
         match endpoint {
             100 => -7,
             101 => -8,
@@ -81,8 +93,36 @@ impl af07_transport::Kernel for Mock {
     }
 }
 impl Control for Mock {
-    fn ctl(&mut self, op: u64, _: u64, _: u64) -> owner_control::Status {
-        self.0.borrow_mut().controls += 1;
+    fn ctl(&mut self, op: u64, handle: u64, _: u64) -> owner_control::Status {
+        let mut s = self.0.borrow_mut();
+        s.controls += 1;
+        if s.drain {
+            s.operations.push((op, handle));
+            return match op {
+                0x2a000 => (0, 1, 0),
+                0x2a001 => (-110, 0, 0),
+                0x20001 if s.reaped.contains(&handle) => (-9, 0, 0),
+                0x20001 if handle == 0xb0000102 => (1, 0, 1),
+                0x20001 if s.stopped && s.drain_fault != 1 => {
+                    if s.drain_fault == 2 {
+                        (144, 0, 9)
+                    } else {
+                        (144, 0, 3)
+                    }
+                }
+                0x20001 => (0, 0, 0),
+                0x20007 => {
+                    s.stopped = true;
+                    (0, 0, 0)
+                }
+                0x20002 if s.drain_fault == 3 => (-91, 0, 0),
+                0x20002 => {
+                    s.reaped.push(handle);
+                    (0, 0, 0)
+                }
+                _ => (-95, 0, 0),
+            };
+        }
         if op == 0x20001 {
             (0, 0, 0)
         } else {
@@ -90,27 +130,35 @@ impl Control for Mock {
         }
     }
     fn engine(&mut self, _: u64, _: u64) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
     fn delegate(&mut self, _: u64, _: &[u64; 3]) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
     fn launch(&mut self, _: &[u8; 272], _: u64, _: u64) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
     fn copy(&mut self, _: u64, _: u32, _: u64, _: u64, _: u64) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
     fn serial(&mut self, _: bool, _: &mut [u8]) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
     fn exec(&mut self, _: u64, _: u64, _: &[u8; 272]) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
     fn receipt(&mut self, _: u64) -> owner_control::Status {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         (-95, 0, 0)
     }
     fn publish(&mut self, _: u64, _: u64) -> i64 {
+        assert!(!self.0.borrow().drain, "DRAIN_NO_NATIVE_EFFECT");
         -95
     }
 }
@@ -523,6 +571,270 @@ fn independent_admission_and_delivery_errors_are_retained_before_return() {
         );
         assert_eq!(retained.event.exchange.cleanup, Some([-9, -10]));
         // SAFETY: successful final-slot construction, no remaining borrow.
+        unsafe { g.slot.assume_init_drop() };
+    }
+}
+
+// Use the production post-launch loop with actual FILE, child and stream ledgers.
+// Only native facts are scripted; no alternate drain state is modeled here.
+fn drain_fixture(r: &mut Runtime<Mock>, k: &Mock) -> Child {
+    let process = prepare_at(r, k, HomeAccess::ReadWrite, 1, false);
+    let parent = Identity::admitted(1, 1, 0xb0000102).unwrap();
+    let id = r.records[1].id().unwrap();
+    let parent_process = r
+        .gate
+        .admit(|files, _| files.current(native(parent).unwrap()).unwrap())
+        .unwrap();
+    assert_ne!(parent_process, process);
+    r.records[0] = Instance {
+        identity: Some(parent),
+        generation: 30,
+        writer: 105,
+        ..Instance::empty()
+    };
+    r.peers[0] = Some(
+        Peer::bind(
+            Framed(Endpoints::new(k.clone(), 104, 105).ok().unwrap()),
+            parent_process,
+            30,
+        )
+        .unwrap(),
+    );
+    let child = child(id).unwrap();
+    r.children.admit(child).unwrap();
+    r.gate.admit(|_, streams| {
+        let mut create = [0; 32];
+        put(&mut create, 0, 82); put(&mut create, 4, 0x76050001); put(&mut create, 8, 1);
+        assert!(matches!(streams.request(Caller::Parent, &create, |_, _| panic!("no console I/O")), Outcome::Reply(raw) if word(&raw,0)==0));
+        let mut plan = Plan { identity: parent, shell: 1, parent: 7, generation: 30, bindings: [Binding::default();16], sources:[Source::default();7], history:[1,0] };
+        for i in 0..5 {
+            plan.bindings[i] = Binding { kind: if i<3 {1} else {2}, selector:i as u8, cloexec:0 };
+            plan.sources[i] = Source { reference: if i<3 {0x7a000001 | (i as u32)<<16} else {0x79000100 | (i as u32-2)}, selector:i as u32, rights:if i==0 || i==3 {1} else {2}, bound:16 };
+        }
+        streams.stage_child(id.pid, &plan).unwrap();
+        fork_gate::ForkStreams::child_ready(streams, id.pid).unwrap();
+    }).unwrap();
+    // Last shared FILE alias closes only after both native instances settle.
+    // The preceding lookup consumed frame 3; settlement has no mutation reply.
+    k.0.borrow_mut().source.truncate(192);
+    k.0.borrow_mut().source.extend_from_slice(&message(77, 0));
+    k.0.borrow_mut().drain = true;
+    child
+}
+fn no_export(k: &Mock) {
+    let s = k.0.borrow();
+    assert!(
+        s.source_sent
+            .as_chunks::<64>()
+            .0
+            .iter()
+            .all(|f| fs_word(f, 1) != 11 && fs_word(f, 1) != 4),
+        "DRAIN_NO_PROVIDER_OR_EXPORT"
+    );
+    assert!(
+        !s.operations
+            .iter()
+            .any(|(op, h)| *op == 0x24000 || *op == 0x2a002 || (*op == 0x20002 && *h == 99)),
+        "DRAIN_NO_ALLOC_ENGINE_RECLAIM_HALT"
+    );
+}
+#[test]
+fn parent_terminal_cuts_off_queued_child_file_exec_fork_and_stream() {
+    for request in 0..4 {
+        let k = kernel(packets(0));
+        let mut g = poisoned();
+        let r = Runtime::connect_home_in_place(&mut g.slot, k.clone(), 99, source(&k), 77, 5000)
+            .unwrap();
+        drain_fixture(r, &k);
+        // These are unread queued bytes, not an already-consumed partial exchange.
+        let bytes = match request {
+            0 => [header(), data()].concat(),
+            1 | 2 => {
+                let plan = Plan {
+                    identity: r.records[1].id().unwrap(),
+                    shell: 1,
+                    parent: 9,
+                    generation: 31,
+                    bindings: [Binding::default(); 16],
+                    sources: [Source::default(); 7],
+                    history: [0; 2],
+                };
+                let mut raw = [0; 304];
+                fd_startup::encode(&plan, &mut raw).unwrap();
+                raw[..8].copy_from_slice(if request == 1 {
+                    exec_frames::MAGIC
+                } else {
+                    fork_frames::MAGIC
+                });
+                raw[8..12].copy_from_slice(&1u32.to_le_bytes());
+                raw[12..16]
+                    .copy_from_slice(&(if request == 1 { 608u32 } else { 304u32 }).to_le_bytes());
+                raw[296..304].copy_from_slice(&1u64.to_le_bytes());
+                if request == 1 {
+                    let mut bytes = raw.to_vec();
+                    bytes.resize(608, 0);
+                    bytes[304..308].copy_from_slice(b"/bin");
+                    bytes[336..344].copy_from_slice(&1u64.to_le_bytes());
+                    bytes[352..354].copy_from_slice(b"sh");
+                    bytes
+                } else {
+                    raw.to_vec()
+                }
+            }
+            _ => {
+                let mut f = [0; 32];
+                put(&mut f, 0, 2);
+                put(&mut f, 4, 0x79000102);
+                put(&mut f, 8, 4);
+                put(&mut f, 12, 1);
+                f[16] = b'x';
+                f.to_vec()
+            }
+        };
+        k.0.borrow_mut().app = bytes;
+        let result = r.run_session(&mut [0; 4096]);
+        assert_eq!(k.0.borrow().app_at, 0, "DRAIN_NO_CHILD_BYTES");
+        assert_eq!(result, Ok(()), "DRAIN_CUTPOINT");
+        assert!(k.0.borrow().app_sent.is_empty(), "DRAIN_NO_REPLY");
+        assert!(r.last_file().is_none(), "DRAIN_NO_FILE_EVENT");
+        no_export(&k);
+        assert_eq!(k.0.borrow().reaped, [0xb0000103, 0xb0000102]);
+        assert!(r.records.iter().all(|v| v.identity.is_none()));
+        assert_eq!(r.gate.phase(), fork_gate::Phase::Idle);
+        // SAFETY: successful final-slot initialization; all borrows have ended.
+        unsafe { g.slot.assume_init_drop() };
+    }
+}
+#[test]
+fn pending_no_effect_read_and_reserved_wait_settle_then_retire_pipe() {
+    for reserved in [false, true] {
+        let k = kernel(packets(0));
+        let mut g = poisoned();
+        let r = Runtime::connect_home_in_place(&mut g.slot, k.clone(), 99, source(&k), 77, 5000)
+            .unwrap();
+        let id = drain_fixture(r, &k);
+        let mut read = [0; 32];
+        put(&mut read, 0, 1);
+        put(&mut read, 4, 0x79000101);
+        put(&mut read, 8, 3);
+        put(&mut read, 12, 1);
+        k.0.borrow_mut().app = read.to_vec();
+        assert_eq!(r.poll(1, &mut [0; 4096]), Ok(false));
+        assert_eq!(r.records[1].pending, Some(read), "DRAIN_PENDING_NO_EFFECT");
+        assert!(k.0.borrow().app_sent.is_empty());
+        if reserved {
+            // Actual terminal observation precedes reservation. The parent then
+            // dies before its reserved wait receipt can be delivered.
+            k.0.borrow_mut().stopped = true;
+            assert_eq!(r.terminal(1), Ok(true));
+            assert!(
+                matches!(r.children.wait(-1,false),Ok(Wait::Ready {identity,..}) if identity==id)
+            );
+        }
+        assert_eq!(r.run_session(&mut [0; 4096]), Ok(()), "DRAIN_SETTLEMENT");
+        assert_eq!(k.0.borrow().app_at, 32, "DRAIN_NO_PENDING_REPLAY");
+        assert!(k.0.borrow().app_sent.is_empty(), "DRAIN_UNDELIVERABLE_WAIT");
+        assert_eq!(r.children.wait(-1, false), Ok(Wait::NoChild));
+        assert!(r.records.iter().all(|v| v.pending.is_none()));
+        assert!(
+            !r.gate
+                .admit(|_, s| s.pipe_mut(0).unwrap().retire_if_idle([false; 4]))
+                .unwrap(),
+            "DRAIN_FINAL_PIPE_RETIRE"
+        );
+        no_export(&k);
+        // SAFETY: successful final-slot initialization; all borrows have ended.
+        unsafe { g.slot.assume_init_drop() };
+    }
+}
+#[test]
+fn failed_settlement_preserves_identity_pending_and_prevents_export() {
+    for fault in 1..=4 {
+        let k = kernel(packets(0));
+        let mut g = poisoned();
+        let r = Runtime::connect_home_in_place(&mut g.slot, k.clone(), 99, source(&k), 77, 5000)
+            .unwrap();
+        drain_fixture(r, &k);
+        r.records[1].pending = Some([0; 32]);
+        k.0.borrow_mut().drain_fault = fault;
+        assert!(
+            r.run_session(&mut [0; 4096]).is_err(),
+            "DRAIN_FAILURE_NOT_CLEAN"
+        );
+        assert!(
+            r.records[0].identity.is_some() && r.records[1].identity.is_some(),
+            "DRAIN_RETAIN_OBLIGATIONS"
+        );
+        if fault <= 2 {
+            assert!(r.records[1].terminal.is_none());
+            assert!(
+                r.records[1].pending.is_some(),
+                "DRAIN_STOP_ACK_NOT_TERMINAL"
+            );
+            assert!(
+                !r.gate
+                    .admit(|_, s| s.pipe_mut(0).unwrap().retire_if_idle([false; 4]))
+                    .unwrap(),
+                "DRAIN_HOLDERS_RETAINED"
+            );
+        }
+        no_export(&k);
+        assert!(k.0.borrow().reaped.is_empty());
+        // SAFETY: successful initialization; failure preserves owned obligations.
+        unsafe { g.slot.assume_init_drop() };
+    }
+}
+
+#[test]
+fn partial_exchange_and_unknown_mutation_cannot_become_clean_drain() {
+    for partial in [false, true] {
+        let mut frames = packets(0);
+        if !partial {
+            frames.truncate(3);
+        }
+        let k = kernel(frames);
+        let mut g = poisoned();
+        let r = Runtime::connect_home_in_place(&mut g.slot, k.clone(), 99, source(&k), 77, 5000)
+            .unwrap();
+        drain_fixture(r, &k);
+        if partial {
+            k.0.borrow_mut().fail_read = Some(16);
+        } else {
+            k.0.borrow_mut().source.truncate(192);
+        }
+        assert!(
+            r.poll(1, &mut [0; 4096]).is_err(),
+            "DRAIN_PREEXISTING_FAILURE"
+        );
+        if partial {
+            assert!(r.last_file().is_none());
+        } else {
+            let receipt = r
+                .last_file()
+                .unwrap()
+                .event
+                .exchange
+                .observation
+                .unwrap()
+                .receipt;
+            assert!(
+                matches!(receipt.result,filesystem_fd_protocol::FileWriteResult::Failed(f) if f.outcome==filesystem_client::MutationOutcome::Unknown),
+                "DRAIN_UNKNOWN_RETAINED"
+            );
+        }
+        assert_eq!(r.gate.phase(), fork_gate::Phase::Retired);
+        let retained = std::format!("{:?}", r.last_file());
+        assert!(
+            r.run_session(&mut [0; 4096]).is_err(),
+            "DRAIN_RETIRED_NOT_GRACEFUL"
+        );
+        assert_eq!(std::format!("{:?}", r.last_file()), retained);
+        assert!(r.records[0].identity.is_some() && r.records[1].identity.is_some());
+        let s = k.0.borrow();
+        assert!(s.reaped.is_empty());
+        assert!(!s.operations.iter().any(|(op, _)| *op == 0x2a002));
+        drop(s);
+        // SAFETY: initialized slot; failure does not discharge native obligations.
         unsafe { g.slot.assume_init_drop() };
     }
 }
