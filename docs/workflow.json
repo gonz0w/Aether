@@ -2434,6 +2434,16 @@
       "invariants": "One checked 500-delivered-tick source-only deadline at authenticated parent terminal; pre-transfer event sequence retained on EAGAIN; no per-wake/frame/child renewal. Keep source obligations/settled facts accurate on expiry and attempt both owned closes.",
       "oracle": "Actual Runtime/source transfer/stop/disconnect/export/progress races, RDX-zero omission, callback loan/retired-source and trap guards, strict host/native builds, original maintained nested suites and fixed-limit complete-owner measurements. Existing actual kernel-body event/deadline/authority controls are host evidence.",
       "gaps": "No native IRQ/wall-clock/peak/drain enforcement, healthy-session timeout policy, operational reopen or Zsh/ISO qualification. Private inputs/receipts remain local; issue64 owns matched native gate."
+    },
+    {
+      "id": "AT-ZSH-TARGET-LINK",
+      "reference": "userland/docs/ZSH-TARGET-LINK.md",
+      "owner": "Aether-userland",
+      "budget_seconds": 300,
+      "command": "Owner-provided bounded coordinator retained in local qualification evidence: actual Aether cross compilation, provider inventory, link and unchanged ordinary-process parser. Exact private prerequisites required; no guest.",
+      "invariants": "Authenticated required module/terminal closure, actual target providers, isolated host generators, no target execution or success stubs, preserved ABI/protections and ordinary-process limits.",
+      "oracle": "Actual compiler/link/parser outcomes, source/tool/input rechecks and applicable semantic controls; baseline and separately selected size-only comparison retain blocked admission and missing coverage honestly.",
+      "gaps": "No public replay without private inputs; exact artifact and SDK measurements remain local. No native TTY/jobs/heap/stack/IRQ or ISO qualification; current admission blocker remains issue65."
     }
   ]
 }
