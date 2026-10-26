@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import runpy
+import sys
 import time
 
 S = Path(__file__).resolve().parent
@@ -11,6 +12,7 @@ R = S.parents[1]
 ROOT = R.parent
 PINS = R / "docs/evidence/filesystem-transport-2026-10-19/inputs.json"
 PINS_SHA = "f200c7507b7fc300f9d4303191b0196acfa35dc7f9cffecd51e6a21e7933c82d"
+sys.path.insert(0, str(ROOT / "scripts"))
 
 
 def sha(path):
@@ -22,12 +24,114 @@ def require(value, message):
         raise RuntimeError(message)
 
 
+def native_header_prefix(prefix, compiler, *, empty_sysroot=None, work=None):
+    """Route the sealed prefix without choosing tools or dropping inputs."""
+    from fs_host_dependencies import retained_input
+    from source_paths import relocate
+
+    require(isinstance(prefix, list) and prefix and
+            all(isinstance(arg, str) and arg and "\0" not in arg
+                for arg in prefix), "invalid native header prefix")
+    require(prefix[0] == compiler["path"], "provider recipe compiler mismatch")
+    require(sha(prefix[0]) == compiler["sha256"], "provider compiler changed")
+    old = Path("/Users/cam/DEV/Aether")
+    overlays = {old / "zig-out/fs-metadata-launch-ppqz1x6m/base/port" / name
+                for name in ("resources", "allocation")}
+    delivery = old / ("userland/build/service-deliveries/"
+                      "filesystem-service-directories-2026-10-20-v1/source")
+    resource = Path(compiler["path"]).parents[1] / "lib/clang/21/include"
+    # Non-path options in the immutable provider recipe. Unknown driver and
+    # preprocessor forwarding options must not hide another input path.
+    nonpaths = {
+        "--no-default-config", "--target=x86_64-linux-musl",
+        "-std=gnu99", "-std=gnu11", "-O2", "-UNDEBUG",
+        "-fno-strict-aliasing", "-fstack-protector-strong", "-nostdinc",
+        "-fstack-usage", "-Wall", "-Wextra", "-Werror",
+        "-ffunction-sections", "-fdata-sections",
+    }
+    omitted = []
+
+    def route(value, flag):
+        path = Path(value)
+        require(path.is_absolute() and ".." not in path.parts and
+                str(path) == value, "invalid native header path: " + value)
+        if path in overlays:
+            require(flag == "-I" and not path.exists() and
+                    not path.is_symlink(), "old overlay is not disposed")
+            omitted.append({"flag": flag, "path": value})
+            return None
+        if path == old / ".deps/native-current/sdk/empty-root":
+            require(flag == "--sysroot" and empty_sysroot is not None and
+                    work is not None, "empty sysroot requires owned selection")
+            owned = Path(work)
+            selected = Path(empty_sysroot)
+            require(owned.is_absolute() and owned == owned.resolve() and
+                    owned.is_dir() and
+                    selected == owned / "home-c/empty-root" and
+                    selected == selected.resolve() and selected.is_dir() and
+                    not any(selected.iterdir()), "invalid owned empty sysroot")
+            return str(selected)
+        current = relocate(path)
+        if path == delivery:
+            selected = S
+        elif current.is_relative_to(ROOT / "user/storage/openzfs-volume"):
+            selected = current
+        elif current.is_relative_to(ROOT / ".deps/native-current"):
+            selected = retained_input(current)
+        elif path.is_relative_to(resource):
+            selected = path
+        else:
+            raise RuntimeError("unknown native header path: " + value)
+        require(selected == selected.resolve(),
+                "native header path alias: " + str(selected))
+        exists = (selected.is_file() if flag == "-include"
+                  else selected.is_dir())
+        require(exists, "missing native header input: " + str(selected))
+        return str(selected)
+
+    routed = [prefix[0]]
+    index = 1
+    while index < len(prefix):
+        arg = prefix[index]
+        index += 1
+        if arg in ("-I", "-isystem", "-include", "--sysroot"):
+            require(index < len(prefix),
+                    "missing native header operand: " + arg)
+            value = route(prefix[index], arg)
+            index += 1
+            if value is not None:
+                routed.extend((arg, value))
+        elif arg.startswith("-I"):
+            value = route(arg[2:], "-I")
+            if value is not None:
+                routed.append("-I" + value)
+        elif arg.startswith("--sysroot="):
+            value = route(arg.split("=", 1)[1], "--sysroot")
+            routed.append("--sysroot=" + value)
+        elif arg.startswith("-fmacro-prefix-map="):
+            mapping = arg[len("-fmacro-prefix-map="):]
+            value, separator, output = mapping.partition("=")
+            require(separator and output, "malformed native macro-prefix-map")
+            value = route(value, "-fmacro-prefix-map")
+            require(value is not None, "macro map cannot omit an input")
+            routed.append("-fmacro-prefix-map=" + value + "=" + output)
+        else:
+            # A -D operand is literal preprocessor data, including any slash
+            # or option-like text in its value; it is never a path operand.
+            require(arg in nonpaths or (arg.startswith("-D") and len(arg) > 2),
+                    "unsupported native header argument: " + arg)
+            routed.append(arg)
+    return routed, omitted
+
+
 def check(record, work, proc, tools, deadline):
     env = proc.clean_env(work)
     folder = work / "home-c"
     folder.mkdir()
     owned_sources = [S / "home-native.h", S / "home-native-lifecycle-tests.c",
                      S / "home_native_source.py", Path(__file__),
+                     ROOT / "scripts/source_paths.py",
+                     ROOT / "scripts/fs_host_dependencies.py",
                      *sorted((S / "home-native-host").rglob("*.h")),
                      S / "native-service.h",
                      ROOT / "user/storage/service-runtime/filesystem-engine.h",
@@ -175,16 +279,25 @@ def check(record, work, proc, tools, deadline):
     original = json.loads(receipt.read_text())
     old_command = next(row["argv"] for row in original["commands"] if
         "-c" in row["argv"] and any(str(arg).endswith("/metadata-provider.o") for arg in row["argv"]))
-    prefix = old_command[:old_command.index("-c")]
-    require(prefix[0] == tools["clang"]["path"], "provider recipe compiler mismatch")
-    missing = [arg for arg in prefix if arg.startswith("-I/") and not Path(arg[2:]).exists()]
-    prefix = [arg for arg in prefix if arg not in missing]
+    requested = old_command[:old_command.index("-c")]
+    empty_sysroot = folder / "empty-root"
+    empty_sysroot.mkdir()
+    prefix, missing = native_header_prefix(
+        requested, tools["clang"], empty_sysroot=empty_sysroot, work=work)
     extra = ["-std=c17", "-Wall", "-Wextra", "-Werror", "-fstack-usage",
              "-I" + str(S), "-I" + str(ROOT / "user/storage/service-runtime")]
     record["home_c_original_header_recipe"] = {"receipt": str(receipt),
-        "sha256": sha(receipt), "omitted_missing_old_overlay_dirs": missing,
+        "sha256": sha(receipt), "requested_argv": requested,
+        "routed_argv": prefix, "omitted_missing_old_overlay_dirs": missing,
+        "empty_sysroot": {
+            "requested": "/Users/cam/DEV/Aether/"
+                         ".deps/native-current/sdk/empty-root",
+            "routed": str(empty_sysroot), "empty": True},
         "scope": "actual original provider/importer headers; no complete native engine"}
-    native_manifest = ROOT / ".deps/native-current/current-inputs.json"
+    from fs_host_dependencies import retained_input
+
+    native_manifest = retained_input(
+        ROOT / ".deps/native-current/current-inputs.json")
     native_manifest_sha = "0521371de06c44489426635890c4bb96bc820912ac7200c4294ff7eaea081d95"
     require(sha(native_manifest) == native_manifest_sha, "original native header manifest changed")
     frozen[str(native_manifest)] = native_manifest_sha
@@ -203,7 +316,7 @@ def check(record, work, proc, tools, deadline):
         for name in headers:
             digest = sha(name)
             path = Path(name)
-            native_root = ROOT / ".deps/native-current"
+            native_root = native_manifest.parent
             if path.is_relative_to(native_root):
                 member = path.relative_to(native_root).as_posix()
                 require(native_files.get(member) == digest,
@@ -226,6 +339,8 @@ def check(record, work, proc, tools, deadline):
     record["home_c_artifacts"].update({str(path): sha(path) for path in
         (folder / "lifecycle", control / "lifecycle", *generated)})
     record["home_c_local_frames"] = {str(path): path.read_text() for path in folder.rglob("*.su")}
+    require(empty_sysroot == empty_sysroot.resolve() and
+            not any(empty_sysroot.iterdir()), "owned empty sysroot changed")
     for name, digest in frozen.items():
         require(sha(name) == digest, "C input changed during frozen run: " + name)
     record["home_c_limits"] = "Typed host instrumentation and target objects; no ZFS/native execution, native peak or full engine fit."

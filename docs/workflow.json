@@ -2356,8 +2356,8 @@
       "reference": "userland/docs/proposals/FS-HOME-NATIVE.md",
       "owner": "Aether-userland/Aether",
       "budget_seconds": 300,
-      "command": "From system root: PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-native.py. Offline host/target producer and selected original C lifecycle only; no guest.",
-      "invariants": "One Owner; fixed home/probe bootstrap and two retained typed provider/normalized receipts; total nine provider attempts/96 requests, exact root3/home15, once-only endpoint ownership, monotonic ordered obligation independent of service TXG; old layouts/pins unchanged.",
+      "command": "From system root: python3 -B -m unittest discover -s tests -p test_home_native_c_prefix.py -v; then PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-native.py. Offline host/target producer and selected original C lifecycle only; no guest.",
+      "invariants": "Strict original/routed header prefix with current product headers, declared retained dependencies and exactly two disposed overlays; unchanged recipe/macro output metadata. One Owner; fixed home/probe bootstrap and two retained typed provider/normalized receipts; total nine provider attempts/96 requests, exact root3/home15, once-only endpoint ownership, monotonic ordered obligation independent of service TXG; old layouts/pins unchanged.",
       "oracle": "Real Owner/native entry/bridge and selected actual C lifecycle/importer bodies with bounded host substitutes; target provider/layout objects, named compiling controls, old profiles and final affected owner/activation consumers. Observed results and limits in the owning record.",
       "gaps": "No complete engine/helper/image fit or guest, actual ZFS host execution, native peak/settlement/recovery, libc write, installed home or R1/release acceptance."
     },
@@ -2386,7 +2386,7 @@
       "reference": "userland/docs/proposals/FS-HOME-PREP.md",
       "owner": "Aether/sys-init/Aether-userland",
       "budget_seconds": 300,
-      "command": "From system root: python3 -B -m unittest discover -s tests -p test_fs_home_inputs.py -v and affected test_fs_home_prep.py consumer checks. Explicit paired --owner-component-proof/--owner-component-proof-sha256 selection validates current component evidence; no builder or guest in this reader slice.",
+      "command": "From system root: set the paired AETHER_AF09_OWNER_COMPONENT_PROOF/AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256 to the exact current wrapper, then python3 -B -m unittest discover -s tests -p test_fs_home_inputs.py -v and affected test_fs_home_prep.py consumer checks. Explicit paired --owner-component-proof/--owner-component-proof-sha256 selection validates current component evidence; no builder or guest in this reader slice.",
       "invariants": "Historical891/9 default stays strict; explicit current911 component selection binds complete ordered processes/controls, tools/libraries/source, exact47 generated leaves and retained harness, narrow reviewed owner-code-limit metadata impact and owned cleanup. No receipt/SDK/seal rewrite or actual compiler-input waiver.",
       "oracle": "Current real retained component evidence plus malformed/partial selector, controls/markers/process agreement, source/tool/library/harness/cleanup/missing-input/role-impact denials; source frozen and separate review. Retained observations are not fresh or native acceptance.",
       "gaps": "Fresh AF09 producer/helper qualification and execution-tool provenance, matched native workload/observations/fit/artifacts and a concrete execution disposition remain separate. Exact private inputs are required; missing bytes block coverage. No historical1800-second budget is selected."

@@ -135,6 +135,33 @@ builder allowance. Current producer/helper qualification, exact artifacts and
 native disposition remain separate prerequisites. Private receipt/proof bytes
 remain local under the public-source boundary.
 
+## Current owner fixture selection for host checks
+
+The affected owner reader tests require the exact current component proof and
+its SHA256 through a paired host-test environment selection:
+
+```sh
+AETHER_AF09_OWNER_COMPONENT_PROOF=/absolute/OWNER_PROOF.json \
+AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256=PROOF_SHA256 \
+python3 -B -m unittest discover -s tests -p test_fs_home_inputs.py -v
+```
+
+Use the same pair for the later complete host gate. These are test inputs;
+artifact preparation continues to use the explicit command arguments above.
+Missing, partial, malformed, changed or stale selection fails. There is no
+newest-file search or implicit historical positive fixture. The selected wrapper
+binds the raw component record and its complete source/tool/control closure.
+Keep the historical component record for a named stale-source rejection.
+
+A change to a file in that closure requires fresh qualification before selecting
+a new proof. Do not exclude a source because it entered through an inventory
+rather than an actual compiler command. One complete current owner-component
+host run retains all 911 ordered commands, semantic controls, measurements and
+cleanup, within its existing 300/180-second and 4 MiB stream limits. A fresh
+record may bind equal previous/current role-file identities. Preserve old
+receipts and failed attempts; host acceptance remains distinct from native
+admission, whole-drain behavior and assembled-system acceptance.
+
 ## Fixed workload, authority and completion
 
 Bootstrap remains MakeDirectory(home), Create(probe), empty-file verification,

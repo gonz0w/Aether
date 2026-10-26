@@ -4,6 +4,7 @@ from contextlib import ExitStack
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import sys
@@ -180,19 +181,211 @@ class GuardedHomeInputs(unittest.TestCase):
 
 
 
+def owner_component_fixture():
+    """Bind explicitly selected test data; full qualification stays in reader."""
+    path = os.environ.get('AETHER_AF09_OWNER_COMPONENT_PROOF')
+    digest = os.environ.get('AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256')
+    home.component_require(bool(path) and bool(digest),
+                           'fixture requires paired proof environment')
+    selected = home.component_selector({'path': path, 'sha256': digest})
+    proof = home.read_json(selected['path'])
+    home.component_require(
+        isinstance(proof, dict) and
+        set(proof) == {'format', 'receipt', 'role_metadata'} and
+        proof['format'] == home.COMPONENT_SELECTION and
+        isinstance(proof['role_metadata'], dict), 'fixture wrapper format')
+    receipt = proof['receipt']
+    home.component_require(
+        isinstance(receipt, dict) and set(receipt) == {'path', 'sha256'} and
+        isinstance(receipt['path'], str) and home.sha_string(receipt['sha256']),
+        'fixture receipt identity')
+    target = Path(receipt['path'])
+    home.component_require(
+        target.is_absolute() and '..' not in target.parts and
+        target == target.resolve() and not target.is_symlink() and
+        target.is_file() and home.digest(target) == receipt['sha256'],
+        'fixture receipt path/hash')
+    report = home.read_json(target)
+    home.component_require(isinstance(report, dict), 'fixture report object')
+    home.component_selector(selected)
+    home.component_require(
+        target == target.resolve() and not target.is_symlink() and
+        target.is_file() and home.digest(target) == receipt['sha256'],
+        'fixture receipt changed during read')
+    return target, report, proof
+
+
+class OwnerComponentFixtureConfiguration(unittest.TestCase):
+    """Configuration bindings only; synthetic bytes are not qualifications."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='af64-fixture-config-')
+        self.addCleanup(temporary.cleanup)
+        self.out = Path(temporary.name).resolve()
+        self.receipt = self.out / 'component.json'
+        self.report = {'fixture': 'synthetic, not qualified'}
+        self.receipt.write_text(json.dumps(self.report))
+        self.proof = {'format': home.COMPONENT_SELECTION,
+                      'receipt': {'path': str(self.receipt),
+                                  'sha256': home.digest(self.receipt)},
+                      'role_metadata': {}}
+        self.wrapper = self.out / 'proof.json'
+        self.wrapper.write_text(json.dumps(self.proof))
+        self.environment = {
+            'AETHER_AF09_OWNER_COMPONENT_PROOF': str(self.wrapper),
+            'AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256': home.digest(self.wrapper)}
+
+    def test_actual_setup_requires_explicit_selection(self):
+        case = CurrentOwnerComponent()
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(ValueError):
+                    case.setUp()
+        finally:
+            case.doCleanups()
+
+    def test_actual_setup_rejects_partial_selection(self):
+        for key, value in self.environment.items():
+            case = CurrentOwnerComponent()
+            try:
+                with self.subTest(key=key):
+                    with patch.dict(os.environ, {key: value}, clear=True):
+                        with self.assertRaises(ValueError):
+                            case.setUp()
+            finally:
+                case.doCleanups()
+
+    def test_actual_setup_uses_only_the_explicit_wrapper_binding(self):
+        case = CurrentOwnerComponent()
+        try:
+            with patch.dict(os.environ, self.environment, clear=True):
+                case.setUp()
+            self.assertEqual(case.receipt, self.receipt)
+            self.assertEqual(case.report, self.report)
+            self.assertEqual(case.proof, self.proof)
+        finally:
+            case.doCleanups()
+
+    def test_malformed_wrapper_and_receipt_bindings_reject(self):
+        for mode in ('format', 'extra', 'receipt-type', 'receipt-fields',
+                     'receipt-hash', 'receipt-path', 'report-type'):
+            proof = copy.deepcopy(self.proof)
+            if mode == 'format':
+                proof['format'] = 'unknown'
+            elif mode == 'extra':
+                proof['extra'] = True
+            elif mode == 'receipt-type':
+                proof['receipt'] = []
+            elif mode == 'receipt-fields':
+                proof['receipt']['extra'] = True
+            elif mode == 'receipt-hash':
+                proof['receipt']['sha256'] = '0' * 64
+            elif mode == 'receipt-path':
+                proof['receipt']['path'] = 'relative.json'
+            else:
+                self.receipt.write_text('[]')
+                proof['receipt']['sha256'] = home.digest(self.receipt)
+            self.wrapper.write_text(json.dumps(proof))
+            environment = dict(self.environment)
+            environment['AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256'] = (
+                home.digest(self.wrapper))
+            with self.subTest(mode=mode):
+                with patch.dict(os.environ, environment, clear=True):
+                    with self.assertRaises(ValueError):
+                        owner_component_fixture()
+
+    def test_stale_wrapper_and_receipt_bytes_reject(self):
+        for target in (self.wrapper, self.receipt):
+            old = target.read_bytes()
+            target.write_bytes(old + b'\n')
+            try:
+                with self.subTest(target=target.name):
+                    with patch.dict(os.environ, self.environment, clear=True):
+                        with self.assertRaises(ValueError):
+                            owner_component_fixture()
+            finally:
+                target.write_bytes(old)
+
+    def test_fixture_identity_is_rechecked_after_json_reads(self):
+        read_json = home.read_json
+        for target in (self.wrapper, self.receipt):
+            original = target.read_bytes()
+
+            def changed(path):
+                value = read_json(path)
+                if Path(path) == target:
+                    target.write_bytes(original + b'\n')
+                return value
+
+            try:
+                with self.subTest(target=target.name):
+                    with patch.dict(os.environ, self.environment, clear=True):
+                        with patch.object(home, 'read_json', side_effect=changed):
+                            with self.assertRaises(ValueError):
+                                owner_component_fixture()
+            finally:
+                target.write_bytes(original)
+
+    def test_invalid_selector_and_receipt_alias_reject(self):
+        for path, digest in (('', ''), (str(self.wrapper), 'bad'),
+                             ('relative.json', home.digest(self.wrapper))):
+            environment = {'AETHER_AF09_OWNER_COMPONENT_PROOF': path,
+                           'AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256': digest}
+            with self.subTest(path=path, digest=digest):
+                with patch.dict(os.environ, environment, clear=True):
+                    with self.assertRaises(ValueError):
+                        owner_component_fixture()
+        alias = self.out / 'receipt-alias.json'
+        alias.symlink_to(self.receipt)
+        self.proof['receipt']['path'] = str(alias)
+        self.wrapper.write_text(json.dumps(self.proof))
+        environment = dict(self.environment)
+        environment['AETHER_AF09_OWNER_COMPONENT_PROOF_SHA256'] = (
+            home.digest(self.wrapper))
+        with patch.dict(os.environ, environment, clear=True):
+            with self.assertRaises(ValueError):
+                owner_component_fixture()
+
+
+class HistoricalOwnerComponent(unittest.TestCase):
+    def test_known_component_is_stale_after_current_header_routing_change(self):
+        fixture = ROOT / ('sys-init/docs/evidence/'
+                          'filesystem-drain-deadline-2026-10-25/'
+                          'component-01.json')
+        self.assertTrue(fixture.is_file(), 'known stale fixture unavailable')
+        receipt = fixture.resolve()
+        self.assertEqual(
+            home.digest(receipt),
+            '25934d905cad20a6c3250e6dbedf55cb1c5e27a9519bfd831221fcb013adc568')
+        report = home.read_json(receipt)
+        roles = ROOT / 'kernel/arch/x86_64/native_fs_roles.zig'
+        reader = ROOT / 'sys-init/scripts/owner_measure.py'
+        proof = {'format': home.COMPONENT_SELECTION,
+                 'receipt': {'path': str(receipt),
+                             'sha256': home.digest(receipt)},
+                 'role_metadata': {
+                     'path': str(roles),
+                     'before_sha256': report['sources'][str(roles)],
+                     'current_sha256': home.digest(roles), 'code_limit': 49152,
+                     'reader': {'path': str(reader),
+                                'sha256': home.digest(reader)}}}
+        with tempfile.TemporaryDirectory(prefix='af64-stale-owner-') as folder:
+            wrapper = Path(folder).resolve() / 'proof.json'
+            wrapper.write_text(json.dumps(proof))
+            selected = {'path': str(wrapper), 'sha256': home.digest(wrapper)}
+            with self.assertRaisesRegex(ValueError,
+                                        r'/home_native_c_checks\.py$'):
+                home.current_owner_receipt(receipt, selected)
+
+
 class CurrentOwnerComponent(unittest.TestCase):
     """Retained observations only; fixture mutation never executes the harness."""
     def setUp(self):
-        fixture=ROOT/'sys-init/docs/evidence/filesystem-drain-deadline-2026-10-25/component-01.json'
-        self.assertTrue(fixture.is_file(),'selected private component fixture unavailable')
-        self.receipt=fixture.resolve();self.report=json.loads(self.receipt.read_text())
-        self.temp=tempfile.TemporaryDirectory(prefix='af64-owner-reader-',dir='/private/tmp');self.addCleanup(self.temp.cleanup)
-        self.out=Path(self.temp.name).resolve();roles=ROOT/'kernel/arch/x86_64/native_fs_roles.zig';reader=ROOT/'sys-init/scripts/owner_measure.py'
-        self.proof={'format':'aether-af09-owner-component-selection-v1',
-            'receipt':{'path':str(self.receipt),'sha256':home.digest(self.receipt)},
-            'role_metadata':{'path':str(roles),'before_sha256':self.report['sources'][str(roles)],
-                'current_sha256':home.digest(roles),'code_limit':49152,
-                'reader':{'path':str(reader),'sha256':home.digest(reader)}}}
+        self.receipt, self.report, self.proof = owner_component_fixture()
+        temporary = tempfile.TemporaryDirectory(prefix='af64-owner-reader-',
+                                                dir='/private/tmp')
+        self.addCleanup(temporary.cleanup)
+        self.out = Path(temporary.name).resolve()
 
     def select(self,report=None,proof=None):
         proof=copy.deepcopy(self.proof if proof is None else proof)
