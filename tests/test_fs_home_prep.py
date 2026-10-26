@@ -4,6 +4,7 @@ from contextlib import ExitStack
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -50,14 +51,22 @@ class HomePreparation(unittest.TestCase):
             with self.assertRaises(ValueError):home.validate_record(bad)
 
     def test_pinned_recipe_tools_never_use_path_or_another_rust(self):
-        tools={'rustc':{'path':'/pinned/rustc'},'zig':{'path':'/pinned/zig'}}
-        self.assertEqual(home.command_arguments(['rustc','+1.98.0','--version'],tools),
-                         ['/pinned/rustc','--version'])
-        self.assertEqual(home.command_arguments(['zig','run','check.zig'],tools),
-                         ['/pinned/zig','run','check.zig'])
-        for command in ([],['rustc','+nightly'],['rustc','+1.99.0'],['clang','a.c']):
-            with self.subTest(command=command), self.assertRaises(ValueError):
-                home.command_arguments(command,tools)
+        with tempfile.TemporaryDirectory(prefix='home-recipe-tools-') as folder:
+            tools = {}
+            for name in home.EXECUTION_ROLES:
+                path = Path(folder) / name
+                path.write_text('synthetic tool identity: ' + name)
+                tools[name] = dict(path=str(path), sha256=home.digest(path))
+            self.assertEqual(
+                home.command_arguments(['rustc', '+1.98.0', '--version'], tools),
+                [tools['rustc']['path'], '--version'])
+            self.assertEqual(
+                home.command_arguments(['zig', 'run', 'check.zig'], tools),
+                [tools['zig']['path'], 'run', 'check.zig'])
+            for command in ([], ['rustc', '+nightly'],
+                            ['rustc', '+1.99.0'], ['clang', 'a.c']):
+                with self.subTest(command=command), self.assertRaises(ValueError):
+                    home.command_arguments(command, tools)
 
     def test_runtime_inputs_stay_partitioned_and_rechecked_until_link(self):
         with tempfile.TemporaryDirectory(prefix='home-runtime-lifetime-') as directory:
@@ -208,6 +217,214 @@ class HomePreparation(unittest.TestCase):
             home.checked_receipt(source,'producer')
 
 
+class EngineExecutionInputs(unittest.TestCase):
+    """Synthetic tools and capsules exercise routing, never compile code."""
+    ROLES = ('clang', 'ar', 'lld', 'nm', 'readelf', 'rustc',
+             'clippy-driver', 'zig')
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='af09-engine-input-')
+        self.addCleanup(temporary.cleanup)
+        self.out = Path(temporary.name).resolve()
+        self.tools = {}
+        for role in self.ROLES:
+            path = self.out / role
+            path.write_text('opaque synthetic tool: ' + role)
+            self.tools[role] = dict(path=str(path), sha256=home.digest(path))
+        self.public = self.out / 'public'
+        self.retained = self.out / 'retained'
+        self.current = self.retained / '.deps/native-current'
+        self.current.mkdir(parents=True)
+        self.logical = self.public / '.deps/native-current'
+        self.logical.mkdir(parents=True)
+        self.member = self.current / 'baseline/header.h'
+        self.member.parent.mkdir()
+        self.member.write_text('sealed synthetic header')
+        (self.logical / 'baseline').symlink_to(self.member.parent,
+                                               target_is_directory=True)
+        self.manifest = self.current / 'current-inputs.json'
+        (self.logical / self.manifest.name).symlink_to(self.manifest)
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        import fs_host_dependencies
+        import source_paths
+        self.stack.enter_context(patch.object(home, 'ROOT', self.public))
+        self.stack.enter_context(
+            patch.object(source_paths, 'ROOT', self.public))
+        self.stack.enter_context(patch.object(fs_host_dependencies, 'ROOT',
+                                              self.public))
+        self.stack.enter_context(patch.dict(os.environ, {
+            fs_host_dependencies.ENV: str(self.retained)}))
+        self.manifest_pin = self.stack.enter_context(patch.object(
+            home, 'CURRENT_INPUTS_SHA256', '', create=True))
+        self.write_manifest({'baseline/header.h': home.digest(self.member)})
+
+    def write_manifest(self, files):
+        self.manifest.write_text(json.dumps({'files': files}))
+        home.CURRENT_INPUTS_SHA256 = home.digest(self.manifest)
+
+    def test_unknown_absolute_executables_and_make_never_run(self):
+        for command in (['/foreign/compiler', '--version'],
+                        ['/usr/bin/make'], ['make'], ['clang']):
+            with self.subTest(command=command), self.assertRaises(ValueError):
+                home.command_arguments(command, self.tools)
+
+    def test_owner_qualifier_accepts_its_explicit_selected_host_tools(self):
+        tools = dict(self.tools)
+        for name in ('python3', 'xorriso'):
+            path = self.out / name
+            path.write_text('opaque selected owner tool: ' + name)
+            tools[name] = dict(path=str(path), sha256=home.digest(path))
+        for name, flag in (('python3', '--version'), ('xorriso', '-version')):
+            argv = [tools[name]['path'], flag]
+            with self.subTest(name=name):
+                self.assertEqual(home.command_arguments(argv, tools), argv)
+        for executable in ('/foreign/host-tool', '/usr/bin/make'):
+            with self.subTest(executable=executable):
+                with self.assertRaises(ValueError):
+                    home.command_arguments([executable], tools)
+
+    def test_actual_selected_tool_bytes_are_checked_for_every_command(self):
+        path = Path(self.tools['clang']['path'])
+        home.command_arguments([path, '-c', 'fixture.c'], self.tools)
+        path.write_text('changed selected compiler')
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            home.command_arguments([path, '-c', 'fixture.c'], self.tools)
+
+    def test_exact_execution_closure_excludes_unused_provenance_tools(self):
+        sdk = {name: self.tools[name] for name in
+               ('clang', 'ar', 'lld', 'nm', 'readelf')}
+        sdk['make'] = dict(path='/unavailable/old/make', sha256='0' * 64)
+        rust = {name: self.tools[name] for name in
+                ('clang', 'lld', 'nm', 'readelf', 'rustc', 'clippy-driver')}
+        selected = home.execution_tools(sdk, rust, self.tools['zig'])
+        self.assertEqual(set(selected), set(self.ROLES))
+        self.assertNotIn('make', selected)
+        self.assertEqual(sdk['make']['path'], '/unavailable/old/make')
+        for mode in ('missing', 'conflict', 'drift'):
+            altered = copy.deepcopy(rust)
+            if mode == 'missing':
+                altered.pop('rustc')
+            elif mode == 'conflict':
+                altered['clang']['sha256'] = '0' * 64
+            else:
+                Path(altered['rustc']['path']).write_text('changed compiler')
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                home.execution_tools(sdk, altered, self.tools['zig'])
+
+    def test_current_manifest_routes_actual_members_and_pins_aliases(self):
+        inputs, binding = home.current_dependency_inputs()
+        self.assertEqual(inputs[str(self.member)], home.digest(self.member))
+        self.assertNotIn(str(self.logical / 'baseline/header.h'), inputs)
+        self.assertEqual(binding['members']['baseline/header.h'],
+                         str(self.member))
+        home.verify_dependency_bindings(binding)
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(ValueError):
+                home.current_dependency_inputs()
+        foreign = self.out / 'foreign'
+        foreign.mkdir()
+        (foreign / 'header.h').write_bytes(self.member.read_bytes())
+        alias = self.logical / 'baseline'
+        alias.unlink()
+        alias.symlink_to(foreign, target_is_directory=True)
+        with self.assertRaises(ValueError):
+            home.verify_dependency_bindings(binding)
+
+    def test_declared_root_routes_absent_public_manifest_and_members(self):
+        (self.logical / self.manifest.name).unlink()
+        (self.logical / 'baseline').unlink()
+        self.assertFalse((self.logical / self.manifest.name).exists())
+        self.assertFalse((self.logical / 'baseline/header.h').exists())
+        inputs, binding = home.current_dependency_inputs()
+        self.assertEqual(inputs[str(self.member)], home.digest(self.member))
+        self.assertEqual(binding['manifest']['path'], str(self.manifest))
+        self.assertEqual(binding['members']['baseline/header.h'],
+                         str(self.member))
+        self.assertEqual(binding['dependency_root'], str(self.retained))
+        home.verify_dependency_bindings(binding)
+
+    def test_manifest_rejects_noncanonical_names_and_duplicate_members(self):
+        for name in ('', '.', '..', '/absolute', 'baseline/../header.h',
+                     'baseline/./header.h', 'baseline//header.h',
+                     'baseline\\header.h'):
+            self.write_manifest({name: home.digest(self.member)})
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                home.current_dependency_inputs()
+        digest = home.digest(self.member)
+        self.manifest.write_text('{"files":{"baseline/header.h":"' + digest +
+                                 '","baseline/header.h":"' + digest + '"}}')
+        home.CURRENT_INPUTS_SHA256 = home.digest(self.manifest)
+        with self.assertRaisesRegex(ValueError, 'duplicate'):
+            home.current_dependency_inputs()
+
+    def test_member_manifest_and_alias_drift_during_read_reject(self):
+        inputs, binding = home.current_dependency_inputs()
+        self.member.write_text('changed header')
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            home.verify_dependency_bindings(binding)
+        self.member.unlink()
+        with self.assertRaises(ValueError):
+            home.verify_dependency_bindings(binding)
+        self.member.write_text('sealed synthetic header')
+        read_json = home.read_json
+
+        def changed(path):
+            result = read_json(path)
+            if Path(path) == self.manifest:
+                self.manifest.write_text(self.manifest.read_text() + '\n')
+            return result
+
+        with patch.object(home, 'read_json', side_effect=changed):
+            with self.assertRaises(ValueError):
+                home.current_dependency_inputs()
+        self.write_manifest({'baseline/header.h': home.digest(self.member)})
+        foreign = self.out / 'during-read'
+        foreign.mkdir()
+        (foreign / 'header.h').write_bytes(self.member.read_bytes())
+        digest = home.digest
+
+        def retarget(path):
+            actual = digest(path)
+            if Path(path) == self.member:
+                alias = self.logical / 'baseline'
+                alias.unlink()
+                alias.symlink_to(foreign, target_is_directory=True)
+            return actual
+
+        with patch.object(home, 'digest', side_effect=retarget):
+            with self.assertRaises(ValueError):
+                home.current_dependency_inputs()
+
+    def test_imported_tool_drift_preserves_the_actual_stop_record(self):
+        stopped = dict(exit=0, complete=True, cleanup='complete')
+
+        def run(*args, **kwargs):
+            Path(self.tools['clang']['path']).write_text('changed during run')
+            return SimpleNamespace(record=stopped)
+
+        result = {}
+        tracked = home.CleanupTrackedProcess(
+            SimpleNamespace(run=run), result, tools=self.tools)
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            tracked.run([self.tools['clang']['path'], '-c', 'fixture.c'])
+        self.assertEqual(result['tool_validation_failures'][0]['process'],
+                         stopped)
+        self.assertFalse(home.process_cleanup_unresolved(result))
+
+    def test_imported_process_uses_the_same_tool_gate(self):
+        proc = SimpleNamespace(run=lambda *a, **k: self.fail('runner reached'))
+        result = {}
+        tracked = home.CleanupTrackedProcess(proc, result, tools=self.tools)
+        with self.assertRaises(ValueError):
+            tracked.run(['/usr/bin/make'])
+        self.assertNotIn('process_cleanup_unresolved', result)
+        extra = dict(self.tools, make=self.tools['clang'])
+        tracked = home.CleanupTrackedProcess(proc, result, tools=extra)
+        with self.assertRaisesRegex(ValueError, 'exact engine'):
+            tracked.run([self.tools['clang']['path']])
+
+
 class EngineCleanup(unittest.TestCase):
     def test_unconfirmed_direct_and_imported_children_retain_owned_outputs(self):
         # Only the host orchestration runs: no compiler, guest or orphan exists.
@@ -267,7 +484,7 @@ class EngineCleanup(unittest.TestCase):
             def read(path):
                 if Path(path).name == 'current-inputs.json': return dict(files={})
                 return dict(tools={name: dict(path='/modeled/tool', sha256='1'*64)
-                                  for name in ('rustc', 'rustfmt', 'clippy-driver')})
+                                  for name in home.EXECUTION_ROLES})
             real_write = Path.write_text
             def write(path, body, *args, **kwargs):
                 if receipt_error and path.parent.name == 'engine':
@@ -279,6 +496,7 @@ class EngineCleanup(unittest.TestCase):
                 for name, kwargs in {
                     'checked_receipt': dict(return_value=({}, {})),
                     'generated_sources': dict(return_value={}),
+                    'current_dependency_inputs': dict(return_value=({}, {})),
                     'verify_inputs': dict(side_effect=lambda data: data),
                     'digest': dict(return_value='1'*64), 'read_json': dict(side_effect=read),
                     'prepare_base': dict(side_effect=prepare),

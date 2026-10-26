@@ -87,8 +87,17 @@ def archive_names(text):
     return names
 
 
+def dependency_root(dependency):
+    """Resolve declared retained locations; preserve strict real-root intake."""
+    from fs_host_dependencies import retained_root
+    root = retained_root(Path(dependency).absolute())
+    need(root.is_dir() and not root.is_symlink() and root == root.resolve(),
+         "runtime sealed root")
+    return root
+
+
 def verify_dependency(dependency, tools):
-    dependency = Path(dependency).absolute()
+    dependency = dependency_root(dependency)
     utc = sealed(dependency, FIXED_UTC_SEAL, 343)
     base = sealed(dependency / "base", FIXED_SEAL, 294)
     sdk_root = dependency / "base/sdk"
@@ -100,7 +109,7 @@ def verify_dependency(dependency, tools):
     for root, digest in ((dependency, FIXED_UTC_SEAL),
                          (dependency / "base", FIXED_SEAL), (sdk_root, SDK_SEAL)):
         inputs[str(root / "SHA256SUMS")] = digest
-    current = ROOT / ".deps/native-current/sdk"
+    current = dependency_root(ROOT / ".deps/native-current/sdk")
     for name, digest in sdk.items():
         path = current / name
         need(path.is_file() and not path.is_symlink() and sha(path) == digest,
@@ -197,8 +206,10 @@ def runtime_archive(port, dependency, tools, command):
     """
     port = Path(port).absolute()
     need(port.is_dir() and not port.is_symlink(), "runtime owned port directory")
-    dependency = Path(dependency).absolute()
-    need(not port.is_relative_to(dependency), "runtime output overlaps sealed input")
+    dependency = dependency_root(dependency)
+    actual_port = port.resolve()
+    need(not actual_port.is_relative_to(dependency) and
+         not dependency.is_relative_to(actual_port), "runtime output overlaps sealed input")
     verified = verify_dependency(dependency, tools)
     source, sdk = Path(verified["source_root"]), Path(verified["sdk"])
     build = port / "failure-runtime-build"

@@ -162,6 +162,40 @@ record may bind equal previous/current role-file identities. Preserve old
 receipts and failed attempts; host acceptance remains distinct from native
 admission, whole-drain behavior and assembled-system acceptance.
 
+## Engine execution tools and retained inputs
+
+The offline engine builder uses an explicit compiler/archive/linker/Rust/Zig
+execution catalog. The immutable SDK tool lock remains producer provenance;
+entries outside the selected execution catalog are not permission to launch a
+command. Unknown absolute executables, `make` and conflicting selections reject
+before execution. Verify selected tool bytes at consumption and after each
+command; drift fails qualification while retaining the returned cleanup record.
+Existing native Rust library and imported-builder checks remain. Executable pins
+do not claim a complete host dynamic-loader closure.
+
+Current-input manifest members must be canonical relative names. Route only
+existing declared retained members, bind the manifest, requested locations and
+actual files, and recheck those bindings before final publication. Never route
+source ROOT, expand the historical tooling catalog or hide a conflicting local
+capsule behind a declaration.
+
+The runtime reader resolves only declared canonical retained roots, then keeps
+all existing real-root, seal, member and complete-inventory checks. Output ports
+must not overlap the resolved input, including through a parent alias or an
+ancestor directory. Construction does not begin before those denials.
+
+The small sealed fork-frame delivery is a maintained private dependency; its
+source/contracts/pins may be materialized once as an ignored real directory.
+It is not a per-run source archive or a rebuilt SDK. Missing or changed input
+bytes remain prerequisite failures.
+
+Focused routing/validator checks retain a 300-second aggregate and 180-second
+children. A separately selected complete offline target-preparation suite uses
+the existing 1800-second ceiling for that whole suite. Keep compiler artifacts
+within their existing 16 MiB per-file allowance and enforce 4 MiB stdout/stderr
+limits independently. The engine ELF still has its existing 8 MiB cap. No guest,
+new native authority or renewed consumed execution disposition follows.
+
 ## Fixed workload, authority and completion
 
 Bootstrap remains MakeDirectory(home), Create(probe), empty-file verification,
