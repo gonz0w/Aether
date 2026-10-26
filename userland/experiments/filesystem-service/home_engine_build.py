@@ -11,6 +11,9 @@ R = S.parents[1]
 PROFILE = tuple('fs_' + name for name in ('namespace', 'lifetimes', 'mixed', 'wait', 'bulk',
     'runtime', 'activation', 'names', 'directories', 'metadata', 'directory_contexts',
     'home', 'home_wire', 'home_native', 'home_activation', 'home_probe_three'))
+DRAIN_PROFILE = (*PROFILE[:-1], 'fs_af09_drain')
+DRAIN_CASES = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
+               'partial_ack', 'exit_deadline', 'pending_fragment')
 CRATES = (
     ('filesystem_metadata', 'metadata-lib.rs', ()),
     ('filesystem_policy', 'owner.rs', ('filesystem_metadata',)),
@@ -31,10 +34,17 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def validate_profile(profile):
-    if tuple(profile) != PROFILE:
+def drain_selection(drain_case):
+    if not isinstance(drain_case, str) or drain_case not in ('none', *DRAIN_CASES):
+        raise ValueError('AF09 drain case must be none or one exact selected case')
+    return 0 if drain_case == 'none' else DRAIN_CASES.index(drain_case) + 1
+
+
+def validate_profile(profile, *, drain_case='none'):
+    selected = DRAIN_PROFILE if drain_selection(drain_case) else PROFILE
+    if tuple(profile) != selected:
         raise ValueError('AF09 profile must match every explicit selected flag')
-    return PROFILE
+    return selected
 
 
 def validate_symbols(service, launch):
@@ -51,7 +61,7 @@ def validate_symbols(service, launch):
         raise ValueError('AF09 old service/launch symbol')
 
 
-def build(work, proc, tools, deadline, record):
+def build(work, proc, tools, deadline, record, *, drain_case='none'):
     """Return service/launch object Paths; caller owns work and cleanup.
 
     This follows the existing five-crate native metadata-service object recipe.
@@ -59,7 +69,8 @@ def build(work, proc, tools, deadline, record):
     the sole panic/runtime provider. This partial object creates no panic stub or
     alternate native-service entry and does not reuse an older service object.
     """
-    validate_profile(PROFILE)
+    case_id = drain_selection(drain_case)
+    profile = validate_profile(DRAIN_PROFILE if case_id else PROFILE, drain_case=drain_case)
     folder = work / 'home-engine-rust'
     folder.mkdir()
     pins_path = R / 'docs/evidence/filesystem-transport-2026-10-19/inputs.json'
@@ -94,12 +105,14 @@ def build(work, proc, tools, deadline, record):
         if not Path(path).is_absolute() or path in retained and retained[path] != digest:
             raise ValueError('AF09 inconsistent native Rust input: ' + path)
         retained[path] = digest
-    flags = [*BASE, *[arg for name in PROFILE for arg in ('--cfg', name)]]
-    record['home_engine_rust'] = dict(profile=list(PROFILE), flags=flags, sources=sources,
+    flags = [*BASE, *[arg for name in profile for arg in ('--cfg', name)]]
+    record['home_engine_rust'] = dict(profile=list(profile), flags=flags, sources=sources,
         tools={name: dict(tools[name]) for name in ('rustc', 'clippy-driver', 'lld', 'nm', 'readelf')},
         native_libraries=dict(libraries), service_result_bytes=320, launch_state_bytes=384,
         panic_runtime='Original user/storage/openzfs-volume/volume.rs via the complete engine archive; no new stub.',
         inputs_manifest=dict(path=str(pins_path), sha256=sha(pins_path)))
+    if case_id:
+        record['home_engine_rust'].update(drain_case=drain_case, drain_case_id=case_id)
     env = proc.clean_env(work)
 
     def run(label, argv):
@@ -163,8 +176,11 @@ def build(work, proc, tools, deadline, record):
         record['home_engine_rust'].update(artifacts=artifact_rows, imports=imports,
             partial_inputs={str(p): sha(p) for p in object_inputs}, link_map_sha256=sha(link_map),
             entry_origin=str(root / 'entry.o'), native_executed=False)
-        return dict(service=service, launch=launch, sources=sources, flags=flags,
-            profile=list(PROFILE), dependencies=dict(libraries), artifacts=artifact_rows)
+        result = dict(service=service, launch=launch, sources=sources, flags=flags,
+            profile=list(profile), dependencies=dict(libraries), artifacts=artifact_rows)
+        if case_id:
+            result.update(drain_case=drain_case, drain_case_id=case_id)
+        return result
     finally:
         for path, digest in inputs.items():
             if sha(path) != digest:

@@ -20,7 +20,7 @@ normative inputs, involve the owner and obtain the exact inputs before dependent
 work; do not reconstruct their clauses or treat their absence as an exception.
 
 The hosted jobs are **Source integrity** (Agent Temper digests, selected
-Python syntax/JSON and conventional PR titles) and **Kernel models** (four
+Python syntax/JSON and conventional PR titles) and **Kernel models** (five
 self-contained Zig roots). These are bounded source checks. `zig build test`, the
 workflow inventory checker, standards wrappers and `make check-system` retain
 private-input prerequisites and are blocked without them. `zig build` retains

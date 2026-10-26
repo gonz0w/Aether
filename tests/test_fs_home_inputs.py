@@ -192,7 +192,7 @@ def owner_component_fixture():
     home.component_require(
         isinstance(proof, dict) and
         set(proof) == {'format', 'receipt', 'role_metadata'} and
-        proof['format'] == home.COMPONENT_SELECTION and
+        proof['format'] in (home.COMPONENT_SELECTION, home.DRAIN_COMPONENT_SELECTION) and
         isinstance(proof['role_metadata'], dict), 'fixture wrapper format')
     receipt = proof['receipt']
     home.component_require(
@@ -348,7 +348,7 @@ class OwnerComponentFixtureConfiguration(unittest.TestCase):
 
 
 class HistoricalOwnerComponent(unittest.TestCase):
-    def test_known_component_is_stale_after_current_header_routing_change(self):
+    def test_known_component_is_stale_after_current_drain_source_change(self):
         fixture = ROOT / ('sys-init/docs/evidence/'
                           'filesystem-drain-deadline-2026-10-25/'
                           'component-01.json')
@@ -373,8 +373,10 @@ class HistoricalOwnerComponent(unittest.TestCase):
             wrapper = Path(folder).resolve() / 'proof.json'
             wrapper.write_text(json.dumps(proof))
             selected = {'path': str(wrapper), 'sha256': home.digest(wrapper)}
+            stale = ROOT / 'userland/experiments/filesystem-service/native-home-tests.rs'
+            self.assertNotEqual(report['sources'][str(stale)], home.digest(stale))
             with self.assertRaisesRegex(ValueError,
-                                        r'/home_native_c_checks\.py$'):
+                                        r'/native-home-tests\.rs$'):
                 home.current_owner_receipt(receipt, selected)
 
 
@@ -407,6 +409,14 @@ class CurrentOwnerComponent(unittest.TestCase):
         self.assertEqual(inputs[str(self.receipt)],home.digest(self.receipt));self.assertEqual(inputs[selected['path']],selected['sha256'])
         self.assertFalse(any('af61-component.py' in str(call.args[0]) for call in run.call_args_list))
         self.assertEqual(impact['role_metadata']['code_limit'],49152)
+
+    def test_current_receipt_cannot_be_relabelled_as_the_other_input_shape(self):
+        proof=copy.deepcopy(self.proof)
+        proof['format']=(home.COMPONENT_SELECTION if proof['format']==home.DRAIN_COMPONENT_SELECTION
+                         else home.DRAIN_COMPONENT_SELECTION)
+        target,selected=self.select(proof=proof)
+        with self.assertRaises(ValueError):
+            home.current_owner_receipt(target,selected)
 
     def test_current_component_rejects_process_control_harness_and_input_tampering(self):
         for mode in ('actual','exit','cleanup','control-missing','control-duplicate','marker','control-source',

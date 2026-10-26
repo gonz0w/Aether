@@ -96,6 +96,23 @@ implementation and host verification follow the finite issue scope, required
 checks and separate review. No guest, native prompt or ISO qualification is
 authorized by this decision. Exact SDK/artifact qualification evidence stays local.
 
+## AF09 diagnostic control review —2026-10-26
+
+The owner reviewed and approved the concrete [issue75 diagnostic](https://github.com/gonz0w/Aether/issues/75)
+from draft PR76/head `88a83fab808221cec5770b3db447d849478688ee`.
+Introduce the compile-time `native-af09-drain` selector with default `none` and
+exactly `file_prefix`, `exec_prefix`, `fork_prefix`, `stream`, `no_ack`,
+`partial_ack`, `exit_deadline` and `pending_fragment`. Omitted/explicit `none`
+retain ordinary behavior. This satisfies DEVELOPMENT's human-review requirement
+for this closed non-boolean control; do not ask for the same review again.
+
+Implementation, host verification and matched offline artifact preparation may
+proceed under the [diagnostic contract](docs/NATIVE-AF09-DRAIN.md). Existing
+profile/authority/resource limits, source freezes, cleanup, separate review and
+major-handoff checks remain. This adds no runtime selector, guest permission,
+resource exception, native sufficiency or release acceptance. A later guest
+requires its concrete reviewed artifact and execution disposition.
+
 ## Settled choices
 
 | Area | Decision and canonical reference |

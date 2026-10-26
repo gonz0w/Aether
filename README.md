@@ -88,9 +88,9 @@ the run command opens QEMU. Close its window or press Ctrl-C to stop.
 For checks, start with the [development guide](docs/DEVELOPMENT.md) and choose the
 checks affected by a change. The broad `zig build test` gate and component/native
 suites have additional prerequisites; missing local inputs are blocked coverage.
-The planned hosted jobs are **Source integrity** (Agent Temper digests, selected
-Python syntax/JSON and conventional PR titles) and **Kernel models** (25 tests
-across four Zig roots). They do not validate private standards or establish native
+The hosted jobs are **Source integrity** (Agent Temper digests, selected
+Python syntax/JSON and conventional PR titles) and **Kernel models** (self-contained
+Zig roots). They do not validate private standards or establish native
 OS behavior or release readiness. `zig build test` and `make check-system` retain
 their required private standards/local inputs and are blocked without them;
 `zig build` keeps its documented boot prerequisites.

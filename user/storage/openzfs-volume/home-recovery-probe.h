@@ -12,8 +12,13 @@
  * canonical preserved- metadata SHA256. A prospective qualifier must compare
  * all32 digest bytes from pristine and recovery readers; this function does not
  * authorize reclamation, make a durability claim or emit output. Compile
- * instead of separate zpl-read.c.
+ * instead of separate zpl-read.c. expectation is a closed internal integer:
+ * 0 requires the pristine namespace/home absence; 1 requires the recovered
+ *16-byte AF09-HOME-WRITE payload/EOF; 2 requires recovered probe size0 and
+ * an actual nonzero-length read returning EOF. Modes0/1 keep their existing
+ * meaning. Mode2 is selected only from the approved drain profile; it grants
+ * no new input, writer or native authority. Unknown modes reject before I/O.
  */
-int aether_home_readback(spa_t *, int recovered, uint64_t utc_min,
+int aether_home_readback(spa_t *, int expectation, uint64_t utc_min,
                          uint64_t utc_max, unsigned char digest32[32]);
 #endif

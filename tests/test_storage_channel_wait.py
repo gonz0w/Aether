@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
 import storage_channel_wait as wait
 import service_runtime_smoke as runtime
-from test_native_cleanup import block
+from test_native_cleanup import block, af09_prelude, af09_command
 
 RUST = r'''
 use std::{cell::RefCell,collections::VecDeque};
@@ -148,9 +148,9 @@ class StorageWait(unittest.TestCase):
         for name,text,oracle in cases:
             p=self.out/(name+'.rs');p.write_text(RUST+text)
             binary=self.out/name
-            c=subprocess.run(['rustc','+1.98.0','--edition=2024','--test','-Dwarnings',str(p),'-o',str(binary)],capture_output=True,text=True,timeout=60)
+            c=subprocess.run(af09_command(['rustc','+1.98.0','--edition=2024','--test','-Dwarnings',str(p),'-o',str(binary)]),capture_output=True,text=True,timeout=60)
             self.assertEqual(c.returncode,0,c.stdout+c.stderr)
-            run=subprocess.run([str(binary),'--test-threads=1'],capture_output=True,text=True,timeout=10)
+            run=subprocess.run(af09_command([str(binary),'--test-threads=1']),capture_output=True,text=True,timeout=10)
             if oracle:self.assertNotEqual(run.returncode,0);self.assertIn(oracle,run.stdout+run.stderr)
             else:self.assertEqual(run.returncode,0,run.stdout+run.stderr)
 
@@ -168,10 +168,10 @@ class StorageWait(unittest.TestCase):
         options=self.out/'options.zig';options.write_text('pub const native_service_channel_wait=true;pub const native_signal_suspend=false;')
         for name,body in [('base',funcs),('domain-skip',funcs.replace('if (session_lifecycle and next.channel_wait.endpoint != 0)','if ((session_lifecycle or storagePrimaryWaiting(next)) and next.channel_wait.endpoint != 0)')),
                 ('wrong-frame',funcs.replace('s.execution.frame.rax = @bitCast(done);','s.children[0].execution.frame.rax = @bitCast(done);')),('worker-wait',funcs.replace('and s.on_child)', 'and false)'))]:
-            p=self.out/(name+'.zig');p.write_text(ZIG+body+ZIG_TEST)
-            c=subprocess.run(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),
+            p=self.out/(name+'.zig');p.write_text(ZIG+af09_prelude(source)+body+ZIG_TEST)
+            c=subprocess.run(af09_command(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),
                 '--dep','exec','--dep','channel','--dep','build_options','-Mroot='+str(p),
-                '-Mexec='+str(ROOT/'kernel/arch/x86_64/native_execution.zig'),'-Mchannel='+str(ROOT/'kernel/native_channel.zig'),'-Mbuild_options='+str(options)],capture_output=True,text=True,timeout=180)
+                '-Mexec='+str(ROOT/'kernel/arch/x86_64/native_execution.zig'),'-Mchannel='+str(ROOT/'kernel/native_channel.zig'),'-Mbuild_options='+str(options)]),capture_output=True,text=True,timeout=180)
             if name=='base':self.assertEqual(c.returncode,0,c.stdout+c.stderr)
             else:self.assertNotEqual(c.returncode,0);self.assertIn('TestUnexpectedResult' if name=='domain-skip' else 'expected -22, found' if name=='worker-wait' else 'expected 0, found 77',c.stdout+c.stderr)
 
@@ -192,7 +192,7 @@ class StorageWait(unittest.TestCase):
             '-Cpanic=abort','-Crelocation-model=static',
             '--remap-path-prefix',str(ROOT)+'='+str(recorded_root),
             str(ROOT/'user/storage/openzfs-volume/namespace-zpl.rs'),'-o',str(output)]
-        result=subprocess.run(command,capture_output=True,text=True,timeout=60)
+        result=subprocess.run(af09_command(command),capture_output=True,text=True,timeout=60)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertEqual(hashlib.sha256(output.read_bytes()).hexdigest(),
             previous['builds']['normal/baseline']['namespace_objects']['namespace-zpl'])
@@ -211,14 +211,14 @@ class StorageWait(unittest.TestCase):
             with self.assertRaises(ValueError):wait.trace(bad)
 
     def test_private_build_gate_and_cli_reject_before_external_inputs(self):
-        p=subprocess.run(['zig','build','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),'-Dnative-service-channel-wait=true'],capture_output=True,text=True,timeout=60)
+        p=subprocess.run(af09_command(['zig','build','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),'-Dnative-service-channel-wait=true']),capture_output=True,text=True,timeout=60)
         self.assertNotEqual(p.returncode,0);self.assertIn('storage channel wait requires storage channel profile',p.stdout+p.stderr)
-        p=subprocess.run([sys.executable,'-B',str(ROOT/'scripts/service_runtime_smoke.py'),'--delivery','/absent','--namespace-wait'],capture_output=True,text=True,timeout=5)
+        p=subprocess.run(af09_command([sys.executable,'-B',str(ROOT/'scripts/service_runtime_smoke.py'),'--delivery','/absent','--namespace-wait']),capture_output=True,text=True,timeout=5)
         self.assertEqual(p.returncode,64);self.assertNotIn('[RUNNING]',p.stderr)
 
     def test_strict_native_codegen_and_version_selection_preserve_legacy(self):
         out=self.out/'wait.o'
-        c=subprocess.run(['rustc','+1.98.0','--edition=2024','--crate-type=lib','--target=x86_64-unknown-none','--emit=obj','-Dwarnings','-Copt-level=2','-Cpanic=abort','--cfg','namespace_ipc','--cfg','namespace_wait',str(ROOT/'user/storage/openzfs-volume/namespace-zpl.rs'),'-o',str(out)],capture_output=True,text=True,timeout=60)
+        c=subprocess.run(af09_command(['rustc','+1.98.0','--edition=2024','--crate-type=lib','--target=x86_64-unknown-none','--emit=obj','-Dwarnings','-Copt-level=2','-Cpanic=abort','--cfg','namespace_ipc','--cfg','namespace_wait',str(ROOT/'user/storage/openzfs-volume/namespace-zpl.rs'),'-o',str(out)]),capture_output=True,text=True,timeout=60)
         self.assertEqual(c.returncode,0,c.stdout+c.stderr)
         base=(runtime.SOURCE/'engine-supervisor.rs').read_text().replace('abi == 1','abi == 14')
         self.assertIn('abi == 25',runtime.namespace_ipc_driver(base))

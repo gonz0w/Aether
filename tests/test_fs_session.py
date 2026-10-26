@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from test_native_cleanup import block
+from test_fs_launch_intake import runtime_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,17 +53,22 @@ class FilesystemSession(unittest.TestCase):
         for name,data in cls.cases.items(): (cls.out/(name+'.bin')).write_bytes(data)
 
     def compile_run(self, source=None, expected=0):
-        tests='''const std=@import("std");const c=@import("composition");
-test "actual combined exact envelope and rejected boundaries" {
- const good=try c.parse(@embedFile("valid.bin"));
- try std.testing.expectEqualStrings("AENMX009",@embedFile("valid.bin")[48+good.engine.len..][0..8]);
- try std.testing.expectEqual(@as(usize,80),good.session.entropy.len);
- try std.testing.expectEqual(@as(usize,32),good.engine_entropy.len);
-'''+''.join(' try std.testing.expectError(error.InvalidComposition,c.parse(@embedFile("'+name+'.bin")));\n' for name in self.cases if name!='valid')+'}\n'
+        tests = 'const std=@import("std");const c=@import("composition");\ntest "actual combined exact envelope and rejected boundaries" {\n'
+        tests += runtime_fixture(self.out/'valid.bin', self.cases['valid'],
+            'const good=try c.parse(fixture);\n'
+            'try std.testing.expectEqualStrings("AENMX009",fixture[48+good.engine.len..][0..8]);\n'
+            'try std.testing.expectEqual(@as(usize,80),good.session.entropy.len);\n'
+            'try std.testing.expectEqual(@as(usize,32),good.engine_entropy.len);')
+        for name, data in self.cases.items():
+            if name != 'valid':
+                tests += runtime_fixture(self.out/(name+'.bin'), data,
+                    'if (c.parse(fixture)) |_| return error.COMPOSITION_ACCEPTED_' + name +
+                    ' else |err| try std.testing.expectEqual(error.InvalidComposition, err);')
+        tests += '}\n'
         (self.out/'test.zig').write_text(tests)
         run=subprocess.run(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),
             '--global-cache-dir',str(ROOT/'.zig-cache/global'),'--dep','composition',
-            '-Mroot='+str(self.out/'test.zig'),'-Mcomposition='+str(source or self.source)],
+            '-Mroot='+str(self.out/'test.zig'),'-Mcomposition='+str(source or self.source),'-femit-bin='+str(self.out/'parser-tests')],
             capture_output=True,text=True,timeout=60)
         self.assertEqual(run.returncode,expected,run.stdout+run.stderr)
         return run.stdout+run.stderr
@@ -72,10 +78,10 @@ test "actual combined exact envelope and rejected boundaries" {
 
     def test_compiling_omissions_fail_process_size_owner_size_and_exact_session_oracles(self):
         original=self.source.read_text()
-        for old,new in (
-            ('if (bundle.supervisor.len > limit)', 'if (false)'),
-            ('elf.parse(process_bytes)', 'elf.parseWithLimits(process_bytes, elf.large_limits)'),
-            ('if (!std.mem.eql(u8, nested[0..8], if (profile == .application) "AENMX011" else if (profile == .owner_stack) "AENMX010" else "AENMX009"))', 'if (false)'),
+        for old,new,marker in (
+            ('if (bundle.supervisor.len > limit)', 'if (false)', 'oversized_owner'),
+            ('elf.parse(process_bytes)', 'elf.parseWithLimits(process_bytes, elf.large_limits)', 'oversized_process'),
+            ('if (!std.mem.eql(u8, nested[0..8], if (profile == .application) "AENMX011" else if (profile == .owner_stack) "AENMX010" else "AENMX009"))', 'if (false)', 'wrong_nested'),
         ):
             with self.subTest(omission=old):
                 self.assertEqual(original.count(old),1)
@@ -87,6 +93,8 @@ test "actual combined exact envelope and rejected boundaries" {
                 try:
                     log=self.compile_run(path,expected=1)
                     self.assertIn('FAIL',log)
+                    self.assertIn('FAIL (COMPOSITION_ACCEPTED_' + marker + ')', log)
+                    self.assertNotRegex(log, r':\d+:\d+: error:')
                 finally: path.unlink()
 
 

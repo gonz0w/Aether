@@ -22,6 +22,82 @@ def block(source, anchor):
     return source[start:end]
 
 
+def compiler_file_limit(cls):
+    """Cap each compiler file live, restoring the caller's original soft limit."""
+    import resource
+    original = resource.getrlimit(resource.RLIMIT_FSIZE)
+    caps = [16 * 1024**2, *[v for v in original if v != resource.RLIM_INFINITY]]
+    selected = min(caps)
+    resource.setrlimit(resource.RLIMIT_FSIZE, (selected, original[1]))
+    cls.addClassCleanup(resource.setrlimit, resource.RLIMIT_FSIZE, original)
+    return selected
+
+
+def af09_prelude(native):
+    """Keep real default selection; unavailable enabled hooks fail compilation.
+
+    These older roots model their original profiles and lack AF09's state shape.
+    Lazy compile-error declarations resolve Zig lexical names in omitted branches
+    without inventing hook implementations. An enabled mode or an accidentally
+    unguarded diagnostic call must fail, never silently become a no-op.
+    """
+    import re
+    start = native.index('const Af09 = ')
+    state = native.index('var af09:', start)
+    end = native.index('\n', state)
+    prelude = native[start:end]
+    original = '@import("../../native_af09_drain.zig")'
+    if prelude.count(original) != 1 or 'const af09_mode =' not in prelude or 'const af09_enabled =' not in prelude:
+        raise AssertionError('production AF09 prelude changed')
+    hooks = re.findall(r'^fn (af09[A-Z][A-Za-z0-9_]*)\(', native, re.MULTILINE)
+    if not hooks or len(hooks) != len(set(hooks)):
+        raise AssertionError('production AF09 hook declarations changed')
+    guard = '\ncomptime { if (af09_enabled) @compileError("AF09_DEFAULT_ONLY_HARNESS"); }\n'
+    sentinels = ''.join('const ' + name + ' = @compileError("AF09_DEFAULT_ONLY_HOOK ' + name + '");\n'
+                        for name in hooks)
+    return prelude.replace(original, '@import("af09")') + guard + sentinels
+
+
+def af09_command(command):
+    """Bind that production prelude to the actual pure module for host roots."""
+    roots = [i for i, arg in enumerate(command) if str(arg).startswith('-Mroot=')]
+    if not roots:
+        return command
+    if len(roots) != 1:
+        raise AssertionError('expected one Zig root')
+    i = roots[0]
+    return [*command[:i], '--dep', 'af09', *command[i:],
+            '-Maf09=' + str(ROOT / 'kernel/native_af09_drain.zig')]
+
+
+class Af09DefaultPrelude(unittest.TestCase):
+    def test_actual_defaults_and_enabled_unknown_unguarded_rejections(self):
+        native = (ROOT / 'kernel/arch/x86_64/native_c.zig').read_text()
+        prelude = af09_prelude(native)
+        with tempfile.TemporaryDirectory(prefix='aether-af09-default-prelude-') as directory:
+            out = Path(directory)
+            for name, options, call, marker in (
+                ('omitted', '', '', None),
+                ('none', 'pub const native_af09_drain="none";', '', None),
+                ('enabled', 'pub const native_af09_drain="stream";', '', 'AF09_DEFAULT_ONLY_HARNESS'),
+                ('unknown', 'pub const native_af09_drain="UNKNOWN";', '', 'unknown native-af09-drain case'),
+                ('unguarded', '', 'af09Refresh();', 'AF09_DEFAULT_ONLY_HOOK af09Refresh'),
+            ):
+                with self.subTest(name=name):
+                    (out / 'options.zig').write_text(options)
+                    (out / 'actual.zig').write_text(prelude + '\npub fn main() void { ' + call +
+                                                  ' if (@sizeOf(@TypeOf(af09)) != 0) @compileError("AF09_DEFAULT_STATE"); }')
+                    command = af09_command(['zig', 'build-exe', '-fno-emit-bin', '--cache-dir', str(out / 'cache'),
+                                            '--global-cache-dir', str(out / 'global'), '--dep', 'build_options',
+                                            '-Mroot=' + str(out / 'actual.zig'), '-Mbuild_options=' + str(out / 'options.zig')])
+                    result = subprocess.run(command, capture_output=True, text=True, timeout=180)
+                    if marker:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn(marker, result.stderr)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 class NativeCleanup(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -82,7 +158,7 @@ fn aliases(s: *State, detach: bool) void {
 fn publishSustained() void { require(!states[0].admitted and reclaimed == 1); }
 fn result(_: *State, value: i64) void { response = value; }
 '''
-        source = scaffold + formatter + '\nfn finishTail() *const Frame {\nconst s = &states[0];\n' + tail
+        source = scaffold + af09_prelude(native) + formatter + '\nfn finishTail() *const Frame {\nconst s = &states[0];\n' + tail
         source += 'return select();\n}\nfn reclaim() *const Frame {\n'
         source += 'const slot: usize = 0; const s = &states[slot]; const caller = &states[2];\n'
         source += 'switch (@as(u64, 0x20002)) {\n' + reclaim + ',\nelse => unreachable,\n}\nreturn select();\n}\n'
@@ -125,7 +201,7 @@ fn result(_: *State, value: i64) void { response = value; }
             command = ['zig', 'build-exe', '--dep', 'build_options', '-Mroot=' + str(path),
                        '-Mbuild_options=' + str(opts), '-femit-bin=' + str(binary),
                        '--cache-dir', str(out/'cache'), '--global-cache-dir', str(ROOT/'.zig-cache/global')]
-            result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(af09_command(command), capture_output=True, text=True, timeout=60)
             if result.returncode:
                 raise AssertionError(result.stderr)
             cls.binaries[mode] = binary
@@ -166,13 +242,13 @@ fn result(_: *State, value: i64) void { response = value; }
             command = ['zig', 'build-exe', '--dep', 'build_options', '-Mroot=' + str(path),
                        '-Mbuild_options=' + str(out/'trace-options.zig'), '-femit-bin=' + str(binary),
                        '--cache-dir', str(out/'cache'), '--global-cache-dir', str(ROOT/'.zig-cache/global')]
-            result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(af09_command(command), capture_output=True, text=True, timeout=60)
             if result.returncode:
                 raise AssertionError(result.stderr)
             cls.binaries[mode] = binary
 
     def run_mode(self, mode):
-        return subprocess.run([str(self.binaries[mode])], capture_output=True, text=True, timeout=5)
+        return subprocess.run(af09_command([str(self.binaries[mode])]), capture_output=True, text=True, timeout=5)
 
     def test_actual_stop_select_and_reclaim_order_and_complete_reset(self):
         result = self.run_mode('trace')

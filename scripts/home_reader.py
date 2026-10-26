@@ -16,6 +16,8 @@ UTC_MIN = 1791290040
 UTC_MAX = 1791290100
 RTC = '2026-10-06T12:34:00,clock=vm'
 PHASES = b'BIUVWLP????????OAMT????????SDJFR'
+DRAIN_CASES = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
+               'partial_ack', 'exit_deadline', 'pending_fragment')
 
 
 def replace(text, old, new, *, count=1):
@@ -24,9 +26,15 @@ def replace(text, old, new, *, count=1):
     return text.replace(old, new)
 
 
-def role(recovered):
+def role(recovered, *, drain_case='none'):
+    if not isinstance(drain_case, str) or drain_case not in ('none', *DRAIN_CASES):
+        raise ValueError('AF09 reader requires one known drain case')
     if type(recovered) is not bool:
         raise ValueError('AF09 reader requires explicit pristine/recovery boolean')
+    if drain_case != 'none' and recovered:
+        if drain_case not in DRAIN_CASES[:4]:
+            raise ValueError('AF09 drain deadline cases have no recovery reader')
+        return 2
     return int(recovered)
 
 
@@ -54,8 +62,8 @@ unsigned aether_home_reader_ready;
     return text
 
 
-def render_startup(original, recovered):
-    selected = role(recovered)
+def render_startup(original, recovered, *, drain_case='none'):
+    selected = role(recovered, drain_case=drain_case)
     text = replace(original, '#include "engine-observe.inc"', '#include "home-reader-observe.inc"')
     text = replace(text, 'int main(void)\n{', 'static int home_reader_run(void)\n{')
     # The wrapper deliberately repeats final checks: no successful lifecycle can
@@ -106,9 +114,9 @@ int main(void)
 '''
 
 
-def render_importer(original, recovered):
+def render_importer(original, recovered, *, drain_case='none'):
     """Use the real fresh read-only import/close/evict path and explicit oracle."""
-    selected = role(recovered)
+    selected = role(recovered, drain_case=drain_case)
     text = replace(original, 'extern int aether_pool_namespace_recover(spa_t *);',
         '#include "home-recovery-probe.h"\n'
         'extern unsigned char aether_home_reader_digest[32];\n'
@@ -157,15 +165,18 @@ def _relink(argv, replacements, output, mapping=None):
     return result
 
 
-def compose(base, preparation, work, destination, command, tools, record, recovered):
+def compose(base, preparation, work, destination, command, tools, record, recovered, *, drain_case='none'):
     """Compile/link actual prepared recovery objects into destination/reader.elf.
 
     Call only after metadata.prepare_engine(base,...,recovery=True). Caller owns
     fresh work/destination directories, frozen inputs, command recording/limits,
     notice retention, sealing and cleanup. command accepts (argv, log). This
     adapter executes no guest and neither changes old profiles nor copies SDKs.
+    drain_case is the existing closed compiled selection, not another user
+    option. Selected pristine uses expectation0; only successful drain cases
+    may compose recovered expectation2 (empty probe). Default modes0/1 remain.
     """
-    selected=role(recovered)
+    selected=role(recovered, drain_case=drain_case)
     base=Path(base); work=Path(work); destination=Path(destination)
     port=base/'port'
     if preparation.get('old_service') is not None or preparation.get('recovery_empty') is not False:
@@ -178,10 +189,10 @@ def compose(base, preparation, work, destination, command, tools, record, recove
     before={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in source_inputs}
     record.setdefault('inputs',{}).update(before)
     (work/'home-reader-observe.inc').write_text(render_observer(observe.read_text()))
-    (work/'home-reader-startup.c').write_text(render_startup(startup.read_text(),recovered))
+    (work/'home-reader-startup.c').write_text(render_startup(startup.read_text(),recovered,drain_case=drain_case))
     spa_recipe=_recipe(preparation,'spa-active-selected.o')
     spa_source=Path(spa_recipe[spa_recipe.index('-c')+1])
-    (work/'home-reader-spa.c').write_text(render_spa(spa_source.read_text(),render_importer(importer.read_text(),recovered)))
+    (work/'home-reader-spa.c').write_text(render_spa(spa_source.read_text(),render_importer(importer.read_text(),recovered,drain_case=drain_case)))
     include=['-I'+str(work),'-I'+str(SERVICE),'-I'+str(VOLUME),'-fstack-usage']
     command(_compile(preparation,'engine-startup.o',work/'home-reader-startup.c',work/'home-reader-startup.o',include),work/'reader-startup.log')
     command(_compile(preparation,'spa-active-selected.o',work/'home-reader-spa.c',work/'home-reader-spa.o',include),work/'reader-spa.log')
@@ -249,5 +260,7 @@ def compose(base, preparation, work, destination, command, tools, record, recove
         generated_sources={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in work.iterdir()
             if p.suffix in ('.c','.inc')},
         executed=False,native_acceptance=False)
+    if drain_case != 'none':
+        result.update(drain_case=drain_case,probe_expectation=selected)
     record['reader']=result
     return result

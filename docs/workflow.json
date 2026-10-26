@@ -214,9 +214,9 @@
       "gap": "No guest, native heap/stack/IRQ/copy latency, TTY/jobs/persistence or ISO qualification. Private SDK/artifact receipts remain local."
     },
     "docs/NATIVE-AF09-DRAIN.md": {
-      "status": "proposal",
-      "validation": "Issue75 separate concept/source/reader review and available independent host C/counter/decoder checks. Explicit human review precedes dependent kernel variant selection; no implemented kernel variant or native result is claimed.",
-      "gap": "Kernel selector/checkpoints/trace production, matched target artifacts, full witness oracles/associations, complete current qualification/fit and native disposition remain pending. Independent host C fixture, counter forwarding and decoder prerequisites are available; existing preparation ceilings remain."
+      "status": "experimental-reference",
+      "validation": "Issue75 owner-approved closed control, separate implemented source/reader review, actual kernel-body/default guard tests and prospective writer/empty-reader controls. Fresh component/target and major-handoff gates remain separate.",
+      "gap": "Matched final current qualifications, complete target fit/preparation and later native disposition/guest witnesses remain acceptance gates; no release readiness."
     }
   },
   "tools": {
@@ -2491,10 +2491,10 @@
       "reference": "docs/NATIVE-AF09-DRAIN.md",
       "owner": "Aether integration",
       "budget_seconds": 300,
-      "command": "From system root: python3 -B -m unittest discover -s tests -p test_af09_drain_trace.py -v. Independent prospective host decoder only; no new kernel control or guest.",
-      "invariants": "Closed cases and canonical versioned rows, numeric/type/capture/trace bounds, row order, generation identity and retained unparsed UART; no suffix promotion or qualification verdict.",
-      "oracle": "Allowed boundaries and malformed/duplicate/stale/gap/unknown/overflow/oversize/substitution denials on synthetic parser fixtures.",
-      "gaps": "Kernel diagnostic selector and trace production, actual full witness oracles, artifact association, target/native qualification and human control review remain pending. Synthetic fixtures are not native evidence."
+      "command": "From system root: run unittest discovery separately for test_af09_drain_trace.py, test_af09_drain_witness.py and test_af09_drain_inputs.py. Standard-library prospective host tests only.",
+      "invariants": "Closed cases/canonical bounded rows, causal startup/query/park/ACK/cleanup sequence, fixed deadline, exact actual counters and ordinary native marker consistency; provenance binds current source/raw records without automatic qualification.",
+      "oracle": "All-eight synthetic complete/omission/mutation, malformed/stale/overlap/substitution/overflow denials; exact current-file and closed manifest identity checks.",
+      "gaps": "Synthetic transcripts do not establish artifact association, execution, recovery, IRQ/CR3 or native acceptance."
     },
     {
       "id": "AT-AF09-DRAIN-C-HOST",
@@ -2504,7 +2504,7 @@
       "command": "From userland: python3 -B experiments/filesystem-service/fd_home_drain_checks.py --evidence UNUSED_DIRECTORY. Existing nonsymlink parent, pinned Clang/format21.1.8 and installed macOS SDK required; host doubles only.",
       "invariants": "Real home/pipe/fork/startup/READY path, direct parent exit and unexpected-return fail-stop, closed reference encodings, exactly two16-byte writes, no C cleanup/wait, preserved nested-fork authority; consumed source/header/direct-tool freeze and owned cleanup.",
       "oracle": "34 C host scenarios, seven compiling named semantic controls and UBSan; no-build CLI usage/prerequisite/escaped-output controls. Prospective source prerequisite only.",
-      "gaps": "No native entry, kernel checkpoint/timing/authority enforcement, complete transitive toolchain/loader provenance, peak fit, target artifacts, cold-reader or release acceptance. New kernel control review remains pending."
+      "gaps": "No native timing/authority, complete transitive toolchain/loader provenance, target fit/artifacts, cold execution or release acceptance; owner control review is recorded separately."
     },
     {
       "id": "AT-AF09-DRAIN-C-CONTROLLER",
@@ -2515,6 +2515,16 @@
       "invariants": "Arm unknown cleanup before helper calls, retain work/evidence on unknown or unresolved stop, remove only after known cleanup, complete aggregate includes setup and final hashes/removal/receipt writes.",
       "oracle": "Eleven actual-controller methods with mocked helper results and controlled expiry; old cleanup-loss/initial-budget defects reproduced before correction.",
       "gaps": "No real host process escape containment or native process/timing/authority enforcement. Actual C runs and all target/native gates remain separate."
+    },
+    {
+      "id": "AT-AF09-DRAIN-KERNEL",
+      "reference": "docs/NATIVE-AF09-DRAIN.md",
+      "owner": "Aether kernel",
+      "budget_seconds": 300,
+      "command": "From system root: python3 -B -m unittest discover -s tests -p test_native_af09_drain.py -v; actual-body host scaffold, no guest.",
+      "invariants": "Generation-bound publication and settled source obligations, primary-only completed-return holds, saved frame/FS/FP, helper and idle progress, actual Events timeout precedence, default zero state, unchanged capability/pointer/direction/cleanup checks.",
+      "oracle": "Eight selected cases, actual-body scenarios and compiling semantic omissions; unknown/default selector and enabled-state controls.",
+      "gaps": "No hardware IRQ/CR3, real guest scheduling, target fit or native/recovery qualification."
     }
   ]
 }

@@ -117,7 +117,7 @@ class BuildPolicy(unittest.TestCase):
     def test_complete_boolean_classification(self):
         source = (ROOT / 'build.zig').read_text()
         ordinary = set(re.findall(r'b.option\(bool, "([^"\n]+)"', source))
-        guarded = set(re.findall(r'negativeOption\(b, release_artifact, "([^"\n]+)"', source))
+        guarded = set(re.findall(r'negativeOption\(b, release_artifact, af09_diagnostic, "([^"\n]+)"', source))
         self.assertEqual(ALLOWED, ordinary)
         self.assertEqual(NEGATIVE, guarded)
         self.assertFalse(ordinary & guarded)

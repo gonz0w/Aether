@@ -193,7 +193,7 @@ int main(int argc, char **argv);
 int main(int argc, char **argv)
 {
     (void)argv;
-    if (argc == 2)
+    if (argc == 3)
         (void)aefd_home_drain_run(aefd_shell_fork_context(),
                                   AEFD_HOME_DRAIN_CASE);
     /* Setup/transfer failures must not return through libc descriptor finish.

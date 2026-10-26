@@ -1,15 +1,15 @@
-# AF09 admission and drain diagnostic proposal
+# AF09 admission and drain diagnostic
 
 [Issue75](https://github.com/gonz0w/Aether/issues/75) owns implementation and
 continuation; [issue64](https://github.com/gonz0w/Aether/issues/64) owns native
-acceptance. This document proposes a private, compiled diagnostic family. Independent host
-prerequisites are available below; the kernel profile remains unimplemented. It is
-not an implemented profile, a native result or permission to start a guest.
+acceptance. This reference describes the implemented experimental compiled
+diagnostic family and its host checks. Complete current qualification, target
+fit/preparation and native witness gates remain separate; no guest is selected.
 Base: public main `33ace875cbd9dafc94aebd93f20c29dbd6546698`.
 
 ## Review decision
 
-Propose one closed Zig option, `-Dnative-af09-drain=CASE`, default `none`.
+Owner review recorded2026-10-26 in issue75 approves one closed Zig option, `-Dnative-af09-drain=CASE`, default `none`.
 `none`, whether explicit or omitted, preserves existing behavior. The eight
 selected values and their prospective observations are:
 
@@ -25,9 +25,9 @@ selected values and their prospective observations are:
 | `pending_fragment` | Publish one actual ACK16 fragment while owner park is deferred until its real deadline. | Deadline precedence over an already pending fragment event; no full-ACK or event-arrives-on-deadline claim. |
 
 [DEVELOPMENT](DEVELOPMENT.md#rc1-review-follow-up-rendering-and-negative-controls)
-requires explicit human review of new non-boolean controls. That review must
-precede selecting these variants for dependent artifact construction. Proposal,
-source inspection and separate concept/reader review do not consume this control.
+requires explicit human review of new non-boolean controls. The human approved this exact eight-case proposal after draft PR76; the control
+review is complete. Implementation, host checks and matched offline preparation
+may proceed. Separate implementation/evidence review remains required.
 This decision grants no guest authority and changes no resource limit.
 
 Case IDs1..8 follow table order; `none` emits no case. Use only the separate
@@ -266,8 +266,8 @@ facts. Host-created examples test parser behavior only.
 
 ## Verification and ownership
 
-Before implementation, obtain separate review of this concrete contract. Record
-human control review before dependent variant selection.
+The concrete contract has separate peer review and recorded human control
+review. Obtain separate review of the implemented candidate before integration.
 Kernel work owns the closed build guard, scalar checkpoints, actual trace hooks,
 primary-only exclusion and actual-body Zig harnesses. Userland work owns matched
 C requests, service-counter forwarding, selected predicates and their direct
@@ -299,7 +299,7 @@ admission. Writer60s/6000 ticks and reader30s/3000 ticks remain ceilings. Focuse
 host300s, children180s, independent4MiB diagnostic streams,16MiB compiler files,
 complete host900s and whole selected offline target preparation1800s remain.
 Existing exact media allowances are separate. Any measured fit failure or actual
-authority/resource change needs its real disposition. This proposal grants no
+authority/resource change needs its real disposition. This diagnostic grants no
 guest, automatic retry, runtime sufficiency, Zsh/TTY, persistent ISO or release
 acceptance.
 
@@ -313,14 +313,57 @@ The cost is one closed diagnostic family and bounded observations across current
 components. No production complexity is removed now; broader scheduler repair,
 nested-fork authority, installed service policy and general tracing are deferred.
 
-## Available host decoder
+## Host parser and selected offline preparation
 
-`python3 -B -m unittest discover -s tests -p test_af09_drain_trace.py -v`
-runs the independent prospective decoder checks from the system root.
+From the system root, run the standard-library checks separately:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_af09_drain_trace.py -v
+python3 -B -m unittest discover -s tests -p test_af09_drain_witness.py -v
+python3 -B -m unittest discover -s tests -p test_af09_drain_inputs.py -v
+```
+
 `scripts/af09_drain_trace.py` decodes bounded canonical rows and retains other
-UART bytes verbatim; it returns no qualification verdict. Saved park/completion
-sequences may precede the current event sequence. Artifact association and full
-phase-specific native oracles remain integration work in issue75.
+UART bytes verbatim. `validate_witness(capture, case, admission)` checks complete
+prospective writer observations, including ordinary admission, counter output,
+terminal, cleanup, panic and Halt markers. The measured admission map has exactly
+`engine_pages`, `shell_pages`, `helper_pages` and `owner_bytes`; helper geometry
+belongs to the prepared envelope, while this workload copies the parent without
+loading that helper. Native READY and wire READY have a causal partial order.
+Saved park/completion sequences may precede the current event sequence.
+
+Associate capture bytes with the exact selected prepared image and input hashes
+before calling the oracle. A successful parser result explicitly records
+`native_executed=false`; it neither establishes execution nor qualifies cold
+recovery. The four successful cases require an independent read-only reader
+with empty `probe`; the four deadline cases preserve failure obligations and
+must not be recovered as cleanly exported media. Synthetic controls exercise
+these checks without running a guest.
+
+The existing offline tools accept one explicit `--native-af09-drain CASE` with
+paired `--diagnostic-host-inputs PATH` and
+`--diagnostic-host-inputs-sha256 SHA`. Omission keeps `none`; paired inputs are
+forbidden for `none`. Selected engine, guarded-input and preparation receipts
+use distinct drain schemas and bind one exact case throughout. They preserve
+the existing limits, ABI31 and envelopes. The autonomous selected writer has an
+empty UART script. Preparation includes pristine/writer/recovery for four clean
+cases, and pristine/writer only for deadline cases. Reader kernels retain their
+ordinary read-only profile; only the writer selects the diagnostic kernel flag.
+
+The host manifest schema is `aether-af09-drain-host-inputs-v1`, with exactly
+`schema`, ordered `cases`, current absolute-path `inputs` hashes and `records`.
+Its fixed record roles are `c_fixture`, `c_fixture_impact`, `c_entry`, `counters`,
+`builders`, `kernel`, `build_guards`, `regressions`, `complete_host` and `review`;
+each identifies retained raw provenance by path/SHA-256. All bytes are rechecked.
+The manifest binds reviewed provenance; opaque labels are not automatic test
+qualification, execution proof or approval. Keep these private receipts private.
+
+The fresh owner receipt uses explicitly selected component-wrapper v2, fixed
+1106 inputs/911 commands, the `af09-drain-owner-2026-10-26` qualification profile
+and its reviewed af75 harness identity. The original v1 reader keeps its exact
+1097-input shape; no padding, dropped input or automatic count adaptation is
+permitted. Old producer/helper receipts remain baseline recipe evidence, while
+the selected C/counter/kernel/reader tests establish their own host coverage.
 
 ## Independent userland host prerequisites
 
@@ -352,8 +395,8 @@ The C fixture retains initialized full request references and submits only the
 selected32 bytes. Parent native-exit return and any returned native-entry failure
 trap before C descriptor cleanup. Host evidence covers34 scenarios, seven named
 compiling omissions and the same scenarios under UBSan; ASan remains unavailable
-under the recorded host incompatibility. Actual entry, peak fit and native
-execution are unqualified.
+under the recorded host incompatibility. The actual three-argument shell wrapper and native-main guard have separate
+host entry controls. Peak target fit and native execution remain separate.
 
 The selected Rust source implements safe pre-ACK counter forwarding through
 HomeActivated, Framed and Endpoints, plus exact2/3 normal-completion predicates.
@@ -364,13 +407,12 @@ service crate's unsafe-code prohibition. Its exact commands, tools, source and
 input receipts remain local; there is no separate public counter-only runner.
 Do not treat the existing full HOME checker as a host-only command.
 
-These are host source prerequisites, not an implemented admission/deadline
-witness. Complete current source/owner receipt refresh, kernel checkpoints,
-matched target artifacts, full fit, phase-specific native oracles and the major
-handoff host gate remain pending in issue75. Existing receipts cannot qualify
+These checks establish host source behavior. The kernel checkpoint and prospective
+oracle implementations have separate source review and actual-body controls.
+Current complete qualifications, matched target artifacts, full fit and the major
+handoff host gate remain issue75 acceptance gates. Existing receipts cannot qualify
 changed inputs, and no historical seal is rewritten. Human review of the new
-kernel control precedes dependent variant construction; guest execution remains
-separate. The seven-method decoder checks above prove only parsing denials.
+kernel control is recorded in issue75; guest execution remains separate. The synthetic parser checks above prove only prospective oracle behavior.
 
 The maintained C controller also has direct mock checks, from `userland/`:
 
