@@ -57,4 +57,5 @@ The subsequent owner-approved resource decision is implemented under
 [issue69](https://github.com/gonz0w/Aether/issues/69) and the distinct
 [application contract](../../docs/NATIVE-ZSH-APPLICATION.md). The ordinary-parser
 rejection above remains the historical result; the subsequent fresh selected-profile parser and configured-kernel checks pass
-in their focused host scope. Complete host/review and native gates remain open.
+in their focused host scope. Issue69 and issue70 hold the current complete-host
+and integration disposition; native qualification remains separate.

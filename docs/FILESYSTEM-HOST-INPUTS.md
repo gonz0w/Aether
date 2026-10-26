@@ -45,6 +45,21 @@ change needs exact proof that its producer logic/imports/constants/flags remain
 unchanged after only the named consumer and location-routing transformations.
 The existing seven-tool migration catalog and original seals are unchanged.
 
+An optional `unused_make` proof handles one inherited producer-tool entry after
+an Apple host-tool update. The selected reader checks the exact sealed entries,
+complete recorded commands and unchanged producing recipe closure before treating
+that entry as historical metadata. It rejects any producer execution of make,
+incomplete proof or change to an actual compiler, provider, header, object, library,
+flag or tool. The current make identity stays bound to the current input record.
+Absent selection or absent proof retains the strict original tool checks.
+
+This producer distinction cannot qualify a build that actually used make. The
+required Zsh/tinfo target experiment must run again with explicit current launcher,
+backend and developer-directory selection and the observed host header/link inputs.
+Keep the immutable SDK recipe as provenance and record fresh execution tools
+separately. The host generator observation does not authenticate every implicit
+system runtime dependency or establish native behavior.
+
 The legacy pair reader resolves only the declared runtime root before applying
 its original member/link/hash checks. Member names must stay relative and inside
 that root. Historical AF09 recipe checks use the existing recorded-checkout

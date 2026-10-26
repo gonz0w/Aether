@@ -114,7 +114,9 @@ Focused corrections cover the old-profile scaffold, exact retained dependency
 locations, member/escape denials, stale-input ordering and historical recipe and
 diagnostic-path identities. Private fixture availability is explicit.
 
-A corrected focused result does not replace a complete passing gate. Complete
-host acceptance and final integration review remain pending under issue69/issue70;
-native acceptance remains separate. The one-run exception changes no default
-budget, runtime resource limit or guest authority.
+A corrected focused result does not replace a complete passing gate. Issue69 and
+issue70 record the current complete-host acceptance and integration disposition;
+native acceptance remains separate. The historical one-run exception stays consumed.
+The separately approved standing complete-host budget is recorded in
+[PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26); it changes no runtime
+resource limit or guest authority.

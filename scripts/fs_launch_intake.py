@@ -65,9 +65,9 @@ def intake(directory, expected=SEAL):
             # Resolve historical provenance first, then hash the actual input.
             if not path.is_absolute() or not path.is_file() or actual_digest(path) != checksum:
                 raise ValueError('launch consumed source/input drift: '+name)
-    for tool in record['tools'].values():
-        if digest(Path(tool['resolved_path'])) != tool['sha256']:
-            raise ValueError('launch tool drift')
+        for tool in record['tools'].values():
+            if digest(Path(tool['resolved_path'])) != tool['sha256']:
+                raise ValueError('launch tool drift')
     return dict(manifest_sha256=expected, elf=str(root/'filesystem.elf'),
                 elf_sha256=members['filesystem.elf'], members=len(members),
                 executed=False, native_acceptance=False,

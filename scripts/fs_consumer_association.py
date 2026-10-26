@@ -220,8 +220,97 @@ def _producer(kind, root):
     return record
 
 
+# These fixed dispatcher roots describe only the two sealed producers. Their
+# callees' recorded Python input closure is bound alongside the complete argv.
+MAKE_DISPATCH = {
+    'af06': {'scripts/fs_launch.py': ('recipe', 'compose', 'build'),
+             'scripts/service_runtime_smoke.py': ('suite', 'compose_engine'),
+             'scripts/openzfs_elapsed.py': ('prepare',), 'scripts/openzfs_volume.py': ('build',)},
+    'af07': {'scripts/fs_metadata_launch.py': ('build', 'compose'),
+             'scripts/openzfs_fs_metadata_service.py': ('prepare_engine',),
+             'scripts/service_runtime_smoke.py': ('compose_engine',),
+             'scripts/openzfs_elapsed.py': ('prepare',), 'scripts/openzfs_volume.py': ('build',),
+             'scripts/openzfs_failure.py': ('runtime_archive',)}}
+
+
+def _records_digest(records):
+    return hashlib.sha256(json.dumps(records, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def _unused_make(data, kind, producer):
+    """Verify one inherited entry; never stand in for an executed tool pin."""
+    from fs_host_dependencies import retained_input
+    proof = data['unused_make']
+    require(isinstance(proof, dict) and set(proof) == {'current', 'producers'} and
+            isinstance(proof['producers'], dict) and set(proof['producers']) == set(PINS), 'unused make fields')
+    current = proof['current']
+    require(isinstance(current, dict) and set(current) == {'path', 'resolved_path', 'sha256'} and
+            current['path'] == current['resolved_path'] == '/usr/bin/make' and sha(current['sha256']) and
+            data['inputs'].get(current['path']) == current['sha256'] and digest(current['path']) == current['sha256'], 'unused make current identity')
+    item = proof['producers'][kind]
+    require(isinstance(item, dict) and set(item) == {'entry', 'command_count', 'commands_sha256', 'recipes', 'dispatch'}, 'unused make producer fields')
+    entry = producer.get('tools', {}).get('make')
+    require(isinstance(entry, dict) and set(entry) == {'path', 'resolved_path', 'sha256', 'version'} and
+            entry['path'] == entry['resolved_path'] == '/usr/bin/make' and entry['version'] == 'GNU Make 3.81' and
+            sha(entry['sha256']) and entry == item['entry'] and entry['sha256'] != current['sha256'], 'unused make inherited entry')
+    require(all(p.get('entry') == entry for p in proof['producers'].values() if isinstance(p, dict)), 'unused make pair entry')
+    commands = producer.get('commands')
+    require(isinstance(commands, list) and commands and type(item['command_count']) is int and
+            item['command_count'] == len(commands) and item['commands_sha256'] == _records_digest(commands), 'unused make complete commands')
+    for row in commands:
+        require(isinstance(row, dict) and isinstance(row.get('argv'), list) and row['argv'] and
+                all(isinstance(arg, str) and arg for arg in row['argv']), 'unused make command argv')
+        require(not any(re.search(r'(^|[\s=;/])g?make($|[\s;/])', arg) for arg in row['argv']), 'executed make cannot be inherited metadata')
+    expected = {name: before for name, before in producer['inputs'].items() if name.endswith('.py')}
+    recipes = item['recipes']
+    require(isinstance(recipes, dict) and set(recipes) == set(expected), 'unused make complete recipe closure')
+    modules = {}
+    for name, before in expected.items():
+        source = recipes[name]
+        require(isinstance(source, dict) and set(source) == {'historical_path', 'historical_sha256', 'current_path', 'current_sha256'}, 'unused make recipe fields')
+        require(all(isinstance(source[n], str) and Path(source[n]).is_absolute() for n in ('historical_path', 'current_path')) and
+                sha(source['historical_sha256']) and sha(source['current_sha256']), 'unused make recipe identity shape')
+        historical = Path(source['historical_path'])
+        live = retained_input(relocate(name))
+        relative = relocate(name).relative_to(ROOT).as_posix() if relocate(name).is_relative_to(ROOT) else None
+        candidates = {Path(name), dependency_input(name, before)}
+        if relative in data['baselines']:
+            candidates.add(Path(data['baselines'][relative]['path']))
+        require(historical in candidates and source['historical_sha256'] == before and historical.is_file() and
+                digest(historical) == before, 'unused make historical recipe identity')
+        current_source(live)
+        require(source['current_path'] == str(live) and source['current_sha256'] == digest(live) and
+                data['inputs'].get(str(live)) == source['current_sha256'], 'unused make current recipe identity')
+        if relative in MAKE_DISPATCH[kind]:
+            modules[relative] = (ast.parse(historical.read_text()), ast.parse(live.read_text()))
+            if digest(live) != before:
+                if relative in PRODUCER_EDITS:
+                    producer_unchanged(relative, historical.read_text(), live.read_text())
+                else:
+                    # The existing catalog's AF06 producer changes only these
+                    # former sibling locations; no import/function/tool changes.
+                    class Locations(ast.NodeTransformer):
+                        def visit_BinOp(self, node):
+                            node = self.generic_visit(node)
+                            if (_dump(node.left) == _dump(ast.parse('ROOT.parent', mode='eval').body)
+                                    and isinstance(node.op, ast.Div) and isinstance(node.right, ast.Constant)
+                                    and isinstance(node.right.value, str) and (node.right.value == 'Aether-userland' or node.right.value.startswith('Aether-userland/'))):
+                                return ast.BinOp(left=ast.Name(id='ROOT', ctx=ast.Load()), op=ast.Div(), right=ast.Constant('userland'+node.right.value.removeprefix('Aether-userland')))
+                            return node
+                    require(_dump(Locations().visit(modules[relative][0])) == _dump(modules[relative][1]), 'unused make producer recipe logic drift')
+    require(set(modules) == set(MAKE_DISPATCH[kind]) and isinstance(item['dispatch'], dict) and
+            set(item['dispatch']) == set(MAKE_DISPATCH[kind]), 'unused make dispatch closure')
+    for relative, names in MAKE_DISPATCH[kind].items():
+        require(isinstance(item['dispatch'][relative], dict) and set(item['dispatch'][relative]) == set(names), 'unused make dispatch functions')
+        for name in names:
+            before, after = (_function(module, name) for module in modules[relative])
+            require(_dump(before) == _dump(after) and item['dispatch'][relative][name] == hashlib.sha256(_dump(before).encode()).hexdigest(), 'unused make producing callgraph changed')
+    return entry
+
+
 def validate(data):
-    require(isinstance(data, dict) and set(data) == {'format','native_executed','dependency_root','artifacts','inputs','baselines','evidence'}, 'record fields')
+    fields = {'format','native_executed','dependency_root','artifacts','inputs','baselines','evidence'}
+    require(isinstance(data, dict) and set(data) in (fields, fields | {'unused_make'}), 'record fields')
     require(data['format'] == FORMAT and data['native_executed'] is False and data['dependency_root'] == declaration(), 'format/native/dependency declaration')
     require(isinstance(data['artifacts'], dict) and set(data['artifacts']) == set(PINS), 'artifact pair')
     require(isinstance(data['baselines'], dict), 'producer baselines')
@@ -260,8 +349,12 @@ def validate(data):
                 require(isinstance(baseline, dict) and set(baseline) == {'path','sha256'} and baseline['sha256'] == before and isinstance(baseline['path'], str) and Path(baseline['path']).is_absolute() and digest(baseline['path']) == before, 'producer baseline identity')
                 producer_unchanged(relative, Path(baseline['path']).read_text(), public.read_text())
         require(artifact['changes'] == changes and changes, 'exact changed-consumer set')
-        for tool in producer.get('tools', {}).values():
-            require(digest(tool['resolved_path']) == tool['sha256'], 'producer tool drift')
+        inherited = _unused_make(data, kind, producer) if 'unused_make' in data else None
+        for name, tool in producer.get('tools', {}).items():
+            if name == 'make' and inherited is not None:
+                require(tool == inherited, 'unused make tool identity')
+            else:
+                require(digest(tool['resolved_path']) == tool['sha256'], 'producer tool drift')
     require(set(data['baselines']) == expected_baselines, 'exact producer proof set')
     return resolved
 

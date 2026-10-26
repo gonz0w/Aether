@@ -4,6 +4,7 @@
 Opaque synthetic members and receipt text test validation only. PINS is replaced
 only inside this fixture; no synthetic compiler/guest is ever executed.
 """
+import ast
 import copy
 import hashlib
 import json
@@ -79,6 +80,81 @@ class Association(unittest.TestCase):
 
     def select(self,data=None):
         self.path.write_text(json.dumps(data or self.data));os.environ[association.ENV_PATH]=str(self.path);os.environ[association.ENV_SHA]=sha(self.path)
+
+    def unused_make_fixture(self):
+        from source_paths import dependency_input, relocate
+        roots={
+            'af06':{'scripts/fs_launch.py':('recipe','compose','build'),
+                    'scripts/service_runtime_smoke.py':('suite','compose_engine'),
+                    'scripts/openzfs_elapsed.py':('prepare',), 'scripts/openzfs_volume.py':('build',)},
+            'af07':{'scripts/fs_metadata_launch.py':('build','compose'),
+                    'scripts/openzfs_fs_metadata_service.py':('prepare_engine',),
+                    'scripts/service_runtime_smoke.py':('compose_engine',),
+                    'scripts/openzfs_elapsed.py':('prepare',), 'scripts/openzfs_volume.py':('build',),
+                    'scripts/openzfs_failure.py':('runtime_archive',)}}
+        data=copy.deepcopy(self.data);proof={'current':{'path':'/usr/bin/make','resolved_path':'/usr/bin/make','sha256':sha('/usr/bin/make')},'producers':{}}
+        for kind,artifact in data['artifacts'].items():
+            directory=Path(artifact['root']);path=directory/'build.json';record=json.loads(path.read_text())
+            for relative in roots[kind]:record['inputs'][str(PRIVATE/relative)]=sha(PRIVATE/relative)
+            record['tools']['make']={'path':'/usr/bin/make','resolved_path':'/usr/bin/make','sha256':'0'*64,'version':'GNU Make 3.81'}
+            path.write_text(json.dumps(record));members={}
+            for line in (directory/'SHA256SUMS').read_text().splitlines():
+                _,name=line.split('  ',1);members[name]=sha(directory/name)
+            (directory/'SHA256SUMS').write_text(''.join(h+'  '+n+'\n' for n,h in members.items()))
+            seal=sha(directory/'SHA256SUMS');association.PINS[kind]=(association.PINS[kind][0],seal);artifact.update(manifest_sha256=seal,build_sha256=sha(path))
+            recipes={};dispatch={}
+            for name,before in record['inputs'].items():
+                if not name.endswith('.py'):continue
+                relative=relocate(name).relative_to(ROOT).as_posix();historical=PRIVATE/relative
+                current=dependencies.retained_input(relocate(name));data['inputs'][str(current)]=sha(current)
+                recipes[name]={'historical_path':str(historical),'historical_sha256':before,'current_path':str(current),'current_sha256':sha(current)}
+            for relative,functions in roots[kind].items():
+                module=ast.parse((PRIVATE/relative).read_text());dispatch[relative]={}
+                for name in functions:
+                    node=next(n for n in module.body if isinstance(n,ast.FunctionDef) and n.name==name)
+                    dispatch[relative][name]=hashlib.sha256(ast.dump(node,include_attributes=False).encode()).hexdigest()
+            proof['producers'][kind]={'entry':record['tools']['make'],'command_count':len(record['commands']),'commands_sha256':hashlib.sha256(json.dumps(record['commands'],sort_keys=True,separators=(',',':')).encode()).hexdigest(),'recipes':recipes,'dispatch':dispatch}
+        data['inputs']['/usr/bin/make']=sha('/usr/bin/make');data['unused_make']=proof
+        return data
+
+    def test_explicit_unused_make_requires_complete_recipe_and_command_proof(self):
+        data=self.unused_make_fixture();association.validate(data)
+        self.select(data)
+        accepted=launch.intake(Path(data['artifacts']['af06']['root']),data['artifacts']['af06']['manifest_sha256'])
+        self.assertFalse(accepted['native_acceptance']);self.assertFalse(accepted['executed'])
+        os.environ.pop(association.ENV_PATH);os.environ.pop(association.ENV_SHA)
+        original_read=Path.read_text;live=ROOT/'scripts/fs_launch.py'
+        def changed(path,*args,**kwargs):
+            text=original_read(path,*args,**kwargs)
+            return text.replace('destination = validate_destination(destination)',"destination = Path('/unreviewed')",1) if path==live else text
+        with patch.object(Path,'read_text',changed),self.assertRaisesRegex(ValueError,'producing callgraph changed'):
+            association.validate(data)
+        for change in ('missing','entry','current','commands','recipe','recipe-path','recipe-shape','extra','dispatch','other-tool'):
+            bad=copy.deepcopy(data)
+            if change=='missing':bad.pop('unused_make')
+            elif change=='entry':bad['unused_make']['producers']['af06']['entry']['path']='/foreign/make'
+            elif change=='current':bad['unused_make']['current']['sha256']='1'*64
+            elif change=='commands':bad['unused_make']['producers']['af06']['command_count']+=1
+            elif change=='recipe':bad['unused_make']['producers']['af07']['recipes'].pop(next(iter(bad['unused_make']['producers']['af07']['recipes'])))
+            elif change in ('recipe-path','recipe-shape'):
+                source=next(iter(bad['unused_make']['producers']['af07']['recipes'].values()))
+                source['current_path' if change=='recipe-path' else 'historical_path']=str(self.out/'foreign-recipe.py') if change=='recipe-path' else None
+            elif change=='extra':bad['unused_make']['unexpected']=True
+            elif change=='dispatch':bad['unused_make']['producers']['af06']['dispatch']['scripts/fs_launch.py']['compose']='1'*64
+            else:self.tool.write_bytes(b'actual compiler drift')
+            with self.subTest(change=change),self.assertRaises(ValueError):association.validate(bad)
+            if change=='other-tool':self.tool.write_bytes(b'synthetic unexecuted host tool identity\n')
+
+    def test_unused_make_never_admits_executed_tool_or_default_intake(self):
+        data=self.unused_make_fixture()
+        with self.assertRaises(ValueError):launch.intake(Path(data['artifacts']['af06']['root']),data['artifacts']['af06']['manifest_sha256'])
+        for kind in ('af06','af07'):
+            bad=copy.deepcopy(data);directory=Path(bad['artifacts'][kind]['root']);path=directory/'build.json';original=path.read_text();record=json.loads(original);record['commands'].append({'argv':['/usr/bin/make','--version'],'exit_code':0});path.write_text(json.dumps(record))
+            manifest=directory/'SHA256SUMS';before=manifest.read_text();manifest.write_text(before.replace(hashlib.sha256(original.encode()).hexdigest()+'  build.json',sha(path)+'  build.json'))
+            bad['artifacts'][kind].update(build_sha256=sha(path),manifest_sha256=sha(manifest));pin=association.PINS[kind];association.PINS[kind]=(pin[0],sha(manifest))
+            bad['unused_make']['producers'][kind].update(command_count=len(record['commands']),commands_sha256=hashlib.sha256(json.dumps(record['commands'],sort_keys=True,separators=(',',':')).encode()).hexdigest())
+            with self.subTest(kind=kind),self.assertRaisesRegex(ValueError,'executed make'):association.validate(bad)
+            path.write_text(original);manifest.write_text(before);association.PINS[kind]=pin
 
     def test_default_is_strict_and_explicit_pair_has_no_native_claim(self):
         root=Path(self.data['artifacts']['af06']['root']);seal=self.data['artifacts']['af06']['manifest_sha256']
