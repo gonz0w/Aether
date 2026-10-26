@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 """Focused constructor controls; fake commands manipulate real ar containers."""
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 import hashlib
 import io
+import os
 import sys
 import tarfile
 import tempfile
@@ -12,6 +14,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from home_runtime import archive_names, runtime_archive, sealed
+import home_runtime as runtime
+import fs_host_dependencies as dependencies
 
 
 def sha(path):
@@ -211,6 +215,86 @@ class HomeRuntimeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "backend.*differ|backend.*mismatch"):
                 runtime_archive(port, dependency, report["tools"], command)
         self.assertEqual(sum("-c" in row for row in command.calls), 1)
+
+
+class RetainedRuntimeRoots(unittest.TestCase):
+    """Route declared inputs; mocked first seal isolates the path boundary."""
+
+    @contextmanager
+    def roots(self):
+        with tempfile.TemporaryDirectory(prefix="runtime-roots-", dir="/private/tmp") as name:
+            folder = Path(name).resolve()
+            checkout, original = folder / "checkout", folder / "retained"
+            local = checkout / ".deps/native-utc-v3"
+            target = original / ".deps/native-utc-v3"
+            local.parent.mkdir(parents=True)
+            target.mkdir(parents=True)
+            with ExitStack() as context:
+                context.enter_context(patch.object(runtime, "ROOT", checkout))
+                context.enter_context(patch.object(dependencies, "ROOT", checkout))
+                context.enter_context(patch.dict(os.environ, {
+                    dependencies.ENV: str(original)}))
+                yield folder, local, target
+
+    def test_verify_uses_the_declared_real_root_before_seal_validation(self):
+        class ReachedValidator(Exception):
+            pass
+
+        with self.roots() as (_, local, target):
+            local.symlink_to(target, target_is_directory=True)
+            with patch.object(runtime, "sealed", side_effect=ReachedValidator) as validate:
+                with self.assertRaises(ReachedValidator):
+                    runtime.verify_dependency(local, {})
+            self.assertEqual(validate.call_args.args[0], target)
+            self.assertEqual(validate.call_count, 1)
+
+    def test_foreign_alias_and_conflicting_capsule_fail_before_validation(self):
+        for mode in ("foreign-alias", "conflicting-capsule"):
+            with self.subTest(mode=mode), self.roots() as (folder, local, _):
+                if mode == "foreign-alias":
+                    foreign = folder / "foreign"
+                    foreign.mkdir()
+                    local.symlink_to(foreign, target_is_directory=True)
+                else:
+                    local.mkdir()
+                with patch.object(runtime, "sealed", side_effect=AssertionError(
+                        "invalid declared input reached validator")) as validate:
+                    with self.assertRaises(ValueError):
+                        runtime.verify_dependency(local, {})
+                validate.assert_not_called()
+
+    def test_unconfigured_and_unknown_aliases_remain_denied(self):
+        for mode in ("unconfigured", "unknown"):
+            with self.subTest(mode=mode), self.roots() as (_, local, target):
+                if mode == "unknown":
+                    local = local.parent / "unknown-runtime"
+                else:
+                    os.environ.pop(dependencies.ENV)
+                local.symlink_to(target, target_is_directory=True)
+                with self.assertRaisesRegex(ValueError, "root"):
+                    runtime.verify_dependency(local, {})
+
+    def test_output_overlap_uses_both_resolved_roots_before_any_construction(self):
+        for mode in ("child", "ancestor", "parent-alias"):
+            with self.subTest(mode=mode), self.roots() as (folder, local, target):
+                local.symlink_to(target, target_is_directory=True)
+                if mode == "ancestor":
+                    port = target.parent
+                else:
+                    actual = target / "port"
+                    actual.mkdir()
+                    if mode == "parent-alias":
+                        alias = folder / "port-parent-alias"
+                        alias.symlink_to(target, target_is_directory=True)
+                        port = alias / "port"
+                    else:
+                        port = actual
+                with patch.object(runtime, "verify_dependency", side_effect=AssertionError(
+                        "overlap reached dependency intake")) as intake:
+                    with self.assertRaisesRegex(ValueError, "overlap"):
+                        runtime.runtime_archive(port, local, {}, FakeCommand())
+                intake.assert_not_called()
+                self.assertFalse((port / "failure-runtime-build").exists())
 
 
 if __name__ == "__main__":

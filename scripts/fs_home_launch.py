@@ -285,21 +285,124 @@ def bind_runtime(backend, owned, retained, generated, artifact_root=None, copied
         generated[name] = expected
 
 
+EXECUTION_ROLES = ('clang', 'ar', 'lld', 'nm', 'readelf', 'rustc',
+                   'clippy-driver', 'zig')
+CURRENT_INPUTS_SHA256 = (
+    '0521371de06c44489426635890c4bb96bc820912ac7200c4294ff7eaea081d95')
+
+
+def execution_tools(sdk, rust, zig):
+    """Select actual tools independently of unused SDK provenance pins."""
+    if not isinstance(sdk, dict) or not isinstance(rust, dict):
+        raise ValueError('AF09 execution tool maps')
+    selected = {}
+    for name in EXECUTION_ROLES:
+        if name == 'zig':
+            source = {'zig': zig}
+        else:
+            source = sdk if name == 'ar' else rust
+        entry = source.get(name)
+        if (not isinstance(entry, dict)
+                or not isinstance(entry.get('path'), str)
+                or not isinstance(entry.get('sha256'), str)):
+            raise ValueError('AF09 missing execution tool: ' + name)
+        if name in ('clang', 'lld', 'nm', 'readelf'):
+            inherited = sdk.get(name, {})
+            if (not isinstance(inherited, dict)
+                    or any(inherited.get(key) != entry[key]
+                           for key in ('path', 'sha256'))):
+                raise ValueError('AF09 conflicting execution tool: ' + name)
+        selected[name] = dict(entry)
+    for entry in selected.values():
+        verify_inputs({entry['path']: entry['sha256']})
+    return selected
+
+
+def current_dependency_inputs():
+    """Bind the immutable member map to exact declared physical input paths."""
+    from fs_host_dependencies import declaration, retained_input
+    from source_paths import dependency_input
+
+    dependency_root = declaration()
+    root = ROOT / '.deps/native-current'
+    requested = root / 'current-inputs.json'
+    manifest = retained_input(requested)
+    if (manifest != manifest.resolve() or not manifest.is_file()
+            or digest(manifest) != CURRENT_INPUTS_SHA256):
+        raise ValueError('AF09 current input manifest path/hash')
+    report = read_json(manifest)
+    files = report.get('files') if isinstance(report, dict) else None
+    if not isinstance(files, dict) or not files:
+        raise ValueError('AF09 current input member map')
+    inputs = {str(manifest): CURRENT_INPUTS_SHA256}
+    members = {}
+    for name, expected in files.items():
+        if (not isinstance(name, str) or not name or '\\' in name
+                or '\0' in name or Path(name).is_absolute()
+                or any(part in ('', '.', '..') for part in name.split('/'))
+                or Path(name).as_posix() != name):
+            raise ValueError('AF09 original dependency member path')
+        logical = root / name
+        actual = dependency_input(logical, expected)
+        if actual != actual.resolve() or not actual.is_file():
+            raise ValueError('AF09 original dependency member alias: ' + name)
+        members[name] = str(actual)
+        if str(actual) in inputs and inputs[str(actual)] != expected:
+            raise ValueError('AF09 conflicting dependency member identity')
+        inputs[str(actual)] = expected
+    verify_inputs(inputs)
+    # Resolve requested aliases again after reads, not only their target bytes.
+    if retained_input(requested) != manifest:
+        raise ValueError('AF09 current input manifest binding changed')
+    for name, actual in members.items():
+        logical = root / name
+        if str(dependency_input(logical, files[name])) != actual:
+            raise ValueError('AF09 dependency member binding changed: ' + name)
+    if digest(manifest) != CURRENT_INPUTS_SHA256:
+        raise ValueError('AF09 current input manifest changed during read')
+    if declaration() != dependency_root:
+        raise ValueError('AF09 dependency declaration changed during read')
+    binding = dict(format='aether-af09-current-inputs-v1',
+                   dependency_root=dependency_root,
+                   manifest=dict(requested=str(requested), path=str(manifest),
+                                 sha256=CURRENT_INPUTS_SHA256),
+                   members=members)
+    return inputs, binding
+
+
+def verify_dependency_bindings(binding):
+    _, current = current_dependency_inputs()
+    if not isinstance(binding, dict) or binding != current:
+        raise ValueError('AF09 current dependency binding changed')
+
+
 def command_arguments(argv, tools):
-    """Resolve only named retained tools; a recipe cannot select another Rust."""
+    """Only the explicit current execution closure may start a process."""
     args = list(map(str, argv))
     if not args:
         raise ValueError('AF09 empty compiler command')
-    if args[0] == 'rustc':
-        if len(args) > 1 and args[1].startswith('+'):
+    if not isinstance(tools, dict) or not tools:
+        raise ValueError('AF09 explicit execution tool map required')
+    for entry in tools.values():
+        if (not isinstance(entry, dict)
+                or not isinstance(entry.get('path'), str)
+                or not Path(entry['path']).is_absolute()
+                or not isinstance(entry.get('sha256'), str)
+                or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
+            raise ValueError('AF09 execution tool identity shape')
+    if args[0] in ('rustc', 'zig'):
+        role = args[0]
+        if role == 'rustc' and len(args) > 1 and args[1].startswith('+'):
             if args[1] != '+1.98.0':
                 raise ValueError('AF09 unpinned Rust recipe')
             del args[1]
-        args[0] = tools['rustc']['path']
-    elif args[0] == 'zig':
-        args[0] = tools['zig']['path']
-    if not Path(args[0]).is_absolute():
-        raise ValueError('AF09 compiler executable must be absolute')
+        args[0] = tools[role]['path']
+    selected = [entry for entry in tools.values()
+                if isinstance(entry, dict) and entry.get('path') == args[0]]
+    if not Path(args[0]).is_absolute() or not selected:
+        raise ValueError('AF09 executable outside selected execution closure')
+    for entry in selected:
+        verify_inputs({entry['path']: entry['sha256']})
     return args
 
 
@@ -366,19 +469,35 @@ def compose(base, preparation, artifacts, work, destination, command, result):
 
 class CleanupTrackedProcess:
     """Keep stop unconfirmed if the owned runner cannot return its receipt."""
-    def __init__(self, proc, record):
+    def __init__(self, proc, record, tools=None):
         self.proc = proc
         self.record = record
+        self.tools = tools
 
     def clean_env(self, work):
         return self.proc.clean_env(work)
 
+    def _arguments(self, argv):
+        if (not isinstance(self.tools, dict)
+                or set(self.tools) != set(EXECUTION_ROLES)):
+            raise ValueError('AF09 exact engine execution closure required')
+        return command_arguments(argv, self.tools)
+
     def run(self, *args, **kwargs):
+        if self.tools is not None:
+            args = (self._arguments(args[0]), *args[1:])
         previous = self.record.get('process_cleanup_unresolved', False)
         self.record['process_cleanup_unresolved'] = True
         result = self.proc.run(*args, **kwargs)
         if result.record.get('cleanup') == 'complete' and not previous:
             self.record.pop('process_cleanup_unresolved')
+        if self.tools is not None:
+            try:
+                self._arguments(args[0])
+            except ValueError:
+                self.record.setdefault('tool_validation_failures', []).append(
+                    dict(argv=list(args[0]), process=result.record))
+                raise
         return result
 
 
@@ -460,6 +579,8 @@ def intake(directory, seal):
     if not needed <= members.keys():
         raise ValueError('AF09 missing provenance/notices')
     verify_inputs(record['inputs'])
+    if 'dependency_bindings' in record:
+        verify_dependency_bindings(record['dependency_bindings'])
     return dict(schema='aether-fs-home-launch-result-v1', protocol='AFSRPC09',
                 manifest_sha256=seal, elf=str(root / 'filesystem.elf'),
                 elf_sha256=members['filesystem.elf'], executed=False,
@@ -481,13 +602,13 @@ def build(destination, qualification, probe_qualification):
     for name in reconstructed:
         inputs.pop(name, None)
     verify()
-    tools = read_json(ROOT / '.deps/native-current/sdk/tools.lock.json')['tools']
+    sdk_tools = read_json(ROOT / '.deps/native-current/sdk/tools.lock.json')['tools']
     rust_pins = read_json(ROOT / 'userland/docs/evidence/filesystem-transport-2026-10-19/inputs.json')
-    tools.update(rust_pins['tools'])
     zig = shutil.which('zig')
     if not zig:
         raise ValueError('AF09 required Zig compiler unavailable')
-    tools['zig'] = dict(path=str(Path(zig).resolve()), sha256=digest(zig))
+    tools = execution_tools(sdk_tools, rust_pins['tools'],
+        dict(path=str(Path(zig).resolve()), sha256=digest(zig)))
     for tool in tools.values():
         inputs.update(verify_inputs({tool['path']: tool['sha256']}))
     helper_path = ROOT / 'userland/experiments/command-runner/process.py'
@@ -500,13 +621,11 @@ def build(destination, qualification, probe_qualification):
     for directory in ('kernel', 'user', 'scripts'):
         inputs.update({str(p): digest(p) for p in sorted((ROOT / directory).rglob('*'))
                        if p.is_file() and '__pycache__' not in p.parts and p.name != '.DS_Store'})
-    inputs[str(ROOT / '.deps/native-current/current-inputs.json')] = digest(ROOT / '.deps/native-current/current-inputs.json')
-    for name, expected in read_json(ROOT / '.deps/native-current/current-inputs.json')['files'].items():
-        path = ROOT / '.deps/native-current' / name
-        if path.resolve() != path or not path.is_relative_to(ROOT / '.deps/native-current'):
-            raise ValueError('AF09 original dependency path')
-        result_input = verify_inputs({str(path): expected})
-        inputs.update(result_input)
+    dependency_inputs, dependency_bindings = current_dependency_inputs()
+    for name, expected in dependency_inputs.items():
+        if name in inputs and inputs[name] != expected:
+            raise ValueError('AF09 conflicting current dependency input')
+        inputs[name] = expected
     temporary = Path(tempfile.mkdtemp(prefix='filesystem-home-engine-', dir=ROOT / 'userland/build'))
     work = temporary / 'launch'
     work.mkdir()
@@ -518,6 +637,7 @@ def build(destination, qualification, probe_qualification):
         qualification_sha256=digest(qualification), probe_qualification_sha256=digest(probe_qualification),
         qualification_path=str(Path(qualification).absolute()), probe_qualification_path=str(Path(probe_qualification).absolute()),
         qualified_generated_inputs=reconstructed,
+        dependency_bindings=dependency_bindings,
         scope='Offline linked AF09 dependency and real kernel loader admission; no guest or persistence acceptance')
     evidence = ROOT / 'userland/docs/evidence/filesystem-home-prep-2026-10-24/engine'
     evidence.mkdir(parents=True, exist_ok=True)
@@ -530,7 +650,7 @@ def build(destination, qualification, probe_qualification):
         except FileExistsError:
             number += 1
     deadline = time.monotonic() + 1800
-    proc = CleanupTrackedProcess(proc, result)
+    proc = CleanupTrackedProcess(proc, result, tools=tools)
     env = proc.clean_env(temporary)
     generated_runtime = {}
     destination_owned = False
@@ -541,7 +661,7 @@ def build(destination, qualification, probe_qualification):
         if remaining <= 0:
             raise RuntimeError('AF09 target composition deadline')
         child_env = dict(env)
-        if args[0] in [tools[name]['path'] for name in ('rustc', 'clippy-driver', 'rustfmt')]:
+        if args[0] in [tools[name]['path'] for name in ('rustc', 'clippy-driver')]:
             child_env['DYLD_LIBRARY_PATH'] = str(Path(tools['rustc']['path']).parent.parent / 'lib')
         run = proc.run(args, cwd=ROOT, env=child_env, work=temporary,
                        label='engine-%04d' % len(result['commands']), timeout=min(180, remaining))
@@ -606,6 +726,7 @@ def build(destination, qualification, probe_qualification):
         (destination / 'preparation.json').write_text(__import__('json').dumps(dict(
             executed=False, backend=preparation['backend'], original_commands=len(preparation['commands'])), indent=2) + '\n')
         verify_inputs(result['inputs'])
+        verify_dependency_bindings(result['dependency_bindings'])
         verify_inputs(generated_runtime)
         result['runtime_generated_inputs'] = generated_runtime
         result['runtime_final_input_verification'] = 'pass'
