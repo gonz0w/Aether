@@ -18,6 +18,44 @@ selected. Full engine/helper/image composition follows this finite producer;
 installation, login, initial CWD, libc/routed writes, rollback, durable replay,
 packages, Zsh/ISO and release qualification remain outside it.
 
+## Fresh host qualification input routing
+
+[Issue64](https://github.com/gonz0w/Aether/issues/64) owns current producer/helper
+qualification. Run the maintained producer and helper checkers on frozen current
+source; a historical qualification does not cover changed client or descriptor
+implementations. These host checks select no guest or complete engine build.
+
+The producer reuses the exact retained AF07 compiler recipe as provenance. Its
+live product includes must select this checkout's maintained headers. The one
+historical service-delivery source include selects the maintained filesystem
+service directory. Only the two exact disposed per-run resource/allocation
+overlays may be omitted. Other missing inputs, foreign aliases, unknown path
+flags and changed compilers fail before header compilation.
+The exact historical freestanding empty-sysroot operand uses a verified empty
+directory under the checker's owned workspace. Record that route; do not mutate
+the retained SDK or accept another missing or nonempty sysroot.
+
+Dependency paths use the existing explicit retained-root declaration and its
+fixed allowlist. Source ROOT remains this checkout. Keep the original receipt,
+recipe and macro-prefix-map output values unchanged; fresh evidence records both
+requested and routed compiler prefixes and the exact omitted overlays. No SDK,
+old seal or general source-migration catalog is rewritten.
+
+From the system root, first run the routing regression checks, then each selected
+qualification under its owned runner and source/input/tool freeze:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_home_native_c_prefix.py -v
+PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-native.py
+PYTHONOPTIMIZE=1 python3 -B userland/experiments/filesystem-service/check-home-probe.py
+```
+
+Each qualification retains its 300-second aggregate, at most 180 seconds per
+child, 4 MiB streams and owned cleanup. Keep each failure and record the fresh
+host SDK selection and actual tool identities; old host/SDK observations do not
+qualify the current environment. A complete engine construction, native fit and
+execution disposition remain separate prerequisites.
+
 ## Required behavior before implementation
 
 Select `fs_home_native` explicitly, requiring matching home policy/wire/activation,
