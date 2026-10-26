@@ -45,6 +45,14 @@ change needs exact proof that its producer logic/imports/constants/flags remain
 unchanged after only the named consumer and location-routing transformations.
 The existing seven-tool migration catalog and original seals are unchanged.
 
+The legacy pair reader resolves only the declared runtime root before applying
+its original member/link/hash checks. Member names must stay relative and inside
+that root. Historical AF09 recipe checks use the existing recorded-checkout
+prefix map only for identity comparison; current source reads stay under current
+`ROOT`, and original generated-input keys and hashes remain unchanged. Retained
+live source bytes are checked before generated-source reconstruction, followed by
+the complete recipe and input checks. These checks do not qualify a current owner.
+
 The five evidence scopes are `af06-parser`, `af07-parser`, `legacy-models`,
 `application-models` and `legacy-kernel`. Their exact process fields and semantic
 marker contract live in [`fs_consumer_association.py`](../scripts/fs_consumer_association.py).
@@ -78,6 +86,17 @@ allowance is separate from the stream cap. Track owned root and nested sessions;
 confirm cleanup and retain every failed attempt. Do not skip tests, shard the
 required gate to evade its budget, reuse a consumed exception or treat a timeout
 as a semantic rejection.
+
+Some historical object comparisons also bind diagnostic source locations.
+Their regression controls explicitly map the current checkout to the recorded
+location before comparing old bytes. Production flags, provider bytes and old
+expected hashes remain unchanged. A raw checkout-path difference must not be
+reported as either a provider change or proof of byte compatibility.
+
+The owner-approved single extended aggregate in issue69 completed with legacy
+regression failures. Its focused corrections and refreshed records do not grant
+a full-gate pass or another extended run. Failed attempts and cleanup results
+remain local; the default bounds above still apply.
 
 Relevant direct checks are:
 

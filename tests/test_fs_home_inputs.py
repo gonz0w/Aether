@@ -164,6 +164,15 @@ class GuardedHomeInputs(unittest.TestCase):
         generated=home.owner_generated(report)
         self.assertEqual(len(generated),47)
         self.assertTrue(all(report['sources'][name]==sha for name,sha in generated.items()))
+        for work in ('/foreign/userland/build/'+Path(report['work']).name,
+                     str(Path(report['work']).parent/'..'/'build'/Path(report['work']).name)):
+            bad=copy.deepcopy(report);bad['work']=work
+            with self.assertRaisesRegex(ValueError,'historical work identity'):home.owner_generated(bad)
+        bad=copy.deepcopy(report);current=ROOT/'sys-init/scripts/owner_compare.py'
+        original=next(name for name in report['sources'] if name.endswith('/sys-init/scripts/owner_compare.py'))
+        bad['sources'][str(current)]=bad['sources'][original]
+        if str(current)!=original:
+            with self.assertRaisesRegex(ValueError,'historical recipe changed'):home.owner_generated(bad)
         bad=copy.deepcopy(report);bad['sources'][str(Path(report['work'])/'arbitrary.c')]='1'*64
         with self.assertRaises(ValueError):home.owner_generated(bad)
         bad=copy.deepcopy(report);name=next(iter(generated));bad['sources'][name]='1'*64

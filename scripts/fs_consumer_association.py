@@ -25,7 +25,7 @@ KERNEL = ('kernel/native_elf.zig', 'kernel/native_launch.zig', 'kernel/native_fs
           'kernel/arch/x86_64/native_fs_roles.zig', 'kernel/arch/x86_64/backing_pool.zig')
 PRODUCER_EDITS = ('scripts/fs_metadata_launch.py', 'scripts/fs_launch_intake.py',
                   'scripts/service_runtime_smoke.py', 'scripts/source_paths.py',
-                  'scripts/openzfs_elapsed.py')
+                  'scripts/openzfs_elapsed.py', 'scripts/zpl_pair.py')
 ALLOWED = {'af06': {'kernel/native_elf.zig', *PRODUCER_EDITS},
            'af07': {*KERNEL, *PRODUCER_EDITS, 'scripts/fs_home_inputs.py', 'scripts/fs_home_launch.py'}}
 REQUIRED_INPUTS = (*KERNEL, *PRODUCER_EDITS, 'build.zig', 'scripts/fs_host_dependencies.py',
@@ -118,6 +118,21 @@ def producer_unchanged(relative, baseline, current):
         indices = [i for i, n in enumerate(function.body) if _dump(n) == _dump(before)]
         require(len(indices) == 1, 'baseline sealed prefix')
         function.body[indices[0]:indices[0]+1] = ast.parse('from fs_host_dependencies import retained_root\nroot = retained_root(Path(root).absolute())').body
+    elif relative == 'scripts/zpl_pair.py':
+        function = _function(expected, 'verify_prepared')
+        before = ast.parse("dependency = ROOT / '.deps/native-service-runtime-v3'").body[0]
+        containers = [n for n in ast.walk(function) if isinstance(getattr(n, 'body', None), list)
+                      and any(_dump(row) == _dump(before) for row in n.body)]
+        require(len(containers) == 1, 'baseline pair dependency prefix')
+        body = containers[0].body
+        index = next(i for i, row in enumerate(body) if _dump(row) == _dump(before))
+        body[index:index+1] = ast.parse("from fs_host_dependencies import retained_root\ndependency = retained_root(ROOT / '.deps/native-service-runtime-v3')").body
+        loops = [n for n in body if isinstance(n, ast.For)
+                 and _dump(n.iter) == _dump(ast.parse("build['dependency_files'].items()", mode='eval').body)]
+        require(len(loops) == 1, 'baseline pair member loop')
+        loop = loops[0]
+        require(_dump(loop.body[0]) == _dump(ast.parse('path = dependency / name').body[0]), 'baseline pair member prefix')
+        loop.body[:1] = ast.parse("if (not isinstance(name, str) or not name or not Path(name).parts or Path(name).is_absolute() or '..' in Path(name).parts):\n    raise ValueError('ZPL pair runtime member path: ' + str(name))\npath = dependency / name\nif not path.resolve().is_relative_to(dependency.resolve()):\n    raise ValueError('ZPL pair runtime member path: ' + name)").body
     elif relative == 'scripts/source_paths.py':
         function = _function(expected, 'dependency_input')
         require(_dump(function.body[-1]) == _dump(ast.parse('return path').body[0]), 'baseline migration fallback')

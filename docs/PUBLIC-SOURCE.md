@@ -32,9 +32,8 @@ The free Source checks workflow runs two bounded jobs on standard GitHub runners
 - Source integrity verifies the pinned Agent Temper bundle, selected Python syntax,
   workflow metadata JSON syntax, conventional PR titles and excluded private paths.
 - Kernel models runs the four named pure Zig roots: capability, lifetime, native ELF
-  and native launch. These currently contain 25 distinct test definitions; zero executed cases fails.
-  The initial hosted run executed 29 cases because the four ELF tests also run
-  through the launch root.
+  and native launch. Each root must execute at least one test case. Imported tests
+  may execute again through another root; rely on the actual job result and scope.
 
 These jobs do not qualify a full kernel build, boot, persistence, shell, package
 installation, recovery, private standards adoption or a release. Host/native

@@ -178,15 +178,22 @@ class StorageWait(unittest.TestCase):
     def test_default_namespace_object_preserves_the_pre_wait_bytes(self):
         # Preserve legacy panic/source locations when adding opt-in modules.
         # A moved cfg declaration must not silently alter old engine artifacts.
+        previous=json.loads((ROOT/'docs/evidence/fs-service-mixed-native-2026-10-19.json').read_text())
+        # The immutable receipt records the original source location. Remap only
+        # this byte-preservation regression's diagnostics after checkout moves.
+        roots={Path(name).parents[2] for name in previous['service_inputs']
+            if Path(name).parts[-3:]==('user','storage','namespace-wire.rs')}
+        self.assertEqual(len(roots),1)
+        recorded_root=next(iter(roots))
         compiler=subprocess.check_output(['rustup','which','--toolchain','1.98.0','rustc'],text=True).strip()
         output=self.out/'legacy-namespace.o'
         command=[compiler,'--crate-name','namespace_zpl','--edition=2024','--crate-type=lib',
             '--target=x86_64-unknown-none','--emit=obj','-Dwarnings','-Copt-level=2',
             '-Cpanic=abort','-Crelocation-model=static',
+            '--remap-path-prefix',str(ROOT)+'='+str(recorded_root),
             str(ROOT/'user/storage/openzfs-volume/namespace-zpl.rs'),'-o',str(output)]
         result=subprocess.run(command,capture_output=True,text=True,timeout=60)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        previous=json.loads((ROOT/'docs/evidence/fs-service-mixed-native-2026-10-19.json').read_text())
         self.assertEqual(hashlib.sha256(output.read_bytes()).hexdigest(),
             previous['builds']['normal/baseline']['namespace_objects']['namespace-zpl'])
 

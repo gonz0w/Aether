@@ -129,6 +129,11 @@ class Association(unittest.TestCase):
             association.producer_unchanged(relative,baseline,current)
             for addition in ('\nUNREVIEWED_GLOBAL=1\n','\nimport fractions\n','\ndef unreviewed_producer():\n    return "different link flags"\n'):
                 with self.subTest(relative=relative,addition=addition),self.assertRaisesRegex(ValueError,'producer logic/import/global drift'):association.producer_unchanged(relative,baseline,current+addition)
+        current=(ROOT/'scripts/zpl_pair.py').read_text()
+        for before,after in [("retained_root(ROOT / '.deps/native-service-runtime-v3')","retained_root(ROOT / '.deps/foreign')"),("'..' in Path(name).parts","False"),("if not path.resolve().is_relative_to(dependency.resolve()):","if False:")]:
+            self.assertEqual(current.count(before),1)
+            with self.subTest(pair_change=before),self.assertRaisesRegex(ValueError,'producer logic/import/global drift'):
+                association.producer_unchanged('scripts/zpl_pair.py',(PRIVATE/'scripts/zpl_pair.py').read_text(),current.replace(before,after,1))
         current=(ROOT/'scripts/fs_metadata_launch.py').read_text()
         anchor="final[-1]=str(destination/'filesystem.elf')"
         self.assertEqual(current.count(anchor),1)

@@ -107,9 +107,14 @@ Exact SDK/artifact measurements and receipts remain local.
 
 These are focused host results. The structural envelope uses a small engine and
 owner placeholder; it is not a matched runnable engine/owner composition.
-The complete root host gate reached its existing 300-second aggregate deadline
-and remains failed/incomplete. Focused diagnosis found a missing selector
-classification and unavailable local regression prerequisites. Their corrections
-and a refreshed input association do not replace a complete passing gate.
-Final integration review remains pending under issue69/issue70; native acceptance
-remains separate.
+The initial complete root host gate reached its 300-second aggregate deadline.
+A subsequent owner-approved single 900-second run completed within its bound but
+failed legacy consumer and regression checks. Both failed attempts remain retained.
+Focused corrections cover the old-profile scaffold, exact retained dependency
+locations, member/escape denials, stale-input ordering and historical recipe and
+diagnostic-path identities. Private fixture availability is explicit.
+
+A corrected focused result does not replace a complete passing gate. Complete
+host acceptance and final integration review remain pending under issue69/issue70;
+native acceptance remains separate. The one-run exception changes no default
+budget, runtime resource limit or guest authority.

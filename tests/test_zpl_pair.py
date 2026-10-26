@@ -96,6 +96,67 @@ class PairControls(unittest.TestCase):
             with self.assertRaises(ValueError):
                 pair.verify_prepared(self.output, {'writer': self.builds['writer']})
 
+    def test_declared_runtime_root_preserves_default_alias_member_and_hash_guards(self):
+        import os
+        import fs_host_dependencies as dependencies
+        # Synthetic dependency bytes exercise the actual complete pair reader;
+        # only later sealed SDK checks are mocked, and no target is executed.
+        canonical = self.output / '.deps/native-service-runtime-v3'
+        original = self.output / 'retained'
+        retained = original / '.deps/native-service-runtime-v3'
+        retained.mkdir(parents=True);canonical.parent.mkdir()
+        member = retained / 'OWNER.md';member.write_bytes(b'synthetic retained member\n')
+        canonical.symlink_to(retained, target_is_directory=True)
+        builds = copy.deepcopy(self.builds)
+        for build in builds.values():
+            build['sources'] = {str(ROOT / 'scripts/zpl_pair.py'): runtime.sha(ROOT / 'scripts/zpl_pair.py')}
+            build['dependency_files'] = {'OWNER.md': runtime.sha(member)}
+        with patch.object(pair, 'ROOT', self.output), patch.object(dependencies, 'ROOT', self.output), patch.object(runtime, 'sealed'):
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop(dependencies.ENV, None)
+                with self.assertRaisesRegex(ValueError, 'runtime drift'):
+                    pair.verify_prepared(self.output, builds)
+            with patch.dict(os.environ, {dependencies.ENV: str(original)}):
+                pair.verify_prepared(self.output, builds)
+                resolve = Path.resolve
+                def foreign(path, *args, **kwargs):
+                    return original / 'foreign' if path == canonical else resolve(path, *args, **kwargs)
+                with patch.object(Path, 'resolve', foreign), self.assertRaisesRegex(ValueError, 'alias target'):
+                    pair.verify_prepared(self.output, builds)
+                linked = retained / 'linked';linked.symlink_to(member)
+                (retained / 'linked-directory').symlink_to(retained, target_is_directory=True)
+                for name in ('linked', 'linked-directory/OWNER.md'):
+                    changed = copy.deepcopy(builds);changed['writer']['dependency_files'] = {name: runtime.sha(member)}
+                    with self.assertRaisesRegex(ValueError, 'runtime drift'):
+                        pair.verify_prepared(self.output, changed)
+                escaped = original / 'outside';escaped.write_bytes(member.read_bytes())
+                (retained / 'escape-link').symlink_to(escaped)
+                changed = copy.deepcopy(builds);changed['writer']['dependency_files'] = {'escape-link': runtime.sha(member)}
+                with self.assertRaisesRegex(ValueError, 'runtime member path'):
+                    pair.verify_prepared(self.output, changed)
+                member.write_bytes(b'drift')
+                with self.assertRaisesRegex(ValueError, 'runtime drift'):
+                    pair.verify_prepared(self.output, builds)
+
+    def test_runtime_member_names_cannot_escape_capsule(self):
+        import os
+        import fs_host_dependencies as dependencies
+        dependency = self.output / '.deps/native-service-runtime-v3'
+        dependency.mkdir(parents=True)
+        member = dependency / 'OWNER.md';member.write_bytes(b'synthetic retained member\n')
+        escaped = dependency.parent / 'escaped';escaped.write_bytes(member.read_bytes())
+        builds = copy.deepcopy(self.builds)
+        for build in builds.values():
+            build['sources'] = {str(ROOT / 'scripts/zpl_pair.py'): runtime.sha(ROOT / 'scripts/zpl_pair.py')}
+            build['dependency_files'] = {'OWNER.md': runtime.sha(member)}
+        with patch.object(pair, 'ROOT', self.output), patch.object(dependencies, 'ROOT', self.output), patch.object(runtime, 'sealed'), patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(dependencies.ENV, None)
+            pair.verify_prepared(self.output, builds)
+            for name in ('../escaped', str(escaped), '', '.', None):
+                changed = copy.deepcopy(builds);changed['writer']['dependency_files'] = {name: runtime.sha(member)}
+                with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'runtime member path'):
+                    pair.verify_prepared(self.output, changed)
+
     def execute(self, writer_text=None, reader_text=None, launch_error=None, drift=False, final_drift=False, stage_diagnostic=False, first_write_diagnostic=False, txg_worker_diagnostic=False, baseline_text=None, sync_stages=False, writer_60s=False, writer_ticks_6000=False, filesystem_bridge=None):
         if txg_worker_diagnostic or filesystem_bridge is not None:
             (self.output / "baseline").mkdir(exist_ok=True)

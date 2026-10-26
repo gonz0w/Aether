@@ -155,6 +155,11 @@ def checked_receipt(path, role):
                 or len(clock.get('methods', [])) != 2
                 or report.get('home_probe_clock_final_input_verification') != 'pass'):
             raise ValueError('AF09 helper/count/clock selection changed')
+    # Reject changed retained bytes before reconstructing disposed C inputs.
+    retained = {name: expected for name, expected in report['sources'].items()
+                if Path(name).is_file()}
+    if retained:
+        verify_inputs(retained)
     generated = generated_sources(report)
     inputs = verify_inputs(report['sources'], generated)
     inputs.update(verify_inputs(report['rust_native_libraries']))
