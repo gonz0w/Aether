@@ -88,6 +88,53 @@ modules or bypass checks. Home C generation uses an owned build/ or userland/bui
 workspace as required by its existing guard. Reconstruct only needed inputs;
 retain source transformation recipes and reject missing/duplicate anchors.
 
+## Current owner component qualification
+
+[Issue64](https://github.com/gonz0w/Aether/issues/64) owns the offline prerequisite
+for consuming the current owner admission/deadline evidence. The historical
+891-command/nine-control receipt path remains unchanged. A current component
+record has a different shape; a larger count alone does not qualify it.
+
+The optional paired `--owner-component-proof` and
+`--owner-component-proof-sha256` arguments select one versioned
+`aether-af09-owner-component-selection-v1` wrapper and its exact SHA256.
+`--owner-receipt` still names the actual component record. Absent selection keeps
+the historical interpretation; a partial or malformed selection is usage or
+prerequisite failure, never an implicit fallback. Guarded intake persists and
+revalidates the same selector through the computed owner-reuse record.
+
+The selected wrapper binds the component record and the reviewed role-file input
+impact. The reader validates the complete ordered command/process agreement,
+expected exits and control markers, required owner/deadline/transport controls,
+frozen implementation inputs, actual tools/libraries and confirmed cleanup.
+Only the existing 47 generated C leaves may be reconstructed from their pinned
+comparison/header/control recipes. A disposed harness is accepted only when its
+retained source bytes match its exact recorded input hash; it is not executed.
+No extra unavailable input or actual compiler-source drift is permitted.
+
+The role-file exception concerns the unchanged owner-code-limit value read by
+`owner_measure.py`; it is not an owner compiler input. Both role-file identities
+and the unchanged measuring source are bound explicitly. An unreviewed role
+change, different limit or role-file compiler reference rejects the selection.
+The complete owner is still rebuilt and measured from current real sources before
+artifact admission. Retained component observations are not a fresh execution,
+native peak measurement or proof of parent-terminal/deadline enforcement.
+
+Once fresh producer/helper inputs qualify, the existing offline command can add:
+
+```sh
+--owner-receipt COMPONENT.json \
+--owner-component-proof OWNER_PROOF.json \
+--owner-component-proof-sha256 PROOF_SHA256
+```
+
+These optional arguments retain ASCII help/version, stdout JSON, escaped stderr
+and the existing 0/1/2/64 success/failure/prerequisite/usage exits. They select no
+native workload, guest, new SDK, resource increase or historical 1800-second
+builder allowance. Current producer/helper qualification, exact artifacts and
+native disposition remain separate prerequisites. Private receipt/proof bytes
+remain local under the public-source boundary.
+
 ## Fixed workload, authority and completion
 
 Bootstrap remains MakeDirectory(home), Create(probe), empty-file verification,

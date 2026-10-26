@@ -179,7 +179,190 @@ class GuardedHomeInputs(unittest.TestCase):
         with self.assertRaises(ValueError):home.owner_generated(bad)
 
 
+
+class CurrentOwnerComponent(unittest.TestCase):
+    """Retained observations only; fixture mutation never executes the harness."""
+    def setUp(self):
+        fixture=ROOT/'sys-init/docs/evidence/filesystem-drain-deadline-2026-10-25/component-01.json'
+        self.assertTrue(fixture.is_file(),'selected private component fixture unavailable')
+        self.receipt=fixture.resolve();self.report=json.loads(self.receipt.read_text())
+        self.temp=tempfile.TemporaryDirectory(prefix='af64-owner-reader-',dir='/private/tmp');self.addCleanup(self.temp.cleanup)
+        self.out=Path(self.temp.name).resolve();roles=ROOT/'kernel/arch/x86_64/native_fs_roles.zig';reader=ROOT/'sys-init/scripts/owner_measure.py'
+        self.proof={'format':'aether-af09-owner-component-selection-v1',
+            'receipt':{'path':str(self.receipt),'sha256':home.digest(self.receipt)},
+            'role_metadata':{'path':str(roles),'before_sha256':self.report['sources'][str(roles)],
+                'current_sha256':home.digest(roles),'code_limit':49152,
+                'reader':{'path':str(reader),'sha256':home.digest(reader)}}}
+
+    def select(self,report=None,proof=None):
+        proof=copy.deepcopy(self.proof if proof is None else proof)
+        target=self.receipt
+        if report is not None:
+            target=self.out/'component.json';target.write_text(json.dumps(report))
+            proof['receipt']={'path':str(target),'sha256':home.digest(target)}
+        path=self.out/'selection.json';path.write_text(json.dumps(proof))
+        return target,{'path':str(path),'sha256':home.digest(path)}
+
+    def test_default_stays_historical_and_explicit_current_record_is_retained_only(self):
+        with self.assertRaisesRegex(ValueError,'historical owner'):home.owner_receipt(self.receipt,{})
+        target,selected=self.select()
+        with patch.object(home.runpy,'run_path',wraps=home.runpy.run_path) as run:
+            report,inputs,impact=home.owner_receipt(target,{},component=selected)
+        self.assertEqual(report['rows'],self.report['rows']);self.assertEqual(impact['children'],911)
+        self.assertFalse(impact['fresh_host_qualification']);self.assertEqual(len(impact['reconstructed_generated']),47)
+        self.assertEqual(impact['selection'],selected)
+        self.assertEqual(inputs[str(self.receipt)],home.digest(self.receipt));self.assertEqual(inputs[selected['path']],selected['sha256'])
+        self.assertFalse(any('af61-component.py' in str(call.args[0]) for call in run.call_args_list))
+        self.assertEqual(impact['role_metadata']['code_limit'],49152)
+
+    def test_current_component_rejects_process_control_harness_and_input_tampering(self):
+        for mode in ('actual','exit','cleanup','control-missing','control-duplicate','marker','control-source',
+                     'typed','transport','implementation','tool','native-library','harness','missing','work','role-compiler','command','cwd','positive-marker','removed-source'):
+            report=copy.deepcopy(self.report)
+            if mode=='actual':report['actual_processes'][0]['exit']=1
+            elif mode=='exit':report['rows'][0]['expected_exit']=1
+            elif mode=='cleanup':report['rows'][0]['process']['cleanup']='unresolved';report['actual_processes'][0]=report['rows'][0]['process']
+            elif mode=='control-missing':report['home_owner_controls'].pop()
+            elif mode=='control-duplicate':report['home_owner_controls'][-1]=report['home_owner_controls'][0]
+            elif mode=='marker':report['home_owner_controls'][0]['marker']='UNPROVED_MARKER'
+            elif mode=='control-source':report['home_owner_controls'][0]['sha256']='0'*64
+            elif mode=='typed':report['native_deadline_controls'][0]['marker']='OTHER'
+            elif mode=='transport':report['transport_configuration_denials'][0]['sha256']='0'*64
+            elif mode=='implementation':report['frozen_implementation'][next(iter(report['frozen_implementation']))]='0'*64
+            elif mode=='tool':report['tools']['rustc']['sha256']='0'*64
+            elif mode=='native-library':report['sources'][next(n for n in report['sources'] if '/rustlib/x86_64-unknown-none/lib/' in n)]='0'*64
+            elif mode=='harness':report['harness_source']+='\n# tampered\n'
+            elif mode=='missing':report['sources'][str(Path(report['work'])/'unproved.c')]='0'*64
+            elif mode=='work':report['work']='/foreign/'+Path(report['work']).name
+            elif mode=='command':report['rows'][0]['process']['argv'][0]='/foreign/compiler';report['actual_processes'][0]=report['rows'][0]['process']
+            elif mode=='cwd':report['rows'][0]['process']['cwd']='/foreign';report['actual_processes'][0]=report['rows'][0]['process']
+            elif mode=='positive-marker':next(r for r in report['rows'] if r['label']=='home-owner-tests')['stdout']='unproved pass'
+            elif mode=='removed-source':report['sources'].pop(str(ROOT/'docs/native-fs-owner-stack-v1.json'))
+            else:
+                roles=str(ROOT/'kernel/arch/x86_64/native_fs_roles.zig');report['rows'][0]['process']['argv'].append(roles);report['actual_processes'][0]=report['rows'][0]['process']
+            target,selected=self.select(report)
+            with self.subTest(mode=mode),self.assertRaises(ValueError):home.owner_receipt(target,{},component=selected)
+
+    def test_current_selection_and_role_impact_are_explicit_and_exact(self):
+        for mode in ('format','receipt','before','current','reader','limit','foreign','extra'):
+            proof=copy.deepcopy(self.proof)
+            if mode=='format':proof['format']='unknown'
+            elif mode=='receipt':proof['receipt']['sha256']='0'*64
+            elif mode=='before':proof['role_metadata']['before_sha256']='0'*64
+            elif mode=='current':proof['role_metadata']['current_sha256']='0'*64
+            elif mode=='reader':proof['role_metadata']['reader']['sha256']='0'*64
+            elif mode=='limit':proof['role_metadata']['code_limit']=65536
+            elif mode=='foreign':proof['role_metadata']['path']='/foreign/roles.zig'
+            else:proof['extra']=True
+            target,selected=self.select(proof=proof)
+            with self.subTest(mode=mode),self.assertRaises(ValueError):home.owner_receipt(target,{},component=selected)
+        for selected in ([],{}, {'path':'relative','sha256':'0'*64}, {'path':str(self.out/'selection.json'),'sha256':'bad'}):
+            with self.subTest(selected=selected),self.assertRaises(ValueError):home.owner_receipt(self.receipt,{},component=selected)
+
+    def test_component_wrapper_drift_during_read_is_not_returned_as_valid(self):
+        target,selected=self.select()
+        def changed(report):
+            path=Path(selected['path']);path.write_text(path.read_text()+'\n')
+        with patch.object(home,'component_control_rows',side_effect=changed),self.assertRaisesRegex(ValueError,'input changed'):
+            home.owner_receipt(target,{},component=selected)
+
+    def test_intake_revalidates_persisted_component_before_later_work(self):
+        target,selection=self.select();_,owner_inputs,impact=home.owner_receipt(target,{},component=selection)
+        candidate=self.out/'dependency';candidate.mkdir();producer=self.out/'producer.json';producer.write_text('{}')
+        row=record();row['owner_receipt']={'path':str(target),'sha256':home.digest(target)}
+        row['producer_receipt']={'path':str(producer),'sha256':home.digest(producer)}
+        row['owner_reuse']=impact;row['inputs']=owner_inputs
+        for name in home.ARTIFACTS:
+            (candidate/name).write_bytes(b'x'*100);row['artifacts'][name]['sha256']=home.digest(candidate/name)
+        original_read=home.read_json
+        def read(path):
+            if Path(path).name=='build.json':return {'qualification_sha256':home.digest(producer)}
+            return original_read(path)
+        for changed in (False,True):
+            current=copy.deepcopy(row)
+            if changed:current['owner_reuse']['children']=912
+            (candidate/'inputs.json').write_text(json.dumps(current))
+            with patch.object(home,'checked_members',return_value={n:v['sha256'] for n,v in row['artifacts'].items()}), \
+                 patch.object(home,'read_json',side_effect=read), \
+                 patch.object(home.launch,'intake',return_value={'elf_sha256':'2'*64}), \
+                 patch.object(home,'checked_producer',return_value=({},{})), \
+                 patch.object(home,'owner_receipt',wraps=home.owner_receipt) as consume, \
+                 patch.object(home,'required_sources',side_effect=RuntimeError('AFTER_COMPONENT_REVALIDATION')) as later:
+                if changed:
+                    with self.assertRaisesRegex(ValueError,'reuse impact drift'):home.intake(candidate,'0'*64)
+                    later.assert_not_called()
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'AFTER_COMPONENT_REVALIDATION'):home.intake(candidate,'0'*64)
+                    later.assert_called_once()
+                self.assertEqual(consume.call_args.kwargs,{'component':selection})
+
+    def test_current_owner_selection_cannot_bypass_stale_actual_producer(self):
+        target,selection=self.select()
+        with patch.object(home,'output_path',side_effect=lambda p:p), \
+             patch.object(home.launch,'intake',return_value={}), \
+             patch.object(home,'checked_producer',side_effect=ValueError('STALE_ACTUAL_PRODUCER')), \
+             patch.object(home,'owner_receipt',side_effect=AssertionError('owner read before producer')) as owner:
+            with self.assertRaisesRegex(ValueError,'STALE_ACTUAL_PRODUCER'):
+                home._build(self.out/'new-output',self.out/'engine','0'*64,self.out/'producer',target,{},self.out/'attempt.json',owner_component=selection)
+            owner.assert_not_called()
+        self.assertFalse((self.out/'new-output').exists())
+
+    def test_component_cli_flags_are_paired_and_reuse_selector_is_validated(self):
+        import subprocess
+        command=[sys.executable,'-B',str(ROOT/'scripts/fs_home_inputs.py')]
+        help=subprocess.run(command+['--help'],capture_output=True,text=True,timeout=10)
+        self.assertEqual(help.returncode,0);self.assertIn('--owner-component-proof',help.stdout);self.assertTrue(help.stdout.isascii())
+        required=['--engine','/absent','--engine-seal','0'*64,'--producer-receipt','/absent','--owner-receipt','/absent','--output','/absent']
+        for flag,value in [('--owner-component-proof',str(self.out/'proof.json')),('--owner-component-proof-sha256','0'*64)]:
+            result=subprocess.run(command+required+[flag,value],capture_output=True,text=True,timeout=10)
+            self.assertEqual(result.returncode,64);self.assertEqual(result.stdout,'');self.assertIn('paired',result.stderr)
+        for reuse in (None,[],{'format':'unknown'}, {'format':'aether-af09-owner-component-reuse-v1'},
+                      {'format':'aether-af09-owner-component-reuse-v1','selection':[]}):
+            candidate=record();candidate['owner_reuse']=reuse
+            with self.subTest(reuse=reuse),self.assertRaises(ValueError):home.validate_record(candidate)
+
+
 class GuardedCleanup(unittest.TestCase):
+    def test_actual_build_reselects_component_at_final_owner_validation(self):
+        for selection in (None,{'path':'/modeled/current-proof.json','sha256':'1'*64}):
+            with self.subTest(selection=selection),tempfile.TemporaryDirectory(prefix='af64-final-selection-') as folder:
+                root=Path(folder);(root/'userland/build').mkdir(parents=True)
+                destination=root/'destination';engine=root/'engine';engine.mkdir()
+                opaque=root/'opaque-fixture';opaque.write_bytes(b'not a native artifact')
+                tools={'zig':{'path':'/modeled/zig','sha256':'1'*64}}
+                terminal=RuntimeError('FINAL_OWNER_VALIDATION_REACHED');seen=[]
+                def consume(path,producer,**kwargs):
+                    seen.append(kwargs)
+                    self.assertEqual(kwargs,{} if selection is None else {'component':selection})
+                    if len(seen)==2:raise terminal
+                    return {},{}, {'scope':'modeled retained coverage'}
+                def owner(*args):return {'elf':opaque,'raw':opaque,'measurement':{}}
+                def probe(*args):return {'shell':opaque,'helper':opaque,'inputs':{}}
+                def imported(path):return {'build':owner if Path(path).name=='home_owner_build.py' else probe}
+                proc=SimpleNamespace(clean_env=lambda work:{},run=lambda *args,**kwargs:self.fail('real process selected'))
+                with ExitStack() as stack:
+                    stack.enter_context(patch.object(home,'ROOT',root))
+                    for name,kwargs in {
+                        'output_path':{'return_value':destination},
+                        'checked_producer':{'return_value':({'tools':tools},{})},
+                        'owner_receipt':{'side_effect':consume},
+                        'read_json':{'return_value':{'qualification_sha256':'1'*64,'inputs':{},'tools':tools}},
+                        'digest':{'return_value':'1'*64},'required_sources':{'return_value':[]},
+                        'verify_map':{},'owned_runner':{'return_value':proc},
+                        'command_runner':{'return_value':lambda *args,**kwargs:None},
+                        'merge_dependency_inputs':{},'owner_pair':{},'admit':{'return_value':{}},
+                        'envelope':{'return_value':b'opaque modeled envelope'},
+                    }.items():stack.enter_context(patch.object(home,name,**kwargs))
+                    stack.enter_context(patch.object(home.launch,'intake',return_value={'elf':str(opaque),'elf_sha256':'1'*64}))
+                    stack.enter_context(patch.object(home.launch,'closure',return_value=(engine,{})))
+                    stack.enter_context(patch.object(home.launch,'checked_receipt',return_value=({},{})))
+                    stack.enter_context(patch.object(home.runpy,'run_path',side_effect=imported))
+                    with self.assertRaises(RuntimeError) as caught:
+                        home.build(destination,engine,'1'*64,root/'producer',root/'owner',**({'owner_component':selection} if selection is not None else {}))
+                self.assertIs(caught.exception,terminal);self.assertEqual(len(seen),2)
+                self.assertFalse(destination.exists())
+                self.assertFalse(list((root/'userland/build').glob('fs-home-inputs-*')))
+
     def test_build_retains_direct_imported_and_unknown_stop_outcomes(self):
         for mode in ('rows', 'commands', 'direct', 'raises'):
             for cleanup in ('unresolved', 'not-started'):

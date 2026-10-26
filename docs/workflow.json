@@ -2382,11 +2382,21 @@
       "gaps": "No physical/native execution, independent cold SDK build, full system peak/recovery/durability or release assurance. Exact private receipts, SDK/dependencies and standards are unavailable in a public-only checkout; missing inputs are blocked, not passes."
     },
     {
+      "id": "AT-FS-HOME-OWNER-RECEIPT",
+      "reference": "userland/docs/proposals/FS-HOME-PREP.md",
+      "owner": "Aether/sys-init/Aether-userland",
+      "budget_seconds": 300,
+      "command": "From system root: python3 -B -m unittest discover -s tests -p test_fs_home_inputs.py -v and affected test_fs_home_prep.py consumer checks. Explicit paired --owner-component-proof/--owner-component-proof-sha256 selection validates current component evidence; no builder or guest in this reader slice.",
+      "invariants": "Historical891/9 default stays strict; explicit current911 component selection binds complete ordered processes/controls, tools/libraries/source, exact47 generated leaves and retained harness, narrow reviewed owner-code-limit metadata impact and owned cleanup. No receipt/SDK/seal rewrite or actual compiler-input waiver.",
+      "oracle": "Current real retained component evidence plus malformed/partial selector, controls/markers/process agreement, source/tool/library/harness/cleanup/missing-input/role-impact denials; source frozen and separate review. Retained observations are not fresh or native acceptance.",
+      "gaps": "Fresh AF09 producer/helper qualification and execution-tool provenance, matched native workload/observations/fit/artifacts and a concrete execution disposition remain separate. Exact private inputs are required; missing bytes block coverage. No historical1800-second budget is selected."
+    },
+    {
       "id": "AT-FS-HOME-IMAGES",
       "reference": "userland/docs/proposals/FS-HOME-PREP.md",
       "owner": "Aether/sys-init/Aether-userland",
       "budget_seconds": 1800,
-      "command": "Offline target preparation: scripts/fs_home_launch.py --checked RECEIPT --probe-checked HELPER_CLOCK_RECEIPT --output .deps/fs-launch-af09-NAME; scripts/fs_home_inputs.py with explicit engine/seal/producer/owner receipts; sys-init/scripts/qualify-home-owner.py --inputs DIR --seal SHA --prepare. No guest.",
+      "command": "Offline target preparation: scripts/fs_home_launch.py --checked RECEIPT --probe-checked HELPER_CLOCK_RECEIPT --output .deps/fs-launch-af09-NAME; scripts/fs_home_inputs.py with explicit engine/seal/producer/owner receipts and paired --owner-component-proof/--owner-component-proof-sha256 only for the distinct current owner record; sys-init/scripts/qualify-home-owner.py --inputs DIR --seal SHA --prepare. No guest.",
       "invariants": "Actual complete engine/owner/shell/helper and independent baseline/recovery reader images with exact envelopes/resource geometry, source freeze, no old-profile fallback, one current dependency/pending set and compact owned cleanup.",
       "oracle": "Strict link/origin/relocation/real parser/fit checks and fresh final broad host integration checkpoint; exact artifacts/inputs/limits in prepared receipt for later disposition. Private qualification is summarized in FS-HOME-PREP; issue3 owns public integration.",
       "gaps": "Guest execution requires a fresh scoped disposition after concrete reviewed artifacts; no previous authorization renewed. Exact private receipts, SDK/dependencies and standards are unavailable in a public-only checkout; missing inputs are blocked, not passes."

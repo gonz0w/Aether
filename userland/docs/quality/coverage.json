@@ -1860,7 +1860,7 @@
         "docs/proposals/FS-HOME-PREP.md"
       ],
       "reviewer": null,
-      "exclusion": "Only a dated private qualification summary is public. Raw receipts, prepared images, SDK/dependencies and standards inputs are unavailable; missing required inputs remain blocked coverage. Issue3 owns integration; no guest, recovery or release acceptance."
+      "exclusion": null
     },
     {
       "id": "UD-filesystem-service-lifetime",

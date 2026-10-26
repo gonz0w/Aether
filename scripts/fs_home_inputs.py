@@ -83,6 +83,11 @@ def owner_generated(report):
     if ('..' in work.parts or relocate(work).parent!=ROOT/'userland/build'
             or not work.name.startswith('filesystem-home-')):
         raise ValueError('AF09 owner historical work identity')
+    return _owner_generated_leaves(report,work)
+
+
+def _owner_generated_leaves(report,work):
+    from source_paths import relocate
     compare=ROOT/'sys-init/scripts/owner_compare.py'
     checker=S/'check-file-writes.py'
     for path in (compare,checker):
@@ -132,7 +137,211 @@ def checked_producer(path):
     return report,inputs
 
 
-def owner_receipt(path,producer):
+COMPONENT_SELECTION = 'aether-af09-owner-component-selection-v1'
+COMPONENT_REUSE = 'aether-af09-owner-component-reuse-v1'
+COMPONENT_IMPL = ('sys-init/prototypes/native-filesystem-session/owner_runtime.rs',
+    'sys-init/prototypes/native-filesystem-session/owner_control.rs',
+    'sys-init/prototypes/native-filesystem-session/native_owner_control.rs',
+    'sys-init/prototypes/native-filesystem-session/home_owner_tests.rs',
+    'sys-init/prototypes/native-filesystem-session/owner_exec_tests.rs',
+    'sys-init/tests/native_owner_runtime.rs',
+    'userland/experiments/filesystem-service/client.rs',
+    'userland/experiments/filesystem-service/process-descriptors.rs',
+    'sys-init/scripts/check-home-owner.py')
+
+
+def component_require(ok, message):
+    if not ok:raise ValueError('AF09 current owner '+message)
+
+
+def component_selector(value):
+    component_require(isinstance(value,dict) and set(value)=={'path','sha256'} and
+        isinstance(value['path'],str) and sha_string(value['sha256']), 'selection identity')
+    path=Path(value['path'])
+    component_require(path.is_absolute() and '..' not in path.parts and path.resolve()==path and
+        not path.is_symlink() and path.is_file() and path.stat().st_size<=8192 and
+        digest(path)==value['sha256'], 'selection path/hash')
+    return dict(value)
+
+
+def owner_component_selection(reuse):
+    component_require(isinstance(reuse,dict), 'reuse metadata')
+    if 'format' not in reuse and 'selection' not in reuse:return None
+    component_require(reuse.get('format')==COMPONENT_REUSE and 'selection' in reuse, 'reuse selection format')
+    return component_selector(reuse['selection'])
+
+
+def component_controls(report):
+    checker=ROOT/'sys-init/scripts/check-home-owner.py'
+    module=ast.parse(checker.read_text())
+    check=[n for n in module.body if isinstance(n,ast.FunctionDef) and n.name=='check']
+    component_require(len(check)==1,'maintained checker function')
+    bindings={n.targets[0].id:ast.literal_eval(n.value) for n in check[0].body
+        if isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.targets[0],ast.Name)
+        and n.targets[0].id in ('test','independent')}
+    values=[n.value for n in check[0].body if isinstance(n,ast.Assign)
+        and any(isinstance(t,ast.Name) and t.id=='controls' for t in n.targets)]
+    component_require(len(values)==1 and set(bindings)=={'test','independent'},'maintained control recipe')
+    class Names(ast.NodeTransformer):
+        def visit_Name(self,node):
+            component_require(node.id in bindings,'control literal name')
+            return ast.Constant(bindings[node.id])
+    recipes=ast.literal_eval(Names().visit(values[0]))
+    expected=[];owner=ROOT/'sys-init/prototypes/native-filesystem-session'
+    for label,filename,before,after,test,marker in recipes:
+        body=(owner/filename).read_text();component_require(body.count(before)==1,'control source anchor')
+        expected.append(dict(label=label,file=filename,before=before,after=after,
+            test='home_tests::'+test,marker=marker,
+            sha256=hashlib.sha256(body.replace(before,after,1).encode()).hexdigest()))
+    component_require(len(expected)==13 and report.get('home_owner_controls')==expected,'named owner control identities')
+    return expected
+
+
+def component_row(report,label):
+    rows=[row for row in report['rows'] if row['label']==label]
+    component_require(len(rows)==1,'required command '+label)
+    return rows[0]
+
+
+def component_control_rows(report):
+    controls=component_controls(report)
+    counts={'peer_controls':7,'home_init_controls':6,'semantic_controls':6,
+        'mutation_controls':6,'process_write_controls':6,'file_controls':11}
+    semantic=literal(S/'check-home-wire.py','controls')
+    additions=[n for n in ast.walk(ast.parse((S/'check-home-wire.py').read_text())) if isinstance(n,ast.AugAssign) and isinstance(n.target,ast.Name) and n.target.id=='controls']
+    component_require(len(additions)==1 and isinstance(additions[0].op,ast.Add),'semantic control extension')
+    semantic+=ast.literal_eval(additions[0].value)
+    component_require(len(semantic)==6 and report.get('semantic_controls')==[dict(label=label,test=test,before=before,after=after,required_marker=marker)
+        for label,filename,before,after,test,marker in semantic],'semantic control recipes')
+    semantic_files={label:filename for label,filename,_,_,_,_ in semantic}
+    paths=[p for folder in (ROOT/'sys-init/prototypes/native-filesystem-session',S)
+        for p in folder.iterdir() if p.suffix in ('.rs','.c','.h')]
+    for field,count in counts.items():
+        values=report.get(field)
+        component_require(isinstance(values,list) and len(values)==count and
+            all(isinstance(c,dict) and isinstance(c.get('label'),str) for c in values) and
+            len({c['label'] for c in values})==count,'control coverage '+field)
+        for c in values:
+            component_require(all(isinstance(c.get(k),str) and c[k] for k in ('before','after')),'control recipe fields')
+            candidates=[p for p in paths if ('file' not in c or p.name==c['file'])
+                and (field!='semantic_controls' or p.name==semantic_files[c['label']])
+                and p.read_text().count(c['before'])==1]
+            expected=c.get('sha256',c.get('mutated_sha256'))
+            if expected is not None:
+                component_require(sha_string(expected),'control mutation identity')
+                candidates=[p for p in candidates if hashlib.sha256(p.read_text().replace(c['before'],c['after'],1).encode()).hexdigest()==expected]
+            component_require(len(candidates)==1,'control source identity '+c['label'])
+        controls+=values
+    for c in controls:
+        marker=c.get('marker',c.get('required_marker'));test=c.get('test','')
+        component_require(isinstance(marker,str) and marker and isinstance(test,str),'control marker identity')
+        matching=[r for r in report['rows'] if c['label'] in r['label'] and r['expected_exit']!=0 and
+            marker in r['stdout']+r['stderr'] and test in r['stdout']+r['stderr']]
+        component_require(bool(matching),'named semantic rejection '+c['label'])
+    typed=report.get('native_deadline_controls');before='deadline.map_or(0, super::Deadline::get)';after='{ let _ = deadline; 0 }'
+    body=(ROOT/'sys-init/prototypes/native-filesystem-session/native_owner_control.rs').read_text()
+    component_require(body.count(before)==1 and typed==[dict(label='typed-park-rdx',before=before,after=after,
+        sha256=hashlib.sha256(body.replace(before,after,1).encode()).hexdigest(),marker='TYPED_PARK_RDX')],'typed RDX control identity')
+    positive=component_row(report,'typed-park-tests');negative=component_row(report,'typed-park-rdx-rejected')
+    component_require(positive['expected_exit']==0 and '2 passed; 0 failed' in positive['stdout'] and
+        negative['expected_exit']==101 and '1 failed' in negative['stdout'] and 'TYPED_PARK_RDX' in negative['stderr'],'typed RDX observations')
+    expected=[]
+    for stage in ('host','native'):
+        trap=component_row(report,stage+'-host-trap-denied')
+        component_require(trap['expected_exit']==1 and 'owner control host trap requires host tests and forbids native target' in trap['stderr'],'host trap guard')
+        for name,kind,error in (('client','filesystem_client::Client<T>','filesystem_client::Error'),
+                               ('process','filesystem_remote_descriptors::ProcessFiles<T>','filesystem_remote_descriptors::ProcessError')):
+            source='#![no_std]\npub fn leak<T:filesystem_service::Channel>(value:&mut '+kind+')->Result<(),'+error+'>{value.configure_channel(|channel|Ok(channel))}\n'
+            expected.append(dict(stage=stage,type=name,sha256=hashlib.sha256(source.encode()).hexdigest()))
+            denied=component_row(report,stage+'-'+name+'-transport-loan-denied')
+            component_require(denied['expected_exit']==1 and 'E0308' in denied['stderr'] and 'configure_channel' in denied['stderr'],'transport loan denial')
+    component_require(report.get('transport_configuration_denials')==expected,'transport loan source identities')
+    tests=component_row(report,'home-owner-tests')
+    component_require(tests['expected_exit']==0 and '16 passed; 0 failed' in tests['stdout'],'actual current owner positive cases')
+
+
+def current_owner_receipt(path,component):
+    selected=component_selector(component);proof=read_json(selected['path'])
+    component_require(isinstance(proof,dict) and set(proof)=={'format','receipt','role_metadata'} and
+        proof['format']==COMPONENT_SELECTION,'selection wrapper format')
+    receipt=proof['receipt'];path=Path(path).absolute()
+    component_require(isinstance(receipt,dict) and set(receipt)=={'path','sha256'} and
+        receipt['path']==str(path) and sha_string(receipt['sha256']) and path.resolve()==path and
+        path.is_file() and not path.is_symlink() and digest(path)==receipt['sha256'],'component receipt identity')
+    report=read_json(path)
+    component_require(isinstance(report,dict) and report.get('scope')=='actual maintained check-home-owner.check full component gate; no guest' and
+        report.get('source')==str(ROOT/'sys-init/scripts/check-home-owner.py') and report.get('status')=='pass' and
+        report.get('native_executed') is False and report.get('cleanup')=='complete' and
+        report.get('limits')==dict(aggregate_seconds=300,leaf_seconds=180,stream_bytes=4194304) and
+        isinstance(report.get('elapsed_seconds'),(int,float)) and 0<report['elapsed_seconds']<=300,'component coverage/status')
+    work=Path(report.get('work',''))
+    component_require(work.parent==Path('/private/tmp') and '..' not in work.parts and
+        re.fullmatch(r'af61-component-01-[a-z0-9_]+',work.name) is not None,'component work identity')
+    rows=report.get('rows');actual=report.get('actual_processes')
+    component_require(isinstance(rows,list) and len(rows)==911 and isinstance(actual,list) and len(actual)==911,'complete component commands')
+    tools=report.get('tools');sources=report.get('sources')
+    component_require(isinstance(tools,dict) and set(tools)=={'rustc','rustfmt','clippy-driver','objdump','size','rust-lld','clang','clang-format','nm','readelf','lld'} and isinstance(sources,dict) and len(sources)==1097 and
+        all(isinstance(n,str) and Path(n).is_absolute() and '..' not in Path(n).parts and sha_string(h) for n,h in sources.items()),'component source/tool maps')
+    for index,row in enumerate(rows):
+        component_require(isinstance(row,dict) and isinstance(row.get('label'),str) and isinstance(row.get('process'),dict) and
+            row['process']==actual[index] and type(row.get('expected_exit')) is int and
+            isinstance(row.get('stdout'),str) and len(row['stdout'])<=7000 and isinstance(row.get('stderr'),str) and len(row['stderr'])<=5000,'ordered process agreement')
+        p=row['process'];argv=p.get('argv');tool=p.get('tool')
+        component_require(p.get('cwd') in (str(ROOT/'sys-init'),str(ROOT/'userland')) and p.get('complete') is True and p.get('cleanup')=='complete' and p.get('failure') is None and
+            type(p.get('exit')) is int and p['exit']==row['expected_exit'] and
+            isinstance(p.get('timeout_seconds'),(int,float)) and 0<p['timeout_seconds']<=180 and
+            isinstance(argv,list) and argv and all(isinstance(a,str) for a in argv) and
+            isinstance(tool,dict) and tool.get('path')==argv[0] and sha_string(tool.get('sha256')),'complete child outcome')
+        executable=Path(argv[0]);component_require(executable.is_absolute() and '..' not in executable.parts,'child executable identity')
+        if not executable.is_relative_to(work):
+            component_require(any(t.get('path')==str(executable) and t.get('sha256')==tool['sha256'] for t in tools.values() if isinstance(t,dict)),'retained executable pin')
+    component_require(type(report.get('diagnostic_bytes')) is int and
+        sum(len(r['stdout'].encode())+len(r['stderr'].encode()) for r in rows)<=report['diagnostic_bytes']<=4194304,'bounded retained diagnostics')
+    frozen={str(ROOT/n) for n in COMPONENT_IMPL}
+    component_require(isinstance(report.get('frozen_implementation'),dict) and set(report['frozen_implementation'])==frozen and
+        all(sources.get(n)==h and Path(n).resolve()==Path(n) and digest(n)==h for n,h in report['frozen_implementation'].items()),'frozen owner implementation')
+    role=proof['role_metadata'];roles=ROOT/'kernel/arch/x86_64/native_fs_roles.zig';reader=ROOT/'sys-init/scripts/owner_measure.py'
+    component_require(isinstance(role,dict) and set(role)=={'path','before_sha256','current_sha256','code_limit','reader'} and
+        role['path']==str(roles) and role['before_sha256']==sources.get(str(roles)) and
+        sha_string(role['current_sha256']) and role['current_sha256']==digest(roles) and role['code_limit']==49152 and
+        isinstance(role['reader'],dict) and role['reader']==dict(path=str(reader),sha256=sources.get(str(reader))) and
+        role['reader']['sha256']==digest(reader),'reviewed role metadata identity')
+    component_require(re.findall(r'^pub const owner_stack_code_limit = (\d+);',roles.read_text(),re.M)==['49152'] and
+        reader.read_text().count("re.search(r'pub const owner_stack_code_limit = (\\d+);', roles.read_text())")==1,'unchanged owner code-limit reader')
+    for row in rows:
+        if Path(row['process']['argv'][0]).name in ('rustc','clippy-driver','clang'):
+            component_require(not any('native_fs_roles.zig' in arg for arg in row['process']['argv']),'role file was actual compiler input')
+    harness=Path('/private/tmp/af61-component.py');text=report.get('harness_source')
+    component_require(isinstance(text,str) and sources.get(str(harness))==hashlib.sha256(text.encode()).hexdigest(),'retained harness source identity')
+    reduced=dict(report,sources={n:h for n,h in sources.items() if n!=str(harness)})
+    generated=_owner_generated_leaves(reduced,work)
+    current={n:h for n,h in reduced['sources'].items() if n not in generated};current[str(roles)]=role['current_sha256']
+    verify_map(current)
+    for tool in tools.values():
+        component_require(isinstance(tool,dict) and isinstance(tool.get('path'),str) and sha_string(tool.get('sha256')),'tool identity shape')
+        verify_map({tool['path']:tool['sha256']})
+    compiler=Path(tools['rustc']['path']);native=compiler.parent.parent/'lib/rustlib/x86_64-unknown-none/lib'
+    libraries={str(p) for p in native.glob('*.rlib')}
+    component_require(len(libraries)==3 and libraries<={n for n in current} and
+        isinstance(report.get('libraries'),dict) and len(report['libraries'])==74 and
+        all(sha_string(h) for h in report['libraries'].values()),'native library input/output coverage')
+    component_control_rows(report)
+    measure=report.get('home_owner_measurement');stack=measure.get('stack',{}) if isinstance(measure,dict) else {}
+    component_require(isinstance(measure,dict) and measure.get('code_budget')==49152 and measure.get('code_fits') is True and
+        0<measure.get('code_bytes',0)<=49152 and measure.get('resident_fits') is True and measure.get('native_executed') is False and
+        0<measure.get('runtime_bytes',0)<=4096 and measure.get('workspace_bytes')==4096 and measure.get('mapped_bytes')==8192 and
+        stack.get('status')=='pass' and stack.get('usable_stack_bytes')==8184 and 0<stack.get('entry_stack_bytes',0)<=8184,'retained current owner fit')
+    current.update({str(path):receipt['sha256'],selected['path']:selected['sha256'],str(Path(__file__).resolve()):digest(__file__)})
+    impact=dict(format=COMPONENT_REUSE,scope='retained current owner component coverage with reviewed metadata impact',
+        children=911,fresh_host_qualification=False,selection=selected,role_metadata=role,
+        reconstructed_generated=generated,retained_harness=dict(path=str(harness),sha256=sources[str(harness)],executed=False),
+        fresh_measurement='home_owner_build.build on current real sources')
+    verify_map(current)
+    return report,current,impact
+
+
+def owner_receipt(path,producer,*,component=None):
+    if component is not None:return current_owner_receipt(path,component)
     report=read_json(path)
     if (report.get('schema')!='aether-home-owner-evidence-v1' or report.get('status')!='pass'
             or report.get('native_executed') is not False or report.get('cleanup')!='complete'
@@ -225,6 +434,7 @@ def validate_record(record):
     relative=Path(record['engine']['directory'])
     if (relative.as_posix()!=record['engine']['directory'] or relative.is_absolute() or relative.parent!=Path('.deps') or not relative.name.startswith('fs-launch-af09-')):
         raise ValueError('AF09 guarded engine selection')
+    owner_component_selection(record['owner_reuse'])
     measurement=record['measurement'];stack=measurement.get('stack',{})
     if (measurement.get('code_budget')!=49152 or measurement.get('code_fits') is not True
             or not 0<measurement.get('code_bytes',0)<=49152 or measurement.get('resident_fits') is not True
@@ -533,7 +743,8 @@ def intake(directory,seal,*,deadline=None):
     if read_json(ROOT/record['engine']['directory']/'build.json')['qualification_sha256']!=digest(record['producer_receipt']['path']):
         raise ValueError('AF09 guarded engine/producer receipt association')
     producer,producer_inputs=checked_producer(record['producer_receipt']['path'])
-    _,owner_inputs,impact=owner_receipt(record['owner_receipt']['path'],producer)
+    selection=owner_component_selection(record['owner_reuse'])
+    _,owner_inputs,impact=owner_receipt(record['owner_receipt']['path'],producer,**({'component':selection} if selection is not None else {}))
     if impact!=record['owner_reuse']:raise ValueError('AF09 guarded historical reuse impact drift')
     associations={**producer_inputs,**owner_inputs}
     if any(record['inputs'].get(name)!=expected for name,expected in associations.items()):
@@ -577,13 +788,13 @@ def intake(directory,seal,*,deadline=None):
         admission=record['admission'],measurement=record['measurement'],native_executed=False)
 
 
-def _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt):
+def _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt,*,owner_component=None):
     """Construct one selected dependency under the outer attempt receipt."""
     destination=output_path(destination)
     engine_directory=Path(engine_directory).absolute()
     engine=launch.intake(engine_directory,engine_seal)
     producer,inputs=checked_producer(producer_receipt)
-    _,owner_inputs,impact=owner_receipt(owner_qualification,producer);inputs.update(owner_inputs)
+    _,owner_inputs,impact=owner_receipt(owner_qualification,producer,**({'component':owner_component} if owner_component is not None else {}));inputs.update(owner_inputs)
     if read_json(engine_directory/'build.json')['qualification_sha256']!=digest(producer_receipt):
         raise ValueError('AF09 guarded engine/producer receipt association')
     engine_record=read_json(engine_directory/'build.json')
@@ -642,7 +853,7 @@ def _build(destination,engine_directory,engine_seal,producer_receipt,owner_quali
         kernel=dict(sha256=digest(work/'kernel-build/bin/aether'),native_executed=False,flags=flags)
         verify_map(detail['inputs'])
         launch.intake(engine_directory,engine_seal)
-        launch.checked_receipt(producer_receipt,'producer');owner_receipt(owner_qualification,producer)
+        launch.checked_receipt(producer_receipt,'producer');owner_receipt(owner_qualification,producer,**({'component':owner_component} if owner_component is not None else {}))
         commands=list(detail['commands'])
         for row in detail['rows']:
             commands.append(dict(label=row['label'],status='pass',process=row['process'],expected_exit=row.get('expected_exit',0)))
@@ -714,13 +925,13 @@ def next_receipt(directory):
     return path
 
 
-def build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification):
+def build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,*,owner_component=None):
     evidence=ROOT/'userland/docs/evidence/filesystem-home-prep-2026-10-24/guarded-inputs/build'
     evidence.mkdir(parents=True,exist_ok=True)
     receipt=next_receipt(evidence)
     detail=dict(status='preflight',native_executed=False,destination=str(destination),commands=[])
     try:
-        return _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt)
+        return _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt,**({'owner_component':owner_component} if owner_component is not None else {}))
     except BaseException as error:
         detail.update(status='failed',error=type(error).__name__+': '+str(error))
         raise
@@ -762,9 +973,17 @@ def main():
     parser.add_argument('--engine-seal',required=True)
     parser.add_argument('--producer-receipt',required=True,type=Path)
     parser.add_argument('--owner-receipt',required=True,type=Path)
+    parser.add_argument('--owner-component-proof',type=Path,help='explicit retained current-component selection wrapper; paired hash required')
+    parser.add_argument('--owner-component-proof-sha256',help='expected SHA256 of paired current-component wrapper')
     parser.add_argument('--output',required=True,type=Path,help='unused .deps/fs-owner-af09-* dependency')
     args=parser.parse_args()
-    print(json.dumps(build(args.output,args.engine,args.engine_seal,args.producer_receipt,args.owner_receipt)))
+    if (args.owner_component_proof is None)!=(args.owner_component_proof_sha256 is None):
+        parser.error('current owner component proof and hash must be paired')
+    selection=None
+    if args.owner_component_proof is not None:
+        if not sha_string(args.owner_component_proof_sha256):parser.error('invalid paired component SHA256')
+        selection=dict(path=str(args.owner_component_proof.absolute()),sha256=args.owner_component_proof_sha256)
+    print(json.dumps(build(args.output,args.engine,args.engine_seal,args.producer_receipt,args.owner_receipt,**({'owner_component':selection} if selection is not None else {}))))
 
 
 if __name__=='__main__':
