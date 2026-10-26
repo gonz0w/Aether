@@ -445,8 +445,9 @@
       "command": "zig build test --cache-dir .zig-cache --global-cache-dir .zig-cache/global",
       "oracle": "All discovered Zig and Python tests and offline checks pass; no zero-test or missing-tool success",
       "gaps": "Models do not establish native isolation; no bounded parser fuzz runner yet",
-      "budget_seconds": 300,
-      "owner": "Aether maintainer; implementing contributor retains and triages each run",
+      "budget_seconds": 900,
+      "owner": "Aether maintainer; standing complete-host budget in PROJECT; implementing contributor retains and triages each run",
+      "historical_budget_note": "The following historical record preserves the then-current policy. The current AT-HOST budget and PROJECT owner decision govern subsequent complete host gates; the old exception remains consumed.",
       "historical_af09_host_gate": {
         "issue": "https://github.com/gonz0w/Aether/issues/2",
         "date": "2026-10-25",
@@ -2455,7 +2456,7 @@
       "reference": "docs/NATIVE-ZSH-APPLICATION.md",
       "owner": "Aether / Aether-userland / sys-init",
       "budget_seconds": 300,
-      "command": "python3 -B -m unittest discover -s tests -p test_fs_application_profile.py -v; selected pure-kernel and actual-image host/compile controls; final zig build test with exact private inputs. Each selected aggregate retains its own declared scope and budget; no guest.",
+      "command": "python3 -B -m unittest discover -s tests -p test_fs_application_profile.py -v; selected pure-kernel and actual-image host/compile controls; final zig build test with exact private inputs. Each selected aggregate retains its own declared scope and budget; no guest. The final complete root gate uses the separate AT-HOST budget; focused groups retain this group budget.",
       "invariants": "Explicit application selector,1.5MiB/384 image+stack/640 total per five slots,45MiB assigned inside64MiB; old defaults/seals/authority unchanged; preflight before effects and complete private reclaim.",
       "oracle": "Actual parser/envelope/body behavior, meaningful wrong-profile/bounds/grant/exhaustion/rollback denials, module/provider/TLS inventory, actual kernel/staging geometry and source/tool freezes.",
       "gaps": "Trial reserve capacity is not measured native workload sufficiency. No public replay without private prerequisites, no guest/TTY/jobs/persistence/ISO acceptance."
@@ -2465,7 +2466,7 @@
       "reference": "docs/FILESYSTEM-HOST-INPUTS.md",
       "owner": "Aether / Aether-userland",
       "budget_seconds": 300,
-      "command": "python3 -B -m unittest discover -s tests -p test_fs_consumer_association.py -v; exact retained-artifact/current-consumer parser/model controls and final complete zig build test with explicit local dependency/association selection. No guest.",
+      "command": "python3 -B -m unittest discover -s tests -p test_fs_consumer_association.py -v; exact retained-artifact/current-consumer parser/model controls and final complete zig build test with explicit local dependency/association selection. No guest. The final complete root gate uses the separate AT-HOST budget; focused groups retain this group budget.",
       "invariants": "Original seals and seven-tool catalog unchanged; default stale rejection; current source ROOT never routes; exact actual producer inputs remain pinned; current host evidence and finite consumer changes are explicit.",
       "oracle": "Real-root/member and exact source/tool/evidence checks; meaningful stale/malformed/extra/missing/provider/producer-logic and alias/copy denials; current parser semantic controls and complete process cleanup.",
       "gaps": "No public replay without private retained bytes, no cryptographic proof of execution or native authority from a receipt hash, no new guest/runtime/ISO qualification."

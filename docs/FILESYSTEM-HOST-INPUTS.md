@@ -80,8 +80,10 @@ zig build test --cache-dir .zig-cache --global-cache-dir .zig-cache/global
 ```
 
 Use the owning issue's bounded coordinator, pinned named tools and source freeze.
-The aggregate retains its 300-second limit, 180-second auxiliary/leaf bounds and
-4 MiB live diagnostic-stream caps. A sparse-fixture or compiler scratch-file
+Focused aggregates retain 300-second limits. The complete unfiltered root gate
+uses the standing 900-second aggregate under [PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26).
+Auxiliary/leaf bounds remain 180 seconds and live diagnostic streams remain
+capped at 4 MiB each. A sparse-fixture or compiler scratch-file
 allowance is separate from the stream cap. Track owned root and nested sessions;
 confirm cleanup and retain every failed attempt. Do not skip tests, shard the
 required gate to evade its budget, reuse a consumed exception or treat a timeout

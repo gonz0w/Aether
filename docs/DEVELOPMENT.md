@@ -251,8 +251,9 @@ Its other conditions remain. Two channels/three generations,8192-page backing,
 stay fixed. Old selectors cannot opt into writable IPC without this selection.
 Native failure/cleanup/recovery and independent consumption remain acceptance gates.
 
-Inventory ceilings remain300 seconds for host suites and1800 for target suites,
-not performance guarantees. Missing required tools/runners block the selected
+Focused host inventory ceilings remain300 seconds; the complete root `AT-HOST`
+gate uses the standing900-second aggregate in [PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26).
+Target-suite ceilings remain1800 seconds. These are limits, not performance guarantees. Missing required tools/runners block the selected
 check. Keep dependency setup separate from offline execution. Full-file/media,
 ordered export/drain, cleanup and fresh-reader gates apply at either budget; no
 budget or passing inventory checker establishes release readiness.
@@ -267,6 +268,10 @@ failed and preserved privately. The exception is consumed; the default300-second
 host ceiling,180-second leaf/auxiliary bounds and4MiB diagnostic streams remain.
 It grants no automatic retry or guest. Private receipts, standards and dependencies
 are unavailable in this public snapshot; this dated result is not public replay.
+
+The preceding dated result retains the policy in effect for that attempt. The
+owner’s 2026-10-26 decision in [PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26)
+now governs complete host gates; the historical single-run exception stays consumed.
 [Issue3](https://github.com/gonz0w/Aether/issues/3) owns public AF09 integration;
 [issue56](https://github.com/gonz0w/Aether/issues/56) owns the separate guarded
 legacy-profile gap, and [issue4](https://github.com/gonz0w/Aether/issues/4) owns
