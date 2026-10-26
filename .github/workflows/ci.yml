@@ -89,6 +89,15 @@ jobs:
           PYTHON
           git diff --exit-code
 
+      - name: Exercise AF09 host decoders and checker controller
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s tests -p test_af09_drain_trace.py -v
+          python3 -B userland/experiments/filesystem-service/fd_home_drain_checks_tests.py
+          git diff --exit-code
+
   kernel-models:
     name: Kernel models
     runs-on: ubuntu-24.04

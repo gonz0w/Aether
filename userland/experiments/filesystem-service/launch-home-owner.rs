@@ -2,6 +2,30 @@
 //! Separate AF09 executable owner; initialization policy, not a new service protocol.
 #![no_std]
 use core::ffi::c_void;
+#[cfg(all(fs_af09_drain, fs_home_probe_three))]
+compile_error!("AF09 drain is incompatible with fs_home_probe_three");
+#[cfg(all(
+    fs_af09_drain,
+    not(all(
+        fs_namespace,
+        fs_lifetimes,
+        fs_mixed,
+        fs_wait,
+        fs_bulk,
+        fs_runtime,
+        fs_activation,
+        fs_names,
+        fs_directories,
+        fs_metadata,
+        fs_directory_contexts,
+        fs_home,
+        fs_home_wire,
+        fs_home_native,
+        fs_home_activation
+    ))
+))]
+compile_error!("AF09 drain requires the complete HOME feature closure");
+
 const FINISHED: u64 = 8191;
 const ENTERED: u64 = 32;
 #[path = "home-native-result.rs"]
@@ -106,6 +130,7 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         || !home.valid()
         || home.phase != 0
         || cfg!(fs_home_probe_three) && home.mutation_attempts != 3
+        || cfg!(fs_af09_drain) && (home.mutation_attempts != 2 || service.requests != 3)
         || home.flags != CALLBACK | ENTRY | ACCEPTED | CLOSE_ATTEMPTED | ORDERED | ACTIVATION
         || service.ready != 1
         || service.requests == 0

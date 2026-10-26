@@ -5,6 +5,9 @@ use crate::{Channel, Message, FRAME};
 pub const POLLS: usize = 100_000;
 
 pub trait Io {
+    /// Synchronously report the selected actual disconnect counters.
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64>;
     /// Transfer at most16 bytes, returning a count or negative native error.
     /// The slice is borrowed only for this synchronous call.
     fn transfer(&mut self, writing: bool, bytes: &mut [u8]) -> i64;
@@ -53,6 +56,11 @@ impl<I: Io> Framed<I> {
 }
 
 impl<I: Io> Channel for Framed<I> {
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64> {
+        self.0.af09_counts(mutations, requests)
+    }
+
     fn receive(&mut self, frame: &mut Message) -> Result<(), i64> {
         frame.fill(0);
         self.frame(frame, false)

@@ -453,3 +453,34 @@ still has no execution option. Another native run needs fresh reviewed artifacts
 and its own disposition. The next service-lifetime contract is tracked by
 [issue9](https://github.com/gonz0w/Aether/issues/9); that issue owns selection and
 acceptance rather than this dated witness.
+
+
+## AF09 admission/drain host foundation —2026-10-26
+
+[Issue75](https://github.com/gonz0w/Aether/issues/75) selects the current finite
+source prerequisite for [native gate64](https://github.com/gonz0w/Aether/issues/64).
+The [diagnostic proposal](../../../docs/NATIVE-AF09-DRAIN.md) defines a distinct
+eight-case family, generation-checked query/READY checkpoints, actual pre-ACK
+counters and fixed delivered-tick deadlines. The new kernel control/profile,
+matched artifacts and native witness are not implemented or qualified here.
+
+Independent host source is available: a C parent/child request fixture, safe
+cfg-only service/activation/framing/native counter forwarding with exact2/3
+completion predicates, and a strict prospective trace decoder. Focused evidence
+covers34 C scenarios plus seven compiling semantic controls/UBSan,66 Rust methods
+in41 host commands with default/old-three regressions and compile guards, and
+seven decoder methods. Tests use real component bodies with host doubles;
+synthetic rows and host execution are not native enforcement. Compact commands,
+identities, failed attempts and detailed receipts remain private. The C checker
+and its limits/replay are documented in the linked contract and component README.
+
+No complete producer/helper/owner refresh or whole fit is claimed on these
+changed sources. Earlier records retain their original input scope. Final source
+settlement, current strict receipt consumption, matching target preparation,
+major-handoff host checks and exact later native disposition remain gates.
+The adopted900-second complete host default remains; new non-boolean control
+review is a separate DEVELOPMENT requirement, with no guest permission implied.
+
+The maintained C checker's eleven mock controller tests additionally cover
+unknown/unresolved cleanup, retained evidence and the complete aggregate through
+finalization. They start no real children and do not qualify native clocks.
