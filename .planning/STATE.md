@@ -30,6 +30,11 @@ implementation from historical queues.
   [elapsed drain deadline](https://github.com/gonz0w/Aether/issues/61). Matched native
   qualification: [issue64](https://github.com/gonz0w/Aether/issues/64). The first
   Aether Zsh target-link/loader-fit experiment is [issue65](https://github.com/gonz0w/Aether/issues/65).
+  Its bounded application resource decision and implementation route through
+  [issue67](https://github.com/gonz0w/Aether/issues/67),
+  [issue69](https://github.com/gonz0w/Aether/issues/69) and
+  [the profile contract](../docs/NATIVE-ZSH-APPLICATION.md). Its current host-input
+  association routes to [issue70](https://github.com/gonz0w/Aether/issues/70).
 
 ## Historical records
 

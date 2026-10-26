@@ -183,6 +183,22 @@ class HomePreparation(unittest.TestCase):
         with self.assertRaises(ValueError):
             home.verify_inputs({})
 
+    def test_retained_input_preflight_stops_before_generated_source_context(self):
+        source=ROOT/'userland/docs/evidence/filesystem-home-native-2026-10-24/attempt-13.json'
+        report=home.read_json(source)
+        with tempfile.TemporaryDirectory(prefix='home-retained-preflight-') as directory:
+            live=Path(directory)/'retained.rs';live.write_bytes(b'checked input')
+            report['sources']={str(live):home.digest(live)}
+            with patch.object(home,'read_json',return_value=report), patch.object(
+                    home,'generated_sources',side_effect=AssertionError('GENERATOR_REACHED')) as generate:
+                with self.assertRaisesRegex(AssertionError,'GENERATOR_REACHED'):
+                    home.checked_receipt(source,'producer')
+                generate.assert_called_once_with(report)
+                generate.reset_mock();live.write_bytes(b'changed input')
+                with self.assertRaisesRegex(ValueError,r'^AF09 input changed:'):
+                    home.checked_receipt(source,'producer')
+                generate.assert_not_called()
+
     def test_real_old_producer_receipt_is_stale_after_fixed_probe_change(self):
         source=ROOT/'userland/docs/evidence/filesystem-home-native-2026-10-24/attempt-13.json'
         self.assertTrue(source.is_file(), 'required retained producer receipt is unavailable')

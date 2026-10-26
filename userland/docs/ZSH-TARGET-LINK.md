@@ -52,3 +52,10 @@ all `exit`/`_Exit` cleanup paths. Symbol presence is not native support.
 No guest, IRQ timing, heap/stack peak, actual ZLE/job-control or assembled ISO
 qualification follows from this link experiment. Exact local measurements and
 review records remain available to the owner for the next decision.
+
+The subsequent owner-approved resource decision is implemented under
+[issue69](https://github.com/gonz0w/Aether/issues/69) and the distinct
+[application contract](../../docs/NATIVE-ZSH-APPLICATION.md). The ordinary-parser
+rejection above remains the historical result; the subsequent fresh selected-profile parser and configured-kernel checks pass
+in their focused host scope. Issue69 and issue70 hold the current complete-host
+and integration disposition; native qualification remains separate.

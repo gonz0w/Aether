@@ -78,6 +78,24 @@ them. The owner decides product, support, languages, consequential architecture,
 authority, resource exceptions and policy changes. Agents resolve routine details
 inside accepted scope. File order or upstream recency cannot override a requirement.
 
+## Bounded Zsh application trial —2026-10-25
+
+The owner approved implementing and host-testing the separately reviewed
+[application profile](https://github.com/gonz0w/Aether/issues/69): a distinct
+1.5 MiB application ELF cap, 384 image-plus-existing-stack pages and 640 total
+backing pages in each of five fork-capable application slots. The engine retains 8192 pages and
+the owner retains 128. This assigns 45 MiB within the existing 64 MiB backing
+reservation; 19 MiB remains ungranted. The selected application image window is
+`0x200000..0x400000`. Existing capability, TLS, stack/bootstrap and ownership
+checks remain binding; older profiles retain their defaults, selectors and seals.
+
+At the admitted image limit, at least 256 backing pages remain for all later
+runtime allocations, including TLS and allocator overhead. This is a bounded
+trial resource decision, not evidence of Zsh heap/stack sufficiency. Routine
+implementation and host verification follow the finite issue scope, required
+checks and separate review. No guest, native prompt or ISO qualification is
+authorized by this decision. Exact SDK/artifact qualification evidence stays local.
+
 ## Settled choices
 
 | Area | Decision and canonical reference |
@@ -182,11 +200,26 @@ inputs are unavailable. See [PUBLIC-SOURCE](docs/PUBLIC-SOURCE.md). Sys-init's
 failures and skipped checks are not passes.
 
 Existing execution ceilings, stop-on-failure/no-retry rules, source freezes and
-cleanup requirements remain scoped to their contracts. The required native-home
-broad host aggregate retains its 300-second budget where selected; onboarding's
-source-integrity/pure-Zig CI is no substitute. A failed or unavailable required gate stays
+cleanup requirements remain scoped to their contracts. The complete host aggregate uses the scoped budget below;
+onboarding's source-integrity/pure-Zig CI is no substitute. A failed or unavailable required gate stays
 blocked coverage. No new guest disposition or expanded resource approval follows
 from this policy or from hosted CI.
+
+## Complete host gate budget —2026-10-26
+
+Owner decision, 2026-10-26: the complete unfiltered root `zig build test` / `AT-HOST` gate
+has a standing 900-second aggregate limit. Focused host aggregates remain 300
+seconds; auxiliary/leaf limits remain 180 seconds and live diagnostic streams
+remain capped at 4 MiB each. Existing sparse/artifact allowances stay unchanged.
+All selected tests, exact inputs, source freezes, owned cleanup and compact
+failure retention remain required. This changes only the complete host aggregate;
+it grants no guest, runtime-resource, native, release or operational authority.
+
+After a failure, retain and triage it, correct the cause, run affected checks and
+review the resulting inputs before a justified full run under the existing test
+cadence. Do not blindly repeat unchanged failed work, replay unknown mutations or
+renew another scoped execution disposition. Historical one-run exceptions remain
+consumed. A larger bound or another consequential resource change needs the owner.
 
 Prose-only changes use applicable available source/link/syntax checks and separate
 reader/source review. Standards-dependent checks remain required when selected

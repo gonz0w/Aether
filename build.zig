@@ -26,6 +26,9 @@ pub fn build(b: *std.Build) void {
     const native_fs_owner_stack = b.option(bool, "native-fs-owner-stack", "Separate ABI31 boot owner with an 8 KiB guarded stack inside its existing quota") orelse false;
     if (native_fs_owner_stack and !native_fs_owner_data) @panic("filesystem owner stack requires the separate data profile");
     options.addOption(bool, "native_fs_owner_stack", native_fs_owner_stack);
+    const native_fs_application_profile = b.option(bool, "native-fs-application-profile", "Separate bounded Zsh application composition; existing ABI31 owner") orelse false;
+    if (native_fs_application_profile and (!native_fs_owner_stack or release_artifact)) @panic("filesystem application profile requires its private ABI31 owner-stack profile");
+    options.addOption(bool, "native_fs_application_profile", native_fs_application_profile);
     const block_test = b.option([]const u8, "block-test", "Disposable disk bring-up: write or verify");
     if (block_test) |mode| {
         if (smp or native_c_image != null or (!std.mem.eql(u8, mode, "write") and !std.mem.eql(u8, mode, "verify"))) @panic("block test requires write/verify, -Dsmp=false and no native image");
@@ -195,6 +198,8 @@ pub fn build(b: *std.Build) void {
         !native_clock or !native_rtc or !native_entropy or !native_threads or
         native_init_sustained or service_lifetime))
         @panic("filesystem SESSION requires its exact private BSP writer and process closure");
+    if (native_fs_application_profile and (!native_process_copy or !native_process_exec or !native_memory or !native_backing or !native_service_memory or !native_image_large or !native_pipeline_capacity))
+        @panic("filesystem application profile requires its bounded memory, copy, exec and process closure");
     const native_exec_denial = b.option(bool, "native-exec-denial", "Select exact four-reclaim failed-exec fixture completion") orelse false;
     if (native_exec_denial and (!native_process_copy or !native_process_exec or !native_copy_signals or !native_runner_local)) @panic("native exec denial requires copy, exec, signal copy and local runner");
     options.addOption(bool, "native_exec_denial", native_exec_denial);
@@ -253,6 +258,7 @@ pub fn build(b: *std.Build) void {
     kernel.root_module.addOptions("build_options", options);
     kernel.entry = .{ .symbol_name = "_start" };
     kernel.setLinkerScript(b.path("kernel/arch/x86_64/linker.ld"));
+    b.step("kernel-check", "Compile the selected kernel without install, image assembly or execution").dependOn(&kernel.step);
     b.installArtifact(kernel);
     const user = b.addSystemCommand(&.{ "python3", "scripts/user.py" });
     const user_image = user.addOutputFileArg("protection.bin");

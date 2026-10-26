@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import storage_lifetime as profile
 SCAFFOLD='''
-var admission_failed=false;const service_memory=true;const combined_profile=false;const combined_init=false;const combined_owner_data=false;const combined_owner_stack=false;
+var admission_failed=false;const service_memory=true;const combined_profile=false;const combined_application_profile=false;const combined_init=false;const combined_owner_data=false;const combined_owner_stack=false;
 const FsSession=struct{const magic="AENFS002";const init_magic="AENFS003";const owner_data_magic="AENFS004";};var block_closed=false;
 fn require(ok:bool)void{admission_failed=admission_failed or !ok;}
 const std=@import("std");const TickProjectionError=error{Overflow};const Sustained=@import("events");

@@ -207,3 +207,8 @@ in [FS-BROKER-INIT](../../../userland/docs/proposals/FS-BROKER-INIT.md); the sec
 command takes the first check's printed owned library directory. At decision0207 it reported
 versioned JSON and code-fit exit2 for constructor-only roots16544/16384. Tests and
 no_std builds do not imply complete fit or native admission. Keep current limits.
+
+The separate [Zsh application resource profile](../../../docs/NATIVE-ZSH-APPLICATION.md)
+retains this owner's ABI31 entry, code/data/stack budgets and existing authority.
+Its larger application pools require the explicitly matching kernel and envelopes;
+it does not qualify an interactive prompt or renew a native disposition.

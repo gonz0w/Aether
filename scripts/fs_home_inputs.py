@@ -78,13 +78,17 @@ def literal(path,name):
 
 def owner_generated(report):
     """Recreate only the 47 disposed receipt23 input leaves, without extracting."""
+    from source_paths import relocate
     work=Path(report.get('work',''))
-    if work.parent!=ROOT/'userland/build' or not work.name.startswith('filesystem-home-'):
+    if ('..' in work.parts or relocate(work).parent!=ROOT/'userland/build'
+            or not work.name.startswith('filesystem-home-')):
         raise ValueError('AF09 owner historical work identity')
     compare=ROOT/'sys-init/scripts/owner_compare.py'
     checker=S/'check-file-writes.py'
     for path in (compare,checker):
-        if report.get('sources',{}).get(str(path))!=digest(path):
+        recorded=[expected for name,expected in report.get('sources',{}).items()
+                  if relocate(name)==path]
+        if recorded!=[digest(path)]:
             raise ValueError('AF09 owner historical recipe changed')
     recipe=runpy.run_path(str(compare))
     sdk=ROOT/'.deps/native-current/sdk'

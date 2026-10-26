@@ -10,6 +10,11 @@ from source_paths import dependency_input, relocate
 SEAL = 'b69fd748b4d4fda334126dba96744a73f2a4b03649d5e9b1033ae253d52cc558'
 
 
+def actual_digest(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
 def digest(path):
     with relocate(path).open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -20,7 +25,7 @@ def intake(directory, expected=SEAL):
     if root.resolve() != root or root.is_symlink() or not root.is_dir():
         raise ValueError('launch intake requires a real directory')
     manifest = root/'SHA256SUMS'
-    if not re.fullmatch('[0-9a-f]{64}', expected) or manifest.is_symlink() or digest(manifest) != expected:
+    if not re.fullmatch('[0-9a-f]{64}', expected) or manifest.is_symlink() or actual_digest(manifest) != expected:
         raise ValueError('launch manifest identity')
     members = {}
     for line in manifest.read_text().splitlines():
@@ -30,7 +35,7 @@ def intake(directory, expected=SEAL):
                 or '..' in path.parts or str(path) != name or name in members or name == 'SHA256SUMS'):
             raise ValueError('launch member path')
         member = root/path
-        if member.resolve() != member or not member.is_file() or digest(member) != checksum:
+        if member.resolve() != member or not member.is_file() or actual_digest(member) != checksum:
             raise ValueError('launch member identity: '+name)
         members[name] = checksum
     actual = set()
@@ -53,15 +58,16 @@ def intake(directory, expected=SEAL):
             or record.get('elf_bytes') != (root/'filesystem.elf').stat().st_size
             or not record.get('structural_loader','').startswith('ELF structural pages=')):
         raise ValueError('launch build identity/coverage')
-    for name, checksum in record['inputs'].items():
-        path = dependency_input(name, checksum)
-        # The sealed producer includes pinned Homebrew tool aliases. Their
-        # content identity is authoritative; delivery members stay nonsymlinks.
-        if not path.is_absolute() or not path.is_file() or digest(path) != checksum:
-            raise ValueError('launch consumed source/input drift: '+name)
-    for tool in record['tools'].values():
-        if digest(Path(tool['resolved_path'])) != tool['sha256']:
-            raise ValueError('launch tool drift')
+    from fs_consumer_association import verify_inputs
+    if not verify_inputs('af06', root, expected, record):
+        for name, checksum in record['inputs'].items():
+            path = dependency_input(name, checksum)
+            # Resolve historical provenance first, then hash the actual input.
+            if not path.is_absolute() or not path.is_file() or actual_digest(path) != checksum:
+                raise ValueError('launch consumed source/input drift: '+name)
+        for tool in record['tools'].values():
+            if digest(Path(tool['resolved_path'])) != tool['sha256']:
+                raise ValueError('launch tool drift')
     return dict(manifest_sha256=expected, elf=str(root/'filesystem.elf'),
                 elf_sha256=members['filesystem.elf'], members=len(members),
                 executed=False, native_acceptance=False,

@@ -75,7 +75,7 @@ test "actual combined exact envelope and rejected boundaries" {
         for old,new in (
             ('if (bundle.supervisor.len > limit)', 'if (false)'),
             ('elf.parse(process_bytes)', 'elf.parseWithLimits(process_bytes, elf.large_limits)'),
-            ('if (!std.mem.eql(u8, nested[0..8], if (profile == .owner_stack) "AENMX010" else "AENMX009"))', 'if (false)'),
+            ('if (!std.mem.eql(u8, nested[0..8], if (profile == .application) "AENMX011" else if (profile == .owner_stack) "AENMX010" else "AENMX009"))', 'if (false)'),
         ):
             with self.subTest(omission=old):
                 self.assertEqual(original.count(old),1)

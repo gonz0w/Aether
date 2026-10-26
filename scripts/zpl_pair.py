@@ -496,11 +496,17 @@ def verify_prepared(output, builds, repeated_writes=False, stage_diagnostic=Fals
         for name, tool in build['tools'].items():
             if runtime.sha(tool['path']) != tool['sha256']:
                 raise ValueError('ZPL pair tool drift: ' + name)
-        dependency = ROOT / '.deps/native-service-runtime-v3'
+        from fs_host_dependencies import retained_root
+        dependency = retained_root(ROOT / '.deps/native-service-runtime-v3')
         if not build.get('dependency_files'):
             raise ValueError('ZPL pair missing runtime inputs')
         for name, digest in build['dependency_files'].items():
+            if (not isinstance(name, str) or not name or not Path(name).parts or
+                    Path(name).is_absolute() or '..' in Path(name).parts):
+                raise ValueError('ZPL pair runtime member path: ' + str(name))
             path = dependency / name
+            if not path.resolve().is_relative_to(dependency.resolve()):
+                raise ValueError('ZPL pair runtime member path: ' + name)
             if any(p.is_symlink() for p in (path, *path.parents)) or runtime.sha(path) != digest:
                 raise ValueError('ZPL pair runtime drift: ' + name)
     runtime.sealed(runtime.BASE, 'f6bc6d6da3b051e1e4617e60ae256cbd35d193b608631ac29f7c42dbe73b13dc', 240)
