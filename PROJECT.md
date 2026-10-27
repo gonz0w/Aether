@@ -7,6 +7,24 @@ and `pkg-mgr/`. [Product direction](.planning/PROJECT.md) and
 hosting and work routing. The local AT-001/AT-002 records preserve earlier method
 and routing decisions; their historical branch targets are not public assignments.
 
+## Selected policy modules
+
+The root [policy.toml](policy.toml) is the sole declaration of selected modules and
+their dependencies. Read PROJECT first, then every selected module and the owning
+work record before affected work. Directory presence does not select a module.
+The selected local sections below keep their original requirements and heading
+routes; canonical text now lives in `docs/policy/`. Apply compatible rules together.
+An unresolved required conflict stops dependent work for the existing owner process;
+manifest order or a passing helper cannot override a clause or grant authority.
+
+Local policies bind to their containing source revision. Existing immutable
+external inputs, active decisions and historical/expired evidence retain their
+identities and scope. Historical or consumed decisions are not reactivated by this
+selection and are not declared as active manifest exceptions. The existing owner
+change process governs module, dependency, exception and policy updates.
+The manual [selection checker](tools/temper/SOURCE.md) reports mechanical errors;
+policy meaning, approval, event expiry, conformance and execution need review.
+
 ## Public onboarding cutover
 
 The owner authorized `gonz0w/Aether` with a new clean `main` from the reviewed
@@ -42,7 +60,7 @@ queue. This is a scoped policy change, not a file-order precedence rule.
 ## Method and local contracts
 
 Use the [Agent Temper method](.agent-temper/METHOD.md), pinned at
-`4e6804a2c10be6e9ffc9fd057a7d109dcc167504`. Its
+`781a4b9f71d002b93bc4ad26669d01a3b37c482e`. Its
 [source record](.agent-temper/SOURCE.md), [complete manifest](.agent-temper/SHA256SUMS)
 and [license](.agent-temper/LICENSE) identify the unchanged import. This consumer
 selects the [GitHub profile](.agent-temper/profiles/github.md) for work routing
@@ -80,38 +98,11 @@ inside accepted scope. File order or upstream recency cannot override a requirem
 
 ## Bounded Zsh application trial —2026-10-25
 
-The owner approved implementing and host-testing the separately reviewed
-[application profile](https://github.com/gonz0w/Aether/issues/69): a distinct
-1.5 MiB application ELF cap, 384 image-plus-existing-stack pages and 640 total
-backing pages in each of five fork-capable application slots. The engine retains 8192 pages and
-the owner retains 128. This assigns 45 MiB within the existing 64 MiB backing
-reservation; 19 MiB remains ungranted. The selected application image window is
-`0x200000..0x400000`. Existing capability, TLS, stack/bootstrap and ownership
-checks remain binding; older profiles retain their defaults, selectors and seals.
-
-At the admitted image limit, at least 256 backing pages remain for all later
-runtime allocations, including TLS and allocator overhead. This is a bounded
-trial resource decision, not evidence of Zsh heap/stack sufficiency. Routine
-implementation and host verification follow the finite issue scope, required
-checks and separate review. No guest, native prompt or ISO qualification is
-authorized by this decision. Exact SDK/artifact qualification evidence stays local.
+See the canonical [execution policy](docs/policy/execution.md#bounded-zsh-application-trial-2026-10-25).
 
 ## AF09 diagnostic control review —2026-10-26
 
-The owner reviewed and approved the concrete [issue75 diagnostic](https://github.com/gonz0w/Aether/issues/75)
-from draft PR76/head `88a83fab808221cec5770b3db447d849478688ee`.
-Introduce the compile-time `native-af09-drain` selector with default `none` and
-exactly `file_prefix`, `exec_prefix`, `fork_prefix`, `stream`, `no_ack`,
-`partial_ack`, `exit_deadline` and `pending_fragment`. Omitted/explicit `none`
-retain ordinary behavior. This satisfies DEVELOPMENT's human-review requirement
-for this closed non-boolean control; do not ask for the same review again.
-
-Implementation, host verification and matched offline artifact preparation may
-proceed under the [diagnostic contract](docs/NATIVE-AF09-DRAIN.md). Existing
-profile/authority/resource limits, source freezes, cleanup, separate review and
-major-handoff checks remain. This adds no runtime selector, guest permission,
-resource exception, native sufficiency or release acceptance. A later guest
-requires its concrete reviewed artifact and execution disposition.
+See the canonical [execution policy](docs/policy/execution.md#af09-diagnostic-control-review-2026-10-26).
 
 ## Settled choices
 
@@ -159,194 +150,24 @@ integration. Research and coordination work close at their reviewed exit gates.
 
 ## Source control and integration authority
 
-Public `main` is a new clean root from the approved curated snapshot, once
-bootstrap is accepted. It is not a merge into or fast-forward of the original
-local main. The original local main
-`78c13fc5f5329bb590c2ab4772f2e1e2372dc067`, accepted private consolidation
-`0c84f5463abeb25b9cb776ad6d52d41e02f979d7`, private branches, Git/JJ metadata and
-unaccepted AF09 work remain untouched and local. These IDs describe local
-provenance, not public ancestors or a claim of public replay.
-
-Ongoing public work starts from the new public `main` in a separate public clone,
-or a worktree of that public clone. Never use a branch or worktree of the private
-historical repository as a public working base. Do not merge/push its branches,
-legacy/migration refs, all refs or a mirror. Port an explicitly reviewed change
-as an audited patch/file change onto the public base; review exactly what will be
-published. Preserving local history does not authorize publishing it.
-
-Use descriptive `codex/` branches and record the exact reviewed public base and
-intended target in the issue. Only the repository owner opens PRs under the
-current contribution policy. Keep public issue creation available. Configuration
-must be verified before claiming technical enforcement; CODEOWNERS is routing,
-not a PR-author restriction or review result.
-
-Preserve configured author/signing choices. Use coherent `type(scope): summary`
-commits, optional scope, subjects at most 72 characters and a blank line before a
-substantive body. Never invent signatures, sign-offs, reviewers or execution.
-Review working/staged diffs with `git diff` and `git diff --cached`, check the
-actual proposed tree/message, and run required affected checks and public CI.
-Imported hooks remain private; this public checkout has no hook-setup command. Configure only
-the owner-approved public destination; ordinary local integration grants no new
-remote, credential or publication authority.
-
-Before integration, satisfy acceptance, affected checks and separate review of
-the proposed change. The 2026-10-23 owner decision allowing peer-agent reviews
-remains: ordinary implementation/documentation may use a separate peer agent;
-required specialist or affected-owner review still applies. An implementer's
-check is not independent review, and an agent review is not human runtime assurance.
-Record source identity, reviewer type, findings, resolutions, evidence and limits.
-The integrating agent may perform pre-merge checks under these conditions.
-
-A solo-owner branch rule with zero mandatory GitHub approvals avoids impossible
-self-approval. It does not waive project peer review. Confirm the target still
-matches the reviewed base and the resulting tree matches the verified candidate.
-Resolve changed inputs/conflicts and revalidate affected evidence/review. Verify
-final identity and reconcile the canonical issue after accepted merge. Never
-integrate an unreviewed older branch, discard another contributor's work or renew
-native-run permission through onboarding.
+See the canonical [integration policy](docs/policy/integration.md#source-control-and-integration-authority).
 
 ## Verification, instructions and maintenance
 
-[DEVELOPMENT](docs/DEVELOPMENT.md#test-selection-and-cadence) owns the command/risk
-map. Component commands run from their component directories unless stated otherwise.
-The root Makefile retains aggregate entry points. `make check-system` is not an
-assembled OS, boot-to-shell or release result. It and `zig build test` require
-private standards and additional local inputs; they remain blocked when those
-inputs are unavailable. See [PUBLIC-SOURCE](docs/PUBLIC-SOURCE.md). Sys-init's
-`--current` gate leaves unavailable historical replay explicit. Missing tools, zero cases, infrastructure
-failures and skipped checks are not passes.
-
-Existing execution ceilings, stop-on-failure/no-retry rules, source freezes and
-cleanup requirements remain scoped to their contracts. The complete host aggregate uses the scoped budget below;
-onboarding's source-integrity/pure-Zig CI is no substitute. A failed or unavailable required gate stays
-blocked coverage. No new guest disposition or expanded resource approval follows
-from this policy or from hosted CI.
+See the canonical [verification policy](docs/policy/verification.md#verification-instructions-and-maintenance).
 
 ## Complete host gate budget —2026-10-26
 
-Owner decision, 2026-10-26: the complete unfiltered root `zig build test` / `AT-HOST` gate
-has a standing 900-second aggregate limit. Focused host aggregates remain 300
-seconds; auxiliary/leaf limits remain 180 seconds and live diagnostic streams
-remain capped at 4 MiB each. Existing sparse/artifact allowances stay unchanged.
-All selected tests, exact inputs, source freezes, owned cleanup and compact
-failure retention remain required. This changes only the complete host aggregate;
-it grants no guest, runtime-resource, native, release or operational authority.
-
-After a failure, retain and triage it, correct the cause, run affected checks and
-review the resulting inputs before a justified full run under the existing test
-cadence. Do not blindly repeat unchanged failed work, replay unknown mutations or
-renew another scoped execution disposition. Historical one-run exceptions remain
-consumed. A larger bound or another consequential resource change needs the owner.
-
-Prose-only changes use applicable available source/link/syntax checks and separate
-reader/source review. Standards-dependent checks remain required when selected
-by the affected contract; unavailable inputs are blocked coverage, never a pass.
-Prose-only changes do not imply an unrelated full suite, native guest or
-source/build archive. Keep public summaries separate from local qualification
-receipts; missing receipts cannot be represented as fresh validation.
-
-For a method update, compare every bundled file and the complete inventory with
-the immutable source. From `.agent-temper`, run `shasum -a 256 -c SHA256SUMS` or an
-equivalent SHA-256 check, reject unexpected files/symlinks and inspect internal
-links offline. Existing inventories do not establish all prose/anchor coverage.
-Keep consumer extensions outside the immutable bundle. A finite issue, source/
-compatibility review, checks and separate review precede pin replacement.
-Classify findings using the pinned [extension rules](.agent-temper/docs/reference/extensions.md).
-Sanitize any authorized public upstream proposal; do not copy private source or
-sensitive evidence into an issue. An upstream change updates no consumer automatically.
+See the canonical [verification policy](docs/policy/verification.md#complete-host-gate-budget-2026-10-26).
 
 ## AF09 offline family budget —2026-10-26
 
-The owner adopted a standing5400-second aggregate for the complete
-[issue75](https://github.com/gonz0w/Aether/issues/75) offline admission/drain
-family: file_prefix, exec_prefix, fork_prefix, stream, no_ack, partial_ack,
-exit_deadline and pending_fragment, with twenty prepared roles in total.
-One clock covers the whole selected suite from preflight through final input
-verification, publication and owned cleanup; case and builder calls do not renew it.
-Other target suites retain their1800-second ceilings.
-
-Children remain180 seconds, live stdout/stderr4MiB each and compiler files16MiB.
-Focused host300/complete host900 limits, source freezes, all tests, existing media
-allowances, runtime authority/memory/request bounds and known cleanup stay binding.
-This time-only default grants no guest, native sufficiency or release acceptance.
-
-Earlier failed campaigns remain failed. Triage failures, correct their cause,
-recheck affected inputs and obtain separate preflight review before a justified
-fresh complete-family attempt. Do not blindly retry unchanged failed work or
-replay unknown mutations. This standing default does not require another approval
-for each ordinary corrective attempt inside its scope; a larger bound or another
-consequential resource change remains the owner's decision.
+See the canonical [execution policy](docs/policy/execution.md#af09-offline-family-budget-2026-10-26).
 
 ## Codex routing selection
 
-The AT-002 role/model/effort selection at immutable method source
-`c07af93dc99e770bf4f3ec6f30a0536cb2ae14c5` supplies the four retained routes. The
-2026-10-27 update below selects the current pin and adds the product role. Its private historical
-integration target is not a public branch assignment. GitHub tracking selection
-changes no model, permission, fallback, verification or external-action boundary.
-
-| Role | Assignment | Model | Reasoning effort |
-| --- | --- | --- | --- |
-| `temper_workflow` | Bounded read-only inspection and evidence summaries | `gpt-6-luna` | `medium` |
-| `temper_product` | Bounded documentation, visual checks, authorized browser tasks and small specified UI fixes | `gpt-6.1-terra` | `medium` |
-| `temper_implementer` | Accepted implementation, tests and ordinary debugging | `gpt-6.1-sol` | `high` |
-| `temper_analyst` | Ambiguity, architecture and difficult failures or separate review | `gpt-6-astra` | `high` |
-| `temper_reviewer` | Separate examination of the final change and evidence | `gpt-6.1-sol` | `high` |
-
-Read all five adapted files in `.codex/agents` with this policy. They set model
-and effort outside the immutable bundle. No primary-chat model, personal default,
-provider, trust, sandbox, approval, integration or permission setting changes.
-The lead supplies finite scope, owning issue/discussion, policy, inputs,
-acceptance, checks and nonoverlapping edit boundaries. The lead owns issue updates,
-returned-evidence verification and integration. Required separate reviewers must
-not have authored the implementation. Complexity/repeated failure returns to the
-lead for a narrower task or separately assigned analyst, not automatic escalation.
-
-At most three subagents may run simultaneously, excluding the primary and within
-any lower client/task limit. No recursive helpers, higher effort or model changes
-without a bounded lead assignment consistent with the existing owner policy.
-Only Cam authorizes standing role/model/effort, fallback or resource changes.
-
-If a role/model is unavailable, report it. The lead may perform the bounded task
-on its current model only when that model, permissions and limits satisfy policy;
-otherwise resolve the required owner decision. Never silently substitute or claim
-that requested routing ran. An explicit fresh-agent mapping may be used only under
-the recorded policy, with requested and observed metadata recorded separately.
-
-Runtime routing remains unverified. File syntax/source checks do not prove role
-discovery or model selection in a fresh consumer. Use the existing fallback until
-trusted runtime metadata establishes each route; record client/version, source,
-requested/observed settings, outcome and limits in the issue. Do not infer support
-from an agent's self-description or change trust/permissions merely to enable it.
+See the canonical [routing policy](docs/policy/routing.md#codex-routing-selection).
 
 ## Terra product routing update — 2026-10-27
 
-The owner authorized this workflow/model-routing update and integration after
-review in [the owning issue](https://github.com/gonz0w/Aether/issues/81). Select `temper_product` with
-`gpt-6.1-terra` / `medium` from the recorded upstream pin. This adds product-facing
-work to the selected routes; the existing workflow, implementer, analyst and
-reviewer settings remain unchanged. The local role is
-[temper_product](.codex/agents/temper_product.toml).
-
-Use the product role only for accepted documentation, visual inspection, explicitly
-authorized bounded browser tasks and small UI fixes with specified behavior and
-observable acceptance. Substantial implementation stays with the implementer;
-ambiguous design goes to the analyst. Existing risk, platform, execution and
-separate-review requirements override a routine product assignment. The author
-cannot supply its own required separate review.
-
-For this role only, the lead may explicitly select `temper_implementer` with
-`gpt-6.1-sol` / `high` as the one approved fallback when Terra is unavailable or
-cannot perform the task with available tools. Record that selection and confirm
-capability, tool availability, existing permissions and task/resource limits
-before dispatch. Missing tools are not installed by choosing another model.
-Retain stricter dispatch/risk rules and stop if the fallback is unsuitable. Other
-routes keep their existing fallback policy; no automatic substitution, recursive
-delegation, extra retry or higher limit follows.
-
-Terra requires a supporting client/account; Codex CLI requires 0.159.0 or newer.
-Start a fresh consumer session and inspect actual role/model/effort metadata
-before claiming observed routing. Configuration and source review do not prove
-runtime discovery, model execution or measured quality/cost benefit. These remain
-unverified until observed. This selection changes no primary-chat model, CI,
-hooks, trust, permissions, product/platform or consequential-action authority.
+See the canonical [routing policy](docs/policy/routing.md#terra-product-routing-update--2026-10-27).

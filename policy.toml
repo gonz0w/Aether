@@ -1,0 +1,74 @@
+# Explicit selected modules. PROJECT owns approval, composition and change authority.
+# History remains in its original records; no historical exception is activated here.
+schema_version = 1
+
+[[modules]]
+id = "temper-core"
+path = ".agent-temper/METHOD.md"
+owner = "gonz0w"
+
+[[modules]]
+id = "temper-workflow"
+path = ".agent-temper/docs/reference/workflow.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "temper-verification"
+path = ".agent-temper/docs/reference/verification.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "temper-documentation"
+path = ".agent-temper/docs/reference/documentation.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "temper-extensions"
+path = ".agent-temper/docs/reference/extensions.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "temper-codex"
+path = ".agent-temper/profiles/codex.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "temper-github"
+path = ".agent-temper/profiles/github.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "project"
+path = "PROJECT.md"
+owner = "gonz0w"
+requires = ["temper-core"]
+
+[[modules]]
+id = "verification"
+path = "docs/policy/verification.md"
+owner = "gonz0w"
+requires = ["project", "temper-verification", "temper-documentation"]
+
+[[modules]]
+id = "execution"
+path = "docs/policy/execution.md"
+owner = "gonz0w"
+requires = ["project"]
+
+[[modules]]
+id = "integration"
+path = "docs/policy/integration.md"
+owner = "gonz0w"
+requires = ["project", "temper-workflow"]
+
+[[modules]]
+id = "routing"
+path = "docs/policy/routing.md"
+owner = "gonz0w"
+requires = ["project", "temper-codex"]
