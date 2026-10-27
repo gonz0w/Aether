@@ -1,5 +1,9 @@
 # AGENTS.md
 
+Read [PROJECT](PROJECT.md), the root [module selection](policy.toml), and every
+selected policy module before the owning work record and affected contracts.
+Keep the distinct requirements below; selection/checker success grants no authority.
+
 Read [engineering policy](PROJECT.md), the [pinned method](.agent-temper/METHOD.md),
 and [public work navigation](.planning/STATE.md#system-work-index) first. Follow
 the owning issue and affected component contracts after the verified cutover in
