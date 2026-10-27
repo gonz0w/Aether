@@ -1210,3 +1210,35 @@ unsafe denial and the old by-value API. The mapped sys-init owner uses this API
 in `sys-init/scripts/check-broker-init.py` from the system root. Host tests pass;
 required-root code16544/16384 still blocks native admission. No native, complete
 stack/resource fit or persistent Zsh/ISO acceptance follows.
+
+
+## AF09 admission/drain host prerequisites
+
+[Issue75](https://github.com/gonz0w/Aether/issues/75) owns the diagnostic work;
+[the proposed contract](../../../docs/NATIVE-AF09-DRAIN.md) defines the fixed cases,
+real counters and remaining native gates. The separate `fd-home-drain` C fixture
+and cfg-only Rust counter path are host-tested foundations. They do not replace
+`fs_home_probe_three` or qualify native admission, drain timing or persistent ISO.
+
+From this component's `userland/` root, run the host-only C checker with an unused
+output directory under an existing nonsymlink parent:
+
+```sh
+python3 -B experiments/filesystem-service/fd_home_drain_checks.py --evidence /private/tmp/af09-drain-check-UNIQUE
+```
+
+It needs pinned Clang/clang-format21.1.8, the installed macOS SDK and the retained
+private `docs/quality/clang-format.yaml` input; a public-only checkout reports a
+prerequisite block. Do not reconstruct private standards content. It records
+compact receipts, checks actual code/codec paths and UBSan, and removes temporary
+objects/executables. `--help`/`--version` do not build. Exits0/1/2/64 distinguish
+pass, failure, prerequisite block and usage. The exact Rust host-only recipe and
+qualification receipts remain private; no public counter-only runner is claimed.
+The owner approved this exact control for implementation, host verification and
+offline preparation; see the [recorded decision](../../../PROJECT.md#af09-diagnostic-control-review-2026-10-26).
+These host checks select no guest.
+
+Controller failure-path checks run independently without spawning children:
+`python3 -B experiments/filesystem-service/fd_home_drain_checks_tests.py`.
+Unknown/unresolved cleanup retains its owned work; an expired complete aggregate
+cannot report a passing run after final verification or cleanup.

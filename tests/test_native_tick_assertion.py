@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-from test_native_cleanup import block
+from test_native_cleanup import block, af09_prelude, af09_command
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = 'NATIVE assertion id=tick-budget ticks=3000 limit=3000\n'
@@ -22,6 +22,7 @@ class NativeTickAssertion(unittest.TestCase):
         tick = block(native, 'fn nativeTick(')
         cls.prefix = tick[:tick.index('    refreshSustained();')] + '}\n'
         cls.limit_declaration = next(line for line in native.splitlines() if line.startswith('const native_tick_limit:'))
+        cls.af09 = af09_prelude(native)
         cls.require = block(native, 'fn require(')
         cls.lifecycle = block(native, 'fn lifecycleEnabled(') + '\n' + block(native, 'fn storageLifetime(')
         cls.panic = block((ROOT / 'kernel/main.zig').read_text(), 'fn panicImpl(')
@@ -39,6 +40,7 @@ pub const panic = std.debug.FullPanic(panicImpl);
                    f'const combined_profile = {str(combined).lower()};\n'
                    f'var sustained = {str(sustained).lower()};\n'
                    f'var session_lifecycle = {str(session).lower()};\n')
+        source += self.af09
         source += self.limit_declaration + '\n'
         source += self.lifecycle + '\n' + self.require + '\n' + self.panic + '\n'
         source += self.prefix if prefix is None else prefix
@@ -54,10 +56,10 @@ pub const panic = std.debug.FullPanic(panicImpl);
                    '-Mroot=' + str(path), '-Mbuild_options=' + str(options),
                    '-femit-bin=' + str(binary), '--cache-dir', str(self.output / 'cache'),
                    '--global-cache-dir', str(ROOT / '.zig-cache/global')]
-        built = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        built = subprocess.run(af09_command(command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, timeout=180)
         self.assertEqual(built.returncode, 0, built.stdout)
-        return subprocess.run([str(binary)], stdout=subprocess.PIPE,
+        return subprocess.run(af09_command([str(binary)]), stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, timeout=5)
 
     @staticmethod

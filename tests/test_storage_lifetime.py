@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 import sys
-from test_native_cleanup import block
+from test_native_cleanup import block, af09_prelude, af09_command
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import storage_lifetime as profile
@@ -97,8 +97,8 @@ class StorageLifetime(unittest.TestCase):
             for name,selected,source in variants:
                 with self.subTest(name=name):
                     (out/'options.zig').write_text(f'pub const native_service_lifetime={str(selected).lower()};pub const native_service_channel_wait=true;pub const native_service_block=true;pub const native_service_channel=true;')
-                    (out/'test.zig').write_text(SCAFFOLD+source+CASES)
-                    r=subprocess.run(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),'--dep','build_options','--dep','events','-Mroot='+str(out/'test.zig'),'-Mbuild_options='+str(out/'options.zig'),'-Mevents='+str(ROOT/'kernel/native_sustained.zig')],capture_output=True,text=True,timeout=120)
+                    (out/'test.zig').write_text(SCAFFOLD+af09_prelude(native)+source+CASES)
+                    r=subprocess.run(af09_command(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),'--dep','build_options','--dep','events','-Mroot='+str(out/'test.zig'),'-Mbuild_options='+str(out/'options.zig'),'-Mevents='+str(ROOT/'kernel/native_sustained.zig')]),capture_output=True,text=True,timeout=120)
                     if name in ('old','storage'):self.assertEqual(r.returncode,0,r.stdout+r.stderr)
                     else:
                         self.assertNotEqual(r.returncode,0)
@@ -110,9 +110,9 @@ class StorageLifetime(unittest.TestCase):
             out=Path(folder)
             for name,source in [('positive',original),('early',original.replace('tick >= deadline','tick >= previous',1)),('reset',original.replace('previous = tick;', 'previous = start;',1)),('hints',original.replace('0..32','0..31',1))]:
                 (out/'test.rs').write_text(source)
-                r=subprocess.run(['rustc','+1.98.0','--edition=2024','-Dwarnings','--test',str(out/'test.rs'),'-o',str(out/'test')],capture_output=True,text=True,timeout=60)
+                r=subprocess.run(af09_command(['rustc','+1.98.0','--edition=2024','-Dwarnings','--test',str(out/'test.rs'),'-o',str(out/'test')]),capture_output=True,text=True,timeout=60)
                 self.assertEqual(r.returncode,0,r.stdout+r.stderr)
-                r=subprocess.run([str(out/'test'),'--test-threads=1'],capture_output=True,text=True,timeout=10)
+                r=subprocess.run(af09_command([str(out/'test'),'--test-threads=1']),capture_output=True,text=True,timeout=10)
                 if name=='positive':self.assertEqual(r.returncode,0,r.stdout+r.stderr)
                 else:self.assertNotEqual(r.returncode,0,r.stdout+r.stderr)
 
@@ -163,9 +163,9 @@ fn mock_idle()->bool {
 '''
         with tempfile.TemporaryDirectory(prefix='aether-storage-lifetime-transcript-') as folder:
             out=Path(folder);(out/'client.rs').write_text(controller);(out/'test.rs').write_text(fixture)
-            r=subprocess.run(['rustc','+1.98.0','--edition=2024','-Dwarnings','-Dunsafe_op_in_unsafe_fn','--cfg','fs_storage_lifetime','--test',str(out/'test.rs'),'-o',str(out/'test')],capture_output=True,text=True,timeout=60)
+            r=subprocess.run(af09_command(['rustc','+1.98.0','--edition=2024','-Dwarnings','-Dunsafe_op_in_unsafe_fn','--cfg','fs_storage_lifetime','--test',str(out/'test.rs'),'-o',str(out/'test')]),capture_output=True,text=True,timeout=60)
             self.assertEqual(r.returncode,0,r.stdout+r.stderr)
-            r=subprocess.run([str(out/'test'),'--test-threads=1'],capture_output=True,text=True,timeout=10)
+            r=subprocess.run(af09_command([str(out/'test'),'--test-threads=1']),capture_output=True,text=True,timeout=10)
             self.assertEqual(r.returncode,0,r.stdout+r.stderr)
 
     def test_actual_pair_role_flags_oracle_and_kernel_identity_fail_closed(self):

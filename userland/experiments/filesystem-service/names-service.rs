@@ -232,6 +232,14 @@ pub(crate) fn run_bound<B: Backend, C: Clock, T: Channel>(
                     state: word(&reply, 6),
                 });
             }
+            #[cfg(fs_af09_drain)]
+            if binding.disconnected && word(&reply, 1) == 0 {
+                if let Err(code) =
+                    channel.af09_counts(owner.mutation_attempts() as u64, requests as u64)
+                {
+                    return Stop::ReplyLost(code);
+                }
+            }
             if let Err(code) = channel.send(&reply) {
                 return Stop::ReplyLost(code);
             }

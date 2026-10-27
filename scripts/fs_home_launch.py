@@ -15,6 +15,7 @@ from fs_metadata_launch import closure
 
 SOURCE = ROOT / 'userland/experiments/filesystem-service'
 SCHEMA = 'aether-fs-home-launch-v1'
+DRAIN_SCHEMA = 'aether-fs-home-drain-launch-v1'
 PROFILE = tuple('fs_' + name for name in (
     'namespace', 'lifetimes', 'mixed', 'wait', 'bulk', 'runtime', 'activation',
     'names', 'directories', 'metadata', 'directory_contexts', 'home', 'home_wire',
@@ -167,6 +168,86 @@ def checked_receipt(path, role):
         inputs.update(verify_inputs({tool['path']: tool['sha256']}))
     inputs[str(Path(path).absolute())] = digest(path)
     return report, inputs
+
+
+def diagnostic_selection(drain_case='none', identity=None):
+    """Bind one explicit diagnostic input manifest, never baseline coverage."""
+    if drain_case == 'none':
+        if identity is not None:
+            raise ValueError('AF09 diagnostic host inputs forbidden for none')
+        return None, {}
+    if not isinstance(drain_case, str):
+        raise ValueError('AF09 diagnostic case must be an exact string')
+    from af09_drain_inputs import selection, host_inputs
+    case_id = selection(drain_case)
+    if (type(case_id) is not int or not 1 <= case_id <= 8 or not isinstance(identity, dict)
+            or set(identity) != {'path', 'sha256'} or not isinstance(identity['path'], str)
+            or not Path(identity['path']).is_absolute() or not isinstance(identity['sha256'], str)
+            or re.fullmatch('[0-9a-f]{64}', identity['sha256']) is None):
+        raise ValueError('AF09 exact diagnostic host input identity required')
+    bound = host_inputs(identity, drain_case)
+    if not isinstance(bound, dict) or not isinstance(bound.get('inputs'), dict):
+        raise ValueError('AF09 diagnostic host input binding shape')
+    inputs = verify_inputs(bound['inputs'])
+    if inputs.get(identity['path']) != identity['sha256']:
+        raise ValueError('AF09 diagnostic manifest missing from bound inputs')
+    return dict(case=drain_case, case_id=case_id, host_inputs=dict(identity)), inputs
+
+
+def diagnostic_options(drain_case='none', identity=None):
+    diagnostic_selection(drain_case, identity)
+    return {} if drain_case == 'none' else dict(drain_case=drain_case, diagnostic_host_inputs=identity)
+
+
+def diagnostic_cli(parser, args):
+    path, checksum = args.diagnostic_host_inputs, args.diagnostic_host_inputs_sha256
+    if (path is None) != (checksum is None):
+        parser.error('diagnostic host input path and SHA256 must be paired')
+    if args.native_af09_drain == 'none':
+        if path is not None:
+            parser.error('diagnostic host inputs require a selected drain case')
+        return {}
+    if path is None or re.fullmatch('[0-9a-f]{64}', checksum) is None:
+        parser.error('selected drain case requires paired diagnostic host inputs')
+    return dict(drain_case=args.native_af09_drain,
+                diagnostic_host_inputs=dict(path=str(path.absolute()), sha256=checksum))
+
+
+def add_diagnostic_arguments(parser):
+    from af09_drain_inputs import CASES
+    parser.add_argument('--native-af09-drain', choices=('none', *CASES), default='none',
+                        help='explicit offline AF09 diagnostic case; default none')
+    parser.add_argument('--diagnostic-host-inputs', type=Path, help='reviewed diagnostic host input manifest')
+    parser.add_argument('--diagnostic-host-inputs-sha256', help='paired expected manifest SHA256')
+
+
+def validate_drain_rust(artifacts, record, diagnostic):
+    if diagnostic is None:
+        return
+    profile = [*PROFILE[:-1], 'fs_af09_drain']
+    row = record.get('home_engine_rust', {})
+    for selected in (artifacts, row):
+        if not isinstance(selected, dict) or not isinstance(selected.get('flags'), list) or not isinstance(selected.get('sources'), dict):
+            raise ValueError('AF09 diagnostic Rust metadata shape')
+        flags = selected['flags']
+        actual = [flags[i + 1] for i, flag in enumerate(flags[:-1]) if flag == '--cfg']
+        if (selected.get('drain_case') != diagnostic['case']
+                or selected.get('drain_case_id') != diagnostic['case_id']
+                or selected.get('profile') != profile or actual != profile
+                or 'fs_home_probe_three' in flags):
+            raise ValueError('AF09 diagnostic Rust case/profile/flags mismatch')
+    leaf = runpy.run_path(str(SOURCE/'home_engine_build.py'))
+    expected = [*leaf['BASE'], *[arg for name in profile for arg in ('--cfg', name)]]
+    if artifacts['flags'] != expected or row['flags'] != expected:
+        raise ValueError('AF09 diagnostic exact Rust compiler flags')
+    if artifacts['flags'] != row['flags'] or artifacts['sources'] != row['sources']:
+        raise ValueError('AF09 diagnostic Rust returned source/flag correspondence')
+    for name, expected in row['sources'].items():
+        if record.get('inputs', {}).get(name) != expected:
+            raise ValueError('AF09 diagnostic Rust source coverage')
+    for source in (SOURCE/'native-home.rs', SOURCE/'launch-home-owner.rs', SOURCE/'home_engine_build.py'):
+        if row['sources'].get(str(source)) != digest(source):
+            raise ValueError('AF09 diagnostic Rust live source identity')
 
 
 def strong_symbols(symbols):
@@ -520,16 +601,28 @@ def retain_unresolved(record, paths, primary=None):
     return retained
 
 
-def validate_record(record):
-    wanted = dict(schema=SCHEMA, status='pass', executed=False, native_acceptance=False,
+def validate_record(record, *, drain_case='none', diagnostic_host_inputs=None):
+    diagnostic, bound = diagnostic_selection(drain_case, diagnostic_host_inputs)
+    if ((diagnostic is not None and record.get('diagnostic') != diagnostic)
+            or (diagnostic is None and 'diagnostic' in record)):
+        raise ValueError('AF09 engine diagnostic selection mismatch')
+    if diagnostic and (record.get('service_requests') != 3 or any(record.get('inputs', {}).get(n) != h for n, h in bound.items())):
+        raise ValueError('AF09 engine diagnostic host inputs/counts')
+    if diagnostic:
+        rust = record.get('home_engine_rust', {})
+        validate_drain_rust(rust, record, diagnostic)
+        if rust.get('artifacts', {}).get('service', {}).get('sha256') != record.get('service_object_sha256'):
+            raise ValueError('AF09 diagnostic service object correspondence')
+    profile = [*PROFILE[:-1], 'fs_af09_drain'] if diagnostic else list(PROFILE)
+    wanted = dict(schema=DRAIN_SCHEMA if diagnostic else SCHEMA, status='pass', executed=False, native_acceptance=False,
                   protocol='AFSRPC09', service_result_bytes=320, launch_state_bytes=384,
-                  root_rights=3, home_rights=15, source_rights=15, provider_attempts=3,
+                  root_rights=3, home_rights=15, source_rights=15, provider_attempts=2 if diagnostic else 3,
                   utc_min=1791290040, utc_max_exclusive=1791290100,
                   rtc='2026-10-06T12:34:00,clock=vm')
     if (process_cleanup_unresolved(record)
             or any(record.get(key) != value for key, value in wanted.items())
             or record.get('executed') is not False or record.get('native_acceptance') is not False
-            or record.get('flags') != list(PROFILE) or record.get('limits') != LIMITS):
+            or record.get('flags') != profile or record.get('limits') != LIMITS):
         raise ValueError('AF09 engine profile/authority/bounds/coverage')
     for key, expected in (('origins', REQUIRED), ('partial_origins', PARTIAL)):
         rows = record.get(key, {})
@@ -566,10 +659,11 @@ def validate_record(record):
         raise ValueError('AF09 engine ELF extent')
 
 
-def intake(directory, seal):
+def intake(directory, seal, *, drain_case='none', diagnostic_host_inputs=None):
+    options = diagnostic_options(drain_case, diagnostic_host_inputs)
     root, members = closure(directory, seal)
     record = read_json(root / 'build.json')
-    validate_record(record)
+    validate_record(record, **options)
     if (members.get('filesystem.elf') != record['elf_sha256']
             or (root / 'filesystem.elf').stat().st_size != record['elf_bytes']):
         raise ValueError('AF09 actual engine artifact correspondence')
@@ -581,14 +675,19 @@ def intake(directory, seal):
     verify_inputs(record['inputs'])
     if 'dependency_bindings' in record:
         verify_dependency_bindings(record['dependency_bindings'])
-    return dict(schema='aether-fs-home-launch-result-v1', protocol='AFSRPC09',
+    result = dict(schema=DRAIN_SCHEMA if options else 'aether-fs-home-launch-result-v1', protocol='AFSRPC09',
                 manifest_sha256=seal, elf=str(root / 'filesystem.elf'),
                 elf_sha256=members['filesystem.elf'], executed=False,
                 native_acceptance=False, members=len(members))
+    if options:
+        result['diagnostic'] = record['diagnostic']
+    return result
 
 
-def build(destination, qualification, probe_qualification):
+def build(destination, qualification, probe_qualification, *, drain_case='none', diagnostic_host_inputs=None):
     """Compose an explicit dependency; never launch the native image."""
+    diagnostic, diagnostic_inputs = diagnostic_selection(drain_case, diagnostic_host_inputs)
+    options = diagnostic_options(drain_case, diagnostic_host_inputs)
     from fs_launch import validate_destination
     from deps import verify
     destination = validate_destination(destination)
@@ -597,6 +696,7 @@ def build(destination, qualification, probe_qualification):
     producer, inputs = checked_receipt(qualification, 'producer')
     probe, probe_inputs = checked_receipt(probe_qualification, 'probe')
     inputs.update(probe_inputs)
+    inputs.update(diagnostic_inputs)
     reconstructed = generated_sources(producer)
     # Disposed checked C bodies are recipes, not retained dependency files.
     for name in reconstructed:
@@ -629,16 +729,18 @@ def build(destination, qualification, probe_qualification):
     temporary = Path(tempfile.mkdtemp(prefix='filesystem-home-engine-', dir=ROOT / 'userland/build'))
     work = temporary / 'launch'
     work.mkdir()
-    result = dict(schema=SCHEMA, status='preparing', executed=False, native_acceptance=False,
+    result = dict(schema=DRAIN_SCHEMA if diagnostic else SCHEMA, status='preparing', executed=False, native_acceptance=False,
         protocol='AFSRPC09', service_result_bytes=320, launch_state_bytes=384,
-        root_rights=3, home_rights=15, source_rights=15, provider_attempts=3,
+        root_rights=3, home_rights=15, source_rights=15, provider_attempts=2 if diagnostic else 3,
         utc_min=1791290040, utc_max_exclusive=1791290100, rtc='2026-10-06T12:34:00,clock=vm',
-        flags=list(PROFILE), limits=dict(LIMITS), commands=[], rows=[], inputs=inputs, tools=tools,
+        flags=[*PROFILE[:-1], 'fs_af09_drain'] if diagnostic else list(PROFILE), limits=dict(LIMITS), commands=[], rows=[], inputs=inputs, tools=tools,
         qualification_sha256=digest(qualification), probe_qualification_sha256=digest(probe_qualification),
         qualification_path=str(Path(qualification).absolute()), probe_qualification_path=str(Path(probe_qualification).absolute()),
         qualified_generated_inputs=reconstructed,
         dependency_bindings=dependency_bindings,
         scope='Offline linked AF09 dependency and real kernel loader admission; no guest or persistence acceptance')
+    if diagnostic:
+        result.update(diagnostic=diagnostic, service_requests=3)
     evidence = ROOT / 'userland/docs/evidence/filesystem-home-prep-2026-10-24/engine'
     evidence.mkdir(parents=True, exist_ok=True)
     number = 1
@@ -689,7 +791,8 @@ def build(destination, qualification, probe_qualification):
         destination.mkdir()
         destination_owned = True
         artifacts = runpy.run_path(str(SOURCE / 'home_engine_build.py'))['build'](
-            work, proc, tools, deadline, result)
+            work, proc, tools, deadline, result, **({'drain_case': drain_case} if diagnostic else {}))
+        validate_drain_rust(artifacts, result, diagnostic)
         if process_cleanup_unresolved(result):
             raise RuntimeError('AF09 imported builder cleanup unconfirmed')
         result['service_object_sha256'] = digest(artifacts['service'])
@@ -734,7 +837,7 @@ def build(destination, qualification, probe_qualification):
         checked_receipt(probe_qualification, 'probe')
         result.update(status='pass', final_input_verification='pass', elf_sha256=digest(destination / 'filesystem.elf'),
                       elf_bytes=(destination / 'filesystem.elf').stat().st_size)
-        validate_record(result)
+        validate_record(result, **options)
         # Final publication and intake stay inside the same failure boundary.
         result['cleanup'] = dict(native_attempted=False,
             removed_generated_members=sum(p.is_file() for p in temporary.rglob('*')))
@@ -743,7 +846,7 @@ def build(destination, qualification, probe_qualification):
         (destination / 'build.json').write_text(json.dumps(result, indent=2) + '\n')
         members = sorted(p for p in destination.rglob('*') if p.is_file())
         (destination / 'SHA256SUMS').write_text(''.join(digest(p) + '  ' + str(p.relative_to(destination)) + '\n' for p in members))
-        candidate = intake(destination, digest(destination / 'SHA256SUMS'))
+        candidate = intake(destination, digest(destination / 'SHA256SUMS'), **options)
     except BaseException as error:
         result.update(status='failed', error=type(error).__name__ + ': ' + str(error))
         raise
@@ -802,8 +905,10 @@ def main():
     parser.add_argument('--checked', required=True, type=Path, help='current passing native-home producer receipt')
     parser.add_argument('--probe-checked', required=True, type=Path, help='current passing helper/count/UTC-window receipt')
     parser.add_argument('--output', required=True, type=Path, help='unused .deps/fs-launch-af09-* dependency')
+    add_diagnostic_arguments(parser)
     args = parser.parse_args()
-    print(json.dumps(build(args.output, args.checked, args.probe_checked)))
+    options = diagnostic_cli(parser, args)
+    print(json.dumps(build(args.output, args.checked, args.probe_checked, **options)))
 
 
 if __name__ == '__main__':

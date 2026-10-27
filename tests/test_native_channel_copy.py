@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from test_native_cleanup import block
+from test_native_cleanup import block, af09_prelude, af09_command
 
 SCAFFOLD = r'''
 const std = @import("std");
@@ -134,13 +134,13 @@ class ChannelCopy(unittest.TestCase):
             options.write_text('pub const native_service_channel_wait=false;')
             for name, view, transfer, oracle in variants:
                 path = out / (name + '.zig')
-                path.write_text(SCAFFOLD + lookup + '\n' + view + '\n' + owned + '\n' + transfer + CASES)
+                path.write_text(SCAFFOLD + af09_prelude(source) + lookup + '\n' + view + '\n' + owned + '\n' + transfer + CASES)
                 command = ['zig', 'test', '--cache-dir', str(ROOT / '.zig-cache'), '--global-cache-dir', str(ROOT / '.zig-cache/global'),
                            '--dep', 'channel', '--dep', 'build_options', '-Mroot=' + str(path),
                            '-Mchannel=' + str(ROOT / 'kernel/native_channel.zig'), '-Mbuild_options=' + str(options)]
                 if name == 'early-effect':
                     command += ['--test-filter', 'entire requested chunk']
-                run = subprocess.run(command, capture_output=True, text=True, timeout=120)
+                run = subprocess.run(af09_command(command), capture_output=True, text=True, timeout=120)
                 if oracle:
                     self.assertNotEqual(run.returncode, 0, name)
                     self.assertNotRegex(run.stderr, r':\d+:\d+: error:', name + run.stderr)

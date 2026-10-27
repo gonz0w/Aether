@@ -69,6 +69,23 @@ struct Endpoints<'a> {
     flags: Option<&'a mut u64>,
 }
 impl Io for Endpoints<'_> {
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64> {
+        let mutations = u16::try_from(mutations).map_err(|_| -75)?;
+        let requests = u16::try_from(requests).map_err(|_| -75)?;
+        let [m0, m1] = mutations.to_le_bytes();
+        let [r0, r1] = requests.to_le_bytes();
+        let record = [1u8, 1, m0, m1, r0, r1, 0, 0];
+        // SAFETY: the existing checked output ABI synchronously copies this
+        // initialized read-only record8; no pointer survives the call. Stream1
+        // and all remaining zero scalars preserve ordinary output authority.
+        match unsafe { trap(0x10001, 1, record.as_ptr() as u64, 8) } {
+            8 => Ok(()),
+            error if error < 0 => Err(error),
+            _ => Err(-5),
+        }
+    }
+
     fn transfer(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
         // SAFETY: Framed supplies live initialized exclusive slices<=16 bytes.
         // Tokens are retained bootstrap bindings; the trap enforces holders.

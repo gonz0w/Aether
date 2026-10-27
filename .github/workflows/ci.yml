@@ -89,6 +89,17 @@ jobs:
           PYTHON
           git diff --exit-code
 
+      - name: Exercise AF09 host decoders and checker controller
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s tests -p test_af09_drain_trace.py -v
+          python3 -B -m unittest discover -s tests -p test_af09_drain_witness.py -v
+          python3 -B -m unittest discover -s tests -p test_af09_drain_inputs.py -v
+          python3 -B userland/experiments/filesystem-service/fd_home_drain_checks_tests.py
+          git diff --exit-code
+
   kernel-models:
     name: Kernel models
     runs-on: ubuntu-24.04
@@ -116,7 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(zig version)" = 0.16.0
-          for source in kernel/capability.zig kernel/lifetime.zig kernel/native_elf.zig kernel/native_launch.zig; do
+          for source in kernel/capability.zig kernel/lifetime.zig kernel/native_elf.zig kernel/native_launch.zig kernel/native_af09_drain.zig; do
             timeout 180 zig test "$source" \
               --cache-dir "$RUNNER_TEMP/zig-cache" \
               --global-cache-dir "$RUNNER_TEMP/zig-global-cache" 2>&1 | tee "$RUNNER_TEMP/kernel-model.log"

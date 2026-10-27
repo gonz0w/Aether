@@ -18,6 +18,19 @@ import fs_launch_intake as delivery
 CURRENT = ROOT/'.deps/fs-launch-2026-10-20-v4'
 
 
+def runtime_fixture(path, data, body, *, io='std.testing.io', allocator='std.testing.allocator'):
+    """Read one full owned fixture, verify its exact bytes, then free it."""
+    # Zig0.16 rejects a stream that reaches its exclusive limit. One EOF
+    # probe byte permits exactly N payload bytes; length/hash still require N.
+    expected = ','.join(str(byte) for byte in hashlib.sha256(data).digest())
+    return ('{ const fixture = try std.Io.Dir.cwd().readFileAlloc(' + io + ', ' +
+            json.dumps(str(path.resolve())) + ', ' + allocator + ', .limited(' + str(len(data) + 1) + '));\n' +
+            'defer ' + allocator + '.free(fixture);\n' +
+            'try std.testing.expectEqual(@as(usize,' + str(len(data)) + '), fixture.len);\n' +
+            'var digest: [32]u8 = undefined; std.crypto.hash.sha2.Sha256.hash(fixture, &digest, .{});\n' +
+            'try std.testing.expectEqualSlices(u8, &[_]u8{' + expected + '}, &digest);\n' + body + '\n}\n')
+
+
 class LaunchIntake(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='aether-launch-intake-', dir='/private/tmp')
@@ -113,16 +126,24 @@ class LaunchIntake(unittest.TestCase):
         wx = original.copy(); struct.pack_into('<I',wx,rx+4,7); images['writable_code']=wx
         large = original.copy(); struct.pack_into('<Q',large,tls+40,4097); images['oversized_tls']=large
         for name, data in images.items(): (self.out/(name+'.elf')).write_bytes(data)
-        checks='''const std=@import("std");const elf=@import("native_elf");
-pub fn main() !void {
- _=try elf.parseWithLimits(@embedFile("valid.elf"),elf.large_limits);
- try std.testing.expectError(error.InvalidImage,elf.parse(@embedFile("valid.elf")));
-'''+''.join(' try std.testing.expectError(error.InvalidImage,elf.parseWithLimits(@embedFile("'+n+'.elf"),elf.large_limits));\n' for n in images if n!='valid')+'}\n'
+        checks = 'const std=@import("std");const elf=@import("native_elf");\npub fn main(init: std.process.Init) !void {\n'
+        checks += runtime_fixture(self.out/'valid.elf', images['valid'],
+            '_=try elf.parseWithLimits(fixture,elf.large_limits);\n'
+            'try std.testing.expectError(error.InvalidImage,elf.parse(fixture));', io='init.io', allocator='init.gpa')
+        for name, data in images.items():
+            if name != 'valid':
+                checks += runtime_fixture(self.out/(name+'.elf'), data,
+                    'try std.testing.expectError(error.InvalidImage,elf.parseWithLimits(fixture,elf.large_limits));',
+                    io='init.io', allocator='init.gpa')
+        checks += '}\n'
         (self.out/'check.zig').write_text(checks)
-        run=subprocess.run(['zig','run','--cache-dir',str(ROOT/'.zig-cache'),
+        run=subprocess.run(['zig','build-exe','--cache-dir',str(ROOT/'.zig-cache'),
             '--global-cache-dir',str(ROOT/'.zig-cache/global'),'-O','ReleaseSafe','--dep','native_elf',
-            '-Mroot='+str(self.out/'check.zig'),'-Mnative_elf='+str(ROOT/'kernel/native_elf.zig')],capture_output=True,text=True,timeout=60)
+            '-Mroot='+str(self.out/'check.zig'),'-Mnative_elf='+str(ROOT/'kernel/native_elf.zig'),
+            '-femit-bin='+str(self.out/'check')],capture_output=True,text=True,timeout=60)
         self.assertEqual(run.returncode,0,run.stdout+run.stderr)
+        executed=subprocess.run([str(self.out/'check')],capture_output=True,text=True,timeout=60)
+        self.assertEqual(executed.returncode,0,executed.stdout+executed.stderr)
 
 
 if __name__ == '__main__':

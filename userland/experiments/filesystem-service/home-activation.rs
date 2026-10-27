@@ -23,6 +23,17 @@ impl<T: Channel, P: FnMut() -> i64> HomeActivated<T, P> {
     }
 }
 impl<T: Channel, P: FnMut() -> i64> Channel for HomeActivated<T, P> {
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64> {
+        if !matches!(self.stage, Stage::Ready) {
+            return self.fail(-5);
+        }
+        match self.inner.af09_counts(mutations, requests) {
+            Ok(()) => Ok(()),
+            Err(error) => self.fail(error),
+        }
+    }
+
     fn receive(&mut self, frame: &mut Message) -> Result<(), i64> {
         self.inner.receive(frame)
     }

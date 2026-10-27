@@ -27,17 +27,28 @@ PRODUCER_EDITS = ('scripts/fs_metadata_launch.py', 'scripts/fs_launch_intake.py'
                   'scripts/service_runtime_smoke.py', 'scripts/source_paths.py',
                   'scripts/openzfs_elapsed.py', 'scripts/zpl_pair.py')
 ALLOWED = {'af06': {'kernel/native_elf.zig', *PRODUCER_EDITS},
-           'af07': {*KERNEL, *PRODUCER_EDITS, 'scripts/fs_home_inputs.py', 'scripts/fs_home_launch.py'}}
+           'af07': {*KERNEL, *PRODUCER_EDITS, 'scripts/fs_home_inputs.py', 'scripts/fs_home_launch.py',
+                    'user/storage/openzfs-volume/home-recovery-probe.c',
+                    'user/storage/openzfs-volume/home-recovery-probe.h',
+                    'scripts/home_reader.py', 'scripts/home_runtime.py'}}
 REQUIRED_INPUTS = (*KERNEL, *PRODUCER_EDITS, 'build.zig', 'scripts/fs_host_dependencies.py',
                    'scripts/fs_consumer_association.py', 'scripts/fs_session.py',
                    'tests/test_fs_consumer_association.py', 'tests/test_fs_application_profile.py',
                    'tests/test_fs_launch_intake.py', 'tests/test_fs_metadata_launch_intake.py',
-                   'tests/test_fs_session.py', 'tests/test_fs_owner_stack.py', 'tests/test_fs_af07_inputs.py')
+                   'tests/test_fs_session.py', 'tests/test_fs_owner_stack.py', 'tests/test_fs_af07_inputs.py',
+                   'user/storage/openzfs-volume/home-recovery-probe.c',
+                   'user/storage/openzfs-volume/home-recovery-probe.h',
+                   'scripts/home_reader.py', 'scripts/home_runtime.py', 'kernel/native_af09_drain.zig',
+                   'tests/test_home_reader.py', 'tests/test_home_runtime.py',
+                   'userland/experiments/filesystem-service/home_recovery_checks.py',
+                   'userland/experiments/filesystem-service/home-recovery-tests.c',
+                   'userland/experiments/filesystem-service/home_reader_drain_tests.py')
 CASES = {'af06-parser': ('large-accepted', 'ordinary-denied', 'missing-tls-denied', 'wx-denied', 'oversized-tls-denied', 'omission-denied'),
          'af07-parser': ('large-accepted', 'ordinary-denied', 'missing-tls-denied', 'wx-denied', 'oversized-tls-denied', 'omission-denied'),
          'legacy-models': ('old-selectors', 'role-authority', 'stale-grant', 'exhaustion', 'cleanup'),
          'application-models': ('launch-exec-copy', 'preflight-omissions', 'rollback-zero', 'binding-reset-reclaim', 'build-selection', 'start-order'),
-         'legacy-kernel': ('kernel-check', 'footprint')}
+         'legacy-kernel': ('kernel-check', 'footprint'),
+         'legacy-reader': ('default-c-oracle', 'default-rendering')}
 MARKERS = {scope: ['FS-HOST '+scope+' '+case+' PASS' for case in cases] for scope, cases in CASES.items()}
 
 

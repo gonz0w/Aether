@@ -4,8 +4,12 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from test_fs_owner_data import ROOT, run
-from test_native_cleanup import block
+from test_fs_owner_data import ROOT, run as run_original
+from test_native_cleanup import block, af09_prelude, af09_command
+
+def run(command, *args, **kwargs):
+    return run_original(af09_command(command), *args, **kwargs)
+
 
 SCAFFOLD = r'''
 const std=@import("std");
@@ -197,7 +201,7 @@ class ApplicationProfile(unittest.TestCase):
             aliases = aliases.replace('fn aliases(owner: *State, writable: bool)', 'fn aliases(owner: *State, _: bool)')
         with tempfile.TemporaryDirectory(prefix='aether-application-host-') as folder:
             out = Path(folder)
-            (out / 'main.zig').write_text(SCAFFOLD + api + bodies + aliases)
+            (out / 'main.zig').write_text(SCAFFOLD + af09_prelude(native) + api + bodies + aliases)
             values = dict(native_process_exec=True,native_exec_copy=False,native_signal_actions=False,
                           native_copy_signals=False,native_copy_lose_anonymous=False,native_copy_share=False,
                           native_copy_fail_stage=rollback,native_copy_skip_zero=mode == 'skip-zero',
@@ -241,7 +245,7 @@ class ApplicationProfile(unittest.TestCase):
                     text=text.replace(reset,reset.replace('bindRecords(state);',''))
                 if mode=='omit-last-page-clear':
                     operation=operation.replace('for (s.payload()) |*page| {','for (s.payload()[0..s.payload().len-1]) |*page| {')
-                (out/'main.zig').write_text(BINDING_SCAFFOLD+declarations+text+operation+BINDING_CASES)
+                (out/'main.zig').write_text(BINDING_SCAFFOLD+af09_prelude(native)+declarations+text+operation+BINDING_CASES)
                 (out/'options.zig').write_text('pub const native_service_workers_skip_rebind=false;pub const native_skip_zero=false;pub const native_signal_actions=false;')
                 binary=out/'actual'
                 run(['zig','build-exe','-OReleaseSafe','--cache-dir',out/'cache','--global-cache-dir',out/'global',

@@ -1,5 +1,395 @@
 // Bounded opt-in native C experiment. No effect on existing fixture ABIs.
 const std = @import("std");
+// Diagnostic hooks execute under the existing local IF=0 syscall/IRQ boundary.
+// Only object indexes/generations and counters survive a call; no user view does.
+const Af09 = @import("../../native_af09_drain.zig");
+const af09_mode = Af09.Mode.parse(if (@hasDecl(@import("build_options"), "native_af09_drain")) @import("build_options").native_af09_drain else "none");
+const af09_enabled = af09_mode != .none;
+var af09: if (af09_enabled) Af09.State else void = if (af09_enabled) .{} else {};
+fn af09Row(phase: u8, slot: usize, status: i64, count: u64, aux: u64) void {
+    if (!af09_enabled) return;
+    af09RowAt(.{ .phase = phase, .slot = slot, .gen = states[slot].generation, .seq = sustained_events.sequence, .tick = total_ticks, .deadline = if (af09.observed) af09.deadline else 0, .status = status, .count = count, .aux = aux });
+}
+fn af09RowAt(row: Af09.Row) void {
+    if (!af09_enabled) return;
+    var line: [256]u8 = undefined;
+    if (Af09.trace(&af09, &line, af09_mode, row)) |text| serial.write(text);
+}
+fn af09Fail(slot: usize, failure: i64) void {
+    if (!af09_enabled or af09.invalid) return;
+    af09.invalid = true;
+    af09Row(29, slot, failure, 0, 0);
+}
+fn af09Object(value: u64, owner: usize) ?Af09.Object {
+    if (!af09_enabled) return null;
+    const c = ownedChannel(owner, value) orelse return null;
+    return .{ .index = @intCast(c.identity), .generation = c.generation };
+}
+fn af09Matches(c: *const @import("../../native_channel.zig").Channel, object: usize) bool {
+    if (!af09_enabled) return false;
+    return c.identity == af09.objects[object].index and c.generation == af09.objects[object].generation;
+}
+fn af09Valid() bool {
+    if (!af09_enabled or !af09.bound) return false;
+    for ([_]usize{ 0, 1, 2, 6 }) |slot| {
+        if (!states[slot].admitted or states[slot].generation != af09.generations[slot]) return false;
+    }
+    for (af09.objects, 0..) |object, i| {
+        if (object.index >= channelCount()) return false;
+        const c = &channels[object.index];
+        if (c.identity != object.index or c.generation != object.generation) return false;
+        // Until settlement, both real endpoints must retain their exact holders.
+        const target: usize = if (i < 2) 2 else if (i < 4) 1 else 0;
+        const target_end: usize = if (i >= 4) (if (i % 2 == 0) @as(usize, 0) else 1) else if (i % 2 == 0) 1 else 0;
+        if (c.owners[target_end] != (if (states[target].terminal) @as(?usize, null) else target) or c.owners[1 - target_end] != 6) return false;
+    }
+    return true;
+}
+fn af09Bind(from: usize, child: usize) void {
+    if (!af09_enabled) return;
+    if (af09.bound or from != 1 or child != 2 or states[6].on_child) {
+        af09Fail(child, -1);
+        return;
+    }
+    af09.bound = true;
+    for ([_]usize{ 0, 1, 2, 6 }) |slot| af09.generations[slot] = states[slot].generation;
+    const slots = [_]usize{ 2, 1, 0 };
+    for (slots, 0..) |slot, i| {
+        // Process input is its reply reader, output is its request writer.
+        af09.objects[2 * i] = af09Object(states[slot].channel_reply_cap, slot) orelse {
+            af09Fail(slot, -1);
+            return;
+        };
+        af09.objects[2 * i + 1] = af09Object(states[slot].channel_cap, slot) orelse {
+            af09Fail(slot, -1);
+            return;
+        };
+    }
+    // Engine input/output directions are reversed relative to process clients.
+    const temporary = af09.objects[4];
+    af09.objects[4] = af09.objects[5];
+    af09.objects[5] = temporary;
+    if (!af09Valid()) {
+        af09Fail(child, -1);
+        return;
+    }
+    af09.copies += 1;
+    af09Row(2, 2, 0, af09.copies, 0);
+}
+fn af09Blocked(slot: usize) bool {
+    if (!af09_enabled) return false;
+    return af09.blocked(slot, states[slot].generation);
+}
+fn af09Hold(slot: usize, hold: Af09.Hold) bool {
+    if (!af09_enabled) return false;
+    const s = &states[slot];
+    if (s.on_child or s.execution.wait.address != 0 or s.channel_wait.endpoint != 0 or
+        (slot == 6 and sustained_events.occupied))
+    {
+        af09Fail(slot, -3);
+        return false;
+    }
+    if (slot == 2) af09.child_hold = hold else if (slot == 0) af09.engine_hold = hold else unreachable;
+    af09Row(25, slot, 0, @intFromEnum(hold), 0);
+    return true;
+}
+fn af09Release(slot: usize) void {
+    if (!af09_enabled) return;
+    const hold = if (slot == 2) af09.child_hold else af09.engine_hold;
+    if (hold == .none) return;
+    if (states[slot].generation != af09.generations[slot] or states[slot].terminal or !states[slot].admitted) {
+        af09Fail(slot, -1);
+        af09.cancel(slot, af09.generations[slot]);
+        return;
+    }
+    if (slot == 2) af09.child_hold = .none else af09.engine_hold = .none;
+    af09Row(25, slot, 0, @intFromEnum(hold), 1);
+}
+fn af09Ready(first: bool) void {
+    if (!af09_enabled or active != 2 or !af09.bound or !first) return;
+    if (!af09Valid() or af09.startup_written != 304 or af09.startup_read != 304 or af09.ready_written != 32) {
+        af09Fail(2, -2);
+        return;
+    }
+    af09.child_ready = true;
+    if (af09Hold(2, .ready)) af09Row(4, 2, 0, 0, 0);
+}
+fn ordinaryQuery(caller: *State, target: *State) void {
+    result(caller, if (target.terminal) @intCast(target.status + 1) else 0);
+    caller.context().frame.rdx = @intFromBool(target.ready);
+    caller.context().frame.rcx = target.yields;
+    caller.context().frame.r8 = target.terminal_kind;
+    if (@import("build_options").native_signal_suspend)
+        caller.context().frame.r9 = @intFromBool(target.suspend_mask != null);
+}
+fn af09Query(slot: usize) bool {
+    if (!af09_enabled or !af09.bound or slot != 1 or af09.query_positive or af09.invalid) return false;
+    if (!af09Valid()) {
+        af09Fail(1, -1);
+        return false;
+    }
+    if (af09.startup_written != 304 or af09.startup_read != 304 or af09.ready_written != 32 or af09.ready_read != 32 or af09.parent_written != 32) {
+        af09Fail(6, -2);
+        return false;
+    }
+    const owner = &states[6];
+    if (owner.on_child or owner.execution.wait.address != 0 or owner.channel_wait.endpoint != 0 or sustained_events.occupied or af09.query_pending) {
+        af09Fail(6, -3);
+        return false;
+    }
+    af09.query_pending = true;
+    af09Row(5, 1, 0, 0, 0);
+    return true;
+}
+fn af09Refresh() void {
+    if (!af09_enabled or !af09.bound) return;
+    // Cancel a retired/replaced generation without releasing any replacement.
+    for ([_]usize{ 0, 2, 6 }) |slot| if (states[slot].generation != af09.generations[slot] or !states[slot].admitted or states[slot].terminal) {
+        af09.cancel(slot, af09.generations[slot]);
+    };
+    if (af09.invalid) return;
+    if (af09.query_pending) {
+        if (!af09Valid()) {
+            af09Fail(6, -1);
+            return;
+        }
+        if (af09.child_ready and af09.child_hold == .ready) af09Release(2);
+        if (states[1].terminal and states[1].terminal_kind == 1 and states[1].status == 0 and af09.child_ready and af09.late_written == 32 and af09.late_read == 0 and channels[af09.objects[0].index].stream.count == 32) {
+            if (states[6].execution.wait.address != 0 or states[6].channel_wait.endpoint != 0 or sustained_events.occupied) {
+                af09Fail(6, -3);
+                return;
+            }
+            ordinaryQuery(&states[6], &states[1]);
+            af09.query_pending = false;
+            af09.query_positive = true;
+            af09Row(8, 1, @bitCast(states[6].execution.frame.rax), 0, states[1].terminal_kind);
+        }
+    }
+    if (af09.engine_hold == .ack and af09_mode == .partial_ack and af09.ack_written < 48 and total_ticks >= af09.release_tick) af09Release(0);
+    if (af09.deferred_park and total_ticks >= af09.deadline) {
+        if (total_ticks != af09.deadline or !af09DeferredValid()) {
+            af09Fail(6, -4);
+            return;
+        }
+        // The ordinary Events API preserves its own timeout-before-event rule.
+        sustained_events.park(af09.saved_sequence, total_ticks, af09.deadline, !console_closed and serial.inputReady()) catch {
+            af09Fail(6, -3);
+            return;
+        };
+        af09.deferred_park = false;
+        af09RowAt(.{ .phase = 26, .slot = 6, .gen = states[6].generation, .seq = af09.saved_sequence, .tick = total_ticks, .deadline = af09.deadline, .aux = 1 });
+    }
+}
+fn af09Settled() bool {
+    if (!af09_enabled or !af09.bound) return false;
+    for ([_]usize{ 0, 6 }) |slot| {
+        if (!states[slot].admitted or states[slot].terminal or states[slot].generation != af09.generations[slot]) return false;
+    }
+    for ([_]usize{ 1, 2 }) |slot| {
+        const source = &states[slot];
+        if (source.generation != af09.generations[slot] or source.admitted or !source.terminal or source.count != 0) return false;
+    }
+    if (states[1].terminal_kind != 1 or states[1].status != 0 or states[2].terminal_kind != 3 or states[2].status != 143 or af09.late_written != 32 or af09.late_read != 0) return false;
+    for (af09.objects[0..4]) |object| {
+        const c = &channels[object.index];
+        if (c.generation != object.generation or c.owners[0] != null or c.owners[1] != null or c.stream.count != 0) return false;
+    }
+    for (af09.objects[4..6], 0..) |object, i| {
+        const c = &channels[object.index];
+        if (c.generation != object.generation or c.owners[i] != 0 or c.owners[1 - i] != 6) return false;
+    }
+    return true;
+}
+fn af09DeferredValid() bool {
+    if (!af09_enabled) return false;
+    const c = &channels[af09.objects[5].index];
+    return af09Settled() and states[6].generation == af09.generations[6] and states[0].generation == af09.generations[0] and states[6].admitted and states[0].admitted and !states[6].terminal and !states[0].terminal and c.generation == af09.objects[5].generation and c.owners[0] == 6 and c.owners[1] == 0 and !sustained_events.occupied and sustained_events.sequence != std.math.maxInt(u64) and af09.saved_sequence < sustained_events.sequence and af09.ack_written == 16 and af09.ack_read == 0 and c.stream.count == 16 and af09.engine_hold == .ack and states[6].execution.wait.address == 0 and states[6].channel_wait.endpoint == 0;
+}
+fn af09Output(f: *const Frame, offset: usize, count: usize) void {
+    if (!af09_enabled or active != 0) return;
+    const s = &states[0];
+    if (!af09Settled() or s.generation != af09.generations[0] or s.on_child or af09.counter_seen or offset != 0 or count != 8 or f.rdx != 8 or f.r10 | f.r8 | f.r9 != 0 or !af09.observed or total_ticks >= af09.deadline or s.output_count != 8) {
+        af09Fail(0, -5);
+        return;
+    }
+    const bytes = s.output[0..8];
+    if (bytes[0] != 1 or bytes[1] != 1 or bytes[6] | bytes[7] != 0 or std.mem.readInt(u16, bytes[2..4], .little) != 2 or std.mem.readInt(u16, bytes[4..6], .little) != 3 or af09.engine_requests != 256 or af09.engine_replies != 256) {
+        af09Fail(0, -5);
+        return;
+    }
+    af09.counter_seen = true;
+    af09Row(16, 0, 8, std.mem.readInt(u16, bytes[2..4], .little), std.mem.readInt(u16, bytes[4..6], .little));
+    if (af09_mode == .no_ack or af09_mode == .pending_fragment) _ = af09Hold(0, .counter);
+}
+fn af09Prefix() bool {
+    if (!af09_enabled) return false;
+    const stream = &channels[af09.objects[0].index].stream;
+    if (stream.count != 32) return false;
+    var bytes: [32]u8 = undefined;
+    for (&bytes, 0..) |*b, i| b.* = stream.bytes[(stream.head + i) % 32];
+    if (af09_mode == .stream) return std.mem.readInt(u32, bytes[0..4], .little) == 2 and std.mem.readInt(u32, bytes[4..8], .little) != 0 and (std.mem.readInt(u32, bytes[8..12], .little) == 4 or std.mem.readInt(u32, bytes[8..12], .little) == 6) and std.mem.readInt(u32, bytes[12..16], .little) == 16 and std.mem.eql(u8, bytes[16..32], "AF09-HOME-WRITE\n");
+    if (af09_mode == .exec_prefix or af09_mode == .fork_prefix) return std.mem.eql(u8, bytes[0..8], if (af09_mode == .exec_prefix) "AEEXEC02" else "AEFORK02") and std.mem.readInt(u32, bytes[8..12], .little) == 1 and std.mem.readInt(u32, bytes[12..16], .little) == (if (af09_mode == .exec_prefix) @as(u32, 608) else 304) and std.mem.eql(u8, bytes[16..24], "AEFSH001") and std.mem.readInt(u32, bytes[24..28], .little) == 29 and std.mem.readInt(u32, bytes[28..32], .little) == 7;
+    return std.mem.eql(u8, bytes[0..8], "AEFW0001") and std.mem.readInt(u64, bytes[8..16], .little) == 11 and std.mem.readInt(u64, bytes[16..24], .little) != 0 and std.mem.readInt(u64, bytes[24..32], .little) != 0;
+}
+fn af09Transfer(c: *const @import("../../native_channel.zig").Channel, reading: bool, amount: usize, status: i64) void {
+    if (!af09_enabled or !af09.engine_bound) return;
+    if (active != 0 and active != 6 and !af09.bound) return;
+    if (states[active].generation != af09.generations[active]) {
+        af09Fail(active, -1);
+        return;
+    }
+    var direction: u64 = 0;
+    if (af09Matches(c, 0)) direction = if (reading) 2 else 1;
+    if (af09Matches(c, 4)) direction = if (reading) 4 else 3;
+    if (af09Matches(c, 5)) direction = if (reading) 6 else 5;
+    if (status == -11 and direction != 0) {
+        af09Row(24, active, status, 0, direction);
+        if (active == 6 and direction == 6 and af09.counter_seen and af09.ack_read == 0) af09.ack_eagain = true;
+    }
+    if (amount == 0) return;
+    if (af09.bound and af09Matches(c, 1)) {
+        if (!reading and active == 6) af09.startup_written += amount;
+        if (reading and active == 2) {
+            af09.startup_read += amount;
+            if (af09.startup_read == 304) af09Row(3, 2, 0, 304, 0);
+        }
+        if (af09.startup_written > 304 or af09.startup_read > 304) af09Fail(2, -2);
+    }
+    if (af09.bound and af09Matches(c, 3) and !reading and active == 6 and af09.parent_written < 32) {
+        af09.parent_written += amount;
+        if (af09.parent_written == 32) af09Row(28, 1, 0, 32, 0);
+    }
+    if (af09.bound and af09Matches(c, 0)) {
+        // Wire READY and native READY may arrive in either order at the owner.
+        // The child's completed native return stays held while the owner
+        // consumes the real wire READY and publishes parent disposition.
+        if (reading and active == 6 and af09.ready_read < 32) {
+            af09.ready_read += amount;
+            if (af09.ready_read == 32) af09Row(27, 2, 0, 32, 0);
+            if (af09.ready_read > 32) af09Fail(2, -2);
+        } else if (!reading and active == 2 and af09.ready_written < 32) {
+            af09.ready_written += amount;
+            if (af09.ready_written > 32) af09Fail(2, -2);
+        } else if (!reading and active == 2 and af09.child_ready) {
+            af09.late_written += amount;
+            af09Row(6, 2, 0, af09.late_written, 0);
+            if (!af09.query_pending or af09.late_written > 32 or (af09.late_written == 32 and !af09Prefix())) af09Fail(2, -2);
+        } else if (reading and active == 6) {
+            af09.late_read += amount;
+            af09Row(12, 2, 0, af09.late_read, 0);
+            af09Fail(2, -2);
+        } else af09Fail(2, -2);
+    }
+    if (af09Matches(c, 4) and !reading and active == 6) {
+        af09.engine_requests += amount;
+        if (af09.counter_seen) af09Fail(0, -6);
+    }
+    if (af09Matches(c, 5)) {
+        if (!af09.counter_seen) {
+            if (!reading and active == 0) af09.engine_replies += amount;
+        } else if (!reading and active == 0) {
+            af09.ack_written += amount;
+            af09Row(17, 0, 0, af09.ack_written, 0);
+            if (states[0].on_child or total_ticks >= af09.deadline or af09.ack_written > 64) {
+                af09Fail(0, -4);
+                return;
+            }
+            if (af09_mode == .partial_ack or af09_mode == .pending_fragment) {
+                if (amount != 16) {
+                    af09Fail(0, -2);
+                    return;
+                }
+                if (af09_mode == .pending_fragment) {
+                    if (!af09.deferred_park or af09.ack_written != 16 or af09.saved_sequence >= sustained_events.sequence or c.stream.count != 16) {
+                        af09Fail(0, -2);
+                        return;
+                    }
+                    af09.release_tick = af09.deadline;
+                } else {
+                    af09.release_tick = if (af09.ack_written == 16) af09.t0 + 100 else if (af09.ack_written == 32) af09.t0 + 200 else af09.deadline;
+                    if (af09.ack_written > 48 or total_ticks >= af09.release_tick) {
+                        af09Fail(0, -4);
+                        return;
+                    }
+                }
+                _ = af09Hold(0, .ack);
+            }
+        } else if (reading and active == 6) {
+            af09.ack_read += amount;
+            af09Row(18, 6, 0, af09.ack_read, 0);
+        }
+    }
+}
+fn af09BeforePark(f: *const Frame) bool {
+    if (!af09_enabled or !af09.observed) return false;
+    af09RowAt(.{ .phase = 10, .slot = 6, .gen = states[6].generation, .seq = f.rsi, .tick = total_ticks, .deadline = f.rdx });
+    if (f.rdx != af09.deadline) {
+        af09Fail(6, -4);
+        return false;
+    }
+    if (af09_mode != .pending_fragment or !af09.counter_seen or af09.ack_written != 0 or af09.deferred_park) return false;
+    if (!af09.ack_eagain or !af09Settled() or total_ticks >= af09.deadline or sustained_events.occupied or f.rsi > sustained_events.sequence or sustained_events.sequence == std.math.maxInt(u64) or states[6].on_child or states[6].execution.wait.address != 0 or states[6].channel_wait.endpoint != 0 or af09.engine_hold != .counter) {
+        af09Fail(6, -3);
+        return false;
+    }
+    af09.saved_sequence = f.rsi;
+    af09.deferred_park = true;
+    af09RowAt(.{ .phase = 26, .slot = 6, .gen = states[6].generation, .seq = f.rsi, .tick = total_ticks, .deadline = f.rdx });
+    af09Release(0);
+    return true;
+}
+fn af09BeforeExit(status: u64, kind: u64) bool {
+    if (!af09_enabled or active != 0 or kind != 1) return false;
+    af09Row(20, 0, @bitCast(status), 0, 0);
+    if (af09_mode != .exit_deadline) return false;
+    if (!af09.counter_seen or af09.ack_written != 64 or status != 0 or total_ticks >= af09.deadline or states[0].generation != af09.generations[0]) {
+        af09Fail(0, -4);
+        return false;
+    }
+    return af09Hold(0, .exit);
+}
+
+fn af09EngineAdmitted() void {
+    if (!af09_enabled) return;
+    if (af09.engine_bound) {
+        af09Fail(0, -1);
+        return;
+    }
+    af09.engine_bound = true;
+    af09.generations[0] = states[0].generation;
+    af09.generations[6] = states[6].generation;
+    af09.objects[4] = af09Object(states[0].channel_cap, 0) orelse {
+        af09Fail(0, -1);
+        return;
+    };
+    af09.objects[5] = af09Object(states[0].channel_reply_cap, 0) orelse {
+        af09Fail(0, -1);
+        return;
+    };
+    af09Row(1, 6, 0, 0, 0);
+}
+fn af09Closed(c: *const @import("../../native_channel.zig").Channel, before: usize, status: i64) void {
+    if (!af09_enabled or !af09.bound) return;
+    if (active == 6 and (af09Matches(c, 4) or af09Matches(c, 5))) {
+        af09Row(19, 6, status, 0, @intFromBool(af09Matches(c, 5)));
+        af09.source_closes |= if (af09Matches(c, 5)) @as(u8, 2) else 1;
+        if (af09.source_closes == 3) af09Row(22, 0, 0, @intFromBool(states[0].admitted), @intFromBool(states[0].count != 0));
+    }
+    if (af09Matches(c, 0) and before > c.stream.count) af09Row(13, 2, status, before - c.stream.count, af09.late_read);
+}
+
+fn af09CloseFailed(value: u64, status: i64) void {
+    if (!af09_enabled or !af09.bound) return;
+    for ([_]usize{ 4, 5 }) |object| {
+        const identity = af09.objects[object];
+        const c = &channels[identity.index];
+        if (c.generation == identity.generation and value == c.cap(if (object == 4) 1 else 0)) {
+            af09Closed(c, c.stream.count, status);
+            return;
+        }
+    }
+    af09Fail(6, -1);
+}
 const elf = @import("../../native_elf.zig");
 const serial = @import("serial.zig");
 const Frame = @import("context.zig").Frame;
@@ -22,6 +412,10 @@ const combined_init = @hasDecl(@import("build_options"), "native_fs_session_init
 const combined_owner_data = @hasDecl(@import("build_options"), "native_fs_owner_data") and @import("build_options").native_fs_owner_data;
 const combined_owner_stack = @hasDecl(@import("build_options"), "native_fs_owner_stack") and @import("build_options").native_fs_owner_stack;
 const combined_application_profile = @hasDecl(@import("build_options"), "native_fs_application_profile") and @import("build_options").native_fs_application_profile;
+comptime {
+    if (af09_enabled and (!combined_profile or !combined_init or !combined_owner_stack or combined_application_profile or @import("build_options").native_service_lifetime))
+        @compileError("native-af09-drain requires the separate guarded filesystem owner profile");
+}
 fn threadedSlot(slot: usize) bool {
     return @import("build_options").native_threads and (!combined_profile or FsRoles.threaded(slot));
 }
@@ -205,6 +599,7 @@ fn backingOwner(state: *const State) usize {
 // Reset per-generation authority, retaining the domain's checked physical owner.
 // Called only after reclamation or before unpublished child construction.
 fn resetState(state: *State) void {
+    if (af09_enabled) af09.cancel(backingOwner(state), state.generation);
     @memset(std.mem.asBytes(state), 0);
     if (external_backing) {
         require(!backing_boot_views);
@@ -267,6 +662,7 @@ fn nativeTick() void {
         }
         require(total_ticks < native_tick_limit);
     }
+    if (af09_enabled) af09Refresh();
     refreshSustained();
     const monotonic = monotonicNow();
     var scanned: usize = 0;
@@ -513,6 +909,10 @@ fn msr(index: u32, value: u64) void {
 fn select() *const Frame {
     refreshWait();
     refreshChannelWaits();
+    if (af09_enabled) {
+        af09Refresh();
+        if (!idle and !states[active].on_child and af09Blocked(active)) rotate();
+    }
     const s = &states[active];
     asm volatile ("mov %[p], %%cr3"
         :
@@ -822,8 +1222,10 @@ pub fn exception(frame: *const Frame) *const Frame {
                         var note: [160]u8 = undefined;
                         serial.write(std.fmt.bufPrint(&note, "NATIVE observation slot={d} generation={d} offset={d} byte={d}\n", .{ active, s.generation, s.output_count, s.output[s.output_count] }) catch unreachable);
                     }
+                    const output_offset = s.output_count;
                     s.output_count += count;
                     result(s, @intCast(count));
+                    if (af09_enabled) af09Output(frame, output_offset, count);
                 }
             }
         },
@@ -1497,6 +1899,10 @@ fn nativeCleanupTrace(slot: usize, phase: u8) void {
 
 fn finish(raw_status: u64, kind: u64) *const Frame {
     const status = if (launch_profile and kind == 1) raw_status & 0xff else raw_status;
+    if (af09_enabled and af09BeforeExit(status, kind)) {
+        rotate();
+        return select();
+    }
     if (supervised and active == supervisorSlot()) {
         if (init_profile) closeInit();
         @panic("native supervisor terminated");
@@ -1514,6 +1920,13 @@ fn finish(raw_status: u64, kind: u64) *const Frame {
     }
     s.terminal = true;
     s.revision += 1;
+    if (af09_enabled) {
+        if (active == 1 and af09.bound) {
+            if (kind == 1) af09Row(7, 1, @bitCast(status), 0, 0) else af09Fail(1, -6);
+        }
+        if (active == 0 and kind == 1) af09Row(21, 0, @bitCast(status), 0, 0);
+        af09.cancel(active, s.generation);
+    }
     publishSustained();
     s.memory_cap = 0;
     s.entropy_grant.selector = 0;
@@ -1683,6 +2096,7 @@ fn load(s: *State, bytes: []const u8, image: *const elf.Image, entropy: []const 
 }
 
 fn rotate() void {
+    if (af09_enabled) af09Refresh();
     refreshSustained();
     refreshChannelWaits();
     idle = false;
@@ -1707,13 +2121,13 @@ fn rotate() void {
                 continue;
             }
         }
-        if (@import("native_execution.zig").nextContext(next.childRecords(), if (next.on_child) next.selected_child + 1 else 0, next.execution.wait.address != 0 or storagePrimaryWaiting(next))) |selected| {
+        if (@import("native_execution.zig").nextContext(next.childRecords(), if (next.on_child) next.selected_child + 1 else 0, next.execution.wait.address != 0 or storagePrimaryWaiting(next) or (af09_enabled and af09Blocked(candidate)))) |selected| {
             active = candidate;
             next.on_child = selected != 0;
             if (selected != 0) next.selected_child = selected - 1;
             return;
         }
-        if (storagePrimaryWaiting(next)) waiting = candidate;
+        if (storagePrimaryWaiting(next) or (af09_enabled and af09Blocked(candidate))) waiting = candidate;
         const contexts = next.contexts();
         for (contextView(&contexts)) |context| if (context.wait.address != 0) {
             waiting = candidate;
@@ -1893,12 +2307,14 @@ fn control(frame: *const Frame) *const Frame {
         if (active == supervisorSlot()) {
             result(caller, -13);
         } else if (frame.rax == 0x20004) {
+            const first_ready = !caller.ready;
             if (!caller.ready) {
                 caller.revision += 1;
                 publishSustained();
             }
             caller.ready = true;
             result(caller, 0);
+            if (af09_enabled) af09Ready(first_ready);
         } else result(caller, @intCast(caller.generation));
         return select();
     }
@@ -1993,6 +2409,7 @@ fn control(frame: *const Frame) *const Frame {
         // New mappings must also protect every other immutable domain's aliases.
         for (&states) |*owner| aliases(owner, false);
         result(caller, @intCast(handle(slot)));
+        if (af09_enabled and slot == 0) af09EngineAdmitted();
         return select();
     }
     const slot = lookup(frame.rdi) orelse {
@@ -2002,12 +2419,11 @@ fn control(frame: *const Frame) *const Frame {
     const s = &states[slot];
     switch (frame.rax) {
         0x20001 => {
-            result(caller, if (s.terminal) @intCast(s.status + 1) else 0);
-            caller.context().frame.rdx = @intFromBool(s.ready);
-            caller.context().frame.rcx = s.yields;
-            caller.context().frame.r8 = s.terminal_kind;
-            if (@import("build_options").native_signal_suspend)
-                caller.context().frame.r9 = @intFromBool(s.suspend_mask != null);
+            if (af09_enabled and af09Query(slot)) {
+                rotate();
+                return select();
+            }
+            ordinaryQuery(caller, s);
         },
         0x20002 => {
             if (!s.terminal) {
@@ -2037,6 +2453,10 @@ fn control(frame: *const Frame) *const Frame {
             publishSustained();
             nativeCleanupTrace(slot, 7);
             result(caller, 0);
+            if (af09_enabled) {
+                af09Row(15, slot, 0, 0, 0);
+                af09.cancel(slot, s.generation);
+            }
         },
         0x20003 => {
             result(caller, if (frame.rsi < s.output_count) s.output[@intCast(frame.rsi)] else -11);
@@ -2063,6 +2483,10 @@ fn control(frame: *const Frame) *const Frame {
                 notifyParent(s);
             }
             result(caller, 0);
+            if (af09_enabled) {
+                af09Row(14, slot, 0, 0, 0);
+                af09.cancel(slot, s.generation);
+            }
         },
         else => result(caller, -38),
     }
@@ -2698,6 +3122,7 @@ fn copyOperation(f: *const Frame) *const Frame {
     for (&states) |*owner| aliases(owner, false);
     require(reader.transfer(active, f.r8, slot) and writer.transfer(active, f.r9, slot));
     child.admitted = true;
+    if (af09_enabled) af09Bind(from, slot);
     source.frozen = false;
     result(source, @intCast(child.generation * states.len + slot + 1));
     result(caller, @intCast(handle(slot)));
@@ -2807,6 +3232,7 @@ fn execOperation(f: *const Frame) *const Frame {
     s.image_commit = .{ .sequence = f.r10, .image = f.rdx, .pending = true };
     s.frozen = !@import("build_options").native_exec_early;
     for (&states) |*owner| aliases(owner, false);
+    if (af09_enabled and af09.engine_bound) af09Fail(slot, -6);
     result(caller, 0);
     return select();
 }
@@ -2960,6 +3386,7 @@ fn channelOperation(f: *const Frame) *const Frame {
     }
     const selected = ownedChannel(active, f.rdi) orelse {
         result(s, -13);
+        if (af09_enabled and f.rax == 0x24003 and active == 6) af09CloseFailed(f.rdi, -13);
         return select();
     };
     const end = selected.lookup(active, f.rdi).?;
@@ -2984,7 +3411,9 @@ fn channelOperation(f: *const Frame) *const Frame {
         return select();
     }
     if (f.rax == 0x24003) {
+        const queued_before_close = selected.stream.count;
         const closed = selected.close(active, f.rdi);
+        if (af09_enabled) af09Closed(selected, queued_before_close, closed);
         result(s, closed);
         if (closed == 0) publishSustained();
         return select();
@@ -3013,7 +3442,9 @@ fn channelOperation(f: *const Frame) *const Frame {
     }
     const amount = @min(count, if (reading) selected.stream.count else 32 - selected.stream.count);
     if (amount == 0) {
-        result(s, if (reading and selected.stream.sealed) 0 else -11);
+        const transfer_status: i64 = if (reading and selected.stream.sealed) 0 else -11;
+        result(s, transfer_status);
+        if (af09_enabled) af09Transfer(selected, reading, 0, transfer_status);
         return select();
     }
     for (0..amount) |i| {
@@ -3022,6 +3453,7 @@ fn channelOperation(f: *const Frame) *const Frame {
     }
     if (amount > 0) publishSustained();
     result(s, @intCast(amount));
+    if (af09_enabled) af09Transfer(selected, reading, amount, @intCast(amount));
     return select();
 }
 
@@ -3030,7 +3462,11 @@ fn ownedChannel(owner: usize, value: u64) ?*@import("../../native_channel.zig").
     return null;
 }
 fn closeChannels(owner: usize) void {
-    for (channels[0..channelCount()]) |*c| c.closeOwner(owner);
+    for (channels[0..channelCount()]) |*c| {
+        const before = c.stream.count;
+        c.closeOwner(owner);
+        if (af09_enabled and af09.bound and af09Matches(c, 0) and before > c.stream.count) af09Row(13, 2, 0, before - c.stream.count, af09.late_read);
+    }
 }
 
 fn channelInterrupted(s: *const State) bool {
@@ -3238,6 +3674,7 @@ fn refreshSustained() void {
         });
         owner.context().frame.rdx = completion.sequence;
         owner.context().frame.r8 = completion.tick;
+        if (af09_enabled and af09.observed) af09RowAt(.{ .phase = 11, .slot = supervisorSlot(), .gen = owner.generation, .seq = completion.sequence, .tick = completion.tick, .deadline = af09.deadline, .status = @bitCast(owner.context().frame.rax) });
         if (storageLifetime()) {
             var note: [128]u8 = undefined;
             serial.write(std.fmt.bufPrint(&note, "NATIVE STORAGE wake tick={d} outcome={s}\n", .{ completion.tick, @tagName(completion.outcome) }) catch unreachable);
@@ -3275,6 +3712,10 @@ fn sustainedOperation(f: *const Frame) *const Frame {
         }
         var note: [128]u8 = undefined;
         serial.write(std.fmt.bufPrint(&note, "NATIVE init halted ticks={d} idle={d} reclaimed={d}\n", .{ total_ticks, idle_ticks, reclaimed }) catch unreachable);
+        if (af09_enabled) {
+            af09Row(23, active, 0, 0, 0);
+            if (af09_mode.negative()) af09Fail(active, -6);
+        }
         if (combined_profile) serial.write("AETHER NATIVE BLOCK PASS\n");
         serial.halt();
     }
@@ -3282,10 +3723,17 @@ fn sustainedOperation(f: *const Frame) *const Frame {
         result(owner, 0);
         owner.context().frame.rdx = sustained_events.sequence;
         owner.context().frame.r8 = total_ticks;
+        if (af09_enabled and af09.query_positive and !af09.observed) {
+            if (af09.beginDrain(total_ticks)) af09Row(9, active, 0, 0, 0) else af09Fail(active, -4);
+        }
         if (storageLifetime()) {
             var note: [128]u8 = undefined;
             serial.write(std.fmt.bufPrint(&note, "NATIVE STORAGE observe tick={d}\n", .{total_ticks}) catch unreachable);
         }
+        return select();
+    }
+    if (af09_enabled and af09BeforePark(f)) {
+        rotate();
         return select();
     }
     sustained_events.park(f.rsi, total_ticks, if (f.rdx == 0) null else f.rdx, !storageLifetime() and !console_closed and serial.inputReady()) catch |err| {

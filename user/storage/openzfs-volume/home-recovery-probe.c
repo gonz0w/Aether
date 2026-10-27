@@ -259,15 +259,16 @@ static int home_new_metadata(aether_zpl_view *view, aether_zpl_node node,
     return 0;
 }
 
-int aether_home_readback(spa_t *spa, int recovered, uint64_t minimum,
+int aether_home_readback(spa_t *spa, int expectation, uint64_t minimum,
                          uint64_t maximum, unsigned char digest32[32])
 {
     if (!digest32)
         return EINVAL;
     memset(digest32, 0, 32);
-    if (!spa || (recovered != 0 && recovered != 1) || minimum >= maximum ||
+    if (!spa || (expectation < 0 || expectation > 2) || minimum >= maximum ||
         maximum > INT64_MAX || maximum - minimum > 60)
         return EINVAL;
+    int recovered = expectation != 0;
     if (spa_writeable(spa))
         return EROFS;
     struct home_workspace *w = kmem_zalloc(sizeof(*w), KM_NOSLEEP);
@@ -410,7 +411,8 @@ int aether_home_readback(spa_t *spa, int recovered, uint64_t minimum,
             error =
                 aether_zpl_lookup(view, home.object, home.generation,
                                   (const unsigned char *)"probe", 5, &probe);
-        if (!error && (probe.mode != (S_IFREG | 0600) || probe.size != 16))
+        if (!error && (probe.mode != (S_IFREG | 0600) ||
+                       probe.size != (expectation == 2 ? 0U : 16U)))
             error = EIO;
         if (!error)
             error = home_new_metadata(view, probe, home.object, 1, minimum,
@@ -419,18 +421,22 @@ int aether_home_readback(spa_t *spa, int recovered, uint64_t minimum,
                        !home_time_before(root_time, home_time) ||
                        !home_time_before(home_time, w->metadata.mtime)))
             error = EIO;
-        size_t count = 0;
-        static const unsigned char payload[16] = {'A', 'F', '0', '9', '-', 'H',
-                                                  'O', 'M', 'E', '-', 'W', 'R',
-                                                  'I', 'T', 'E', '\n'};
-        if (!error)
-            error = aether_zpl_read(view, probe.object, probe.generation, 0,
-                                    w->buffer, sizeof(payload), &count);
-        if (!error && (count != sizeof(payload) ||
-                       memcmp(w->buffer, payload, sizeof(payload))))
-            error = EIO;
-        if (!error)
-            error = home_eof(view, probe, 16, w->buffer);
+        if (expectation == 1) {
+            size_t count = 0;
+            static const unsigned char payload[16] = {
+                'A', 'F', '0', '9', '-', 'H', 'O', 'M',
+                'E', '-', 'W', 'R', 'I', 'T', 'E', '\n'};
+            if (!error)
+                error = aether_zpl_read(view, probe.object, probe.generation, 0,
+                                        w->buffer, sizeof(payload), &count);
+            if (!error && (count != sizeof(payload) ||
+                           memcmp(w->buffer, payload, sizeof(payload))))
+                error = EIO;
+            if (!error)
+                error = home_eof(view, probe, 16, w->buffer);
+        } else if (!error)
+            /* A nonzero request must observe EOF even for an empty object. */
+            error = home_eof(view, probe, 0, w->buffer);
     }
     uint64_t extra[2] = {home.object, probe.object};
     if (!error)

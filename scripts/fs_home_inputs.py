@@ -21,6 +21,7 @@ from deps import ROOT
 import fs_home_launch as launch
 
 SCHEMA = 'aether-guarded-af09-inputs-v1'
+DRAIN_SCHEMA = 'aether-guarded-af09-drain-inputs-v1'
 ARTIFACTS = ('owner.elf', 'owner.bin', 'shell.elf', 'helper.elf', 'envelope.bin')
 PROFILE = dict(envelope='AENFS005', nested='AENMX010', abi=31, protocol='AFSRPC09',
     file_wire='AEFW0001', write_wire=True, paths=True, dup2=True, cwd=False,
@@ -139,6 +140,7 @@ def checked_producer(path):
 
 COMPONENT_SELECTION = 'aether-af09-owner-component-selection-v1'
 COMPONENT_REUSE = 'aether-af09-owner-component-reuse-v1'
+DRAIN_COMPONENT_SELECTION = 'aether-af09-owner-component-selection-v2'
 COMPONENT_IMPL = ('sys-init/prototypes/native-filesystem-session/owner_runtime.rs',
     'sys-init/prototypes/native-filesystem-session/owner_control.rs',
     'sys-init/prototypes/native-filesystem-session/native_owner_control.rs',
@@ -263,7 +265,11 @@ def component_control_rows(report):
 def current_owner_receipt(path,component):
     selected=component_selector(component);proof=read_json(selected['path'])
     component_require(isinstance(proof,dict) and set(proof)=={'format','receipt','role_metadata'} and
-        proof['format']==COMPONENT_SELECTION,'selection wrapper format')
+        proof['format'] in (COMPONENT_SELECTION,DRAIN_COMPONENT_SELECTION),'selection wrapper format')
+    drain=proof['format']==DRAIN_COMPONENT_SELECTION
+    source_count=1106 if drain else 1097
+    work_pattern=r'af75-component-01-[a-z0-9_]+' if drain else r'af61-component-01-[a-z0-9_]+'
+    harness=Path('/private/tmp/af75-component.py' if drain else '/private/tmp/af61-component.py')
     receipt=proof['receipt'];path=Path(path).absolute()
     component_require(isinstance(receipt,dict) and set(receipt)=={'path','sha256'} and
         receipt['path']==str(path) and sha_string(receipt['sha256']) and path.resolve()==path and
@@ -274,13 +280,17 @@ def current_owner_receipt(path,component):
         report.get('native_executed') is False and report.get('cleanup')=='complete' and
         report.get('limits')==dict(aggregate_seconds=300,leaf_seconds=180,stream_bytes=4194304) and
         isinstance(report.get('elapsed_seconds'),(int,float)) and 0<report['elapsed_seconds']<=300,'component coverage/status')
+    if drain:
+        component_require(report.get('qualification_profile')=='af09-drain-owner-2026-10-26' and
+            report.get('preflight_inventory')==dict(retained_inputs=1059,expected_generated_inputs=47,expected_complete_inputs=1106),
+            'reviewed drain component profile')
     work=Path(report.get('work',''))
     component_require(work.parent==Path('/private/tmp') and '..' not in work.parts and
-        re.fullmatch(r'af61-component-01-[a-z0-9_]+',work.name) is not None,'component work identity')
+        re.fullmatch(work_pattern,work.name) is not None,'component work identity')
     rows=report.get('rows');actual=report.get('actual_processes')
     component_require(isinstance(rows,list) and len(rows)==911 and isinstance(actual,list) and len(actual)==911,'complete component commands')
     tools=report.get('tools');sources=report.get('sources')
-    component_require(isinstance(tools,dict) and set(tools)=={'rustc','rustfmt','clippy-driver','objdump','size','rust-lld','clang','clang-format','nm','readelf','lld'} and isinstance(sources,dict) and len(sources)==1097 and
+    component_require(isinstance(tools,dict) and set(tools)=={'rustc','rustfmt','clippy-driver','objdump','size','rust-lld','clang','clang-format','nm','readelf','lld'} and isinstance(sources,dict) and len(sources)==source_count and
         all(isinstance(n,str) and Path(n).is_absolute() and '..' not in Path(n).parts and sha_string(h) for n,h in sources.items()),'component source/tool maps')
     for index,row in enumerate(rows):
         component_require(isinstance(row,dict) and isinstance(row.get('label'),str) and isinstance(row.get('process'),dict) and
@@ -311,7 +321,7 @@ def current_owner_receipt(path,component):
     for row in rows:
         if Path(row['process']['argv'][0]).name in ('rustc','clippy-driver','clang'):
             component_require(not any('native_fs_roles.zig' in arg for arg in row['process']['argv']),'role file was actual compiler input')
-    harness=Path('/private/tmp/af61-component.py');text=report.get('harness_source')
+    text=report.get('harness_source')
     component_require(isinstance(text,str) and sources.get(str(harness))==hashlib.sha256(text.encode()).hexdigest(),'retained harness source identity')
     reduced=dict(report,sources={n:h for n,h in sources.items() if n!=str(harness)})
     generated=_owner_generated_leaves(reduced,work)
@@ -421,12 +431,100 @@ def kernel_flags():
     return [*FLAGS,'native-fs-session-init','native-fs-owner-data','native-fs-owner-stack']
 
 
-def validate_record(record):
-    if (not isinstance(record,dict) or set(record)!=FIELDS or record.get('format')!=SCHEMA
+def selected_profile(*, drain_case='none'):
+    profile = dict(PROFILE)
+    if drain_case != 'none':
+        from af09_drain_inputs import selection
+        selection(drain_case)
+        profile.update(selection='fs_af09_drain', provider_attempts=2)
+    return profile
+
+
+def kernel_arguments(*, drain_case='none'):
+    arguments = ['-D' + flag + '=true' for flag in kernel_flags()]
+    if drain_case != 'none':
+        from af09_drain_inputs import selection
+        selection(drain_case)
+        arguments.append('-Dnative-af09-drain=' + drain_case)
+    return arguments
+
+
+def validate_application(application, record, diagnostic):
+    """Check selected actual C compilation/link inputs and final copies."""
+    if not isinstance(application, dict) or set(application) != {'sources', 'flags', 'profile', 'selection', 'artifacts'}:
+        raise ValueError('AF09 diagnostic application metadata')
+    if any(not isinstance(application[n], dict) for n in ('sources','profile','selection','artifacts')) or not isinstance(application['flags'], list):
+        raise ValueError('AF09 diagnostic application field types')
+    selection = application['selection']
+    if (not isinstance(selection, dict) or selection.get('drain_case') != diagnostic['case']
+            or selection.get('drain_case_id') != diagnostic['case_id']
+            or application['profile'] != dict(selection='fs_af09_drain', provider_attempts=2,
+                utc_min=1791290040, utc_max=1791290100, utc_half_open=True, rtc_base='2026-10-06T12:34:00')
+            or selection.get('case_flags') != ['-DAEFD_HOME_DRAIN_CASE=' + str(diagnostic['case_id'])]):
+        raise ValueError('AF09 diagnostic application case/profile/flags')
+    for path, expected in application['sources'].items():
+        if record['inputs'].get(path) != expected:
+            raise ValueError('AF09 diagnostic application source coverage')
+    leaf=runpy.run_path(str(S/'home_probe_build.py'))
+    parent_sources=[*leaf['UNITS'],'fd-home-probe-adapter','fd-home-drain']
+    helper_sources=[n for n in leaf['UNITS'] if n!='fd-shell-entry']+['fd-command-entry','fd-home-probe-adapter','fd-home-probe']
+    if selection.get('parent_sources')!=parent_sources or selection.get('helper_sources')!=helper_sources:
+        raise ValueError('AF09 diagnostic actual application source roles')
+    include=ROOT/'userland/build/sdk-deliveries/native-service-runtime-2026-10-06-v2/sdk/stage/usr/include'
+    expected_flags=[*leaf['FLAGS'],'--target=x86_64-unknown-none','-ffreestanding','-fno-builtin',
+        '-O2','-fstack-usage','-nostdinc','-isystem',str(include),'-DAEFD_FORK_BINDINGS',
+        '-DAEFD_EXEC_BINDINGS','-I'+str(S)]
+    if application['flags']!=expected_flags:
+        raise ValueError('AF09 diagnostic exact C compiler flags')
+    for name in set(parent_sources+helper_sources):
+        path=str(S/(name+'.c'))
+        if application['sources'].get(path)!=digest(path):
+            raise ValueError('AF09 diagnostic compiled C source identity')
+    source = str(S/'fd-home-drain.c')
+    if application['sources'].get(source) != digest(source):
+        raise ValueError('AF09 diagnostic actual parent source')
+    for label, entry in (('shell', 'fd-home-drain.o'), ('helper', 'fd-home-probe.o')):
+        objects = selection.get('parent_objects' if label == 'shell' else 'helper_objects', [])
+        if (not isinstance(objects, list) or len(objects) != len(set(objects))
+                or sum(Path(n).name == entry for n in objects) != 1
+                or any('native-command/dash-' in n for n in objects)
+                or label == 'helper' and any(Path(n).name == 'fd-home-drain.o' for n in objects)):
+            raise ValueError('AF09 diagnostic parent/helper object origins')
+        artifact = application['artifacts'].get(label, {})
+        if (not isinstance(artifact, dict) or artifact.get('sha256') != record['artifacts'][label+'.elf']['sha256']
+                or artifact.get('bytes') != record['artifacts'][label+'.elf']['bytes']):
+            raise ValueError('AF09 diagnostic final application artifact')
+    rows = record['commands']
+    compiled = [r for r in rows if r.get('label') == 'home-target-fd-home-drain']
+    if len(compiled) != 1:
+        raise ValueError('AF09 diagnostic actual C compile missing')
+    argv = compiled[0]['process'].get('argv', [])
+    if (not argv or argv[0]!=record['tools']['clang']['path']
+            or len(argv)<5 or argv[1:-4]!=[*application['flags'],*selection['case_flags']]
+            or argv[-4:-2]!=['-c',source] or argv[-2]!='-o'
+            or Path(argv[-1]).name!='fd-home-drain.o'
+            or argv.count(source) != 1 or argv.count(selection['case_flags'][0]) != 1
+            or [a for a in argv if a.startswith('-DAEFD_HOME_DRAIN_CASE=')] != selection['case_flags']
+            or any(a.startswith('-DAEFD_HOME_DRAIN_HOST_TEST') for a in argv)):
+        raise ValueError('AF09 diagnostic actual C case macro')
+    for label, key in (('home-complete-shell-link', 'parent_objects'), ('home-complete-helper-link', 'helper_objects')):
+        matches = [r for r in rows if r.get('label') == label]
+        if len(matches) != 1 or [a for a in matches[0]['process'].get('argv', []) if a.endswith(('.o', '.a'))] != selection[key]:
+            raise ValueError('AF09 diagnostic actual application link inputs')
+
+
+def validate_record(record, *, drain_case='none', diagnostic_host_inputs=None):
+    diagnostic, bound = launch.diagnostic_selection(drain_case, diagnostic_host_inputs)
+    fields = FIELDS | {'diagnostic', 'application'} if diagnostic else FIELDS
+    if (not isinstance(record,dict) or set(record)!=fields or record.get('format')!=(DRAIN_SCHEMA if diagnostic else SCHEMA)
             or record.get('status')!='prepared' or record.get('native_executed') is not False
-            or record.get('profile')!=PROFILE or record.get('bounds')!=BOUNDS
+            or record.get('profile')!=selected_profile(drain_case=drain_case) or record.get('bounds')!=BOUNDS
             or record.get('final_input_verification')!='pass'):
         raise ValueError('AF09 guarded exact profile/status/fields')
+    if diagnostic:
+        if record['diagnostic'] != diagnostic or any(record['inputs'].get(n) != h for n,h in bound.items()):
+            raise ValueError('AF09 guarded diagnostic input association')
+        validate_application(record['application'], record, diagnostic)
     for name,keys in [('engine',{'directory','seal','elf_sha256'}),('producer_receipt',{'path','sha256'}),('owner_receipt',{'path','sha256'})]:
         row=record[name]
         if not isinstance(row,dict) or set(row)!=keys or any(not sha_string(row[k]) for k in keys-{'directory','path'}):
@@ -458,10 +556,20 @@ def validate_record(record):
         p=command.get('process',{})
         if command.get('status')!='pass' or p.get('complete') is not True or p.get('cleanup')!='complete' or p.get('exit')!=command.get('expected_exit',0):
             raise ValueError('AF09 guarded successful child missing')
-    if (set(record['kernel_build'])!={'sha256','native_executed','flags'}
+    kernel_fields = {'sha256','native_executed','flags'} | ({'diagnostic_argument'} if diagnostic else set())
+    if (set(record['kernel_build'])!=kernel_fields
             or record['kernel_build'].get('native_executed') is not False
             or record['kernel_build'].get('flags')!=kernel_flags()
             or not sha_string(record['kernel_build'].get('sha256'))):raise ValueError('AF09 guarded actual kernel build')
+    if diagnostic:
+        argument = '-Dnative-af09-drain=' + drain_case
+        rows = [r for r in record['commands'] if r.get('label') == 'actual-kernel-build']
+        argv=rows[0]['process'].get('argv', []) if len(rows)==1 else []
+        if (record['kernel_build']['diagnostic_argument'] != argument or len(rows) != 1
+                or not argv or argv[0]!=record['tools']['zig']['path'] or '-Dsmp=false' not in argv
+                or any(argv.count(a)!=1 for a in kernel_arguments(drain_case=drain_case))
+                or [a for a in argv if a.startswith('-Dnative-af09-drain=')] != [argument]):
+            raise ValueError('AF09 guarded actual diagnostic kernel argument')
 
 
 def owned_runner():
@@ -706,7 +814,7 @@ def merge_dependency_inputs(record,probe):
     return inputs
 
 
-def required_sources():
+def required_sources(*, drain_case='none'):
     paths={Path(__file__).resolve(),ROOT/'tests/test_fs_home_inputs.py',ROOT/'build.zig'}
     manifest=ROOT/'build.zig.zon'
     if manifest.exists() or manifest.is_symlink():
@@ -728,17 +836,23 @@ def required_sources():
     probe=runpy.run_path(str(S/'home_probe_build.py'))
     paths.update(S/name for name in probe['NAMES'])
     paths.update((S/'home_probe_build.py',S/'check-home-wire.py',ROOT/'userland/experiments/command-runner/process.py'))
+    if drain_case != 'none':
+        from af09_drain_inputs import selection
+        selection(drain_case)
+        paths.update((S/'fd-home-drain.c', ROOT/'scripts/af09_drain_inputs.py',
+                      ROOT/'scripts/af09_drain_trace.py', ROOT/'tests/test_af09_drain_integration.py'))
     return paths
 
 
-def intake(directory,seal,*,deadline=None):
+def intake(directory,seal,*,deadline=None,drain_case='none',diagnostic_host_inputs=None):
+    options=launch.diagnostic_options(drain_case,diagnostic_host_inputs)
     root=Path(directory).absolute()
     members=checked_members(root,seal)
-    record=read_json(root/'inputs.json');validate_record(record)
+    record=read_json(root/'inputs.json');validate_record(record,**options)
     for name,row in record['artifacts'].items():
         if members[name]!=row['sha256'] or (root/name).stat().st_size!=row['bytes']:
             raise ValueError('AF09 guarded artifact/record correspondence')
-    engine=launch.intake(ROOT/record['engine']['directory'],record['engine']['seal'])
+    engine=launch.intake(ROOT/record['engine']['directory'],record['engine']['seal'],**options)
     if engine['elf_sha256']!=record['engine']['elf_sha256']:raise ValueError('AF09 guarded engine association')
     if read_json(ROOT/record['engine']['directory']/'build.json')['qualification_sha256']!=digest(record['producer_receipt']['path']):
         raise ValueError('AF09 guarded engine/producer receipt association')
@@ -751,7 +865,7 @@ def intake(directory,seal,*,deadline=None):
         raise ValueError('AF09 guarded receipt input map coverage')
     for key in ('producer_receipt','owner_receipt'):
         if digest(record[key]['path'])!=record[key]['sha256']:raise ValueError('AF09 guarded receipt identity')
-    if not {str(p) for p in required_sources()} <= record['inputs'].keys():
+    if not {str(p) for p in required_sources(**({'drain_case':drain_case} if options else {}))} <= record['inputs'].keys():
         raise ValueError('AF09 guarded complete consumed source map coverage')
     verify_map(record['inputs'])
     for tool in record['tools'].values():verify_map({tool['path']:tool['sha256']})
@@ -784,16 +898,21 @@ def intake(directory,seal,*,deadline=None):
             launch.retain_unresolved(receipt,[work,root],primary)
         elif work is not None:remove_owned(work,work_identity,errors,'intake-work')
         finish_attempt(receipt,audit_path,errors,primary)
-    return dict(format=SCHEMA,directory=str(root),seal=seal,engine=record['engine'],
+    result=dict(format=DRAIN_SCHEMA if options else SCHEMA,directory=str(root),seal=seal,engine=record['engine'],
         admission=record['admission'],measurement=record['measurement'],native_executed=False)
+    if options:result['diagnostic']=record['diagnostic']
+    return result
 
 
-def _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt,*,owner_component=None):
+def _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt,*,owner_component=None,drain_case='none',diagnostic_host_inputs=None):
     """Construct one selected dependency under the outer attempt receipt."""
+    diagnostic,bound=launch.diagnostic_selection(drain_case,diagnostic_host_inputs)
+    options=launch.diagnostic_options(drain_case,diagnostic_host_inputs)
     destination=output_path(destination)
     engine_directory=Path(engine_directory).absolute()
-    engine=launch.intake(engine_directory,engine_seal)
+    engine=launch.intake(engine_directory,engine_seal,**options)
     producer,inputs=checked_producer(producer_receipt)
+    inputs.update(bound)
     _,owner_inputs,impact=owner_receipt(owner_qualification,producer,**({'component':owner_component} if owner_component is not None else {}));inputs.update(owner_inputs)
     if read_json(engine_directory/'build.json')['qualification_sha256']!=digest(producer_receipt):
         raise ValueError('AF09 guarded engine/producer receipt association')
@@ -814,7 +933,7 @@ def _build(destination,engine_directory,engine_seal,producer_receipt,owner_quali
     for directory in ('kernel','user','scripts'):
         inputs.update({str(p):digest(p) for p in sorted((ROOT/directory).rglob('*'))
             if p.is_file() and '__pycache__' not in p.parts and p.name!='.DS_Store'})
-    inputs.update({str(p):digest(p) for p in required_sources()})
+    inputs.update({str(p):digest(p) for p in required_sources(**({'drain_case':drain_case} if diagnostic else {}))})
     verify_map(inputs)
     work=Path(tempfile.mkdtemp(prefix='fs-home-inputs-',dir=ROOT/'userland/build'))
     detail['work']=str(work)
@@ -830,10 +949,17 @@ def _build(destination,engine_directory,engine_seal,producer_receipt,owner_quali
     try:
         owner_builder=runpy.run_path(str(ROOT/'sys-init/scripts/home_owner_build.py'))
         owner=owner_builder['build'](ROOT,work,proc,tools,deadline,detail)
-        probe=runpy.run_path(str(S/'home_probe_build.py'))['build'](work,proc,tools,deadline,detail)
+        probe=runpy.run_path(str(S/'home_probe_build.py'))['build'](work,proc,tools,deadline,detail,**({'drain_case':drain_case} if diagnostic else {}))
         if launch.process_cleanup_unresolved(detail):
             raise RuntimeError('AF09 guarded imported cleanup unconfirmed')
         merge_dependency_inputs(detail,probe)
+        if diagnostic:
+            if probe.get('drain_case')!=drain_case or probe.get('drain_case_id')!=diagnostic['case_id']:
+                raise ValueError('AF09 diagnostic returned C selection mismatch')
+            application={k:probe[k] for k in ('sources','flags','profile','selection','artifacts')}
+            validate_application(application,dict(inputs=detail['inputs'],tools=tools,
+                artifacts={n+'.elf':probe['artifacts'][n] for n in ('shell','helper')},
+                commands=[*detail['commands'],*detail['rows']]),diagnostic)
         # Imported builders return owned artifacts and retain all original
         # processes. Promote their outcomes without erasing expected denials.
         for row in detail['rows']:
@@ -849,28 +975,31 @@ def _build(destination,engine_directory,engine_seal,producer_receipt,owner_quali
         flags=kernel_flags()
         command('actual-kernel-build',[tools['zig']['path'],'build','-p',work/'kernel-build',
             '--cache-dir',work/'zig-cache','--global-cache-dir',ROOT/'.zig-cache/global','-Dsmp=false',
-            '-Dnative-c-image='+str(destination/'envelope.bin'),*['-D'+f+'=true' for f in flags]])
+            '-Dnative-c-image='+str(destination/'envelope.bin'),*kernel_arguments(drain_case=drain_case)])
         kernel=dict(sha256=digest(work/'kernel-build/bin/aether'),native_executed=False,flags=flags)
+        if diagnostic:kernel['diagnostic_argument']='-Dnative-af09-drain='+drain_case
         verify_map(detail['inputs'])
-        launch.intake(engine_directory,engine_seal)
+        launch.intake(engine_directory,engine_seal,**options)
         launch.checked_receipt(producer_receipt,'producer');owner_receipt(owner_qualification,producer,**({'component':owner_component} if owner_component is not None else {}))
         commands=list(detail['commands'])
         for row in detail['rows']:
             commands.append(dict(label=row['label'],status='pass',process=row['process'],expected_exit=row.get('expected_exit',0)))
-        selected=dict(format=SCHEMA,status='prepared',native_executed=False,profile=dict(PROFILE),bounds=dict(BOUNDS),
+        selected=dict(format=DRAIN_SCHEMA if diagnostic else SCHEMA,status='prepared',native_executed=False,profile=selected_profile(drain_case=drain_case),bounds=dict(BOUNDS),
             engine=dict(directory=str(engine_directory.relative_to(ROOT)),seal=engine_seal,elf_sha256=engine['elf_sha256']),
             producer_receipt=dict(path=str(Path(producer_receipt).absolute()),sha256=digest(producer_receipt)),
             owner_receipt=dict(path=str(Path(owner_qualification).absolute()),sha256=digest(owner_qualification)),owner_reuse=impact,
             measurement=owner['measurement'],admission=admission,
             artifacts={n:dict(sha256=digest(destination/n),bytes=(destination/n).stat().st_size) for n in ARTIFACTS},
             inputs=detail['inputs'],tools=tools,commands=commands,kernel_build=kernel,final_input_verification='pass')
-        validate_record(selected)
+        if diagnostic:
+            selected.update(diagnostic=diagnostic,application={k:probe[k] for k in ('sources','flags','profile','selection','artifacts')})
+        validate_record(selected,**options)
         (destination/'inputs.json').write_text(json.dumps(selected,indent=2)+'\n')
         (destination/'SHA256SUMS').write_text(''.join(digest(destination/n)+'  '+n+'\n' for n in sorted((*ARTIFACTS,'inputs.json'))))
         seal=digest(destination/'SHA256SUMS')
         # Intake reparses the final retained bytes; publication never relies on
         # a pre-copy artifact or a parser report from the original builder.
-        result=intake(destination,seal,deadline=deadline)
+        result=intake(destination,seal,deadline=deadline,**options)
         if time.monotonic()>deadline:raise RuntimeError('AF09 guarded target deadline after verification')
         detail.update(status='pass',final_input_verification='pass',result=result,artifacts=selected['artifacts'])
     except BaseException as error:
@@ -925,13 +1054,14 @@ def next_receipt(directory):
     return path
 
 
-def build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,*,owner_component=None):
+def build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,*,owner_component=None,drain_case='none',diagnostic_host_inputs=None):
+    options=launch.diagnostic_options(drain_case,diagnostic_host_inputs)
     evidence=ROOT/'userland/docs/evidence/filesystem-home-prep-2026-10-24/guarded-inputs/build'
     evidence.mkdir(parents=True,exist_ok=True)
     receipt=next_receipt(evidence)
     detail=dict(status='preflight',native_executed=False,destination=str(destination),commands=[])
     try:
-        return _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt,**({'owner_component':owner_component} if owner_component is not None else {}))
+        return _build(destination,engine_directory,engine_seal,producer_receipt,owner_qualification,detail,receipt,**({'owner_component':owner_component} if owner_component is not None else {}),**options)
     except BaseException as error:
         detail.update(status='failed',error=type(error).__name__+': '+str(error))
         raise
@@ -976,14 +1106,16 @@ def main():
     parser.add_argument('--owner-component-proof',type=Path,help='explicit retained current-component selection wrapper; paired hash required')
     parser.add_argument('--owner-component-proof-sha256',help='expected SHA256 of paired current-component wrapper')
     parser.add_argument('--output',required=True,type=Path,help='unused .deps/fs-owner-af09-* dependency')
+    launch.add_diagnostic_arguments(parser)
     args=parser.parse_args()
+    diagnostic_options=launch.diagnostic_cli(parser,args)
     if (args.owner_component_proof is None)!=(args.owner_component_proof_sha256 is None):
         parser.error('current owner component proof and hash must be paired')
     selection=None
     if args.owner_component_proof is not None:
         if not sha_string(args.owner_component_proof_sha256):parser.error('invalid paired component SHA256')
         selection=dict(path=str(args.owner_component_proof.absolute()),sha256=args.owner_component_proof_sha256)
-    print(json.dumps(build(args.output,args.engine,args.engine_seal,args.producer_receipt,args.owner_receipt,**({'owner_component':selection} if selection is not None else {}))))
+    print(json.dumps(build(args.output,args.engine,args.engine_seal,args.producer_receipt,args.owner_receipt,**({'owner_component':selection} if selection is not None else {}),**diagnostic_options)))
 
 
 if __name__=='__main__':

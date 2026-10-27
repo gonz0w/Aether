@@ -1,9 +1,13 @@
 const std = @import("std");
+const Af09Mode = @import("kernel/native_af09_drain.zig").Mode;
 
 pub fn build(b: *std.Build) void {
     if (!std.mem.eql(u8, @import("builtin").zig_version_string, "0.16.0"))
         @panic("Aether requires Zig 0.16.0");
     const release_artifact = b.option(bool, "release-artifact", "Exclude all intentional negative-test controls from this artifact") orelse false;
+    const native_af09_drain = b.option([]const u8, "native-af09-drain", "Approved private AF09 admission/drain diagnostic case; none disables") orelse "none";
+    const native_af09_drain_mode = std.meta.stringToEnum(Af09Mode, native_af09_drain) orelse @panic("unknown native-af09-drain case");
+    const af09_diagnostic = native_af09_drain_mode != .none;
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .x86_64,
         .os_tag = .freestanding,
@@ -12,6 +16,7 @@ pub fn build(b: *std.Build) void {
         .cpu_features_add = std.Target.x86.featureSet(&.{.soft_float}),
     });
     const options = b.addOptions();
+    options.addOption([]const u8, "native_af09_drain", native_af09_drain);
     const smp = b.option(bool, "smp", "Run the two-core kernel bring-up probe after M2") orelse true;
     options.addOption(bool, "smp_test", smp);
     const native_c_image = b.option([]const u8, "native-c-image", "Explicit native C experiment envelope; separate from lifecycle v1");
@@ -59,8 +64,8 @@ pub fn build(b: *std.Build) void {
     const native_process_freeze = b.option(bool, "native-process-freeze", "Opt-in cooperating process freeze boundary") orelse false;
     if (native_process_freeze and (native_c_image == null or smp)) @panic("native process freeze requires a native image and -Dsmp=false");
     options.addOption(bool, "native_process_freeze", native_process_freeze);
-    options.addOption(bool, "native_freeze_skip_park", negativeOption(b, release_artifact, "native-freeze-skip-park", "Skip process parking for rejection witness"));
-    options.addOption(bool, "native_freeze_ignore_token", negativeOption(b, release_artifact, "native-freeze-ignore-token", "Ignore freeze token for rejection witness"));
+    options.addOption(bool, "native_freeze_skip_park", negativeOption(b, release_artifact, af09_diagnostic, "native-freeze-skip-park", "Skip process parking for rejection witness"));
+    options.addOption(bool, "native_freeze_ignore_token", negativeOption(b, release_artifact, af09_diagnostic, "native-freeze-ignore-token", "Ignore freeze token for rejection witness"));
     const native_runner_local = b.option(bool, "native-runner-local", "Select four-reclaim runner-only fixture oracle") orelse false;
     if (native_runner_local and (native_c_image == null or smp)) @panic("native runner local requires a native image and -Dsmp=false");
     options.addOption(bool, "native_runner_local", native_runner_local);
@@ -85,44 +90,44 @@ pub fn build(b: *std.Build) void {
     const native_signal_termination = b.option(bool, "native-signal-termination", "Select private signal-capable owner qualification") orelse false;
     if (native_signal_termination and !native_signal_actions) @panic("native signal termination requires private actions");
     options.addOption(bool, "native_signal_termination", native_signal_termination);
-    options.addOption(bool, "native_signal_actions_shared", negativeOption(b, release_artifact, "native-signal-actions-shared", "Share action records for isolation rejection testing"));
+    options.addOption(bool, "native_signal_actions_shared", negativeOption(b, release_artifact, af09_diagnostic, "native-signal-actions-shared", "Share action records for isolation rejection testing"));
     const native_memory = b.option(bool, "native-memory", "Enable scoped native anonymous memory v1") orelse false;
     if (native_memory and (native_c_image == null or smp)) @panic("native memory requires a native image and -Dsmp=false");
     options.addOption(bool, "native_memory", native_memory);
     const native_backing = b.option(bool, "native-backing", "Private external backing at unchanged native quotas") orelse false;
     if (native_backing and !native_memory) @panic("native backing requires the memory profile");
     options.addOption(bool, "native_backing", native_backing);
-    const backing_skip_ro = negativeOption(b, release_artifact, "native-backing-skip-alias-ro", "Omit external immutable alias narrowing for rejection");
+    const backing_skip_ro = negativeOption(b, release_artifact, af09_diagnostic, "native-backing-skip-alias-ro", "Omit external immutable alias narrowing for rejection");
     if (backing_skip_ro and !native_backing) @panic("native backing alias control requires the external profile");
     options.addOption(bool, "native_backing_skip_alias_ro", backing_skip_ro);
     const native_process_copy = b.option(bool, "native-process-copy", "Opt-in private copy of a frozen worker") orelse false;
     if (native_process_copy and (!native_process_freeze or !native_memory)) @panic("native process copy requires freeze and memory");
     options.addOption(bool, "native_process_copy", native_process_copy);
-    options.addOption(bool, "native_copy_slot_tid", negativeOption(b, release_artifact, "native-copy-slot-tid", "Return legacy slot TID in the copy profile for rejection"));
-    options.addOption(bool, "native_copy_fail_stage", negativeOption(b, release_artifact, "native-copy-fail-stage", "Fail after staging private pages"));
-    options.addOption(bool, "native_copy_skip_zero", negativeOption(b, release_artifact, "native-copy-skip-zero", "Skip failed-copy zeroing"));
-    options.addOption(bool, "native_copy_share", negativeOption(b, release_artifact, "native-copy-share", "Share writable anonymous pages for isolation rejection"));
-    options.addOption(bool, "native_copy_lose_anonymous", negativeOption(b, release_artifact, "native-copy-lose-anonymous", "Lose anonymous ownership for rejection"));
+    options.addOption(bool, "native_copy_slot_tid", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-slot-tid", "Return legacy slot TID in the copy profile for rejection"));
+    options.addOption(bool, "native_copy_fail_stage", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-fail-stage", "Fail after staging private pages"));
+    options.addOption(bool, "native_copy_skip_zero", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-skip-zero", "Skip failed-copy zeroing"));
+    options.addOption(bool, "native_copy_share", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-share", "Share writable anonymous pages for isolation rejection"));
+    options.addOption(bool, "native_copy_lose_anonymous", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-lose-anonymous", "Lose anonymous ownership for rejection"));
     const native_threads = b.option(bool, "native-threads", "One additional native context per worker") orelse false;
     if (native_threads and !native_memory) @panic("native threads require native memory");
     const native_entropy = b.option(bool, "native-entropy", "Explicit bounded per-worker entropy grant in the memory/thread fixture") orelse false;
     if (native_entropy and (!native_memory or !native_threads)) @panic("native entropy requires memory and threads");
     options.addOption(bool, "native_entropy", native_entropy);
-    options.addOption(bool, "native_entropy_skip_quota", negativeOption(b, release_artifact, "native-entropy-skip-quota", "Omit entropy quota consumption for semantic rejection"));
+    options.addOption(bool, "native_entropy_skip_quota", negativeOption(b, release_artifact, af09_diagnostic, "native-entropy-skip-quota", "Omit entropy quota consumption for semantic rejection"));
     if (native_parent_identity and native_threads and !native_fs_session) @panic("native parent identity requires single-context workers");
     options.addOption(bool, "native_threads", native_threads);
     const native_copy_signals = b.option(bool, "native-copy-signals", "Opt-in single-context signal-copy experiment") orelse false;
     if (native_copy_signals and (!native_process_copy or !native_signal_actions or (native_threads and !native_fs_session))) @panic("native signal copy requires private actions, process copy and one context");
     options.addOption(bool, "native_copy_signals", native_copy_signals);
-    options.addOption(bool, "native_copy_signals_drop", negativeOption(b, release_artifact, "native-copy-signals-drop", "Drop inherited dispositions for rejection"));
-    options.addOption(bool, "native_copy_signals_pending", negativeOption(b, release_artifact, "native-copy-signals-pending", "Duplicate pending occurrences for rejection"));
-    options.addOption(bool, "native_copy_signals_parent", negativeOption(b, release_artifact, "native-copy-signals-parent", "Clear parent pending state for rejection"));
+    options.addOption(bool, "native_copy_signals_drop", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-signals-drop", "Drop inherited dispositions for rejection"));
+    options.addOption(bool, "native_copy_signals_pending", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-signals-pending", "Duplicate pending occurrences for rejection"));
+    options.addOption(bool, "native_copy_signals_parent", negativeOption(b, release_artifact, af09_diagnostic, "native-copy-signals-parent", "Clear parent pending state for rejection"));
 
-    options.addOption(bool, "native_threads_skip_pin", negativeOption(b, release_artifact, "native-threads-skip-pin", "Omit child mapping pins for rejection test"));
-    options.addOption(bool, "native_wait_skip_compare", negativeOption(b, release_artifact, "native-wait-skip-compare", "Omit wait value comparison for rejection test"));
-    options.addOption(bool, "native_init_large_dirty_tail", negativeOption(b, release_artifact, "native-init-large-dirty-tail", "Corrupt init v2 code tail for rejection testing"));
-    options.addOption(bool, "native_requeue_skip_move", negativeOption(b, release_artifact, "native-requeue-skip-move", "Break requeue destination for rejection testing"));
-    options.addOption(bool, "native_wake_unlimited", negativeOption(b, release_artifact, "native-wake-unlimited", "Break bounded wake for semantic rejection testing"));
+    options.addOption(bool, "native_threads_skip_pin", negativeOption(b, release_artifact, af09_diagnostic, "native-threads-skip-pin", "Omit child mapping pins for rejection test"));
+    options.addOption(bool, "native_wait_skip_compare", negativeOption(b, release_artifact, af09_diagnostic, "native-wait-skip-compare", "Omit wait value comparison for rejection test"));
+    options.addOption(bool, "native_init_large_dirty_tail", negativeOption(b, release_artifact, af09_diagnostic, "native-init-large-dirty-tail", "Corrupt init v2 code tail for rejection testing"));
+    options.addOption(bool, "native_requeue_skip_move", negativeOption(b, release_artifact, af09_diagnostic, "native-requeue-skip-move", "Break requeue destination for rejection testing"));
+    options.addOption(bool, "native_wake_unlimited", negativeOption(b, release_artifact, af09_diagnostic, "native-wake-unlimited", "Break bounded wake for semantic rejection testing"));
     const native_thread_pair = b.option(bool, "native-thread-pair", "Enable bounded two-child native experiment") orelse false;
     options.addOption(bool, "native_thread_pair", native_thread_pair);
     const native_clock = b.option(bool, "native-clock", "Opt-in BSP q35 elapsed clock and absolute wait") orelse false;
@@ -131,8 +136,8 @@ pub fn build(b: *std.Build) void {
     const native_rtc = b.option(bool, "native-rtc", "Opt-in BSP q35 TCG raw RTC observation") orelse false;
     if (native_rtc and !native_clock) @panic("native RTC requires native clock");
     options.addOption(bool, "native_rtc", native_rtc);
-    options.addOption(bool, "native_clock_ticks", negativeOption(b, release_artifact, "native-clock-ticks", "Substitute delivered interrupts for elapsed time rejection"));
-    options.addOption(bool, "native_clock_skip_wait", negativeOption(b, release_artifact, "native-clock-skip-wait", "Complete a future wait immediately for rejection"));
+    options.addOption(bool, "native_clock_ticks", negativeOption(b, release_artifact, af09_diagnostic, "native-clock-ticks", "Substitute delivered interrupts for elapsed time rejection"));
+    options.addOption(bool, "native_clock_skip_wait", negativeOption(b, release_artifact, af09_diagnostic, "native-clock-skip-wait", "Complete a future wait immediately for rejection"));
 
     const native_thread_reuse = b.option(bool, "native-thread-reuse", "Allow 512 owner-local lifetime admissions; live slots unchanged") orelse false;
     if (native_thread_reuse and (!native_memory or !native_threads or !native_thread_pair)) @panic("native thread reuse requires memory, threads and pair");
@@ -140,9 +145,9 @@ pub fn build(b: *std.Build) void {
     const native_thread_origin = b.option(bool, "native-thread-origin", "Allow granted worker-origin creation and exact-ID reaping") orelse false;
     if (native_thread_origin and !native_thread_reuse) @panic("native thread origin requires the reuse profile");
     options.addOption(bool, "native_thread_origin", native_thread_origin);
-    options.addOption(bool, "native_child_same_id", negativeOption(b, release_artifact, "native-child-same-id", "Reuse child identity for rejection test"));
-    options.addOption(bool, "native_mask_skip_inherit", negativeOption(b, release_artifact, "native-mask-skip-inherit", "Omit child mask inheritance for rejection test"));
-    options.addOption(bool, "native_wait_skip_pin", negativeOption(b, release_artifact, "native-wait-skip-pin", "Omit blocked-word pins for rejection test"));
+    options.addOption(bool, "native_child_same_id", negativeOption(b, release_artifact, af09_diagnostic, "native-child-same-id", "Reuse child identity for rejection test"));
+    options.addOption(bool, "native_mask_skip_inherit", negativeOption(b, release_artifact, af09_diagnostic, "native-mask-skip-inherit", "Omit child mask inheritance for rejection test"));
+    options.addOption(bool, "native_wait_skip_pin", negativeOption(b, release_artifact, af09_diagnostic, "native-wait-skip-pin", "Omit blocked-word pins for rejection test"));
     const native_memory_large = b.option(bool, "native-memory-large", "Opt-in 8 MiB native backing experiment") orelse false;
     if (native_memory_large and !native_memory) @panic("large backing requires native memory");
     options.addOption(bool, "native_memory_large", native_memory_large);
@@ -170,10 +175,10 @@ pub fn build(b: *std.Build) void {
     const service_cleanup_trace = b.option(bool, "native-service-cleanup-trace", "Private service terminal/reclaim boundary diagnostics") orelse false;
     if (service_cleanup_trace and (native_c_image == null or smp or !native_service_workers or !native_service_block)) @panic("cleanup trace requires BSP native service workers and block");
     options.addOption(bool, "native_service_cleanup_trace", service_cleanup_trace);
-    const service_skip_workers = negativeOption(b, release_artifact, "native-service-workers-skip-rebind", "Omit worker view reconstruction after reset");
+    const service_skip_workers = negativeOption(b, release_artifact, af09_diagnostic, "native-service-workers-skip-rebind", "Omit worker view reconstruction after reset");
     if (service_skip_workers and !native_service_workers) @panic("worker rebind control requires the service workers profile");
     options.addOption(bool, "native_service_workers_skip_rebind", service_skip_workers);
-    const service_skip_budget = negativeOption(b, release_artifact, "native-service-skip-image-budget", "Omit small owner image budget preflight for rejection");
+    const service_skip_budget = negativeOption(b, release_artifact, af09_diagnostic, "native-service-skip-image-budget", "Omit small owner image budget preflight for rejection");
     if (service_skip_budget and !native_service_memory) @panic("service image control requires the service memory profile");
     options.addOption(bool, "native_service_skip_image_budget", service_skip_budget);
     const native_process_exec = b.option(bool, "native-process-exec", "Bounded frozen image replacement with explicit publication") orelse false;
@@ -200,42 +205,47 @@ pub fn build(b: *std.Build) void {
         @panic("filesystem SESSION requires its exact private BSP writer and process closure");
     if (native_fs_application_profile and (!native_process_copy or !native_process_exec or !native_memory or !native_backing or !native_service_memory or !native_image_large or !native_pipeline_capacity))
         @panic("filesystem application profile requires its bounded memory, copy, exec and process closure");
+    if (af09_diagnostic and (release_artifact or smp or native_c_image == null or
+        !native_fs_owner_stack or native_fs_application_profile or service_lifetime or
+        !native_fs_session or !native_service_channel_wait or !native_process_copy or
+        !native_process_exec or !native_parent_identity))
+        @panic("AF09 drain requires its private BSP ABI31 filesystem owner and process closure");
     const native_exec_denial = b.option(bool, "native-exec-denial", "Select exact four-reclaim failed-exec fixture completion") orelse false;
     if (native_exec_denial and (!native_process_copy or !native_process_exec or !native_copy_signals or !native_runner_local)) @panic("native exec denial requires copy, exec, signal copy and local runner");
     options.addOption(bool, "native_exec_denial", native_exec_denial);
 
-    options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
-    options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, "native-exec-early", "Publish replacement before owner confirmation"));
-    options.addOption(bool, "native_exec_token", negativeOption(b, release_artifact, "native-exec-token", "Ignore replacement publication token"));
+    options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
+    options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));
+    options.addOption(bool, "native_exec_token", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-token", "Ignore replacement publication token"));
 
-    options.addOption(bool, "native_memory_no_grant", negativeOption(b, release_artifact, "native-memory-no-grant", "Withhold native memory authority"));
-    options.addOption(bool, "native_memory_skip_protect", negativeOption(b, release_artifact, "native-memory-skip-protect", "Skip native PTE protection for negative test"));
-    options.addOption(bool, "native_memory_deny_protect_once", negativeOption(b, release_artifact, "native-memory-deny-protect-once", "Deny first native protect for metadata retry witness"));
-    options.addOption(bool, "native_memory_skip_zero", negativeOption(b, release_artifact, "native-memory-skip-zero", "Skip runtime unmap zeroing for negative test"));
-    options.addOption(bool, "native_no_output", negativeOption(b, release_artifact, "native-no-output", "Withhold native output grant"));
-    options.addOption(bool, "native_skip_fp", negativeOption(b, release_artifact, "native-skip-fp", "Omit native context FP restoration"));
-    options.addOption(bool, "native_skip_zero", negativeOption(b, release_artifact, "native-skip-zero", "Omit native backing zeroing"));
-    options.addOption(bool, "native_coexist_small_pool", negativeOption(b, release_artifact, "native-coexist-small-pool", "Restrict coexist channels for capacity negative test"));
-    options.addOption(bool, "native_init_skip_deadline", negativeOption(b, release_artifact, "native-init-skip-deadline", "Ignore init wait deadline for semantic negative test"));
+    options.addOption(bool, "native_memory_no_grant", negativeOption(b, release_artifact, af09_diagnostic, "native-memory-no-grant", "Withhold native memory authority"));
+    options.addOption(bool, "native_memory_skip_protect", negativeOption(b, release_artifact, af09_diagnostic, "native-memory-skip-protect", "Skip native PTE protection for negative test"));
+    options.addOption(bool, "native_memory_deny_protect_once", negativeOption(b, release_artifact, af09_diagnostic, "native-memory-deny-protect-once", "Deny first native protect for metadata retry witness"));
+    options.addOption(bool, "native_memory_skip_zero", negativeOption(b, release_artifact, af09_diagnostic, "native-memory-skip-zero", "Skip runtime unmap zeroing for negative test"));
+    options.addOption(bool, "native_no_output", negativeOption(b, release_artifact, af09_diagnostic, "native-no-output", "Withhold native output grant"));
+    options.addOption(bool, "native_skip_fp", negativeOption(b, release_artifact, af09_diagnostic, "native-skip-fp", "Omit native context FP restoration"));
+    options.addOption(bool, "native_skip_zero", negativeOption(b, release_artifact, af09_diagnostic, "native-skip-zero", "Omit native backing zeroing"));
+    options.addOption(bool, "native_coexist_small_pool", negativeOption(b, release_artifact, af09_diagnostic, "native-coexist-small-pool", "Restrict coexist channels for capacity negative test"));
+    options.addOption(bool, "native_init_skip_deadline", negativeOption(b, release_artifact, af09_diagnostic, "native-init-skip-deadline", "Ignore init wait deadline for semantic negative test"));
     if (native_c_image != null and smp) @panic("native C experiment currently requires -Dsmp=false");
-    options.addOption(bool, "skip_ap_test", negativeOption(b, release_artifact, "skip-ap-test", "Do not release the AP for negative SMP testing"));
-    options.addOption(bool, "panic_test", negativeOption(b, release_artifact, "panic-test", "Build intentional panic image for negative smoke testing"));
-    options.addOption(bool, "no_timer_test", negativeOption(b, release_artifact, "no-timer-test", "Mask the timer for negative preemption testing"));
-    options.addOption(bool, "skip_zero_test", negativeOption(b, release_artifact, "skip-zero-test", "Omit backing cleanup for negative reuse testing"));
-    options.addOption(bool, "skip_unmap_test", negativeOption(b, release_artifact, "skip-unmap-test", "Retain old user mappings for negative teardown testing"));
-    options.addOption(bool, "skip_ap_timer_test", negativeOption(b, release_artifact, "skip-ap-timer-test", "Mask the AP local timer for negative user testing"));
-    options.addOption(bool, "wide_transport_test", negativeOption(b, release_artifact, "wide-transport-test", "Retain a forbidden transport alias"));
-    options.addOption(bool, "no_framebuffer_grant", negativeOption(b, release_artifact, "no-framebuffer-grant", "Withhold display map rights"));
-    options.addOption(bool, "drop_terminal_test", negativeOption(b, release_artifact, "drop-terminal-test", "Erase terminal state during destruction"));
-    options.addOption(bool, "skip_remote_unmap", negativeOption(b, release_artifact, "skip-remote-unmap", "Retain AP user mappings during reclaim"));
-    options.addOption(bool, "skip_remote_zero", negativeOption(b, release_artifact, "skip-remote-zero", "Retain AP backing contents during reclaim"));
+    options.addOption(bool, "skip_ap_test", negativeOption(b, release_artifact, af09_diagnostic, "skip-ap-test", "Do not release the AP for negative SMP testing"));
+    options.addOption(bool, "panic_test", negativeOption(b, release_artifact, af09_diagnostic, "panic-test", "Build intentional panic image for negative smoke testing"));
+    options.addOption(bool, "no_timer_test", negativeOption(b, release_artifact, af09_diagnostic, "no-timer-test", "Mask the timer for negative preemption testing"));
+    options.addOption(bool, "skip_zero_test", negativeOption(b, release_artifact, af09_diagnostic, "skip-zero-test", "Omit backing cleanup for negative reuse testing"));
+    options.addOption(bool, "skip_unmap_test", negativeOption(b, release_artifact, af09_diagnostic, "skip-unmap-test", "Retain old user mappings for negative teardown testing"));
+    options.addOption(bool, "skip_ap_timer_test", negativeOption(b, release_artifact, af09_diagnostic, "skip-ap-timer-test", "Mask the AP local timer for negative user testing"));
+    options.addOption(bool, "wide_transport_test", negativeOption(b, release_artifact, af09_diagnostic, "wide-transport-test", "Retain a forbidden transport alias"));
+    options.addOption(bool, "no_framebuffer_grant", negativeOption(b, release_artifact, af09_diagnostic, "no-framebuffer-grant", "Withhold display map rights"));
+    options.addOption(bool, "drop_terminal_test", negativeOption(b, release_artifact, af09_diagnostic, "drop-terminal-test", "Erase terminal state during destruction"));
+    options.addOption(bool, "skip_remote_unmap", negativeOption(b, release_artifact, af09_diagnostic, "skip-remote-unmap", "Retain AP user mappings during reclaim"));
+    options.addOption(bool, "skip_remote_zero", negativeOption(b, release_artifact, af09_diagnostic, "skip-remote-zero", "Retain AP backing contents during reclaim"));
     const remote_tests = b.addTest(.{ .root_module = b.createModule(.{
         .root_source_file = b.path("kernel/remote_lifetime.zig"),
         .target = b.graph.host,
         .optimize = .Debug,
     }) });
-    options.addOption(bool, "skip_remote_discard", negativeOption(b, release_artifact, "skip-remote-discard", "Retain old publisher transport during cleanup"));
-    options.addOption(bool, "drop_remote_terminal", negativeOption(b, release_artifact, "drop-remote-terminal", "Erase the AP terminal record during reclaim"));
+    options.addOption(bool, "skip_remote_discard", negativeOption(b, release_artifact, af09_diagnostic, "skip-remote-discard", "Retain old publisher transport during cleanup"));
+    options.addOption(bool, "drop_remote_terminal", negativeOption(b, release_artifact, af09_diagnostic, "drop-remote-terminal", "Erase the AP terminal record during reclaim"));
     const kernel = b.addExecutable(.{
         .name = "aether",
         .use_llvm = true,
@@ -262,11 +272,11 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(kernel);
     const user = b.addSystemCommand(&.{ "python3", "scripts/user.py" });
     const user_image = user.addOutputFileArg("protection.bin");
-    user.addArg(if (negativeOption(b, release_artifact, "bad-user-test", "Make the protection fixture exit unexpectedly")) "true" else "false");
-    user.addArg(if (negativeOption(b, release_artifact, "bad-ipc-test", "Make the receiver expect an incorrect message")) "true" else "false");
-    user.addArg(if (negativeOption(b, release_artifact, "bad-smp-ipc-test", "Corrupt the Rust cross-core expected result")) "true" else "false");
-    user.addArg(if (negativeOption(b, release_artifact, "bad-display-message", "Corrupt a publisher result for the Rust display consumer")) "true" else "false");
-    user.addArg(if (negativeOption(b, release_artifact, "bad-stream-generation", "Tag a replacement result with its old generation")) "true" else "false");
+    user.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "bad-user-test", "Make the protection fixture exit unexpectedly")) "true" else "false");
+    user.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "bad-ipc-test", "Make the receiver expect an incorrect message")) "true" else "false");
+    user.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "bad-smp-ipc-test", "Corrupt the Rust cross-core expected result")) "true" else "false");
+    user.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "bad-display-message", "Corrupt a publisher result for the Rust display consumer")) "true" else "false");
+    user.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "bad-stream-generation", "Tag a replacement result with its old generation")) "true" else "false");
     // Track inputs explicitly for Zig's command cache.
     user.addFileInput(b.path("user/protection/main.rs"));
     user.addFileInput(b.path("user/protection/linker.ld"));
@@ -274,13 +284,13 @@ pub fn build(b: *std.Build) void {
     user.addFileInput(b.path("rust-toolchain.toml"));
     const display = b.addSystemCommand(&.{ "python3", "scripts/display.py" });
     const display_image = display.addOutputFileArg("display.bin");
-    display.addArg(if (negativeOption(b, release_artifact, "skip-display-draw", "Skip Rust rendering for negative screenshot testing")) "true" else "false");
+    display.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "skip-display-draw", "Skip Rust rendering for negative screenshot testing")) "true" else "false");
     display.addFileInput(b.path("user/display/main.rs"));
     display.addFileInput(b.path("user/protection/linker.ld"));
     display.addFileInput(b.path("scripts/display.py"));
     display.addFileInput(b.path("rust-toolchain.toml"));
-    const bad_lifecycle_abi = negativeOption(b, release_artifact, "bad-lifecycle-abi", "Pack an unsupported supervisor ABI");
-    const fail_supervisor = negativeOption(b, release_artifact, "fail-lifecycle-supervisor", "Fault the lifecycle supervisor at entry");
+    const bad_lifecycle_abi = negativeOption(b, release_artifact, af09_diagnostic, "bad-lifecycle-abi", "Pack an unsupported supervisor ABI");
+    const fail_supervisor = negativeOption(b, release_artifact, af09_diagnostic, "fail-lifecycle-supervisor", "Fault the lifecycle supervisor at entry");
     const lifecycle_image: std.Build.LazyPath = if (b.option([]const u8, "lifecycle-image", "Explicit externally authored lifecycle v1 envelope")) |path| blk: {
         if (bad_lifecycle_abi or fail_supervisor) @panic("external lifecycle image cannot use built-in client fault flags");
         break :blk .{ .cwd_relative = path };
@@ -297,7 +307,7 @@ pub fn build(b: *std.Build) void {
     };
     const smp_supervisor = b.addSystemCommand(&.{ "python3", "scripts/smp_supervisor.py" });
     const smp_supervisor_image = smp_supervisor.addOutputFileArg("smp-supervisor.bin");
-    smp_supervisor.addArg(if (negativeOption(b, release_artifact, "fail-smp-supervisor", "Fault the separate SMP supervisor")) "true" else "false");
+    smp_supervisor.addArg(if (negativeOption(b, release_artifact, af09_diagnostic, "fail-smp-supervisor", "Fault the separate SMP supervisor")) "true" else "false");
     smp_supervisor.addFileInput(b.path("user/smp_supervisor/main.rs"));
     smp_supervisor.addFileInput(b.path("user/protection/linker.ld"));
     smp_supervisor.addFileInput(b.path("scripts/smp_supervisor.py"));
@@ -492,11 +502,15 @@ pub fn build(b: *std.Build) void {
 }
 
 // Build-graph gate only; do not add this selection to the kernel runtime ABI.
-fn negativeOption(b: *std.Build, release_artifact: bool, name: []const u8, description: []const u8) bool {
+fn negativeOption(b: *std.Build, release_artifact: bool, af09_diagnostic: bool, name: []const u8, description: []const u8) bool {
     const enabled = b.option(bool, name, description) orelse false;
     if (release_artifact and enabled) {
         std.debug.print("release artifact rejects negative-test option: {s}\n", .{name});
         @panic("release artifact contains a negative-test control");
+    }
+    if (af09_diagnostic and enabled) {
+        std.debug.print("AF09 diagnostic rejects negative-test option: {s}\n", .{name});
+        @panic("AF09 diagnostic contains an incompatible negative-test control");
     }
     return enabled;
 }

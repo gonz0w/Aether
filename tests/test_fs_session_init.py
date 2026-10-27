@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 from test_native_cleanup import block
+from test_fs_launch_intake import runtime_fixture
 from test_fs_session import envelope, small_elf, ROOT
 sys.path.insert(0, str(ROOT/'scripts'))
 import fs_session
@@ -28,16 +29,17 @@ class InitOwner(unittest.TestCase):
                     if wide: raw=b'AENFS003'+raw[8:]
                     name=f'{wide}-{length}.bin';(out/name).write_bytes(raw)
                     for selected in (False,True):
-                        expression=f'c.parseProfile(@embedFile("{name}"),{str(selected).lower()})'
+                        expression=f'c.parseProfile(fixture,{str(selected).lower()})'
                         valid=wide==selected and length <= (16384 if selected else 8192)
-                        cases.append(' _=try '+expression+';' if valid else ' try std.testing.expectError(error.InvalidComposition,'+expression+');')
+                        body = ' _=try '+expression+';' if valid else ' try std.testing.expectError(error.InvalidComposition,'+expression+');'
+                        cases.append(runtime_fixture(out/name, raw, body))
             for name,raw in [('reserved',b'AENFS003'+envelope(engine)[8:]),('process',b'AENFS003'+envelope(engine,[small_elf(113*4096),small_elf(),small_elf()])[8:])]:
                 if name=='reserved':
                     data=bytearray(raw);data[48+len(engine)+24]=1;raw=bytes(data)
                 (out/(name+'.bin')).write_bytes(raw)
-                cases.append(' try std.testing.expectError(error.InvalidComposition,c.parseProfile(@embedFile("'+name+'.bin"),true));')
+                cases.append(runtime_fixture(out/(name+'.bin'), raw, 'try std.testing.expectError(error.InvalidComposition,c.parseProfile(fixture,true));'))
             (out/'test.zig').write_text('const std=@import("std");const c=@import("composition");test "explicit fixed bounds and profile mismatch" {\n'+'\n'.join(cases)+'\n}')
-            r=subprocess.run(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),'--dep','composition','-Mroot='+str(out/'test.zig'),'-Mcomposition='+str(ROOT/'kernel/native_fs_session.zig')],capture_output=True,text=True,timeout=90)
+            r=subprocess.run(['zig','test','--cache-dir',str(ROOT/'.zig-cache'),'--global-cache-dir',str(ROOT/'.zig-cache/global'),'--dep','composition','-Mroot='+str(out/'test.zig'),'-Mcomposition='+str(ROOT/'kernel/native_fs_session.zig'),'-femit-bin='+str(out/'parser-tests')],capture_output=True,text=True,timeout=90)
             self.assertEqual(r.returncode,0,r.stderr)
 
     def test_actual_four_page_mapping_all_seven_aliases_zero_tail_stack_nx(self):

@@ -5,6 +5,7 @@ use std::{cell::RefCell, vec::Vec};
 struct State {
     mode: u32,
     attempts: Option<u64>,
+    requests: Option<u64>,
     calls: usize,
     closes: Vec<u64>,
 }
@@ -66,7 +67,11 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
         ..state.home.mkdir
     };
     state.home.service.ready = 1;
-    state.home.service.requests = 2;
+    state.home.service.requests = STATE.with(|s| {
+        s.borrow()
+            .requests
+            .unwrap_or(if cfg!(fs_af09_drain) { 3 } else { 2 })
+    });
     if mode == 5 {
         state.home.flags &= !ORDERED;
     }
@@ -192,12 +197,38 @@ fn fixed_home_probe_requires_three_attempts_only_when_selected() {
         STATE.with(|s| s.borrow_mut().attempts = Some(attempts));
         assert_eq!(
             run(&mut state),
-            if cfg!(fs_home_probe_three) && attempts != 3 {
+            if (cfg!(fs_home_probe_three) && attempts != 3)
+                || (cfg!(fs_af09_drain) && attempts != 2)
+            {
                 5
             } else {
                 0
             },
             "HOME_PROBE_THREE"
         );
+    }
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn drain_two_mutations_three_requests_are_exact() {
+    for attempts in [0, 1, 2, 3, 4, 9, u64::MAX] {
+        for requests in [0, 1, 2, 3, 4, 96, u64::MAX] {
+            STATE.with(|s| {
+                *s.borrow_mut() = State {
+                    mode: 4,
+                    attempts: Some(attempts),
+                    requests: Some(requests),
+                    ..State::default()
+                }
+            });
+            let mut selected = state();
+            selected.phases = 0;
+            assert_eq!(
+                run(&mut selected),
+                if (attempts, requests) == (2, 3) { 0 } else { 5 },
+                "AF09_DRAIN_LAUNCH_COUNT"
+            );
+        }
     }
 }

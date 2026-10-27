@@ -15,6 +15,10 @@ use std::{
 
 #[derive(Default)]
 struct Seen {
+    #[cfg(fs_af09_drain)]
+    counts: Vec<(u64, u64)>,
+    #[cfg(fs_af09_drain)]
+    count_error: Option<i64>,
     published: usize,
     sent: Vec<Message>,
     completed: usize,
@@ -152,6 +156,13 @@ impl Script {
     }
 }
 impl Channel for Script {
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64> {
+        let mut seen = self.seen.lock().unwrap();
+        seen.counts.push((mutations, requests));
+        seen.count_error.map_or(Ok(()), Err)
+    }
+
     fn receive(&mut self, out: &mut Message) -> Result<(), i64> {
         let (published, completed) = {
             let s = self.seen.lock().unwrap();
@@ -191,6 +202,16 @@ struct Pipe {
     server: bool,
 }
 impl Channel for Pipe {
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64> {
+        if !self.server {
+            return Err(-38);
+        }
+        let mut seen = self.seen.lock().unwrap();
+        seen.counts.push((mutations, requests));
+        seen.count_error.map_or(Ok(()), Err)
+    }
+
     fn receive(&mut self, out: &mut Message) -> Result<(), i64> {
         if self.server {
             let (p, n) = {
@@ -520,4 +541,38 @@ fn post_greeting_reply_error_latches_without_second_publication() {
         (1, 3, 2, 1)
     );
     assert_eq!(s.sent[2], bytes);
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn counter_forward_requires_ready_and_latches_failure_without_retry() {
+    for stage in [Stage::Root, Stage::Home, Stage::Failed] {
+        let seen = Arc::new(Mutex::new(Seen::default()));
+        let mut channel = HomeActivated {
+            inner: Script::new(seen.clone()),
+            publish: || 0,
+            epoch: 91,
+            stage,
+        };
+        assert_eq!(channel.af09_counts(2, 3), Err(-5));
+        assert_eq!(channel.af09_counts(2, 3), Err(-5));
+        assert!(seen.lock().unwrap().counts.is_empty());
+    }
+    let seen = Arc::new(Mutex::new(Seen::default()));
+    let mut channel = HomeActivated {
+        inner: Script::new(seen.clone()),
+        publish: || 0,
+        epoch: 91,
+        stage: Stage::Ready,
+    };
+    assert_eq!(channel.af09_counts(2, 3), Ok(()));
+    seen.lock().unwrap().count_error = Some(-28);
+    assert_eq!(channel.af09_counts(9, 4), Err(-28));
+    assert_eq!(channel.af09_counts(2, 3), Err(-5));
+    assert_eq!(channel.send(&[0; 64]), Err(-5));
+    assert_eq!(channel.close(), [-7, -8]);
+    let s = seen.lock().unwrap();
+    assert_eq!(s.counts, [(2, 3), (9, 4)], "AF09_DRAIN_ACTIVATION_LATCH");
+    assert!(s.sent.is_empty());
+    assert_eq!(s.closes, 1);
 }

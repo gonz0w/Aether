@@ -78,6 +78,87 @@ class Association(unittest.TestCase):
         self.data=dict(format=association.FORMAT,native_executed=False,dependency_root=None,artifacts=artifacts,inputs=current,baselines=baselines,evidence=evidence)
         self.path=self.out/'association.json'
 
+    def test_drain_reader_association_is_exactly_af07_only(self):
+        additions={'user/storage/openzfs-volume/home-recovery-probe.c',
+                   'user/storage/openzfs-volume/home-recovery-probe.h',
+                   'scripts/home_reader.py','scripts/home_runtime.py'}
+        expected={'af06':{'kernel/native_elf.zig',*association.PRODUCER_EDITS},
+                  'af07':{*association.KERNEL,*association.PRODUCER_EDITS,
+                          'scripts/fs_home_inputs.py','scripts/fs_home_launch.py',*additions}}
+        self.assertEqual(association.ALLOWED,expected)
+        self.assertTrue(additions.isdisjoint(association.PRODUCER_EDITS))
+        self.assertTrue(additions.isdisjoint(association.ALLOWED['af06']))
+        self.assertEqual(association.CASES.get('legacy-reader'),('default-c-oracle','default-rendering'))
+        required=additions|{'kernel/native_af09_drain.zig','tests/test_home_reader.py','tests/test_home_runtime.py',
+            'userland/experiments/filesystem-service/home_recovery_checks.py',
+            'userland/experiments/filesystem-service/home-recovery-tests.c',
+            'userland/experiments/filesystem-service/home_reader_drain_tests.py'}
+        self.assertTrue(required<=set(association.REQUIRED_INPUTS))
+
+    def test_drain_reader_inputs_scope_and_both_markers_are_mandatory(self):
+        names=('user/storage/openzfs-volume/home-recovery-probe.c',
+               'user/storage/openzfs-volume/home-recovery-probe.h','scripts/home_reader.py','scripts/home_runtime.py',
+               'kernel/native_af09_drain.zig','tests/test_home_reader.py','tests/test_home_runtime.py',
+               'userland/experiments/filesystem-service/home_recovery_checks.py',
+               'userland/experiments/filesystem-service/home-recovery-tests.c',
+               'userland/experiments/filesystem-service/home_reader_drain_tests.py')
+        for name in names:
+            self.assertIn(name,association.REQUIRED_INPUTS)
+            bad=copy.deepcopy(self.data);bad['inputs'].pop(str(ROOT/name))
+            with self.subTest(name=name),self.assertRaisesRegex(ValueError,'required current consumer input'):
+                association.validate(bad)
+        self.assertIn('legacy-reader',self.data['evidence'])
+        bad=copy.deepcopy(self.data);bad['evidence'].pop('legacy-reader')
+        with self.assertRaisesRegex(ValueError,'evidence scopes'):association.validate(bad)
+        for marker in association.MARKERS['legacy-reader']:
+            bad=copy.deepcopy(self.data);row=bad['evidence']['legacy-reader']['commands'][0]
+            row['stdout']=row['stdout'].replace(marker+'\n','')
+            row['stdout_sha256']=hashlib.sha256(row['stdout'].encode()).hexdigest()
+            with self.subTest(marker=marker),self.assertRaisesRegex(ValueError,'semantic evidence'):
+                association.validate(bad)
+
+    def test_exact_four_reader_changes_can_be_explicitly_associated_for_af07(self):
+        names=('user/storage/openzfs-volume/home-recovery-probe.c',
+               'user/storage/openzfs-volume/home-recovery-probe.h','scripts/home_reader.py','scripts/home_runtime.py')
+        data=copy.deepcopy(self.data);artifact=data['artifacts']['af07'];root=Path(artifact['root'])
+        path=root/'build.json';manifest=root/'SHA256SUMS';before=path.read_text();before_manifest=manifest.read_text()
+        pin=association.PINS['af07']
+        try:
+            producer=json.loads(before)
+            for name in names:
+                producer['inputs'][str(PRIVATE/name)]='0'*64
+                artifact['changes'][name]={'producer':'0'*64,'consumer':sha(ROOT/name)}
+            path.write_text(json.dumps(producer))
+            manifest.write_text(before_manifest.replace(hashlib.sha256(before.encode()).hexdigest()+'  build.json',sha(path)+'  build.json'))
+            seal=sha(manifest);association.PINS['af07']=(pin[0],seal)
+            artifact.update(manifest_sha256=seal,build_sha256=sha(path))
+            association.validate(data)
+            os.environ.pop(association.ENV_PATH,None);os.environ.pop(association.ENV_SHA,None)
+            self.assertFalse(association.verify_inputs('af07',root,seal,producer))
+        finally:
+            path.write_text(before);manifest.write_text(before_manifest);association.PINS['af07']=pin
+
+    def test_fifth_reader_input_and_every_af06_reader_change_reject(self):
+        additions=('user/storage/openzfs-volume/home-recovery-probe.c',
+                   'user/storage/openzfs-volume/home-recovery-probe.h','scripts/home_reader.py','scripts/home_runtime.py')
+        for kind,name in [('af07','user/storage/openzfs-volume/zpl-context.c'),
+                          *[('af06',name) for name in additions]]:
+            with self.subTest(kind=kind,name=name):
+                data=copy.deepcopy(self.data);artifact=data['artifacts'][kind]
+                root=Path(artifact['root']);path=root/'build.json';manifest=root/'SHA256SUMS'
+                before=path.read_text();before_manifest=manifest.read_text();pin=association.PINS[kind]
+                try:
+                    producer=json.loads(before);producer['inputs'][str(PRIVATE/name)]='0'*64
+                    path.write_text(json.dumps(producer))
+                    manifest.write_text(before_manifest.replace(hashlib.sha256(before.encode()).hexdigest()+'  build.json',sha(path)+'  build.json'))
+                    seal=sha(manifest);association.PINS[kind]=(pin[0],seal)
+                    artifact.update(manifest_sha256=seal,build_sha256=sha(path))
+                    data['inputs'][str(ROOT/name)]=sha(ROOT/name)
+                    with self.assertRaisesRegex(ValueError,'unreviewed producer input changed'):
+                        association.validate(data)
+                finally:
+                    path.write_text(before);manifest.write_text(before_manifest);association.PINS[kind]=pin
+
     def select(self,data=None):
         self.path.write_text(json.dumps(data or self.data));os.environ[association.ENV_PATH]=str(self.path);os.environ[association.ENV_SHA]=sha(self.path)
 

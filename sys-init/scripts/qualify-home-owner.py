@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import importlib.util
+import inspect
 import json
 from pathlib import Path
 import re
@@ -21,6 +22,7 @@ import home_reader
 from fs_session import FLAGS
 
 SCHEMA='aether-home-owner-prepared-v1'
+DRAIN_SCHEMA='aether-home-owner-drain-prepared-v1'
 PREFIX='af09-home-owner-pending-'
 RTC='2026-10-06T12:34:00,clock=vm'
 SCRIPT=b"printf 'AF09-BEGIN\\n'\n/inputs/helper status\nprintf 'AF09-STATUS:%s\\n' \"$?\"\nexit\n"
@@ -227,14 +229,17 @@ def check_budget(deadline):
     return remaining
 
 
-def input_record(directory,seal,*,deadline):
+def input_record(directory,seal,*,deadline,drain_case='none',diagnostic_host_inputs=None):
+    options=launch.diagnostic_options(drain_case,diagnostic_host_inputs)
     check_budget(deadline)
-    result=inputs.intake(directory,seal,deadline=deadline)
+    result=inputs.intake(directory,seal,deadline=deadline,**options)
     check_budget(deadline)
     record=inputs.read_json(Path(directory)/'inputs.json')
-    if (result.get('format')!=inputs.SCHEMA or record.get('format')!=inputs.SCHEMA
-            or record.get('profile')!=inputs.PROFILE or record.get('bounds')!=inputs.BOUNDS):
+    if (result.get('format')!=(inputs.DRAIN_SCHEMA if options else inputs.SCHEMA) or record.get('format')!=(inputs.DRAIN_SCHEMA if options else inputs.SCHEMA)
+            or record.get('profile')!=inputs.selected_profile(drain_case=drain_case) or record.get('bounds')!=inputs.BOUNDS):
         raise ValueError('AF09 exact guarded selection required')
+    if options and record.get('diagnostic')!=launch.diagnostic_selection(drain_case,diagnostic_host_inputs)[0]:
+        raise ValueError('AF09 prepared diagnostic case association')
     geometry(record['admission'])
     check_budget(deadline)
     return record
@@ -296,7 +301,7 @@ def build_controller(stage,command,tools):
     return selected
 
 
-def build_reader(stage,command,tools,record,retained,generated,recovered,controller):
+def build_reader(stage,command,tools,record,retained,generated,recovered,controller,*,drain_case='none'):
     stage.mkdir()
     base=stage/'base';work=stage/'compose';work.mkdir();delivery=stage/'delivery';delivery.mkdir()
     def backend(backend,diagnostic,copied=None):
@@ -306,7 +311,7 @@ def build_reader(stage,command,tools,record,retained,generated,recovered,control
     prepared=launch.prepare_base(base,command,tools,recovered=True,on_backend=backend)
     verify_boundary(retained,generated,record,'after-'+label+'-base')
     verify_boundary(retained,generated,record,'before-'+label+'-reader-composition')
-    selected=home_reader.compose(base,prepared,work,delivery,command,tools,record,recovered)
+    selected=home_reader.compose(base,prepared,work,delivery,command,tools,record,recovered,**({'drain_case':drain_case} if drain_case!='none' else {}))
     verify_boundary(retained,generated,record,'after-'+label+'-reader-composition')
     generated[selected['elf']]=selected['elf_sha256']
     engine=Path(selected['elf']).read_bytes();raw_controller=controller_bytes(controller)
@@ -354,17 +359,25 @@ def child_environment(proc,work,tools,args,routing=None):
     return env
 
 
-def prepare(directory,seal):
-    """Prepare only; keep three pending ISOs/exact kernel ELFs and frozen receipt."""
+def prepare(directory,seal,*,drain_case='none',diagnostic_host_inputs=None):
+    """Prepare selected offline roles; execute no guest."""
+    diagnostic,bound=launch.diagnostic_selection(drain_case,diagnostic_host_inputs)
+    options=launch.diagnostic_options(drain_case,diagnostic_host_inputs)
+    if diagnostic and 'drain_case' not in inspect.signature(home_reader.compose).parameters:
+        raise ValueError('AF09 reader must explicitly support drain_case before preparation')
+    roles=('pristine','writer','recovery') if not diagnostic or diagnostic['case_id']<=4 else ('pristine','writer')
     deadline=time.monotonic()+1800
     directory=Path(directory).absolute()
-    selected=input_record(directory,seal,deadline=deadline)
+    selected=input_record(directory,seal,deadline=deadline,**options)
     tools=selected['tools']
     if digest(ROOT/'user/storage/session/readback.rs')!=ORIGINAL_CONTROLLER_SHA256:
         raise ValueError('AF09 original readback controller drift')
     from deps import verify,DEPS,LOCK
     verify()
     frozen=dict(selected['inputs'])
+    frozen.update(bound)
+    if diagnostic:
+        frozen[str(ROOT/'scripts/af09_drain_trace.py')]=digest(ROOT/'scripts/af09_drain_trace.py')
     boot_manifest=inputs.read_json(ROOT/'.deps/manifest.json')
     frozen[str(ROOT/'.deps/manifest.json')]=digest(ROOT/'.deps/manifest.json')
     for name,expected in boot_manifest['files'].items():
@@ -388,10 +401,10 @@ def prepare(directory,seal):
     proc=owned_process()
     output=Path(tempfile.mkdtemp(prefix=PREFIX,dir=ROOT/'zig-out'))
     receipt_path=reserve_evidence()
-    receipt=dict(schema=SCHEMA,status='preparing',native_attempted=False,native_executed=False,output=str(output),
+    receipt=dict(schema=DRAIN_SCHEMA if diagnostic else SCHEMA,status='preparing',native_attempted=False,native_executed=False,output=str(output),
         input_directory=str(directory),input_seal=seal,profile=selected['profile'],bounds=selected['bounds'],
-        admission=selected['admission'],measurement=selected['measurement'],rtc=RTC,script_hex=SCRIPT.hex(),
-        prospective_sequence=['pristine','writer','recovery'],stop_on_first_failure=True,retry=False,
+        admission=selected['admission'],measurement=selected['measurement'],rtc=RTC,script_hex='' if diagnostic else SCRIPT.hex(),
+        prospective_sequence=list(roles),stop_on_first_failure=True,retry=False,
         no_guest_entrypoint=True,commands=[],inputs=frozen,generated_inputs={},tools=tools,
         input_verification='Full source hashes at start, consumer/role boundaries and publication; each child checks actual tool, explicit linker and live generated runtime inputs; all sources remain frozen',
         expected_media=dict(region_sha256=FIXTURE_IMAGE_SHA256,region_bytes=FIXTURE_BYTES,guard_bytes=4096,
@@ -401,6 +414,11 @@ def prepare(directory,seal):
         limits=dict(child_seconds=180,total_seconds=1800,capture_bytes=65536,diagnostic_stream_bytes=DIAGNOSTIC_LIMIT,
             compiler_file_limit_bytes=16*1024*1024),
         scope='Offline prepared candidates/prospective oracles only; fresh disposition required before any guest')
+    if diagnostic:
+        receipt.update(diagnostic=diagnostic,prospective_oracle=dict(path=str(ROOT/'scripts/af09_drain_trace.py'),
+            sha256=digest(ROOT/'scripts/af09_drain_trace.py'),function='validate_witness',
+            arguments=['complete_capture_bytes','diagnostic.case','admission'],
+            scope='Prospective parser association only; preparation performs no native execution'))
     work=output/'work'
     generated={}
     tool_bin=None;tool_routing=None
@@ -460,23 +478,26 @@ def prepare(directory,seal):
         generated[str(writer/'envelope.bin')]=selected['artifacts']['envelope.bin']['sha256']
         if selected['kernel_build']['flags']!=list(WRITER_FLAGS):raise ValueError('AF09 exact writer kernel flags')
         command([tools['zig']['path'],'build','-p',writer,'--cache-dir',work/'zig-cache','--global-cache-dir',ROOT/'.zig-cache/global',
-            '-Dsmp=false','-Dnative-c-image='+str(writer/'envelope.bin'),*['-D'+flag+'=true' for flag in WRITER_FLAGS]],writer/'kernel.log')
+            '-Dsmp=false','-Dnative-c-image='+str(writer/'envelope.bin'),*inputs.kernel_arguments(drain_case=drain_case)],writer/'kernel.log')
         shutil.copyfile(writer/'bin/aether',writer/'kernel.elf')
         verify_boundary(frozen,generated,receipt,'after-writer-role')
         receipt['readers']={}
         for role,recovered in (('pristine',False),('recovery',True)):
+            if role not in roles:continue
             stage=output/role
             verify_boundary(frozen,generated,receipt,'before-'+role+'-role')
             role_record={}
-            receipt['readers'][role]=build_reader(stage,command,tools,role_record,frozen,generated,recovered,controller)
+            receipt['readers'][role]=build_reader(stage,command,tools,role_record,frozen,generated,recovered,controller,**({'drain_case':drain_case} if diagnostic else {}))
             receipt.setdefault('reader_composition_boundaries',{})[role]=role_record.get('input_boundaries',[])
             verify_boundary(frozen,generated,receipt,'after-'+role+'-role')
         verify_boundary(frozen,generated,receipt,'final-consumers')
-        if input_record(directory,seal,deadline=deadline)!=selected:raise ValueError('AF09 guarded input changed during image preparation')
+        if input_record(directory,seal,deadline=deadline,**options)!=selected:raise ValueError('AF09 guarded input changed during image preparation')
         receipt['generated_inputs']=dict(generated)
         receipt['artifacts']={role:{name:dict(bytes=(output/role/name).stat().st_size,sha256=digest(output/role/name))
-            for name in ('aether.iso','kernel.elf')} for role in ('pristine','writer','recovery')}
-        receipt['expected_reader_metadata']='Compare all32 opaque returned metadata SHA256 bytes for pristine and recovery; no prefix/changed-zstd oracle'
+            for name in ('aether.iso','kernel.elf')} for role in roles}
+        receipt['expected_reader_metadata']=('Compare all32 preserved metadata SHA256 bytes; selected recovery requires empty probe'
+            if diagnostic and 'recovery' in roles else 'No recovery role for negative diagnostic media' if diagnostic
+            else 'Compare all32 opaque returned metadata SHA256 bytes for pristine and recovery; no prefix/changed-zstd oracle')
         check_budget(deadline)
         receipt.update(status='prepared',final_input_verification='pass')
     except BaseException as error:
@@ -493,7 +514,7 @@ def prepare(directory,seal):
                     if not any(path.iterdir()):path.rmdir()
                 elif path.name!='results.json':removed+=1;path.unlink()
             receipt['cleanup']=dict(status='complete',removed_generated_files=removed,
-                kept_pending_images=3 if receipt['status']=='prepared' else 0)
+                kept_pending_images=len(roles) if receipt['status']=='prepared' else 0)
         else:
             receipt['cleanup']=dict(status='unresolved',owned_outputs_retained=True)
         data=json.dumps(receipt,indent=2)+'\n'
@@ -512,7 +533,7 @@ def prepare(directory,seal):
                 # images as pending evidence after this rejecting boundary.
                 expired=error
                 receipt.update(status='failed',error=str(error))
-                for role in ('pristine','writer','recovery'):
+                for role in roles:
                     folder=output/role
                     for name in ('aether.iso','kernel.elf'):
                         path=folder/name
@@ -535,8 +556,10 @@ def main(argv=None):
     parser.add_argument('--inputs',type=Path,required=True,help='sealed exact AF09 guarded input directory')
     parser.add_argument('--seal',required=True,help='SHA256 of the guarded SHA256SUMS file')
     parser.add_argument('--prepare',action='store_true',required=True,help='prepare pristine/writer/recovery images; execute no guest')
+    launch.add_diagnostic_arguments(parser)
     args=parser.parse_args(argv)
-    try:result=prepare(args.inputs,args.seal)
+    options=launch.diagnostic_cli(parser,args)
+    try:result=prepare(args.inputs,args.seal,**options)
     except (ValueError,FileNotFoundError) as error:
         print('[BLOCKED] '+ascii(str(error))[1:-1],file=sys.stderr);return 2
     except (OSError,RuntimeError) as error:

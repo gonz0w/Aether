@@ -8,6 +8,30 @@ use filesystem_policy::{
 #[cfg(all(fs_wait, not(all(fs_namespace, fs_lifetimes, fs_mixed))))]
 compile_error!("fs_wait requires the separate mixed service selection");
 
+#[cfg(all(fs_af09_drain, fs_home_probe_three))]
+compile_error!("AF09 drain is incompatible with fs_home_probe_three");
+#[cfg(all(
+    fs_af09_drain,
+    not(all(
+        fs_namespace,
+        fs_lifetimes,
+        fs_mixed,
+        fs_wait,
+        fs_bulk,
+        fs_runtime,
+        fs_activation,
+        fs_names,
+        fs_directories,
+        fs_metadata,
+        fs_directory_contexts,
+        fs_home,
+        fs_home_wire,
+        fs_home_native,
+        fs_home_activation
+    ))
+))]
+compile_error!("AF09 drain requires the complete HOME feature closure");
+
 pub const FRAME: usize = 64;
 pub const PAYLOAD: usize = 16;
 pub const REQUESTS: usize = if cfg!(fs_home_native) {
@@ -38,6 +62,9 @@ pub mod channel;
 /// implementation must discard partial input, never replay output, and return
 /// boundedly. close attempts BOTH endpoint closes, preserving both outcomes.
 pub trait Channel {
+    /// Actual selected disconnect counters, before ACK; never a protocol frame.
+    #[cfg(fs_af09_drain)]
+    fn af09_counts(&mut self, mutations: u64, requests: u64) -> Result<(), i64>;
     fn receive(&mut self, frame: &mut Message) -> Result<(), i64>;
     fn send(&mut self, frame: &Message) -> Result<(), i64>;
     fn close(&mut self) -> [i64; 2];

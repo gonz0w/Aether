@@ -1912,6 +1912,23 @@
       ],
       "reviewer": null,
       "exclusion": null
+    },
+    {
+      "id": "UD-af09-drain-host",
+      "surface": "Independent AF09 C fixture and cfg-only actual pre-ACK counter host prerequisites; kernel diagnostic and native acceptance remain pending",
+      "kind": "subsystem",
+      "owner": "Aether-userland/Aether/sys-init",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "docs/proposals/FS-HOME-PREP.md",
+        "experiments/filesystem-service/README.md"
+      ],
+      "evidence": [
+        "docs/proposals/FS-HOME-PREP.md"
+      ],
+      "reviewer": null,
+      "exclusion": null
     }
   ]
 }

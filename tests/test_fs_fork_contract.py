@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-from test_native_cleanup import block
+from test_native_cleanup import block, af09_prelude, af09_command
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = []
@@ -145,9 +145,10 @@ const reader=&channels[0];const writer=&channels[1];
             for name, selected in variants:
                 with self.subTest(variant=name):
                     source = out/'contract.zig'
-                    source.write_text(SCAFFOLD + selected + CASES)
+                    source.write_text(SCAFFOLD + af09_prelude(native) + selected + CASES)
                     argv = [compiler, 'test', '--cache-dir', str(out/'cache'), '--global-cache-dir', str(out/'global'),
                             '--dep', 'build_options', '-Mroot='+str(source), '-Mbuild_options='+str(options)]
+                    argv = af09_command(argv)
                     process = subprocess.Popen(argv, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
                     try:
                         stdout, stderr = process.communicate(timeout=60)

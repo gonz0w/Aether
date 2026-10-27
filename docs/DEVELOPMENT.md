@@ -20,7 +20,7 @@ normative inputs, involve the owner and obtain the exact inputs before dependent
 work; do not reconstruct their clauses or treat their absence as an exception.
 
 The hosted jobs are **Source integrity** (Agent Temper digests, selected
-Python syntax/JSON and conventional PR titles) and **Kernel models** (four
+Python syntax/JSON and conventional PR titles) and **Kernel models** (five
 self-contained Zig roots). These are bounded source checks. `zig build test`, the
 workflow inventory checker, standards wrappers and `make check-system` retain
 private-input prerequisites and are blocked without them. `zig build` retains
@@ -253,7 +253,12 @@ Native failure/cleanup/recovery and independent consumption remain acceptance ga
 
 Focused host inventory ceilings remain300 seconds; the complete root `AT-HOST`
 gate uses the standing900-second aggregate in [PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26).
-Target-suite ceilings remain1800 seconds. These are limits, not performance guarantees. Missing required tools/runners block the selected
+Target-suite ceilings remain1800 seconds, except the owner-adopted5400-second
+complete eight-case AF09 offline family in
+[PROJECT](../PROJECT.md#af09-offline-family-budget-2026-10-26). Its one aggregate
+covers the whole suite, including final verification and cleanup; child, stream,
+compiler-file and runtime limits remain unchanged, with no guest permission.
+These are limits, not performance guarantees. Missing required tools/runners block the selected
 check. Keep dependency setup separate from offline execution. Full-file/media,
 ordered export/drain, cleanup and fresh-reader gates apply at either budget; no
 budget or passing inventory checker establishes release readiness.

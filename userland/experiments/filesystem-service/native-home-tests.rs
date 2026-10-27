@@ -14,6 +14,10 @@ unsafe extern "C" {
 }
 #[derive(Default)]
 struct State {
+    #[cfg(fs_af09_drain)]
+    diagnostic: Vec<([u8; 8], usize, usize)>,
+    #[cfg(fs_af09_drain)]
+    diagnostic_return: Option<i64>,
     input: VecDeque<u8>,
     received: usize,
     output: Vec<u8>,
@@ -30,6 +34,17 @@ pub unsafe fn trap(op: u64, endpoint: u64, pointer: u64, length: u64) -> i64 {
     STATE.with(|s| {
         let mut s = s.borrow_mut();
         match op {
+            #[cfg(fs_af09_drain)]
+            0x10001 => {
+                assert_eq!((endpoint, length), (1, 8));
+                // SAFETY: actual endpoint supplies a live initialized record8.
+                let bytes = unsafe { core::slice::from_raw_parts(pointer as *const u8, 8) };
+                let record = bytes.try_into().unwrap();
+                let received = s.received;
+                let sent = s.output.len();
+                s.diagnostic.push((record, received, sent));
+                s.diagnostic_return.unwrap_or(8)
+            }
             0x20004 => {
                 #[cfg(fs_home_probe_three)]
                 if s.advance_clock_on_ready {
@@ -647,4 +662,143 @@ fn selected_clock_rechecks_second_bootstrap_readiness_and_request_mutation() {
         let reply = (&s.output[128..192]).try_into().unwrap();
         assert_eq!(word(reply, 1) as i64, -5);
     });
+}
+
+#[cfg(fs_af09_drain)]
+fn drain_requests() {
+    command(1, Some(b"probe"));
+    let mut close = message(READER, 3);
+    put(&mut close, 3, 3);
+    STATE.with(|s| s.borrow_mut().input.extend(close));
+    command(4, None);
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn actual_disconnect_counts_are_once_before_ack_after_dispatch() {
+    reset(0);
+    drain_requests();
+    let mut out = HomeResult::initial();
+    assert_eq!(invoke(&mut out), 0);
+    assert_eq!((out.mutation_attempts, out.service.requests), (2, 3));
+    STATE.with(|s| {
+        let s = s.borrow();
+        assert_eq!(s.diagnostic.len(), 1, "AF09_DRAIN_COUNTER_ORDER");
+        assert_eq!(s.diagnostic[0], ([1, 1, 2, 0, 3, 0, 0, 0], 256, 256));
+        assert_eq!(s.output.len(), 320);
+        assert_eq!(s.closes, [READER, WRITER]);
+    });
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn actual_counter_values_are_not_fixed_success_literals() {
+    for mutate in [false, true] {
+        reset(0);
+        if mutate {
+            command(7, Some(b"x"));
+        }
+        command(4, None);
+        let mut out = HomeResult::initial();
+        assert_eq!(invoke(&mut out), 0);
+        let (mutations, requests) = if mutate { (3, 2) } else { (2, 1) };
+        assert_eq!(
+            (out.mutation_attempts, out.service.requests),
+            (mutations, requests)
+        );
+        STATE.with(|s| {
+            let s = s.borrow();
+            assert_eq!(s.diagnostic.len(), 1);
+            assert_eq!(
+                s.diagnostic[0].0,
+                [1, 1, mutations as u8, 0, requests as u8, 0, 0, 0]
+            );
+        });
+    }
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn counter_output_failure_never_sends_ack_and_attempts_both_closes() {
+    for returned in [-28, -13, -110, 0, 1, 7, 9, i64::MAX] {
+        reset(0);
+        drain_requests();
+        STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            s.diagnostic_return = Some(returned);
+            s.close_errors = [-9, -13];
+        });
+        let mut out = HomeResult::initial();
+        assert_eq!(invoke(&mut out), 5);
+        assert_eq!(out.service.error, if returned < 0 { returned } else { -5 });
+        assert_eq!(
+            (out.service.reader_close, out.service.writer_close),
+            (-9, -13)
+        );
+        STATE.with(|s| {
+            let s = s.borrow();
+            assert_eq!(s.diagnostic.len(), 1, "AF09_DRAIN_NO_ACK_RETRY");
+            assert_eq!(
+                (s.received, s.output.len()),
+                (256, 256),
+                "AF09_DRAIN_NO_ACK_RETRY"
+            );
+            assert_eq!(s.closes, [READER, WRITER]);
+        });
+    }
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn rejected_disconnect_has_no_counter_record() {
+    reset(0);
+    let mut invalid = message(READER, 4);
+    invalid[24] = 1;
+    STATE.with(|s| s.borrow_mut().input.extend(invalid));
+    let mut out = HomeResult::initial();
+    assert_eq!(invoke(&mut out), 5);
+    STATE.with(|s| {
+        let s = s.borrow();
+        assert!(s.diagnostic.is_empty());
+        assert_eq!(s.closes, [READER, WRITER]);
+    });
+}
+
+#[cfg(fs_af09_drain)]
+#[test]
+fn endpoint_record_checks_u16_conversion_and_preserves_actual_bytes() {
+    for (mutations, requests) in [(0, 0), (258, 772), (65535, 65535)] {
+        reset(0);
+        let mut endpoints = Endpoints {
+            reader: READER,
+            writer: WRITER,
+            closed: false,
+            flags: None,
+        };
+        assert_eq!(Io::af09_counts(&mut endpoints, mutations, requests), Ok(()));
+        let m = (mutations as u16).to_le_bytes();
+        let r = (requests as u16).to_le_bytes();
+        STATE.with(|s| {
+            assert_eq!(
+                s.borrow().diagnostic[0].0,
+                [1, 1, m[0], m[1], r[0], r[1], 0, 0]
+            )
+        });
+        assert_eq!(endpoints.close(), [0, 0]);
+    }
+    for (mutations, requests) in [(65536, 0), (0, 65536), (u64::MAX, u64::MAX)] {
+        reset(0);
+        let mut endpoints = Endpoints {
+            reader: READER,
+            writer: WRITER,
+            closed: false,
+            flags: None,
+        };
+        assert_eq!(
+            Io::af09_counts(&mut endpoints, mutations, requests),
+            Err(-75)
+        );
+        STATE.with(|s| assert!(s.borrow().diagnostic.is_empty()));
+        assert_eq!(endpoints.close(), [0, 0]);
+    }
 }

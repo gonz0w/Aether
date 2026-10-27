@@ -17,6 +17,8 @@ FLAGS = ('--no-default-config', '-std=c17', '-Wall', '-Wextra', '-Wpedantic', '-
          '-Werror', '-DAEFD_PATH_WIRE', '-DAEFD_DUP2_WIRE', '-DAEFD_WRITE_WIRE')
 PROFILE = dict(selection='fs_home_probe_three', provider_attempts=3, utc_min=1791290040,
     utc_max=1791290100, utc_half_open=True, rtc_base='2026-10-06T12:34:00')
+DRAIN_CASES = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
+               'partial_ack', 'exit_deadline', 'pending_fragment')
 DEPENDENCIES = (
     (R / 'build/service-deliveries/filesystem-fork-frame-2026-10-22-v1',
      'ec3697b200ca5a92aeb12c42b0f89a5c9744a6fbd85f8203991fa765763663e8'),
@@ -54,18 +56,36 @@ def verify(root, digest):
     return dict(path=str(root), manifest_sha256=digest, members=len(members))
 
 
-def build(work, proc, tools, deadline, record):
+def drain_selection(drain_case):
+    if not isinstance(drain_case, str) or drain_case not in ('none', *DRAIN_CASES):
+        raise ValueError('AF09 drain case must be none or one exact selected case')
+    return 0 if drain_case == 'none' else DRAIN_CASES.index(drain_case) + 1
+
+
+def build(work, proc, tools, deadline, record, *, drain_case='none'):
     """Return actual artifact paths; the caller owns work and all cleanup."""
+    case_id = drain_selection(drain_case)
+    profile = dict(PROFILE)
+    if case_id:
+        profile.update(selection='fs_af09_drain', provider_attempts=2)
     env = proc.clean_env(work)
     folder = work / 'home-probe-native'
     folder.mkdir()
     public = folder / 'public-fork'
     public.mkdir()
-    sources = {str(S / name): sha(S / name) for name in NAMES}
+    names = (*NAMES, 'fd-home-drain.c') if case_id else NAMES
+    sources = {str(S / name): sha(S / name) for name in names}
     sources[str(Path(__file__))] = sha(Path(__file__))
     record['home_probe_sources'] = sources
     record['home_probe_flags'] = list(FLAGS)
-    record['home_probe_profile'] = dict(PROFILE)
+    record['home_probe_profile'] = profile
+    selection = dict(drain_case=drain_case, drain_case_id=case_id,
+        parent_sources=list(UNITS) + (['fd-home-probe-adapter', 'fd-home-drain'] if case_id else []),
+        helper_sources=[u for u in UNITS if u != 'fd-shell-entry'] +
+            ['fd-command-entry', 'fd-home-probe-adapter', 'fd-home-probe'],
+        case_flags=['-DAEFD_HOME_DRAIN_CASE=' + str(case_id)] if case_id else [])
+    if case_id:
+        record['home_probe_selection'] = selection
     record['home_probe_dependencies'] = [verify(root, pin) for root, pin in DEPENDENCIES]
     bundle = DEPENDENCIES[1][0] / 'bundle'
     record['home_probe_dependencies'].append(verify(bundle,
@@ -97,8 +117,10 @@ def build(work, proc, tools, deadline, record):
         '-O2', '-fstack-usage', '-nostdinc', '-isystem', str(include), '-DAEFD_FORK_BINDINGS',
         '-DAEFD_EXEC_BINDINGS', '-I' + str(S)]
     try:
-        for unit in (*UNITS, 'fd-home-probe-adapter', 'fd-home-probe', 'fd-command-entry'):
-            run('home-target-' + unit, [tools['clang']['path'], *flags, '-c', S / (unit + '.c'),
+        for unit in (*UNITS, 'fd-home-probe-adapter', 'fd-home-probe', 'fd-command-entry',
+                     *(['fd-home-drain'] if case_id else [])):
+            case_flags = selection['case_flags'] if unit == 'fd-home-drain' else []
+            run('home-target-' + unit, [tools['clang']['path'], *flags, *case_flags, '-c', S / (unit + '.c'),
                 '-o', folder / (unit + '.o')])
         recipe_path = bundle / 'recipe.json'
         recipe = json.loads(recipe_path.read_text())
@@ -121,15 +143,31 @@ def build(work, proc, tools, deadline, record):
             require(len(steps) == 1, 'unique original link: ' + name)
             return [expand(a) for a in steps[0] if a.endswith(('.o', '.a')) and a not in excluded]
         shell_inputs = link_inputs('parent-link', ('@output/parent-runtime.o', '@output/parent-application.o'))
+        excluded = []
+        if case_id:
+            # Replace only the exact retained Dash application objects. CRT,
+            # memory, fork/rebind/wait and libc remain from the same recipe.
+            dash = str(bundle / 'producer/user/native-command') + '/'
+            groups = ('dash-inputs/obj/src/', 'dash-input-native/',
+                      'dash-fork-inputs/', 'dash-main-inputs/')
+            excluded = [arg for arg in shell_inputs if arg.startswith(dash)]
+            require(len(excluded) == 32 and len(set(excluded)) == 32 and
+                    all(arg[len(dash):].startswith(groups) and arg.endswith('.o') for arg in excluded) and
+                    sum(arg == dash + 'dash-main-inputs/main.o' for arg in excluded) == 1,
+                    'exact retained Dash application object closure')
+            shell_inputs = [arg for arg in shell_inputs if arg not in excluded]
+        selection['excluded_parent_objects'] = excluded
         helper_inputs = link_inputs('helper-link', ('@output/helper-runtime.o', '@output/helper-application.o', '@output/helper-body.o'))
         shell = folder / 'shell.elf'
         helper = folder / 'helper.elf'
         common = [tools['lld']['path'], '-static', '--no-undefined', '-z', 'noexecstack', '--wrap=main', '--wrap=_exit']
-        run('home-complete-shell-link', [*common, *[folder / (u + '.o') for u in UNITS], *shell_inputs, '-o', shell])
-        run('home-complete-helper-link', [*common, *[folder / (u + '.o') for u in UNITS if u != 'fd-shell-entry'],
-            folder / 'fd-command-entry.o', folder / 'fd-home-probe-adapter.o', folder / 'fd-home-probe.o',
-            *[public / name for name in ('fork.o', '_Fork.o', 'rebind.o', 'waitpid.o', 'wait3.o', 'wait4.o')],
-            *helper_inputs, '-o', helper])
+        parent_objects = [folder / (u + '.o') for u in selection['parent_sources']]
+        selection['parent_objects'] = list(map(str, [*parent_objects, *shell_inputs]))
+        run('home-complete-shell-link', [*common, *parent_objects, *shell_inputs, '-o', shell])
+        helper_objects = [folder / (u + '.o') for u in selection['helper_sources']]
+        helper_objects += [public / name for name in ('fork.o', '_Fork.o', 'rebind.o', 'waitpid.o', 'wait3.o', 'wait4.o')]
+        selection['helper_objects'] = list(map(str, [*helper_objects, *helper_inputs]))
+        run('home-complete-helper-link', [*common, *helper_objects, *helper_inputs, '-o', helper])
         artifacts = {}
         for label, path in (('shell', shell), ('helper', helper)):
             undefined = run('home-' + label + '-undefined', [tools['nm']['path'], '--undefined-only', path])
@@ -150,8 +188,11 @@ def build(work, proc, tools, deadline, record):
                 frames.append(dict(function=parts[0], bytes=int(parts[1])))
         record['home_probe_target'] = dict(artifacts=artifacts, local_frames=frames,
             scope='Actual complete shell/helper links with initialized TLS; native peak, kernel admission and guest execution remain separate.')
-        return dict(shell=shell, helper=helper, sources=sources, flags=list(flags),
-            dependencies=record['home_probe_dependencies'], artifacts=artifacts, tools=selected_tools, profile=dict(PROFILE))
+        result = dict(shell=shell, helper=helper, sources=sources, flags=list(flags),
+            dependencies=record['home_probe_dependencies'], artifacts=artifacts, tools=selected_tools, profile=profile)
+        if case_id:
+            result.update(drain_case=drain_case, drain_case_id=case_id, selection=selection)
+        return result
     finally:
         require(all(sha(path) == digest for path, digest in sources.items()), 'home probe source changed during build')
         require({str(p): sha(p) for p in sorted(include.rglob('*')) if p.is_file()} == expected,
