@@ -401,7 +401,8 @@ class NativeAf09Drain(unittest.TestCase):
                 options='' if selection is None else 'pub const native_af09_drain="'+selection+'";'
                 (out/'options.zig').write_text(options)
                 (out/'actual.zig').write_text('const Af09=@import("af09");\n'+declarations+'\ntest "default diagnostic state absent" { if (@sizeOf(@TypeOf(af09)) != 0) @compileError("AF09_DEFAULT_STATE"); }')
-                command=['zig','test','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global'),'--dep','af09','--dep','build_options','-Mroot='+str(out/'actual.zig'),'-Maf09='+str(ROOT/'kernel/native_af09_drain.zig'),'-Mbuild_options='+str(out/'options.zig')]
+                # Strip symbols only; default Debug safety and file caps remain.
+                command=['zig','test','-fstrip','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global'),'--dep','af09','--dep','build_options','-Mroot='+str(out/'actual.zig'),'-Maf09='+str(ROOT/'kernel/native_af09_drain.zig'),'-Mbuild_options='+str(out/'options.zig')]
                 result=self.capture(command,out)
                 if selection in (None,'none'):
                     self.assertEqual(result.returncode,0,result.stderr)
@@ -446,7 +447,7 @@ class NativeAf09Drain(unittest.TestCase):
                 name,body=item[:2];selected=name if name in cases else item[2];oracle=None if name in cases else item[3]
                 (out/'options.zig').write_text('pub const native_af09_drain="'+selected+'";pub const native_signal_suspend=false;pub const native_service_channel_wait=false;pub const native_no_output=false;pub const native_service_block=false;pub const native_skip_zero=false;pub const native_signal_actions=false;')
                 (out/'actual.zig').write_text(body)
-                command=['zig','test','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global')]
+                command=['zig','test','-fstrip','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global')]
                 command+=['--dep','kernel','--dep','build_options','-Mroot='+str(out/'actual.zig'),'-Mkernel='+facade.name,'-Mbuild_options='+str(out/'options.zig')]
                 if len(item)>4:
                     command+=['--test-filter',item[4]]
