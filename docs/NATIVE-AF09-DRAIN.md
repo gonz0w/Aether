@@ -253,6 +253,12 @@ READY,2 counter return,3 ACK return,4 engine exit. Setup-failure IDs: -1 identit
 -6 unexpected operation, -7 trace encoding. These diagnostic IDs are not native
 syscall errors or substituted results. Rows follow actual checks/effects.
 
+The owner closes its reply reader before its request writer. Phase19 therefore
+records exactly reply-side aux1 followed by request-side aux0, both with their
+actual successful status. The oracle preserves that order, the two distinct
+endpoint identities and the existing counter/close/retained-obligation ordering;
+it does not sort records or accept either order.
+
 A fixed256-byte buffer accommodates the worst250-byte permitted row. Limit
 AF09 output to32768 bytes, reserving256 bytes for one overflow row. Before an
 ordinary row would exceed the nonreserved budget, emit phase255 once and
@@ -268,6 +274,18 @@ overflow and wrong selected case. Match actual prepared image/input identities
 before parsing; unknown evidence never means success. Parent/child traffic,
 source cleanup, engine terminal/export and final Halt require their own typed
 facts. Host-created examples test parser behavior only.
+
+Writer validation retains the complete raw UART capture and its hash. Require
+one complete kernel-entry line, `AETHER M1: entered x86_64 kernel`, at its actual
+LF boundary. Firmware and bootloader bytes before that line may contain terminal
+escapes and CR; they are an uninterpreted preamble, not diagnostic evidence.
+Reject missing, repeated or embedded entry boundaries and protocol or failure
+markers hidden in the preamble. Keep kernel output strict ASCII/LF, including
+rejection of ESC, CR and NUL, and preserve every typed and ordinary witness
+check. Do not strip ANSI sequences, normalize line endings or alter the raw
+capture. Standalone trace decoding still preserves unparsed bytes verbatim.
+Historical transcript replay establishes parser behavior only; it cannot change
+the failed campaign's disposition or supply a skipped cold reader.
 
 ## Verification and ownership
 
