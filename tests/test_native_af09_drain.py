@@ -213,7 +213,14 @@ test "real source closes disposal late reads and false clean halt remain observa
  const bytes=[_]u8{0}**16;_=transfer(6,0,true,&bytes,16);tryCheck(af09.late_read==16 and af09.invalid,"LATE_CONSUMPTION");
  rendezvous(true);active=2;for(&channels)|*c|c.closeOwner(2);
  active=6;var f=Frame{.rax=0x24003,.rdi=channels[0].cap(0)};_=channelOperation(&f);tryCheck(channels[0].stream.count==0,"DISPOSAL");
- for([_]usize{4,5},0..) |index,i|{active=6;f=.{.rax=0x24003,.rdi=channels[index].cap(if(i==0)1 else 0)};_=channelOperation(&f);tryCheck(states[6].execution.frame.rax==0 and channels[index].owners[if(i==0)1 else 0]==null,"SOURCE_CLOSE_EFFECT");}
+ // Actual Endpoints.close() releases its reply reader before request writer.
+ for([_]usize{5,4}) |index|{active=6;const side:usize=if(index==5)0 else 1;f=.{.rax=0x24003,.rdi=channels[index].cap(side)};_=channelOperation(&f);tryCheck(states[6].execution.frame.rax==0 and channels[index].owners[side]==null,"SOURCE_CLOSE_EFFECT");}
+ var close_rows=std.mem.splitScalar(u8,capture[0..captured],'\n');var close_count:usize=0;
+ while(close_rows.next()) |line|{if(std.mem.indexOf(u8,line," phase=19 ")!=null){
+  tryCheck(close_count<2,"SOURCE_CLOSE_ORDER");
+  tryCheck(std.mem.endsWith(u8,line,if(close_count==0)" aux=1" else " aux=0"),"SOURCE_CLOSE_ORDER");close_count+=1;
+ }}
+ tryCheck(close_count==2,"SOURCE_CLOSE_ORDER");
  tryCheck(af09.source_closes==3,"BOTH_SOURCE_CLOSES");
  for(&channels)|*c|{c.closeOwner(0);c.closeOwner(6);}
  states[1].admitted=false;states[2].admitted=false;states[0].admitted=true;
@@ -317,6 +324,7 @@ class NativeAf09Drain(unittest.TestCase):
           ('engine-wide-block','if (session_lifecycle and next.channel_wait.endpoint != 0)','if ((session_lifecycle and next.channel_wait.endpoint != 0) or af09Blocked(candidate))','HELPER_RUNNABLE','scheduler'),
           ('late-read-unobserved','af09.late_read += amount;','af09.late_read += 0;','LATE_CONSUMPTION','real source closes'),
           ('source-close-omitted','const closed = selected.close(active, f.rdi);','const closed: i64 = 0;','DISPOSAL','real source closes'),
+          ('source-close-wrong-side','af09Row(19, 6, status, 0, @intFromBool(af09Matches(c, 5)));','af09Row(19, 6, status, 0, @intFromBool(af09Matches(c, 4)));','SOURCE_CLOSE_ORDER','real source closes'),
           ('false-clean','for (states[0..workerCount()]) |*worker| busy = busy or worker.admitted;','','HALT','real source closes'),
         )
         for name,old,new,oracle,test_filter in mutations:

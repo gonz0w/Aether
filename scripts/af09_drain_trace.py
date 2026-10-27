@@ -99,6 +99,26 @@ def parse_trace(capture: bytes, selection: str) -> Trace:
     return Trace(tuple(rows), tuple(unparsed))
 
 
+def _kernel_capture(capture: bytes) -> bytes:
+    """Bound the raw capture, then isolate the one source-emitted kernel line.
+
+    Firmware bytes stay verbatim in the caller's capture. They may contain UEFI
+    console controls, but cannot hide any protocol, terminal or failure marker.
+    """
+    if not isinstance(capture, bytes) or len(capture) > CAPTURE_LIMIT:
+        raise ValueError('AF09 capture type or limit')
+    entry = b'AETHER M1: entered x86_64 kernel'
+    boundary = b'\n' + entry + b'\n'
+    if capture.count(entry) != 1 or capture.count(boundary) != 1:
+        raise ValueError('AF09 witness unique canonical kernel entry')
+    start = capture.index(boundary) + 1
+    preamble = capture[:start]
+    if any(marker in preamble for marker in (b'AF09', b'AF07', b'NATIVE',
+                                              b'AETHER', b'PANIC', b'\x00')):
+        raise ValueError('AF09 witness protocol or failure in firmware preamble')
+    return capture[start:]
+
+
 def validate_witness(capture: bytes, selection: str, admission: dict) -> dict:
     """Check a prospective complete writer transcript after artifact association.
 
@@ -106,7 +126,8 @@ def validate_witness(capture: bytes, selection: str, admission: dict) -> dict:
     and measured admission. This validates observations, not guest execution or
     filesystem durability. Clean cases still require an independent cold reader.
     """
-    trace = parse_trace(capture, selection)
+    kernel = _kernel_capture(capture)
+    trace = parse_trace(kernel, selection)
     rows = trace.rows
     by_phase = {phase: [r for r in rows if r.phase == phase] for phase in PHASES}
 
@@ -183,7 +204,7 @@ def validate_witness(capture: bytes, selection: str, admission: dict) -> dict:
         matching = next(w for w in writes if w.count == r.count)
         before(matching, r)
     closes = by_phase[19]
-    require(len(closes) == 2 and [r.aux for r in closes] == [0, 1]
+    require(len(closes) == 2 and [r.aux for r in closes] == [1, 0]
             and all(r.status == 0 for r in closes), 'actual both source-close results')
     before(counter, closes[0]); before(closes[0], closes[1]); before(closes[1], retained)
     require((retained.count, retained.aux) == (1, 1), 'admitted backing at source close')
@@ -250,7 +271,7 @@ def validate_witness(capture: bytes, selection: str, admission: dict) -> dict:
         require(not by_phase[26], 'unexpected deferred park')
     for r in by_phase[24]:
         require(r.status == -11 and r.aux in range(1, 7), 'EAGAIN direction/status')
-    _writer_uart(trace, capture, negative, admission)
+    _writer_uart(trace, kernel, negative, admission)
     return dict(format='aether-af09-drain-writer-transcript-v1', case=selection,
                 status='pass', native_executed=False, provider_attempts=2,
                 service_requests=3, late_consumed=0, late_discarded=32,
@@ -265,9 +286,9 @@ def _writer_uart(trace, capture, negative, admission):
         text = raw.decode('ascii')
     except UnicodeDecodeError as error:
         raise ValueError('AF09 witness non-ASCII UART') from error
-    if '\x00' in text or '\x1b' in text or '\r' in text:
+    if any(value != 10 and not 32 <= value <= 126 for value in capture):
         raise ValueError('AF09 witness malformed UART')
-    lines = text.splitlines()
+    lines = text.split('\n')
 
     def exact(prefix, pattern):
         result = []
@@ -323,7 +344,7 @@ def _writer_uart(trace, capture, negative, admission):
           or not text.endswith('AETHER NATIVE BLOCK PASS\n')
           or lines.count('AETHER NATIVE BLOCK PASS') != 1 or 'PANIC' in text or 'NATIVE fault ' in text):
         raise ValueError('AF09 witness complete clean UART')
-    full_lines = capture.decode('ascii').splitlines()
+    full_lines = capture.decode('ascii').split('\n')
     def position(line):
         if full_lines.count(line) != 1:
             raise ValueError('AF09 witness duplicate/missing ordinary boundary')
