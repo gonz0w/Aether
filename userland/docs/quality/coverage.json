@@ -1915,7 +1915,7 @@
     },
     {
       "id": "UD-af09-drain-host",
-      "surface": "Independent AF09 C fixture and cfg-only actual pre-ACK counter host prerequisites; kernel diagnostic and native acceptance remain pending",
+      "surface": "AF09 C fixture with existing native-yield callback, cfg-only actual pre-ACK counter and kernel diagnostic host prerequisites; native acceptance remains separate",
       "kind": "subsystem",
       "owner": "Aether-userland/Aether/sys-init",
       "status": "draft",

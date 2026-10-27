@@ -66,6 +66,12 @@ class ControllerTests(unittest.TestCase):
             checks.finish(self.record, {}, self.work, 0, 300, self.destination)
         return json.loads(self.destination.read_text())
 
+    def test_recipe_keeps_native_yield_visible(self):
+        self.assertFalse(any("sched_yield" in flag for flag in checks.DOUBLES))
+        self.assertIn("-Dpipe=aefd_home_drain_test_pipe", checks.DOUBLES)
+        self.assertIn("-Dfork=aefd_home_drain_test_fork", checks.DOUBLES)
+        self.assertIn("-D__builtin_trap=aefd_home_drain_test_trap", checks.DOUBLES)
+
     def test_check_retains_helper_raise(self):
         def run(*args, **kwargs):
             raise RuntimeError("mock helper raised after possibly starting child")

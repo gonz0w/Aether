@@ -1,11 +1,12 @@
 # AF09 admission and drain diagnostic
 
-[Issue75](https://github.com/gonz0w/Aether/issues/75) owns implementation and
-continuation; [issue64](https://github.com/gonz0w/Aether/issues/64) owns native
-acceptance. This reference describes the implemented experimental compiled
+[Issue75](https://github.com/gonz0w/Aether/issues/75) records the initial
+implementation; [issue77](https://github.com/gonz0w/Aether/issues/77) records
+the native-yield correction. [Issue64](https://github.com/gonz0w/Aether/issues/64)
+owns native acceptance. This reference describes the implemented experimental compiled
 diagnostic family and its host checks. Complete current qualification, target
 fit/preparation and native witness gates remain separate; no guest is selected.
-Base: public main `33ace875cbd9dafc94aebd93f20c29dbd6546698`.
+Initial design base: public main `33ace875cbd9dafc94aebd93f20c29dbd6546698`.
 
 ## Review decision
 
@@ -54,7 +55,11 @@ returning through C descriptor cleanup or waiting for the child. Unexpected trap
 return is a fixture failure. The child completes genuine startup304/READY32 and
 parent-disposition32, explicitly calls existing native READY after fork return,
 then sends two real16-byte chunks on its authenticated owner request endpoint.
-It subsequently yields without reading a reply or performing descriptor cleanup.
+It subsequently yields through its existing native callback with operation
+`0x1fffe` and four zero arguments, without reading a reply or performing
+descriptor cleanup. A zero result continues waiting; a nonzero result preserves
+fixture failure119. This path must not call libc `sched_yield`, whose Linux-style
+operation is unsupported by the selected native kernel.
 
 The first three success cases retain their continuation in initialized process
 memory; only32 bytes are queued. Existing encoders and actual identity/descriptor

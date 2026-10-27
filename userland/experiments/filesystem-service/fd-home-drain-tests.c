@@ -2,6 +2,7 @@
 /* Actual startup/fork/codec/adapters; synthetic authenticated native transport.
  * No guest, scheduler, storage or authority-enforcement qualification. */
 #include "fd-home-drain.h"
+#include <sched.h>
 #include <setjmp.h>
 #include <stdlib.h>
 int aefd_fork_baseline_main(void);
@@ -11,7 +12,6 @@ int aefd_fork_baseline_main(void);
 
 int aefd_home_drain_test_pipe(int pair[2]);
 pid_t aefd_home_drain_test_fork(void);
-int aefd_home_drain_test_yield(void);
 unsigned long aefd_home_drain_test_auxv(unsigned long);
 _Noreturn void aefd_home_drain_test_trap(void);
 
@@ -19,8 +19,9 @@ static unsigned char request[608], response[128], parent_reference[304];
 static size_t received, replied, response_length;
 static unsigned opens, pipes, forks, native_ready, late_calls, exits, yields;
 static unsigned serial, ready_serial, late_serial, checks, traps;
-static unsigned test_mode;
-static int child_lane, late, rpc;
+static unsigned test_mode, forbidden_yields, yield_serial;
+static int64_t yield_result;
+static int child_lane, late, rpc, run_active;
 static jmp_buf completed;
 
 #define CHECK(x, label)                                                        \
@@ -68,7 +69,34 @@ static int64_t drain_call(void *context, uint64_t op, uint64_t cap, uint64_t a,
                           uint64_t b, uint64_t tail)
 {
     ++serial;
+    CHECK(op != 0x10018, "UNSUPPORTED_LIBC_YIELD_OPCODE");
     CHECK(!exits, "NO_NATIVE_CLEANUP_OR_WAIT_AFTER_EXIT_RETURN");
+    CHECK(!run_active || !yields || op == 0x1fffe,
+          "NO_EXTRA_OPERATION_AFTER_NATIVE_YIELD");
+    if (op == 0x1fffe) {
+        CHECK(context == &f && !cap && !a && !b && !tail &&
+                  f.fork.boot.identity.slot == 2 && native_ready == 1 &&
+                  late_calls == 2 && received == 32 && opens == 1 &&
+                  pipes == 1 && forks == 1 && ready_serial < late_serial &&
+                  late_serial < serial && !f.new_closes && !f.old_closes &&
+                  !f.fork.boot.context.native.active &&
+                  !f.fork.boot.context.native.busy &&
+                  !f.fork.boot.context.native.retired &&
+                  !f.fork.boot.context.native.closed && f.mask == UINT64_MAX,
+              "TWO_WRITES_THEN_YIELD_NO_CLEANUP");
+        CHECK(!yields || serial == yield_serial + 1,
+              "REPEATED_NATIVE_YIELD_NO_EXTRA_OPERATION");
+        yield_serial = serial;
+        ++yields;
+        if (yield_result) {
+            CHECK(yields == 1, "NATIVE_YIELD_ERROR_NO_RETRY");
+            return yield_result;
+        }
+        if (yields == 3)
+            longjmp(completed,
+                    2); /* Bounded host escape, not guest completion. */
+        return 0;
+    }
     if (op == 0x100e7) {
         CHECK(!cap && !a && !b && !tail && forks == 1 && !native_ready &&
                   !late_calls && f.fork.boot.identity.slot == 1,
@@ -177,14 +205,11 @@ pid_t aefd_home_drain_test_fork(void)
         return -1;
     return 0;
 }
-int aefd_home_drain_test_yield(void)
+/* Deliberately finite forbidden libc path; never a successful yield double. */
+int sched_yield(void)
 {
-    CHECK(native_ready == 1 && late_calls == 2 && received == 32 &&
-              ready_serial < late_serial && !f.new_closes && !f.old_closes &&
-              !f.fork.boot.context.native.active,
-          "TWO_WRITES_THEN_YIELD_NO_CLEANUP");
-    ++yields;
-    longjmp(completed, 2);
+    ++forbidden_yields;
+    return -1;
 }
 _Noreturn void aefd_home_drain_test_trap(void)
 {
@@ -209,6 +234,8 @@ static void drain_setup(void)
     received = replied = response_length = 0;
     opens = pipes = forks = native_ready = late_calls = exits = yields = 0;
     serial = ready_serial = late_serial = traps = 0;
+    forbidden_yields = yield_serial = 0;
+    yield_result = 0;
     late = rpc = 0;
     test_mode = 0;
     CHECK(!aefd_startup_start(&f.fork.boot, drain_call, &f, f.aux),
@@ -223,8 +250,13 @@ static int run_lane(unsigned which, int child)
 {
     child_lane = child;
     int done = setjmp(completed);
-    if (!done)
-        return aefd_home_drain_run(&f.fork, which);
+    if (!done) {
+        run_active = 1;
+        int result = aefd_home_drain_run(&f.fork, which);
+        run_active = 0;
+        return result;
+    }
+    run_active = 0;
     CHECK(done == (test_mode == 6 ? 3 : child ? 2 : 1), "LANE_TERMINAL");
     return 0;
 }
@@ -237,8 +269,11 @@ static void run_cases(void)
               "PARENT_EXITS_WITH_SHARED_FILE_AND_PIPE");
         ++checks;
         drain_setup();
-        CHECK(!run_lane(which, 1) && yields == 1 && opens == 1 && pipes == 1 &&
-                  forks == 1 && received == 32,
+        int result = run_lane(which, 1);
+        CHECK(yields == 3 && !forbidden_yields,
+              "NATIVE_YIELD_REQUIRED_FORBIDDEN_LIBC_DENIED");
+        CHECK(!result && opens == 1 && pipes == 1 && forks == 1 &&
+                  received == 32,
               "CHILD_RUN");
         if (which == AEFD_DRAIN_FORK_PREFIX)
             CHECK(!memcmp(request, parent_reference, 32),
@@ -261,6 +296,19 @@ static void run_cases(void)
                       aefd_word(request, 2) == 18 && aefd_word(request, 3) == 1,
                   "FILE_PREFIX_ACTUAL_CHILD_GENERATION_SEQUENCE");
         ++checks;
+    }
+    const int64_t rejected_yields[3] = {-38, -1, 1};
+    for (unsigned which = 1; which <= 8; ++which) {
+        for (unsigned failure = 0; failure < 3; ++failure) {
+            drain_setup();
+            yield_result = rejected_yields[failure];
+            CHECK(run_lane(which, 1) == 119 && yields == 1 &&
+                      !forbidden_yields && serial == yield_serial &&
+                      !f.old_closes && !f.new_closes && !exits &&
+                      !f.fork.boot.context.native.active,
+                  "NATIVE_YIELD_NONZERO119_NO_LATER_EFFECT");
+            ++checks;
+        }
     }
     for (unsigned mode = 1; mode <= 5; ++mode) {
         drain_setup();
