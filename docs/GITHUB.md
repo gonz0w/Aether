@@ -151,9 +151,17 @@ pinned action revisions. Keep jobs bounded and cancel superseded runs. Do not ad
 secrets, paid runners, deployments or automatic releases for this onboarding.
 
 The CI jobs are **Source integrity** (Agent Temper digests, selected
-Python syntax/JSON and conventional PR titles) and **Kernel models** (self-contained
-pure Zig roots). They must run from the curated public tree without
-private standards or SDK/service deliveries. They do not check standards pins.
+Python syntax/JSON and conventional PR titles) and **Kernel models** (five
+self-contained pure Zig roots plus the complete three-method AF09 actual-body
+suite). Both jobs retain a five-minute whole-job timeout. The AF09 command is:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -p test_native_af09_drain.py -v
+```
+
+They must run from the curated public tree without private standards or SDK/service
+deliveries. They do not check standards pins or establish native or full host
+qualification.
 Do not substitute `zig build test`, a full component aggregate or a broad
 other-OS campaign when those inputs or qualification are absent.
 
