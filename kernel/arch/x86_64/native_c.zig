@@ -219,7 +219,9 @@ fn af09Output(f: *const Frame, offset: usize, count: usize) void {
     }
     af09.counter_seen = true;
     af09Row(16, 0, 8, std.mem.readInt(u16, bytes[2..4], .little), std.mem.readInt(u16, bytes[4..6], .little));
-    if (af09_mode == .no_ack or af09_mode == .pending_fragment) _ = af09Hold(0, .counter);
+    if (af09_mode == .no_ack or af09_mode == .pending_fragment) {
+        if (af09Hold(0, .counter) and af09_mode == .pending_fragment) publishSustained();
+    }
 }
 fn af09Prefix() bool {
     if (!af09_enabled) return false;

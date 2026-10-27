@@ -130,7 +130,11 @@ For `exit_deadline`, hold the real normal-exit trap before finish publishes
 terminal, after actual ACK and cleanup/export observations.
 
 For `pending_fragment`, first hold the engine at the same completed checked
-output8 return as `no_ack`, before any ACK send. Keep it held until actual
+output8 return as `no_ack`, before any ACK send. Only after validated counter
+output and a successful hold, publish one existing sustained event. If the owner
+parked before counters, it completes its ordinary event wait, reobserves and gets
+ACK-channel EAGAIN again before reparking into the deferred path. Counter-first
+arrival uses the same deferred path. Keep the engine held until actual postcounter
 owner ACK-channel EAGAIN and deferred park capture. Defer the
 owner's validated park before Events.park and keep Events unoccupied. Save only
 its actual expected sequence and D. Release the completed counter return, allow
