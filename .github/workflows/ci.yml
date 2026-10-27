@@ -134,3 +134,13 @@ jobs:
             grep -Eq '^All [1-9][0-9]* tests? passed\.$' "$RUNNER_TEMP/kernel-model.log"
           done
           git diff --exit-code
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14.7'
+      - name: Exercise complete AF09 actual-body regressions
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s tests -p test_native_af09_drain.py -v
+          git diff --exit-code

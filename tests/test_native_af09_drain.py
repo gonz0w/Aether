@@ -71,7 +71,6 @@ fn refreshChannelWaits()void{}
 fn resumeSuspended(_: *State)void{}
 fn traceStorageChannelWait(_:usize,_:[]const u8,_:i64)void{}
 fn result(s:*State,value:i64)void{s.context().frame.rax=@bitCast(value);}
-fn publishSustained()void{sustained_events.publish(total_ticks) catch unreachable;}
 fn reset()void{
  states=@splat(.{});channels=@splat(.{});active=6;idle=false;reclaimed=0;idle_ticks=0;total_ticks=10;sustained_events=.{};af09=.{};captured=0;
  for(&channels,0..) |*c,i|{c.identity=i;_=c.createSession(6);}
@@ -126,15 +125,18 @@ fn settle()void{
  active=6;_=reclaimEntry(2);active=6;_=reclaimEntry(1);
  tryCheck(af09Settled() and reclaimed==2,"ACTUAL_SETTLEMENT");
 }
-fn counts()void{
+fn counterTransfers()void{
  settle();
  // These ledger values are driven by actual checked transfers, rather than
  // assigning progress counters or invoking hook-only transfer stand-ins.
  const bytes=[_]u8{0}**16;
  for(0..16) |_|{_=transfer(6,4,false,&bytes,16);_=transfer(0,4,true,&bytes,16);_=transfer(0,5,false,&bytes,16);_=transfer(6,5,true,&bytes,16);}
+}
+fn counterOutput()void{
  states[0].backing[0][0..8].*=.{1,1,2,0,3,0,0,0};active=0;
  const f=Frame{.rax=0x10001,.rdi=1,.rsi=0x1000,.rdx=8};_=outputEntry(&f);
 }
+fn counts()void{counterTransfers();counterOutput();}
 '''
 CASES = r'''
 test "both checkpoint arrival orders preserve saved primary FS FP and wait state" {
@@ -192,6 +194,103 @@ test "fixed timing and pending fragment use actual Events deadline precedence" {
  }else if(af09_mode==.exit_deadline){
   for(0..4) |_|{_=transfer(0,5,false,&bytes,16);_=transfer(6,5,true,&bytes,16);}
   active=0;tryCheck(af09BeforeExit(0,1) and !states[0].terminal,"EXIT_PRETERMINAL");
+ }
+}
+test "pending counter arrival orders wake ordinary Events before deferred ACK" {
+ if(af09_mode!=.pending_fragment)return;
+ for([_]bool{true,false}) |owner_first|{
+  rendezvous(true);counterTransfers();const bytes=[_]u8{0}**16;
+  tryCheck(!af09.counter_seen and af09.engine_hold==.none,"COUNTER_NOT_PRESEEDED");
+  if(owner_first){
+   tryCheck(transfer(6,5,true,&bytes,16)==-11 and !af09.ack_eagain,"PRECOUNTER_EAGAIN");
+   active=6;const park=Frame{.rax=0x2a001,.rdi=0xe002,.rsi=sustained_events.sequence,.rdx=af09.deadline};_=sustainedOperation(&park);
+   tryCheck(sustained_events.parked() and !af09.deferred_park,"ORDINARY_OWNER_PARK");
+   const expected=sustained_events.sequence;counterOutput();
+   tryCheck(!sustained_events.occupied and states[6].execution.frame.rax==0 and states[6].execution.frame.rdx>expected,"COUNTER_EVENT_WAKE");
+  }else{counterOutput();}
+  tryCheck(af09.counter_seen and af09.engine_hold==.counter and af09.ack_written==0 and !af09.invalid,"COUNTER_STILL_HELD");
+  active=6;const observe=Frame{.rax=0x2a000,.rdi=0xe002};_=sustainedOperation(&observe);
+  const saved=states[6].execution.frame.rdx;
+  tryCheck(transfer(6,5,true,&bytes,16)==-11 and af09.ack_eagain,"POSTCOUNTER_EAGAIN");
+  active=6;const park=Frame{.rax=0x2a001,.rdi=0xe002,.rsi=saved,.rdx=af09.deadline};_=sustainedOperation(&park);
+  tryCheck(af09.deferred_park and !sustained_events.occupied and af09.engine_hold==.none,"ORDER_DEFERRED_RELEASE");
+  tryCheck(transfer(0,5,false,&bytes,16)==16 and af09.ack_written==16 and af09.ack_read==0 and af09.engine_hold==.ack,"ORDER_REAL_ACK_FRAGMENT");
+  while(total_ticks<af09.deadline){idle=true;const irq=Frame{.cs=8,.vector=32};_=idleIrq(&irq);}
+  tryCheck(@as(i64,@bitCast(states[6].execution.frame.rax))==-110 and states[6].execution.frame.r8==510 and af09.deadline==510,"ORDER_FIXED_DEADLINE");
+  tryCheck(channels[5].stream.count==16 and af09.ack_read==0 and !af09.invalid,"ORDER_FRAGMENT_UNCONSUMED");
+  var rows=std.mem.splitScalar(u8,capture[0..captured],'\n');var deferred:usize=0;var counter_wake:usize=0;
+  while(rows.next()) |line|{
+   if(std.mem.indexOf(u8,line," phase=26 ")!=null)deferred+=1;
+   if(std.mem.indexOf(u8,line," phase=11 ")!=null and std.mem.indexOf(u8,line," status=0 ")!=null)counter_wake+=1;
+  }
+  tryCheck(deferred==2 and counter_wake==@intFromBool(owner_first),"ORDER_EVENT_AND_TWO_REGISTRATIONS");
+ }
+}
+test "pending notification requires validated counter and successful hold" {
+ if(af09_mode!=.pending_fragment)return;
+ for(0..5) |bad|{
+  rendezvous(true);counterTransfers();const sequence=sustained_events.sequence;
+  switch(bad){
+   0=>states[0].generation+=1,
+   1=>channels[5].generation+=1,
+   2=>states[0].execution.wait.address=0x1000,
+   3=>states[0].on_child=true,
+   4=>states[0].output_count=1,
+   else=>unreachable,
+  }
+  counterOutput();
+  tryCheck(af09.invalid and sustained_events.sequence==sequence and af09.engine_hold==.none,"NO_INVALID_COUNTER_WAKE");
+ }
+ rendezvous(true);counts();const sequence=sustained_events.sequence;counterOutput();
+ tryCheck(af09.invalid and sustained_events.sequence==sequence,"NO_DUPLICATE_WAKE");
+ rendezvous(true);counterTransfers();active=0;states[0].backing[0][0..8].*=.{1,1,2,0,3,0,0,1};
+ const bad=Frame{.rax=0x10001,.rdi=1,.rsi=0x1000,.rdx=8};const before=sustained_events.sequence;_=outputEntry(&bad);
+ tryCheck(af09.invalid and !af09.counter_seen and sustained_events.sequence==before,"NO_MALFORMED_COUNTER_WAKE");
+}
+test "pending repark rejects missing postcounter EAGAIN future and exhausted sequence" {
+ if(af09_mode!=.pending_fragment)return;
+ const bytes=[_]u8{0}**16;
+ for(0..3) |bad|{
+  rendezvous(true);counterTransfers();
+  tryCheck(transfer(6,5,true,&bytes,16)==-11 and !af09.ack_eagain,"EARLY_EAGAIN_NOT_ARMED");
+  counterOutput();
+  if(bad!=0)tryCheck(transfer(6,5,true,&bytes,16)==-11,"DENIAL_POSTCOUNTER_EAGAIN");
+  if(bad==2)sustained_events.sequence=std.math.maxInt(u64);
+  active=6;const park=Frame{.rax=0x2a001,.rdi=0xe002,.rsi=sustained_events.sequence+@as(u64,if(bad==1)1 else 0),.rdx=af09.deadline};_=sustainedOperation(&park);
+  tryCheck(af09.invalid and !af09.deferred_park and af09.engine_hold==.counter and af09.ack_written==0,"INVALID_REPARK_KEEPS_ENGINE_HELD");
+ }
+}
+test "counter notification remains limited to pending fragment" {
+ rendezvous(true);counterTransfers();const sequence=sustained_events.sequence;counterOutput();
+ tryCheck(sustained_events.sequence==sequence+@as(u64,@intFromBool(af09_mode==.pending_fragment)),"ONLY_PENDING_COUNTER_EVENT");
+}
+test "pending actual channel rejects short extra ACK and resumed deadline" {
+ if(af09_mode!=.pending_fragment)return;
+ const bytes=[_]u8{0}**16;
+ for(0..4) |bad|{
+  rendezvous(true);counts();
+  if(bad==0){
+   _=transfer(0,5,false,&bytes,16);
+   tryCheck(af09.invalid and !af09.deferred_park,"NO_ACK_BEFORE_DEFERRED_PARK");
+   continue;
+  }
+  tryCheck(transfer(6,5,true,&bytes,16)==-11,"ACK_SIZE_EAGAIN");
+  active=6;const park=Frame{.rax=0x2a001,.rdi=0xe002,.rsi=sustained_events.sequence,.rdx=af09.deadline};_=sustainedOperation(&park);
+  tryCheck(af09.deferred_park and af09.engine_hold==.none,"ACK_SIZE_DEFERRED");
+  if(bad==1){
+   _=transfer(0,5,false,bytes[0..8],8);
+   tryCheck(af09.invalid and af09.ack_written==8 and af09.ack_read==0,"NO_SHORT_ACK");
+  }else{
+   _=transfer(0,5,false,&bytes,16);
+   tryCheck(!af09.invalid and af09.engine_hold==.ack,"ACK_SIZE_FIRST_FRAGMENT");
+   if(bad==2){
+    _=transfer(0,5,false,&bytes,16);
+    tryCheck(af09.invalid and af09.ack_written==32 and af09.ack_read==0,"NO_EXTRA_ACK");
+   }else{
+    total_ticks=af09.deadline+1;af09Refresh();
+    tryCheck(af09.invalid and af09.deferred_park and !sustained_events.occupied and af09.deadline==510,"NO_RESUMED_DEADLINE");
+   }
+  }
  }
 }
 test "cancel only matching generations and never renew a missed window" {
@@ -263,7 +362,7 @@ class NativeAf09Drain(unittest.TestCase):
     def source(self):
         native=(ROOT/'kernel/arch/x86_64/native_c.zig').read_text()
         hooks=native[native.index('// Diagnostic hooks execute'):native.index('const elf =')]
-        functions='\n'.join(block(native,'fn '+name+'(') for name in ('byte','channelBuffer','ownedChannel','channelOperation','rotate','refreshSustained','sustainedOperation','handle','lookup'))
+        functions='\n'.join(block(native,'fn '+name+'(') for name in ('byte','channelBuffer','ownedChannel','channelOperation','rotate','publishSustained','refreshSustained','sustainedOperation','handle','lookup'))
         functions=block(native,'const ChannelBuffer = struct')+';\n'+functions
         tick=block(native,'fn nativeTick(')
         functions+='\n'+tick[:tick.index('    const monotonic')]+'}\n'
@@ -302,7 +401,8 @@ class NativeAf09Drain(unittest.TestCase):
                 options='' if selection is None else 'pub const native_af09_drain="'+selection+'";'
                 (out/'options.zig').write_text(options)
                 (out/'actual.zig').write_text('const Af09=@import("af09");\n'+declarations+'\ntest "default diagnostic state absent" { if (@sizeOf(@TypeOf(af09)) != 0) @compileError("AF09_DEFAULT_STATE"); }')
-                command=['zig','test','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global'),'--dep','af09','--dep','build_options','-Mroot='+str(out/'actual.zig'),'-Maf09='+str(ROOT/'kernel/native_af09_drain.zig'),'-Mbuild_options='+str(out/'options.zig')]
+                # Strip symbols only; default Debug safety and file caps remain.
+                command=['zig','test','-fstrip','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global'),'--dep','af09','--dep','build_options','-Mroot='+str(out/'actual.zig'),'-Maf09='+str(ROOT/'kernel/native_af09_drain.zig'),'-Mbuild_options='+str(out/'options.zig')]
                 result=self.capture(command,out)
                 if selection in (None,'none'):
                     self.assertEqual(result.returncode,0,result.stderr)
@@ -319,6 +419,8 @@ class NativeAf09Drain(unittest.TestCase):
           ('missing-generation','states[slot].generation != af09.generations[slot]','false','STALE_CHILD','only exact'),
           ('no-primary-exclusion',' or (af09_enabled and af09Blocked(candidate))','','HELD_PRIMARY_IDLE','scheduler'),
           ('renewed-deadline','if (f.rdx != af09.deadline)','if (f.rdx == 0)','NO_RENEWAL','renewed deadline'),
+          ('counter-wake-omitted','if (af09Hold(0, .counter) and af09_mode == .pending_fragment) publishSustained();','_ = af09Hold(0, .counter);','COUNTER_EVENT_WAKE','pending counter arrival orders'),
+          ('counter-hold-ignored','if (af09Hold(0, .counter) and af09_mode == .pending_fragment) publishSustained();','const held = af09Hold(0, .counter); _ = held; if (af09_mode == .pending_fragment) publishSustained();','NO_INVALID_COUNTER_WAKE','pending notification'),
           ('early-events','af09.deferred_park = true;','af09.deferred_park = true; sustained_events.park(f.rsi,total_ticks,af09.deadline,false) catch unreachable;','DEFER_BEFORE_EVENTS','fixed timing'),
           ('early-child-release','if (slot == 2) af09.child_hold = hold','if (slot == 2) af09.child_hold = .none','READY_HOLD','both checkpoint'),
           ('engine-wide-block','if (session_lifecycle and next.channel_wait.endpoint != 0)','if ((session_lifecycle and next.channel_wait.endpoint != 0) or af09Blocked(candidate))','HELPER_RUNNABLE','scheduler'),
@@ -330,7 +432,14 @@ class NativeAf09Drain(unittest.TestCase):
         for name,old,new,oracle,test_filter in mutations:
             if not oracle:continue
             self.assertIn(old,source,name)
-            variants.append((name,source.replace(old,new),'pending_fragment' if name=='early-events' else 'no_ack',oracle,test_filter))
+            variants.append((name,source.replace(old,new),'pending_fragment' if name in ('early-events','counter-wake-omitted','counter-hold-ignored') else 'no_ack',oracle,test_filter))
+        self.run_variants(variants)
+
+    def test_pending_counter_arrival_orders(self):
+        self.run_variants([('pending_fragment',self.source(),None,None,'pending counter arrival orders')])
+
+    def run_variants(self, variants):
+        cases=('file_prefix','exec_prefix','fork_prefix','stream','no_ack','partial_ack','exit_deadline','pending_fragment')
         with tempfile.TemporaryDirectory(prefix='aether-af09-kernel-') as directory, tempfile.NamedTemporaryFile(mode='w',prefix='.af09-host-imports-',suffix='.zig',dir=ROOT/'kernel') as facade:
             out=Path(directory)
             facade.write('pub const C=@import("native_channel.zig");pub const Sustained=@import("native_sustained.zig");pub const E=@import("arch/x86_64/native_execution.zig");pub const Frame=@import("arch/x86_64/context.zig").Frame;pub const FsRoles=@import("arch/x86_64/native_fs_roles.zig");pub const Af09=@import("native_af09_drain.zig");');facade.flush()
@@ -338,9 +447,9 @@ class NativeAf09Drain(unittest.TestCase):
                 name,body=item[:2];selected=name if name in cases else item[2];oracle=None if name in cases else item[3]
                 (out/'options.zig').write_text('pub const native_af09_drain="'+selected+'";pub const native_signal_suspend=false;pub const native_service_channel_wait=false;pub const native_no_output=false;pub const native_service_block=false;pub const native_skip_zero=false;pub const native_signal_actions=false;')
                 (out/'actual.zig').write_text(body)
-                command=['zig','test','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global')]
+                command=['zig','test','-fstrip','--cache-dir',str(out/'cache'),'--global-cache-dir',str(out/'global')]
                 command+=['--dep','kernel','--dep','build_options','-Mroot='+str(out/'actual.zig'),'-Mkernel='+facade.name,'-Mbuild_options='+str(out/'options.zig')]
-                if oracle:
+                if len(item)>4:
                     command+=['--test-filter',item[4]]
                 result=self.capture(command,out)
                 if oracle:

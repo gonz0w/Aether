@@ -21,7 +21,14 @@ work; do not reconstruct their clauses or treat their absence as an exception.
 
 The hosted jobs are **Source integrity** (Agent Temper digests, selected
 Python syntax/JSON and conventional PR titles) and **Kernel models** (five
-self-contained Zig roots). These are bounded source checks. `zig build test`, the
+self-contained pure Zig roots plus the complete three-method AF09 actual-body
+suite). Both jobs retain a five-minute whole-job timeout. The AF09 command is:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -p test_native_af09_drain.py -v
+```
+
+These are bounded source checks. `zig build test`, the
 workflow inventory checker, standards wrappers and `make check-system` retain
 private-input prerequisites and are blocked without them. `zig build` retains
 its documented boot dependencies. No native or full host qualification follows
