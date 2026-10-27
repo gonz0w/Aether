@@ -297,7 +297,9 @@ Keep seven domains, twelve channels,35MiB,9 mutations/96 requests, owner49152-by
 code/8192-byte resident/8184-byte conservative stack and existing process/engine
 admission. Writer60s/6000 ticks and reader30s/3000 ticks remain ceilings. Focused
 host300s, children180s, independent4MiB diagnostic streams,16MiB compiler files,
-complete host900s and whole selected offline target preparation1800s remain.
+complete host900s remain. The complete eight-case AF09 offline family uses the
+[owner-adopted5400-second default](../PROJECT.md#af09-offline-family-budget-2026-10-26);
+other target suites retain1800 seconds.
 Existing exact media allowances are separate. Any measured fit failure or actual
 authority/resource change needs its real disposition. This diagnostic grants no
 guest, automatic retry, runtime sufficiency, Zsh/TTY, persistent ISO or release

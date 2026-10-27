@@ -1234,8 +1234,9 @@ compact receipts, checks actual code/codec paths and UBSan, and removes temporar
 objects/executables. `--help`/`--version` do not build. Exits0/1/2/64 distinguish
 pass, failure, prerequisite block and usage. The exact Rust host-only recipe and
 qualification receipts remain private; no public counter-only runner is claimed.
-Kernel variant construction still needs the explicit new-control review in
-DEVELOPMENT, and no guest is selected by these host checks.
+The owner approved this exact control for implementation, host verification and
+offline preparation; see the [recorded decision](../../../PROJECT.md#af09-diagnostic-control-review-2026-10-26).
+These host checks select no guest.
 
 Controller failure-path checks run independently without spawning children:
 `python3 -B experiments/filesystem-service/fd_home_drain_checks_tests.py`.
