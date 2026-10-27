@@ -169,3 +169,11 @@ applicable policy, relevant inputs, acceptance, checks and edit boundaries.
 Follow the recorded resource, escalation and fallback rules; the lead verifies
 returned evidence and owns integration. Installation does not change an existing
 chat's model or prove runtime role discovery.
+
+## Terra product role
+
+Under the routing policy in PROJECT.md, assign accepted bounded product
+documentation, visual inspection, explicitly authorized browser tasks and small
+specified UI fixes to `temper_product`. Keep existing role assignments and all
+local execution/risk/review limits. The lead may select the recorded Sol
+implementer fallback explicitly; missing tools or authority remain blockers.
