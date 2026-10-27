@@ -35,7 +35,6 @@ FLAGS = ("--no-default-config", "-std=c17", "-Wall", "-Wextra", "-Wpedantic",
          "-Wmissing-prototypes", "-Werror", "-DAEFD_PATH_WIRE", "-DAEFD_DUP2_WIRE",
          "-DAEFD_WRITE_WIRE", "-DAEFD_HOME_DRAIN_HOST_TEST")
 DOUBLES = ("-Dpipe=aefd_home_drain_test_pipe", "-Dfork=aefd_home_drain_test_fork",
-           "-Dsched_yield=aefd_home_drain_test_yield",
            "-D__builtin_trap=aefd_home_drain_test_trap")
 
 
@@ -287,6 +286,14 @@ def check(evidence, started=None):
 
         candidate("positive", original)
         controls = (
+            ("unsupported-libc-yield", "n->call(n->context, 0x1fffe, 0, 0, 0, 0)",
+             "sched_yield()",
+             "DRAIN_NATIVE_YIELD_REQUIRED_FORBIDDEN_LIBC_DENIED"),
+            ("wrong-native-yield-opcode", "0x1fffe", "0x10018",
+             "DRAIN_UNSUPPORTED_LIBC_YIELD_OPCODE"),
+            ("ignored-native-yield-error", "if (n->call(n->context, 0x1fffe, 0, 0, 0, 0))",
+             "if (n->call(n->context, 0x1fffe, 0, 0, 0, 0) == 999)",
+             "DRAIN_NATIVE_YIELD_ERROR_NO_RETRY"),
             ("exit-trap-fallthrough", "        __builtin_trap();", "        return 115;",
              "DRAIN_UNEXPECTED_EXIT_RETURN_FAILS"),
             ("missing-native-ready", "aefd_startup_ready(&f->boot)", "0",
@@ -306,7 +313,10 @@ def check(evidence, started=None):
         )
         for label, old, new, rejection in controls:
             require(original.count(old) == 1, label + ": mutation anchor changed")
-            candidate(label, original.replace(old, new), rejection)
+            text = original.replace(old, new)
+            if label == "unsupported-libc-yield":
+                text = "int sched_yield(void);\n" + text
+            candidate(label, text, rejection)
         # UBSan is available on this pinned host; ASan remains separately blocked
         # by the recorded macOS dyld/malloc incompatibility in quality/PROCESS.
         sanitized = []

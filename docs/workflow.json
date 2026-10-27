@@ -2502,8 +2502,8 @@
       "owner": "Aether-userland",
       "budget_seconds": 300,
       "command": "From userland: python3 -B experiments/filesystem-service/fd_home_drain_checks.py --evidence UNUSED_DIRECTORY. Existing nonsymlink parent, pinned Clang/format21.1.8 and installed macOS SDK required; host doubles only.",
-      "invariants": "Real home/pipe/fork/startup/READY path, direct parent exit and unexpected-return fail-stop, closed reference encodings, exactly two16-byte writes, no C cleanup/wait, preserved nested-fork authority; consumed source/header/direct-tool freeze and owned cleanup.",
-      "oracle": "34 C host scenarios, seven compiling named semantic controls and UBSan; no-build CLI usage/prerequisite/escaped-output controls. Prospective source prerequisite only.",
+      "invariants": "Real home/pipe/fork/startup/READY path, direct parent exit and unexpected-return fail-stop, closed reference encodings, exactly two16-byte writes, existing native-yield0x1fffe with four zero arguments and nonzero failure119, no libc sched_yield or C cleanup/wait, preserved nested-fork authority; consumed source/header/direct-tool freeze and owned cleanup.",
+      "oracle": "58 C host scenarios covering all eight selectors, repeated successful native yields, exact callback arguments/order and nonzero yield failures; ten compiling named semantic controls and UBSan; no-build CLI usage/prerequisite/escaped-output controls. A finite forbidden libc-yield sentinel exposes the old unsupported path. Prospective source prerequisite only.",
       "gaps": "No native timing/authority, complete transitive toolchain/loader provenance, target fit/artifacts, cold execution or release acceptance; owner control review is recorded separately."
     },
     {

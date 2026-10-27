@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #include "fd-home-drain.h"
-#include <sched.h>
 #include <unistd.h>
 #ifdef AEFD_HOME_DRAIN_HOST_TEST
 unsigned long aefd_home_drain_test_auxv(unsigned long);
@@ -185,7 +184,7 @@ int aefd_home_drain_run(struct aefd_fork *f, unsigned which)
     if (!valid)
         return 118;
     for (;;)
-        if (sched_yield())
+        if (n->call(n->context, 0x1fffe, 0, 0, 0, 0))
             return 119;
 }
 #ifndef AEFD_HOME_DRAIN_HOST_TEST

@@ -1238,6 +1238,12 @@ The owner approved this exact control for implementation, host verification and
 offline preparation; see the [recorded decision](../../../PROJECT.md#af09-diagnostic-control-review-2026-10-26).
 These host checks select no guest.
 
+The child wait-loop checks use the existing Aether native-yield callback
+`0x1fffe`. A forbidden libc `sched_yield` sentinel prevents a host stub from
+masking the unsupported Linux-style operation. Repeated zero results keep the
+child waiting; nonzero results retain failure119. Target-object inspection and
+these host checks remain separate from a matched guest result.
+
 Controller failure-path checks run independently without spawning children:
 `python3 -B experiments/filesystem-service/fd_home_drain_checks_tests.py`.
 Unknown/unresolved cleanup retains its owned work; an expired complete aggregate
