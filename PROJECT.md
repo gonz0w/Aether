@@ -255,6 +255,28 @@ Classify findings using the pinned [extension rules](.agent-temper/docs/referenc
 Sanitize any authorized public upstream proposal; do not copy private source or
 sensitive evidence into an issue. An upstream change updates no consumer automatically.
 
+## AF09 offline family budget —2026-10-26
+
+The owner adopted a standing5400-second aggregate for the complete
+[issue75](https://github.com/gonz0w/Aether/issues/75) offline admission/drain
+family: file_prefix, exec_prefix, fork_prefix, stream, no_ack, partial_ack,
+exit_deadline and pending_fragment, with twenty prepared roles in total.
+One clock covers the whole selected suite from preflight through final input
+verification, publication and owned cleanup; case and builder calls do not renew it.
+Other target suites retain their1800-second ceilings.
+
+Children remain180 seconds, live stdout/stderr4MiB each and compiler files16MiB.
+Focused host300/complete host900 limits, source freezes, all tests, existing media
+allowances, runtime authority/memory/request bounds and known cleanup stay binding.
+This time-only default grants no guest, native sufficiency or release acceptance.
+
+Earlier failed campaigns remain failed. Triage failures, correct their cause,
+recheck affected inputs and obtain separate preflight review before a justified
+fresh complete-family attempt. Do not blindly retry unchanged failed work or
+replay unknown mutations. This standing default does not require another approval
+for each ordinary corrective attempt inside its scope; a larger bound or another
+consequential resource change remains the owner's decision.
+
 ## Codex routing selection
 
 The AT-002 role/model/effort selection at immutable method source
