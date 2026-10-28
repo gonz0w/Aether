@@ -427,6 +427,7 @@ fn processSlot(slot: usize) bool {
 
 const arena = memory.Arena(if (service_memory) 8192 else if (@import("build_options").native_memory_large) 2048 else 128);
 const launch = @import("../../native_launch.zig");
+const App = @import("../../native_app.zig");
 const Execution = @import("native_execution.zig").Execution;
 const Child = @import("native_execution.zig").Child;
 const service_workers = @import("build_options").native_service_workers;
@@ -458,6 +459,7 @@ const State = struct {
     channel_cap: u64 = 0,
     channel_reply_cap: u64 = 0,
     channel_wait: @import("../../native_channel.zig").Wait = .{},
+    app_binding: App.Binding = .{},
     memory_protect_denied: bool = false,
     signal_actions: if (@import("build_options").native_signal_actions) @import("native_pending.zig").State else void = if (@import("build_options").native_signal_actions) .{} else {},
     execution: Execution = .{},
@@ -602,6 +604,7 @@ fn backingOwner(state: *const State) usize {
 // Called only after reclamation or before unpublished child construction.
 fn resetState(state: *State) void {
     if (af09_enabled) af09.cancel(backingOwner(state), state.generation);
+    state.app_binding = .{};
     @memset(std.mem.asBytes(state), 0);
     if (external_backing) {
         require(!backing_boot_views);
@@ -1094,6 +1097,8 @@ pub fn exception(frame: *const Frame) *const Frame {
     if (@import("build_options").native_process_exec and connections_profile and frame.rax >= 0x23007 and frame.rax <= 0x23009) return execOperation(frame);
     if (@import("build_options").native_process_copy and connections_profile and frame.rax == 0x23006) return copyOperation(frame);
     if (@import("build_options").native_process_freeze and connections_profile and frame.rax >= 0x23003 and frame.rax <= 0x23005) return freezeOperation(frame);
+    if (frame.rax == 0x2300a) return appLaunchOperation(frame);
+    if (frame.rax == 0x28012) return appClockOperation(frame);
     if (launch_profile and (frame.rax == 0x23000 or (channel_profile and frame.rax == 0x23001) or (file_profile and frame.rax == 0x23002))) return launchOperation(frame);
     if (frame.rax >= 0x22000 and frame.rax <= 0x22003 and @import("build_options").native_memory) return memoryOperation(frame);
     if (io_profile and frame.rax >= 0x21000 and frame.rax <= 0x21002) return streamOperation(frame);
@@ -1550,6 +1555,7 @@ fn clearTid(s: *State, context: *Execution) void {
     }
 }
 fn stopContexts(s: *State) void {
+    s.app_binding = .{};
     s.channel_wait = .{};
     if (@import("build_options").native_signal_suspend) s.suspend_mask = null;
     s.frozen = false;
@@ -2444,6 +2450,7 @@ fn control(frame: *const Frame) *const Frame {
             for (s.payload()) |*page| require(std.mem.allEqual(u64, std.mem.bytesAsSlice(u64, page), 0));
             nativeCleanupTrace(slot, 6);
             s.admitted = false;
+            s.app_binding = .{};
             // Retired image metadata must not re-protect zeroed backing when a
             // different slot loads before this slot is reused.
             s.count = 0;
@@ -2959,6 +2966,10 @@ fn memoryOperation(f: *const Frame) *const Frame {
 fn freezeOperation(f: *const Frame) *const Frame {
     const caller = &states[active];
     if (f.rax == 0x23003) {
+        if (caller.app_binding.bound()) {
+            result(caller, -95);
+            return select();
+        }
         var error_code: i64 = 0;
         if (active == supervisorSlot()) error_code = -13 else if (f.rdi | f.rsi | f.rdx | f.r10 | f.r8 | f.r9 != 0) error_code = -22 else if (threadedSlot(active) or (@import("build_options").native_signal_actions and !@import("build_options").native_copy_signals)) error_code = -95 else if (caller.frozen) error_code = -16 else if (caller.freeze_sequence == std.math.maxInt(i64)) error_code = -28;
         if (error_code != 0) {
@@ -3025,6 +3036,10 @@ fn copyOperation(f: *const Frame) *const Frame {
         return select();
     }
     const source = &states[from];
+    if (source.app_binding.bound()) {
+        result(caller, -95);
+        return select();
+    }
     const slot: usize = @intCast(f.rdx);
     const child = &states[slot];
     if (source.terminal or !source.frozen or child.admitted or
@@ -3144,6 +3159,10 @@ fn execOperation(f: *const Frame) *const Frame {
         return select();
     };
     const s = &states[slot];
+    if (f.rax != 0x23008 and s.app_binding.bound()) {
+        result(caller, -95);
+        return select();
+    }
     if (!processSlot(slot)) {
         result(caller, -13);
         return select();
@@ -3236,6 +3255,123 @@ fn execOperation(f: *const Frame) *const Frame {
     for (&states) |*owner| aliases(owner, false);
     if (af09_enabled and af09.engine_bound) af09Fail(slot, -6);
     result(caller, 0);
+    return select();
+}
+
+fn ordinaryAppEnabled() bool {
+    return combined_profile and combined_init and combined_owner_stack and !combined_application_profile and
+        !@import("build_options").native_service_lifetime and launch_profile and connections_profile;
+}
+
+// Separate ordinary ABI31 operation. IF=0 spans the full snapshot, all resource
+// plans and fixed-pool commit. No channel/user pointer survives this call.
+fn appLaunchOperation(f: *const Frame) *const Frame {
+    const caller = &states[active];
+    if (!ordinaryAppEnabled()) {
+        result(caller, -38);
+        return select();
+    }
+    if (active != supervisorSlot() or f.rdi != 0xa001 or
+        (f.rsi != 0xc001 and f.rsi != 0xc002 and f.rsi != 0xc003))
+    {
+        result(caller, -13);
+        return select();
+    }
+    if (f.rdx >= workerCount() or !processSlot(@intCast(f.rdx))) {
+        result(caller, -22);
+        return select();
+    }
+    const slot: usize = @intCast(f.rdx);
+    const s = &states[slot];
+    if (s.admitted) {
+        result(caller, -16);
+        return select();
+    }
+    if (s.generation >= lifetimeLimit()) {
+        result(caller, -28);
+        return select();
+    }
+    var raw: [App.record_size]u8 = undefined;
+    if (f.r10 > std.math.maxInt(usize) - (raw.len - 1)) {
+        result(caller, -14);
+        return select();
+    }
+    for (&raw, 0..) |*value, i| {
+        const p = byte(caller, @intCast(f.r10 + i), false) orelse {
+            result(caller, -14);
+            return select();
+        };
+        value.* = p.*;
+    }
+    const record = App.decode(&raw) catch {
+        result(caller, -22);
+        return select();
+    };
+    const engine_slot = lookup(record.engine) orelse {
+        result(caller, -13);
+        return select();
+    };
+    const engine = &states[engine_slot];
+    const plan = App.preflight(channels[0..channelCount()], active, .{
+        .slot = engine_slot,
+        .admitted = engine.admitted,
+        .terminal = engine.terminal,
+        .request = engine.channel_cap,
+        .reply = engine.channel_reply_cap,
+    }, f.r8, f.r9, record.reader, record.writer) orelse {
+        result(caller, -13);
+        return select();
+    };
+    const binding = App.Binding.init(slot, s.generation + 1, record.reader, record.writer, plan.epoch) orelse {
+        result(caller, -28);
+        return select();
+    };
+    const image = if (f.rsi == 0xc001) &service_image else if (f.rsi == 0xc002) &second_image else &third_image;
+    if (!imagePreflight(s, image)) {
+        result(caller, -12);
+        return select();
+    }
+    // All denial paths end above. The fixed stack includes the checked record
+    // placement (native_app's compile-time geometry), and load is infallible.
+    const generation = s.generation + 1;
+    resetState(s);
+    s.generation = generation;
+    load(s, if (f.rsi == 0xc001) service_bytes[0..service_len] else if (f.rsi == 0xc002) second_bytes[0..second_len] else third_bytes[0..third_len], image, &bootstrap, slot);
+    require(plan.process_reader.transfer(active, f.r8, slot));
+    require(plan.process_writer.transfer(active, f.r9, slot));
+    require(plan.namespace_reader.transfer(active, record.reader, slot));
+    require(plan.namespace_writer.transfer(active, record.writer, slot));
+    s.channel_cap = f.r8;
+    s.channel_reply_cap = f.r9;
+    s.app_binding = binding;
+    launchStack(s, &record.args, image);
+    for (&states) |*owner| aliases(owner, false);
+    publishSustained();
+    result(caller, @intCast(handle(slot)));
+    return select();
+}
+
+fn appClockOperation(f: *const Frame) *const Frame {
+    const s = &states[active];
+    if (!ordinaryAppEnabled()) {
+        result(s, -38);
+    } else if (!s.app_binding.valid(active, s.generation, s.admitted, s.terminal, f.rdi)) {
+        result(s, -13);
+    } else if (f.rsi | f.rdx | f.r10 | f.r8 | f.r9 != 0) {
+        result(s, -22);
+    } else if (!@import("build_options").native_clock or @import("build_options").native_clock_ticks) {
+        result(s, -38);
+    } else {
+        const now = monotonicRead() catch |err| {
+            result(s, switch (err) {
+                error.Unavailable => -38,
+                error.Regression => -5,
+                error.Overflow => -75,
+            });
+            return select();
+        };
+        result(s, if (now > std.math.maxInt(i64)) -75 else @intCast(now));
+    }
     return select();
 }
 
@@ -3340,6 +3476,13 @@ fn launchStack(s: *State, args: *const launch.Arguments, image: *const elf.Image
     if (s.channel_reply_cap != 0) {
         word(s, rsp + index * 8, 0xa002);
         word(s, rsp + (index + 1) * 8, s.channel_reply_cap);
+        index += 2;
+    }
+    if (s.app_binding.bound()) {
+        const startup = s.app_binding.startup();
+        copy(s, App.startup_address, &startup);
+        word(s, rsp + index * 8, App.startup_tag);
+        word(s, rsp + (index + 1) * 8, App.startup_address);
         index += 2;
     }
     word(s, rsp + index * 8, 0);
@@ -3453,6 +3596,7 @@ fn channelOperation(f: *const Frame) *const Frame {
         const p = if (i < buffer.first.len) &buffer.first[i] else &buffer.second[i - buffer.first.len];
         if (reading) p.* = @intCast(selected.stream.pop()) else require(selected.stream.push(p.*) == 0);
     }
+    if (reading) selected.read_started = true else selected.write_started = true;
     if (amount > 0) publishSustained();
     result(s, @intCast(amount));
     if (af09_enabled) af09Transfer(selected, reading, amount, @intCast(amount));
@@ -3563,6 +3707,7 @@ fn closeInit() noreturn {
         s.entropy_grant.selector = 0;
         s.channel_cap = 0;
         s.channel_reply_cap = 0;
+        s.app_binding = .{};
         s.root[0] = 0;
         closeChannels(i);
     }

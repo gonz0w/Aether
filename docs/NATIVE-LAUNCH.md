@@ -1,5 +1,8 @@
 # Bounded executable launch v1
 
+The ordinary one-app namespace extension is specified
+[below](#ordinary-one-app-namespace-launch). The original v1 contract follows.
+
 Kernel-owned experimental profile. This first slice supports two immutable,
 boot-supplied ELF images, selected through caller-bound executable grants, with
 copied arguments/environment and retained child outcomes. It does not implement
@@ -112,3 +115,104 @@ RAM-backed file service, pipes and durable installation remain later slices.
 cases, eleven existing memory cases, twelve frozen userland consumer cases, kernel
 host tests, 44 Python tests, standards and default two-core/framebuffer checks pass.
 Companion tests consume their existing profile; new launch-ABI adoption remains open.
+
+## Ordinary one-app namespace launch
+
+The [issue99](https://github.com/gonz0w/Aether/issues/99) extension implements the
+owner-approved [contract](policy/execution.md#ordinary-app-namespace-and-clock-contract-2026-10-28)
+in the ordinary combined ABI31 init/guarded-owner-stack closure. The larger
+application and storage-lifetime profiles do not select it; other profiles return
+ENOSYS. Sys-init supplies the trusted engine/process relationships and userland
+consumes the startup record under [issue100](https://github.com/gonz0w/Aether/issues/100).
+Kernel source alone does not establish whole-app fit or native acceptance.
+
+`int 0x81`, RAX0x2300a: RDI factory0xa001; RSI retained image0xc001,0xc002 or0xc003;
+RDX app slot1..5; R10 readable320-byte record; R8 process reader; R9 process writer.
+All record words are little-endian:
+
+| Offset | Bytes | Value |
+| --- | --- | --- |
+| 0 | 8 | `AENAP001` |
+| 8 | 8 | 320 |
+| 16 | 272 | Unchanged argc/envc/eight-string argument record |
+| 288 | 8 | Exact current engine instance handle |
+| 296 | 8 | Namespace response reader |
+| 304 | 8 | Namespace request writer |
+| 312 | 8 | Zero |
+
+The engine must be admitted, nonterminal slot0 with its exact retained handle.
+Namespace endpoints occupy distinct service channels10..11 and are currently
+held by this supervisor. Their counterparts must be the actual engine-held
+`channel_reply_cap` writer and `channel_cap` reader, with current directions and
+generations. Process reader/writer occupy two distinct channels0..9, are open
+and empty, and both counterpart ends remain held by this supervisor. All four
+channels are distinct. Numeric labels alone do not prove ownership.
+
+The namespace response must never have transferred a positive read and the request
+must never have transferred a positive write in this channel generation. History
+survives transfer, drain and close; only fresh-generation creation clears it.
+Zero-byte calls, EAGAIN, EOF and errors do not set history. An engine greeting may
+already be queued; transfer preserves every queued byte and its position. Epoch
+is the complete actual engine request-reader capability, derived by the kernel.
+
+New-operation error precedence: disabled profile(-38); caller/factory/image
+authority(-13); destination role/range(-22); occupied(-16); lifetime exhausted
+(-28); full record snapshot/pointer(-14); format/arguments(-22); live engine and
+four-endpoint authority/history(-13); binding lifetime(-28); image/backing/leaf
+preflight(-12). Recoverable failures precede reset, generation advance, transfer
+or alias mutation. The fixed-pool commit runs under the BSP IF=0 interrupt gate;
+no scheduling intervenes before all transfers, binding and startup publication.
+Post-preflight invariant assertion failure is a kernel defect.
+
+Auxv0xa003 points to64 checked stack bytes at0x0800e200 (data+512), immediately
+after the256-byte argument bank and separate from entropy at data+128:
+
+| Offset | Bytes | Value |
+| --- | --- | --- |
+| 0 | 8 | `AENAP001` |
+| 8 | 8 | 64 |
+| 16 | 8 | Read-only app-lifetime clock capability kind0x36 |
+| 24 | 8 | Namespace response reader |
+| 32 | 8 | Namespace request writer |
+| 40 | 8 | Full engine request-reader capability (epoch) |
+| 48 | 8 | `/home/` followed by two NUL bytes |
+| 56 | 8 | Zero |
+
+Auxv0xa000..0xa002 keep their meanings. Maximum argc4/envc4 uses45 words
+(360 bytes) from SP0x0800c000. Limits stay1MiB ELF,128 image-plus-stack pages,
+128 backing pages,4096TLS,64KiB mapped stack and initial SP48KiB. Engine, owner,
+channel and backing-reservation limits stay fixed. Binding storage is32 scalar
+bytes per local State; channel history adds two booleans. No sustained profile,
+global capability/task table or ambient clock is selected.
+
+Bound apps return ENOTSUP(-95) for self-freeze0x23003, copy0x23006, exec0x23007
+and exec publication0x23009 before effects. Read-only receipt0x23008 remains
+available; unbound operations retain prior behavior. Terminal/fault/forced stop,
+reclaim, reset and init close clear the entire binding. Clock queries enforce
+liveness and exact nonreused lifetime; see
+[NATIVE-CLOCKS](NATIVE-CLOCKS.md#ordinary-app-read-only-monotonic-grant).
+
+Focused host entries, selected through the lead's bounded runner:
+
+```sh
+zig test kernel/native_app.zig
+PYTHONPATH=tests python3 -B -m unittest test_native_app -v
+```
+
+The pure Zig root is registered in hosted CI. Actual-body host qualification uses
+the separately reviewed private local adapter; the direct Python entry is not a
+new hosted CI gate. Its maintained capture-helper execution boundary remains a
+separate gap and does not replace the qualified local runner.
+
+The latter uses shared production admission and extracted actual launch, stack,
+channel-progress, clock and lifecycle bodies in Debug/ReleaseSafe. Denials compare
+full destination/engine/channel snapshots; compiling counterpart/history/revocation/
+profile/dispatch omissions must fail behavioral assertions. The actual profile
+selector is exercised with old/larger/lifetime denials. New-op dispatch clauses
+execute with a fallback sentinel. MMU load, alias flush, device reads, scheduler
+returns and notification/trace effects have explicit host substitutes; State uses
+fixed host backing. Reset uses its scalar prefix and init close its detach loop.
+Bound copy/exec tests execute actual pre-effect prefixes; existing full-body tests
+retain unbound success/rollback coverage.
+Actual results, offline builds and separate review belong in issue99; these host
+checks do not execute a guest or establish hardware enforcement.

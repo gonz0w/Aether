@@ -20,6 +20,7 @@ const session_lifecycle = false;
 const Frame = struct { rax:u64=0, rdi:u64=0, rsi:u64=0, rdx:u64=0, r10:u64=0, r8:u64=0, r9:u64=0 };
 const Execution = struct { frame:Frame=.{}, fp:[16]u8=@splat(0), fs:u64=0, tls_base:u64=0, tls_bytes:u64=0, signal_mask:u64=0 };
 const State = struct {
+    app_binding:struct{clock:u64=0,fn bound(b:*const @This())bool{return b.clock!=0;}}=.{},
     execution:Execution=.{}, frozen:bool=false, terminal:bool=false, admitted:bool=false,
     freeze_sequence:u64=0, generation:u64=0, parent_pid:u64=0, memory_cap:u64=0,
     channel_cap:u64=0, channel_reply_cap:u64=0, image_commit:struct{pending:bool=false}=.{},

@@ -26,6 +26,9 @@ pub const Channel = struct {
     sustained: bool = false,
     stream: Stream = .{},
     generation: u64 = 0,
+    // Positive byte-transfer history belongs to a generation, not its holder.
+    read_started: bool = false,
+    write_started: bool = false,
     owners: [2]?usize = .{ null, null },
     pub fn cap(c: *const Channel, end: usize) u64 {
         if (c.sustained) return @import("native_sustained.zig").identity(if (end == 0) .reader else .writer, @intCast(c.identity), @intCast(c.generation)) catch unreachable;
@@ -60,6 +63,8 @@ pub const Channel = struct {
         if (c.generation >= limit) return -28;
         c.generation += 1;
         c.stream = .{};
+        c.read_started = false;
+        c.write_started = false;
         c.owners = .{ owner, owner };
         return @intCast(c.cap(0));
     }
@@ -102,6 +107,21 @@ pub const Wait = struct {
         return done;
     }
 };
+test "transfer history persists through drain transfer last-close and failed creation" {
+    var c: Channel = .{};
+    const reader: u64 = @intCast(c.create(6));
+    c.read_started = true;
+    c.write_started = true;
+    try std.testing.expect(c.transfer(6, reader, 1));
+    try std.testing.expect(c.read_started and c.write_started);
+    try std.testing.expectEqual(-16, c.create(6));
+    c.closeOwner(1);
+    c.closeOwner(6);
+    try std.testing.expect(c.read_started and c.write_started);
+    try std.testing.expectEqual(@as(u64, 1), c.generation);
+    _ = c.create(6);
+    try std.testing.expect(!c.read_started and !c.write_started);
+}
 test "channel transfer, last close, zeroing and generation retirement" {
     var c: Channel = .{};
     const read: u64 = @intCast(c.create(2));

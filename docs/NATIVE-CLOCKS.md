@@ -1,5 +1,31 @@
 # Native elapsed clock and absolute wait
 
+## Ordinary-app read-only monotonic grant
+
+The [ordinary one-app launch](NATIVE-LAUNCH.md#ordinary-one-app-namespace-launch)
+adds operation0x28012 with a distinct kind0x36 capability. Its identity uses the
+existing codec but does not select sustained mode. One32-byte binding in the
+authoritative local app State holds clock, namespace reader/writer and full
+engine request-reader epoch. No global capability table or ambient query is added.
+
+RDI is the exact held token; RSI/RDX/R10/R8/R9 must all be zero. The ordinary
+combined ABI31 init/guarded-owner-stack profile is required. Query rejects an
+unadmitted/terminal app, zero/wrong-kind/foreign/stale token or mismatched app slot
+and nonreused generation with EACCES(-13), before sampling. Nonzero other operands
+give EINVAL(-22). Disabled profile, disabled source or interrupt-tick diagnostic
+substitution gives ENOSYS(-38). An authorized query returns checked nonnegative
+signed nanoseconds, or the real source error: unavailable(-38), regression(-5),
+overflow(-75). Values above INT64_MAX reject. The binding and user storage are
+unchanged; the monotonic provider retains its existing source observations.
+
+Terminal exit/fault, forced stop, reclaim, reset and init close clear the complete
+binding; replacement cannot reuse the old lifetime token. This grant gives no
+thread creation, RTC, wait or clock-adjustment right. Engine thread grants and
+operations0x28000..0x28011 retain their contracts. The issue99 shared-core and
+actual-body host tests cover authority before sampling, errors, signed overflow
+and all binding-revocation sites. Device sampling is an explicit host substitute;
+native qualification and issue100 consumer adoption remain separate.
+
 ## Idempotent supervisor clock mapping —2026-10-23
 
 clock.attach accepts either an empty entry or its exact expected physical frame

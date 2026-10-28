@@ -118,6 +118,7 @@ const Reset = struct {
     fn reset(s: *@This()) void { s.value = 0; }
 };
 const State = struct {
+    app_binding: struct { clock: u64 = 0 } = .{},
     root: [1]u64 = .{7},
     backing: [2][4096]u8 align(4096) = @splat(@splat(165)),
     records_storage: [2]struct { value: u64 = 0 } = @splat(.{ .value = 9 }),
