@@ -194,6 +194,19 @@ impl Drop for Zpl<'_> {
     }
 }
 
+#[cfg(fs_mixed)]
+impl policy::CreatingBackend for Zpl<'_> {
+    fn create_identity(
+        &mut self,
+        parent: Node,
+        creation: policy::Creation<'_>,
+        identity: policy::Identity,
+        utc: Utc,
+    ) -> Result<policy::CreatedMutation, Lost> {
+        self.create_with_identity(parent, creation, identity, utc)
+    }
+}
+
 impl Backend for Zpl<'_> {
     #[cfg(fs_directory_contexts)]
     fn directory_context(

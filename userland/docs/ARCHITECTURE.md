@@ -456,3 +456,27 @@ bounded progress. No native reclaim/durability/restart follows from those checks
 Old AF06 owner and all sealed service/executable bytes remain selected. Current
 artifact is a source/native-object input pending Aether's explicit full engine
 link/intake/image/stack/native qualification and matched sys-init consumption.
+
+### Private created-identity acquisition
+
+The mixed namespace Owner's additive creation extension retains the trusted
+provider-created identity across existing context retirement/reopen. Parent and
+local capacity admission precede dispatch; an attenuated handle is published only
+after the reopened object/generation/type and alias metadata match. Original
+mutation progress remains independent of acquisition failure, including completed
+creation with no handle. Namespace removal, handle close and context retirement
+keep their separate lifetimes. No replay/unlink recovery, global ledger, wire
+operation, public utility route or new authority is introduced. The existing C
+provider's fixed file mode 0600 and directory mode 0700 remain; requested modes,
+umask and mktemp/libc consumption are separate work.
+
+Typed C host tests and compiling semantic omissions exercise the actual Owner/Zpl
+path, including descriptor admission before effects and once-only alias/session
+cleanup. The selected fresh-Owner caller fits existing code, conservative stack
+and component state/workspace budgets with a minimal external non-LTO typed
+boundary. Construction-known preconditions may fold in this single-create caller;
+its state/workspace envelope is not an actual mapped-state measurement or
+all-state worst-case/full-provider/system/native qualification. The
+[component README](../experiments/filesystem-service/README.md#private-created-identity-owner-core-88)
+records measured scope and limits. [Issue #88](https://github.com/gonz0w/Aether/issues/88)
+owns exact evidence and current quality, separate review and integration status.

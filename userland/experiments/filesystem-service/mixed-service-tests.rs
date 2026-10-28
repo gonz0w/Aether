@@ -573,3 +573,6 @@ fn waiting_frame_erases_partial_input_on_error_and_bounds_spurious_hints() {
         assert_eq!(framed.0.waits, expected, "WAIT_BUDGET");
     }
 }
+
+#[path = "created-identity-tests.rs"]
+mod created_identity;

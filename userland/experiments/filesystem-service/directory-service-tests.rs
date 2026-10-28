@@ -743,3 +743,6 @@ fn activation_publication_failure_consumes_without_greeting_or_requests() {
 #[cfg(fs_metadata)]
 #[path = "metadata-service-tests.rs"]
 mod metadata_tests;
+
+#[path = "created-identity-tests.rs"]
+mod created_identity;

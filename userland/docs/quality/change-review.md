@@ -1171,3 +1171,76 @@ persistent executable/package/Zsh/TTY/ISO and release gates stay open. Compact
 [results](../evidence/filesystem-public-cwd-2026-10-23/README.md) describe commands,
 hashes, failed attempts and pending exact receipt. Generated trees are disposed
 after readback; no archives/copied SDKs. Implementation-agent technical review only.
+
+## Issue #88 private created-identity core — 2026-10-28
+
+The [pre-code contract](https://github.com/gonz0w/Aether/issues/88#issuecomment-6468880060)
+and [accepted design](https://github.com/gonz0w/Aether/issues/87#issuecomment-6448937637)
+preceded the additive API. Retain the identity already returned by the provider
+rather than add a storage primitive or rely on an unenforced create/lookup
+single-mutator interval. One synchronous Owner borrow reserves unpublished local
+capacity, preserves raw mutation progress and publishes an attenuated handle only
+after exact identity validation across reopen. Existing Backend/Completion/wire
+APIs, fixed file mode 0600/directory mode 0700, profiles, resource limits, shared
+standards and dependencies stay unchanged. Requested modes, umask and a public
+mktemp/libc consumer are outside this private core. Existing retirement/no-retry
+and alias/session teardown govern acquisition failure; no namespace rollback is
+inferred.
+
+Tests were defined before implementation. Missing-method compilation was not
+counted as behavioral RED. The actual typed C fixtures and narrow Backend cases
+cover success, collision, identity substitution/malformed output, pre-effect
+rights/stale/quota/capacity/serial denial, truthful completed/committed/unknown
+progress and descriptor admission/alias cleanup. Current mixed, directories and
+default runs passed 17, 23 and 8 entry tests and rejected 11, 31 and 5 compiling
+semantic omissions, respectively. All 78, 242 and 48 selected commands met their
+expected outcomes, including strict format/Clippy/target/ABI checks and 18 legacy
+runtime host tests in the directory selection. A host-only import of the complete
+maintained descriptor ledger permits dead code only within that test module,
+because unrelated ledger APIs are outside this composition. Production warning
+policy is unchanged; fixtures retain explicit edition 2021 and Rust 1.98.0.
+
+The selected actual Owner/Zpl no_std caller and minimal external non-LTO typed C
+boundary passed both positive and no-create fit controls. Positive graphs retain
+creation/reopen/validation edges; no-create graphs exclude reachable create/mkdir
+edges. Mixed measures 10,576 code bytes, 3,096 conservative stack bytes and a
+5,352-byte component envelope (1,112 Owner + 144 caller-owned context + 4,096
+workspace). Directories measures 11,008 code, 3,128 stack and a 5,368-byte envelope
+(1,128 + 144 + 4,096). Caps remain 49,152 code, 8,184 stack and 8,192 state plus
+workspace. The Owner is stack-local; the external typed context's size is included
+explicitly. Fresh construction and one create may fold known preconditions, so
+these are selected-caller measurements. The workspace is budgeted, not actual
+provider storage. This is no all-state worst-case, actual mapped-state,
+full-provider/system/native or release qualification. The unchanged stack
+inspector checks the actual entry-reachable graph and readonly load permissions.
+
+The separate legacy bridge checker remains unavailable: exact historical input
+and producer/baseline prerequisites are missing and may not be substituted or
+resealed. Its unchanged default bridge algorithm is cfg-excluded from this change.
+The available directory regression's 18 host tests passed, while both
+`exact_object` and `non_bitcode_object_exact` were false. This provides no legacy
+byte equivalence, bitcode/LTO reproduction or fresh legacy native evidence; old
+sealed artifacts remain immutable.
+
+Every failed attempt remains retained. Directory attempt 07 failed its native
+Clippy stage on the new comparison against the runtime maximum counter. The
+small equality-guard correction preserved checked-increment exhaustion, no-effect
+and no-wrap invariants and passed separate source review before fresh runs.
+Its failed compact outer receipt and complete failed inner receipt remain
+separate; the later compact frontend did not relabel that failure as a pass.
+The first three mixed fit attempts remain failed: a Rust library path sent to
+Clang caused a pre-compilation loader abort; the next attempt rejected the ELF
+without section facts; the diagnostic attempt proved one exact RX load with
+SHF_WRITE in its .text section metadata. The corrected private oracle follows
+actual load permissions, requires one exact .text extent and retains the section
+flags, without weakening native mapping authority or increasing any cap.
+
+Focused checks used pinned inputs and separately reviewed owned-child aggregate
+runners. Final freezes, known child stops and owned generated-output disposal
+passed for the successful selections; compact commands, hashes and short failure
+logs remain. This three-document result reconciliation changes no compiled input,
+helper, policy, dependency pin, profile or resource limit. No new maintained
+checker, compiler or guest run was selected for this documentation-only patch.
+[Issue #88](https://github.com/gonz0w/Aether/issues/88) is the sole live owner for
+exact receipts, quality validation, separate final review and protected
+integration; this note does not claim an unrun quality pass or a merged PR.

@@ -99,22 +99,8 @@ impl Zpl<'_> {
                 directory: child,
             } => self.remove_directory(directory, name, child, utc, &mut raw),
             Namespace::Create { name, uid, gid } => {
-                let mut created = RawNode::default();
-                let error = unsafe {
-                    aether_zpl_create(
-                        self.pointer.as_ptr(),
-                        parent,
-                        parent_generation,
-                        name.as_ptr(),
-                        name.len(),
-                        uid,
-                        gid,
-                        utc.seconds,
-                        utc.nanoseconds,
-                        &mut created,
-                        &mut raw,
-                    )
-                };
+                let (error, created) =
+                    self.file_creation(directory, name, (uid, gid), utc, &mut raw);
                 if error == 0
                     && (created.object == 0
                         || created.generation == 0
@@ -174,6 +160,119 @@ impl Zpl<'_> {
             txg: raw.txg,
             bytes_staged: raw.bytes_staged,
             state: raw.state,
+        })
+    }
+}
+
+impl Zpl<'_> {
+    fn file_creation(
+        &mut self,
+        directory: Node,
+        name: &[u8],
+        labels: (u64, u64),
+        utc: Utc,
+        result: &mut RawWrite,
+    ) -> (i32, RawNode) {
+        let (parent, generation) = directory.identity();
+        let mut created = RawNode::default();
+        // SAFETY: exclusive live context/SPA; exact initialized name borrow and
+        // disjoint initialized node/progress outputs; synchronous, no escape.
+        let error = unsafe {
+            aether_zpl_create(
+                self.pointer.as_ptr(),
+                parent,
+                generation,
+                name.as_ptr(),
+                name.len(),
+                labels.0,
+                labels.1,
+                utc.seconds,
+                utc.nanoseconds,
+                &mut created,
+                result,
+            )
+        };
+        (error, created)
+    }
+
+    #[cfg(fs_mixed)]
+    pub(super) fn create_with_identity(
+        &mut self,
+        directory: Node,
+        creation: policy::Creation<'_>,
+        identity: policy::Identity,
+        utc: Utc,
+    ) -> Result<policy::CreatedMutation, Lost> {
+        let mut raw = RawWrite::default();
+        if utc.seconds > i64::MAX as u64 || utc.nanoseconds >= 1_000_000_000 {
+            return Ok(policy::CreatedMutation {
+                completion: Completion {
+                    error: 22,
+                    txg: 0,
+                    bytes_staged: 0,
+                    state: 0,
+                },
+                created: None,
+            });
+        }
+        if self.consumed || self.writes == policy::MUTATION_LIMIT {
+            return Ok(policy::CreatedMutation {
+                completion: Completion {
+                    error: 28,
+                    txg: 0,
+                    bytes_staged: 0,
+                    state: 0,
+                },
+                created: None,
+            });
+        }
+        self.writes += 1;
+        let (error, created, mode, size, kind) = match creation {
+            policy::Creation::File(name) => {
+                let (error, node) =
+                    self.file_creation(directory, name, identity.credentials(), utc, &mut raw);
+                (error, node, 0o100600, 0, Kind::File)
+            }
+            #[cfg(fs_directories)]
+            policy::Creation::Directory(name) => {
+                let (error, node) =
+                    self.directory_creation(directory, name, identity.credentials(), utc, &mut raw);
+                (error, node, 0o040700, 2, Kind::Directory)
+            }
+        };
+        // Copy original provider progress before success retirement/reopen.
+        let completion = Completion {
+            error,
+            txg: raw.txg,
+            bytes_staged: raw.bytes_staged,
+            state: raw.state,
+        };
+        let created = if error == 0
+            && created.object != 0
+            && created.generation != 0
+            && created.mode == mode
+            && created.size == size
+        {
+            Some(Node::new(
+                created.object,
+                created.generation,
+                created.size,
+                kind,
+            ))
+        } else {
+            None
+        };
+        if error == 0 && raw.state == 2 && raw.txg > 0 && raw.bytes_staged == 0 && created.is_some()
+        {
+            // Keep the trusted identity even on reopen failure. finish_mixed
+            // leaves consumed=true on failure; Owner must validate the reopened
+            // backend before publication. Malformed metadata never retires a
+            // successful observer record or reopens a context for reuse.
+            let _ = self.finish_mixed(&raw, None);
+        }
+        Ok(policy::CreatedMutation {
+            completion,
+            created,
         })
     }
 }

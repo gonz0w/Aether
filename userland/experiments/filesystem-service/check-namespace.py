@@ -97,7 +97,7 @@ try:
             shutil.copyfile(source,W/source.name)
     rust_sources=[S/n for n in ('owner.rs','bridge.rs','service.rs','native-service.rs',
                   'namespace-policy.rs','namespace-bridge.rs','namespace-service-tests.rs',
-                  *(['mixed-bridge.rs','mixed-service-tests.rs'] if mixed else []), *(['channel.rs'] if waiting else []), *(['bulk-service.rs','bulk-service-tests.rs'] if bulk else []), *(['runtime-service-tests.rs','runtime-counter-tests.rs','runtime-bridge-tests.rs'] if runtime else []), *(['activation.rs','activation-tests.rs'] if activation else []), *(['names-service.rs','names-service-tests.rs'] if names else []), *(['directory-bridge.rs','directory-service-tests.rs'] if directories else []))]
+                  *(['mixed-bridge.rs','mixed-service-tests.rs','created-identity-tests.rs'] if mixed else []), *(['channel.rs'] if waiting else []), *(['bulk-service.rs','bulk-service-tests.rs'] if bulk else []), *(['runtime-service-tests.rs','runtime-counter-tests.rs','runtime-bridge-tests.rs'] if runtime else []), *(['activation.rs','activation-tests.rs'] if activation else []), *(['names-service.rs','names-service-tests.rs'] if names else []), *(['directory-bridge.rs','directory-service-tests.rs'] if directories else []))]
     run('rustfmt',[tools['rustfmt']['path'],'--edition=2021','--check',*rust_sources])
     run('c-format',[tools['clang-format']['path'],'--dry-run','--Werror',
         '--style=file:docs/quality/clang-format.yaml',S/('directory-fixture.c' if directories else 'runtime-fixture.c' if runtime else 'bulk-fixture.c' if bulk else 'mixed-fixture.c' if mixed else 'namespace-fixture.c'),S/HEADER])
@@ -119,7 +119,7 @@ try:
             '--test',W/'bridge.rs','-Clink-arg='+str(W/'fixture.o'),'-o',W/'bridge-counters'])
         run('runtime-bridge-counters',[W/'bridge-counters','--test-threads=1'])
     observed=run('namespace-tests',[W/'tests','--test-threads=1'])
-    assert ('15 passed; 0 failed' if directories else '29 passed; 0 failed' if names else '21 passed; 0 failed' if activation else '18 passed; 0 failed' if runtime else '16 passed; 0 failed' if bulk else '13 passed; 0 failed' if waiting else '10 passed; 0 failed' if mixed else '8 passed; 0 failed') in observed.stdout.decode()
+    assert ('23 passed; 0 failed' if directories else '29 passed; 0 failed' if names else '21 passed; 0 failed' if activation else '18 passed; 0 failed' if runtime else '16 passed; 0 failed' if bulk else '20 passed; 0 failed' if waiting else '17 passed; 0 failed' if mixed else '8 passed; 0 failed') in observed.stdout.decode()
     if runtime:
         for omit in (False,True):
             folder=W/('request-overflow-omitted' if omit else 'request-overflow');folder.mkdir()
@@ -169,7 +169,7 @@ try:
         mutants.pop('shared-budget')
         mutants.update({
             'runtime-policy-width':[('owner.rs','pub type MutationCount = usize;','pub type MutationCount = u8;')],
-            'runtime-bridge-eight':[('namespace-bridge.rs','self.writes == policy::MUTATION_LIMIT','self.writes == 8')],
+            'runtime-bridge-eight':[('namespace-bridge.rs','if self.consumed || self.writes == policy::MUTATION_LIMIT {\n                return Ok(Completion {','if self.consumed || self.writes == 8 {\n                return Ok(Completion {')],
         })
     if activation:
         mutants.update({
@@ -207,6 +207,13 @@ try:
             'directory-generation':[('directory-bridge.rs',
                 'current.identity() != directory.identity()', 'false'),
                 ('namespace-policy.rs','&& root.identity() == parent.node.identity()', '')],
+        })
+    if mixed:
+        mutants.update({
+            'created-identity':[('namespace-policy.rs','node.identity() != expected.identity()', 'false')],
+            'created-progress':[('namespace-policy.rs','let progress = result.map(|value| value.completion);', 'let progress = result.map(|value| Completion { txg: 0, ..value.completion });')],
+            'created-capacity':[('namespace-policy.rs','.position(Option::is_none)', '.position(|_| true)')],
+            'created-parent-aliases':[('namespace-policy.rs','self.root = refreshed;', '// omitted created parent cache'), ('namespace-policy.rs','open.node = refreshed;', '// omitted created parent aliases')],
         })
     for label,replacements in mutants.items():
         folder=W/label;folder.mkdir()
@@ -322,7 +329,7 @@ try:
     for name,digest in inputs['engine_files'].items():assert sha(AETHER/name)==digest,name
     for name,digest in dependency_inputs.items():assert sha(name)==digest,name
     for item in tools.values():assert sha(item['path'])==item['sha256']
-    record.update(status='pass',entry_tests=15 if directories else 29 if names else 21 if activation else 18 if runtime else 16 if bulk else 13 if waiting else 10 if mixed else 8,semantic_omissions=len(mutants)+(2 if activation else 0),
+    record.update(status='pass',entry_tests=23 if directories else 29 if names else 21 if activation else 18 if runtime else 16 if bulk else 20 if waiting else 17 if mixed else 8,semantic_omissions=len(mutants)+(2 if activation else 0),
         imports=imports,object_sha256=sha(W/OBJECT))
 except BaseException as error:
     record.update(status='failed',error=repr(error))

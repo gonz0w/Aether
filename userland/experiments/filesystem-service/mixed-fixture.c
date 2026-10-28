@@ -7,7 +7,7 @@
 #include <string.h>
 
 static unsigned mode, opens, closes, calls, retired, violations, active, roots;
-static unsigned zero_retired, write_retired, present;
+static unsigned zero_retired, write_retired, present, creations;
 static uint64_t identity, generation, size, pending, pending_staged;
 static unsigned char contents[64], current_name;
 static unsigned cookie;
@@ -22,7 +22,7 @@ void mixed_reset(unsigned value)
 {
     mode = value;
     opens = closes = calls = retired = violations = active = roots = 0;
-    zero_retired = write_retired = present = 0;
+    zero_retired = write_retired = present = creations = 0;
     identity = generation = size = pending = pending_staged = 0;
     current_name = 0;
     memset(contents, 0, sizeof(contents));
@@ -48,6 +48,8 @@ unsigned mixed_count(unsigned index)
         return write_retired;
     case 8:
         return roots;
+    case 9:
+        return creations;
     default:
         return 0;
     }
@@ -60,7 +62,7 @@ int aether_zpl_open_write(struct spa *spa, const char *dataset,
     ++opens;
     active = 1;
     *out = (aether_zpl_view *)&cookie;
-    if (mode == 11 || (mode == 14 && opens == 2))
+    if (mode == 11 || ((mode == 14 || mode == 107) && opens == 2))
         return EIO;
     REQUIRE(!pending);
     return 0;
@@ -79,6 +81,8 @@ int aether_zpl_root(aether_zpl_view *view, aether_zpl_node *out)
 {
     REQUIRE(view == (aether_zpl_view *)&cookie && active && out);
     ++roots;
+    if (mode == 106 && opens > 1)
+        return EIO;
     *out = (aether_zpl_node){34, (mode == 15 && opens > 1) ? 46 : 45,
                              present ? 2 : 1, mode == 12 ? 0 : 0040755};
     return 0;
@@ -98,6 +102,14 @@ int aether_zpl_lookup(aether_zpl_view *view, uint64_t directory,
     if (!present || length != 1 || *name != current_name)
         return ENOENT;
     *out = (aether_zpl_node){identity, generation, size, 0100600};
+    if (mode == 101 && opens > 1)
+        ++out->object;
+    if (mode == 102 && opens > 1)
+        ++out->generation;
+    if (mode == 103 && opens > 1)
+        out->mode = 0040700;
+    if (mode == 104 && opens > 1)
+        return ENOENT;
     return 0;
 }
 int aether_utc_read(struct timespec *out)
@@ -161,6 +173,13 @@ int aether_zpl_create(aether_zpl_view *view, uint64_t directory,
                       uint64_t seconds, uint64_t ns, aether_zpl_node *created,
                       aether_zpl_write_result *out)
 {
+    ++creations;
+    if (mode >= 100 && present && name && length == 1 &&
+        *name == current_name) {
+        *created = (aether_zpl_node){0};
+        *out = (aether_zpl_write_result){0};
+        return EEXIST;
+    }
     REQUIRE(name && length == 1 && *name == 'p' && !present && uid == 1000 &&
             gid == 1000 && created);
     int error = begin(view, directory, parent_generation, seconds, ns, 0, out);
@@ -172,6 +191,12 @@ int aether_zpl_create(aether_zpl_view *view, uint64_t directory,
         size = 0;
         *created = (aether_zpl_node){identity, generation, 0,
                                      mode == 8 ? 0040755 : 0100600};
+        if (mode == 105)
+            created->mode = 0;
+        if (mode == 108)
+            created->generation = 0;
+        if (mode == 109)
+            created->size = 1;
     }
     return error;
 }
