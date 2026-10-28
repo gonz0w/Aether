@@ -1248,3 +1248,65 @@ Controller failure-path checks run independently without spawning children:
 `python3 -B experiments/filesystem-service/fd_home_drain_checks_tests.py`.
 Unknown/unresolved cleanup retains its owned work; an expired complete aggregate
 cannot report a passing run after final verification or cleanup.
+
+## Private created-identity Owner core (#88)
+
+The mixed namespace policy adds `CreatingBackend` and `Owner::create` alongside
+unchanged `Backend::mutate` and `Owner::namespace`. The trusted bridge retains the
+provider-created object, generation and type through its existing context
+retirement/reopen. Owner checks the parent/session, LOOKUP and MUTATE_DIR rights,
+attenuated child rights, name, UTC, mutation budget, free handle slot and serial
+before dispatch. A reopened same-name child must match the retained identity and
+metadata before publication. No client supplies an object identity.
+
+The result separates original mutation progress from handle acquisition.
+`CreatedAcquisition.progress` retains the provider Completion or Lost value even
+when `entry` fails after a completed mutation. The path never retries, reconnects,
+unlinks or rolls back by name. Fixed file mode 0600 and directory mode 0700 remain
+provider limits. Requested modes, umask, wire/opcodes, public client and mktemp/libc
+consumers are outside this private API. Closing a handle does not remove its
+namespace object.
+
+From `userland`, the focused selections are
+`python3 -B experiments/filesystem-service/check-namespace.py --mixed`,
+`python3 -B experiments/filesystem-service/check-namespace.py --directories`, and
+`python3 -B experiments/filesystem-service/check-namespace.py`. Their current host
+runs passed 17, 23 and 8 entry tests, respectively, with 11, 31 and 5 compiling
+semantic omissions. All 78, 242 and 48 selected commands met their expected
+outcomes, including the directory selection's 18 legacy runtime host tests.
+The tests use typed C fixtures, narrow Backend states and the existing descriptor
+admission callback. Formatting and strict Rust checks retain pinned Rust 1.98.0
+and the explicit edition 2021 migration.
+
+The selected compile-only Owner/Zpl caller and minimal external non-LTO typed
+boundary fit the existing limits:
+
+| Selection | Code bytes (limit 49,152) | Conservative stack bytes (limit 8,184) | State plus workspace bytes (limit 8,192) |
+| --- | ---: | ---: | ---: |
+| Mixed | 10,576 | 3,096 | 1,112 Owner + 144 context + 4,096 workspace = 5,352 |
+| Directories | 11,008 | 3,128 | 1,128 Owner + 144 context + 4,096 workspace = 5,368 |
+
+The entry-reachable positive graphs contain creation and reopen paths; the
+no-create controls have no reachable create/mkdir edge. The fresh Owner and
+single-create caller may fold constructor-known preconditions. These are selected
+caller measurements, not all-state worst-case, full-provider/system/native fit
+or actual mapped-state proof. The workspace is a budgeted envelope, not measured
+provider working storage. No native OpenZFS, public mktemp/libc or release gate is
+qualified by these host and compile-only results.
+
+The separate legacy bridge checker remains unavailable because its exact
+historical prerequisites are missing; that default bridge algorithm is excluded
+by cfg from this change. The available directory regression passed legacy host
+behavior, but both exact-object and non-bitcode-object comparisons were false.
+No byte equivalence, embedded-bitcode/LTO reproduction or fresh legacy native
+acceptance is claimed; sealed historical artifacts retain their existing bytes.
+
+The failed directory attempt 07 and three failed mixed fit attempts remain failed
+in the compact evidence. They exposed an extreme-counter Clippy comparison, a
+Rust/Clang library-path collision and the private ELF section oracle's confusion
+between SHF_WRITE and actual RX load permissions. The diagnostic attempt retained
+the actual section facts before the oracle correction; resource and mapping
+limits stayed fixed. Successful runs verified frozen inputs, known child stops
+and owned-output disposal. [Issue #88](https://github.com/gonz0w/Aether/issues/88)
+links exact receipts and failures and owns live quality, separate review and
+protected integration status.

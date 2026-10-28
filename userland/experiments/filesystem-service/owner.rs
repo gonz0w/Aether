@@ -11,6 +11,8 @@ compile_error!("mixed requires namespace and lifetime profiles");
 mod namespace_policy;
 #[cfg(fs_home_native)]
 pub use namespace_policy::NamespaceObservation;
+#[cfg(fs_mixed)]
+pub use namespace_policy::{CreatedAcquisition, CreatedMutation, CreatingBackend, Creation};
 #[cfg(fs_namespace)]
 pub use namespace_policy::{Identity, Mutation, Namespace};
 #[cfg(all(
@@ -677,3 +679,82 @@ pub use home_policy::HomeAttachment;
 #[cfg(all(test, fs_home))]
 #[path = "home-tests.rs"]
 mod home_tests;
+
+#[cfg(all(test, fs_mixed, fs_runtime))]
+mod created_admission_tests {
+    use super::*;
+    use std::{cell::Cell, rc::Rc};
+    struct Provider(Rc<Cell<usize>>);
+    impl Backend for Provider {
+        fn root(&mut self) -> Result<Node, Error> {
+            Ok(Node::new(34, 45, 2, Kind::Directory))
+        }
+        #[cfg(fs_directories)]
+        fn directory(&mut self, node: Node) -> Result<Node, Error> {
+            Ok(node)
+        }
+        fn lookup(&mut self, _: Node, _: &[u8]) -> Result<Node, Error> {
+            Err(Error::Invalid)
+        }
+        fn read(&mut self, _: Node, _: u64, _: &mut [u8]) -> Result<usize, Error> {
+            Err(Error::Invalid)
+        }
+        fn write(&mut self, _: Node, _: u64, _: &[u8], _: Utc) -> Result<Completion, Lost> {
+            panic!("unexpected write")
+        }
+        fn mutate(&mut self, _: Node, _: Namespace<'_>, _: Utc) -> Result<Completion, Lost> {
+            panic!("unexpected legacy mutation")
+        }
+    }
+    impl CreatingBackend for Provider {
+        fn create_identity(
+            &mut self,
+            _: Node,
+            _: Creation<'_>,
+            _: Identity,
+            _: Utc,
+        ) -> Result<CreatedMutation, Lost> {
+            self.0.set(self.0.get() + 1);
+            Err(Lost)
+        }
+    }
+    struct Time;
+    impl Clock for Time {
+        fn utc(&mut self) -> Result<Utc, Error> {
+            Ok(Utc {
+                seconds: 1,
+                nanoseconds: 0,
+            })
+        }
+    }
+    #[test]
+    fn created_serial_and_mutation_exhaustion_precede_provider_effect() {
+        for serial_exhausted in [true, false] {
+            let calls = Rc::new(Cell::new(0));
+            let mut owner = Owner::new(Provider(calls.clone()), Time, 7)
+                .unwrap()
+                .with_namespace_identity(Identity::new(1000, 1000).unwrap());
+            let a = owner.attach(20, Rights::ALL).unwrap();
+            if serial_exhausted {
+                owner.next_serial = 0;
+            } else {
+                owner.writes = MUTATION_LIMIT;
+            }
+            assert_eq!(
+                owner.create(
+                    20,
+                    a.session,
+                    a.root.handle,
+                    Creation::File(b"p"),
+                    Rights::READ
+                ),
+                Err(if serial_exhausted {
+                    Error::Full
+                } else {
+                    Error::WriteLimit
+                })
+            );
+            assert_eq!(calls.get(), 0);
+        }
+    }
+}

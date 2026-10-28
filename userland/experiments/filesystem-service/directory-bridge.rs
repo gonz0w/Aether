@@ -68,25 +68,7 @@ impl Zpl<'_> {
         utc: Utc,
         result: &mut RawWrite,
     ) -> i32 {
-        let (object, generation) = directory.identity();
-        let mut created = RawNode::default();
-        // SAFETY: namespace_mutation checked context and UTC; exact initialized
-        // name borrow, disjoint initialized created/progress outputs, no escape.
-        let error = unsafe {
-            aether_zpl_mkdir(
-                self.pointer.as_ptr(),
-                object,
-                generation,
-                name.as_ptr(),
-                name.len(),
-                uid,
-                gid,
-                utc.seconds,
-                utc.nanoseconds,
-                &mut created,
-                result,
-            )
-        };
+        let (error, created) = self.directory_creation(directory, name, (uid, gid), utc, result);
         if error == 0
             && (created.object == 0
                 || created.generation == 0
@@ -125,5 +107,37 @@ impl Zpl<'_> {
                 result,
             )
         }
+    }
+}
+
+impl Zpl<'_> {
+    pub(super) fn directory_creation(
+        &mut self,
+        directory: Node,
+        name: &[u8],
+        labels: (u64, u64),
+        utc: Utc,
+        result: &mut RawWrite,
+    ) -> (i32, RawNode) {
+        let (object, generation) = directory.identity();
+        let mut created = RawNode::default();
+        // SAFETY: exclusive live context/SPA; exact initialized immutable name
+        // and disjoint initialized created/progress outputs; C retains no borrow.
+        let error = unsafe {
+            aether_zpl_mkdir(
+                self.pointer.as_ptr(),
+                object,
+                generation,
+                name.as_ptr(),
+                name.len(),
+                labels.0,
+                labels.1,
+                utc.seconds,
+                utc.nanoseconds,
+                &mut created,
+                result,
+            )
+        };
+        (error, created)
     }
 }

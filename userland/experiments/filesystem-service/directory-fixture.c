@@ -13,7 +13,7 @@ struct fixture_node {
     unsigned char name[255], bytes[8192];
 };
 static struct fixture_node nodes[12];
-static unsigned mode, opens, closes, calls, retired, active, next;
+static unsigned mode, opens, closes, calls, retired, active, next, creations;
 static uint64_t pending, staged;
 static int cookie;
 #define REQUIRE(c)                                                             \
@@ -25,7 +25,7 @@ void mixed_reset(unsigned value)
 {
     memset(nodes, 0, sizeof(nodes));
     mode = value;
-    opens = closes = calls = retired = active = 0;
+    opens = closes = calls = retired = active = creations = 0;
     next = 1;
     pending = staged = 0;
     nodes[0].value = (aether_zpl_node){34, 45, 2, 0040755};
@@ -44,6 +44,8 @@ unsigned mixed_count(unsigned index)
         return retired;
     case 5:
         return active;
+    case 9:
+        return creations;
     default:
         return 0;
     }
@@ -77,6 +79,8 @@ int aether_zpl_open_write(struct spa *spa, const char *dataset,
     ++opens;
     active = 1;
     *out = (aether_zpl_view *)&cookie;
+    if (mode == 107 && opens == 2)
+        return EIO;
     return 0;
 }
 void aether_zpl_close(aether_zpl_view **out)
@@ -103,6 +107,8 @@ int aether_zpl_directory(aether_zpl_view *view, uint64_t object,
     if ((n->value.mode & 0170000) != 0040000)
         return ENOTDIR;
     *out = n->value;
+    if (mode == 106 && opens > 1)
+        return EIO;
     if (mode == 1 && calls)
         ++out->generation;
     if (mode == 2 && calls)
@@ -125,6 +131,14 @@ int aether_zpl_lookup(aether_zpl_view *view, uint64_t parent,
     if (!n)
         return ENOENT;
     *out = n->value;
+    if (mode == 101 && opens > 1)
+        ++out->object;
+    if (mode == 102 && opens > 1)
+        ++out->generation;
+    if (mode == 103 && opens > 1)
+        out->mode = (n->value.mode & 0170000) == 0040000 ? 0100600 : 0040700;
+    if (mode == 104 && opens > 1)
+        return ENOENT;
     return 0;
 }
 static int begin(aether_zpl_write_result *out, uint64_t bytes)
@@ -147,6 +161,7 @@ static int create(aether_zpl_view *view, uint64_t parent, uint64_t generation,
     REQUIRE(context(view) && name && length && length <= 255 && uid == 1000 &&
             gid == 1000 && seconds == 1791290040 && nanos == 123 && out &&
             result);
+    ++creations;
     *out = (aether_zpl_node){0};
     *result = (aether_zpl_write_result){0};
     struct fixture_node *p = find(parent, generation);
@@ -177,8 +192,12 @@ static int create(aether_zpl_view *view, uint64_t parent, uint64_t generation,
         result->state = 1;
         return EIO;
     }
-    if (mode == 6)
+    if (mode == 6 || mode == 105)
         out->mode = 0;
+    if (mode == 108)
+        out->generation = 0;
+    if (mode == 109)
+        ++out->size;
     return 0;
 }
 #define CREATE_ENTRY(entry, isdir)                                             \

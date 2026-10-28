@@ -14,6 +14,11 @@ impl Identity {
         }
         Ok(Self { uid, gid })
     }
+
+    /// Trusted labels for the typed bridge, never namespace authority.
+    pub fn credentials(self) -> (u64, u64) {
+        (self.uid, self.gid)
+    }
 }
 
 /// Exact Owner result and typed backend result before Owner normalization.
@@ -313,5 +318,190 @@ impl<B: Backend, C: Clock> Owner<B, C> {
             }
         }
         Err(Error::InvalidCompletion)
+    }
+}
+
+/// Private creation request; existing Completion and wire APIs are unchanged.
+#[cfg(fs_mixed)]
+#[derive(Clone, Copy)]
+pub enum Creation<'a> {
+    File(&'a [u8]),
+    #[cfg(fs_directories)]
+    Directory(&'a [u8]),
+}
+
+#[cfg(fs_mixed)]
+#[derive(Clone, Copy)]
+pub struct CreatedMutation {
+    pub completion: Completion,
+    pub created: Option<Node>,
+}
+
+/// No default mutate/lookup adapter can manufacture a created identity.
+#[cfg(fs_mixed)]
+pub trait CreatingBackend: Backend {
+    fn create_identity(
+        &mut self,
+        parent: Node,
+        creation: Creation<'_>,
+        identity: Identity,
+        utc: Utc,
+    ) -> Result<CreatedMutation, Lost>;
+}
+
+#[cfg(fs_mixed)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CreatedAcquisition {
+    pub progress: Result<Completion, Lost>,
+    pub entry: Result<Entry, Error>,
+}
+
+#[cfg(fs_mixed)]
+impl<B: CreatingBackend, C: Clock> Owner<B, C> {
+    fn created_parent(&mut self, expected: Node) -> Result<Node, Error> {
+        #[cfg(not(fs_directories))]
+        let current = self.backend.as_mut().ok_or(Error::Closed)?.root()?;
+        #[cfg(fs_directories)]
+        let current = self
+            .backend
+            .as_mut()
+            .ok_or(Error::Closed)?
+            .directory(expected)?;
+        if !current.valid()
+            || current.kind != Kind::Directory
+            || current.identity() != expected.identity()
+        {
+            return Err(Error::InvalidMetadata);
+        }
+        Ok(current)
+    }
+
+    /// Outer Err is pre-dispatch. After dispatch original progress survives
+    /// reopen, identity revalidation and handle acquisition failure.
+    pub fn create(
+        &mut self,
+        peer: u64,
+        session: Session,
+        directory: Handle,
+        creation: Creation<'_>,
+        rights: Rights,
+    ) -> Result<CreatedAcquisition, Error> {
+        let index = self.open(peer, session, directory)?;
+        let parent = self.handles[index].ok_or(Error::Stale)?;
+        let required = Rights(Rights::LOOKUP.0 | Rights::MUTATE_DIR.0);
+        if !parent.rights.contains(required) || !parent.rights.contains(rights) {
+            return Err(Error::Denied);
+        }
+        Rights::new(rights.0)?;
+        if parent.node.kind != Kind::Directory {
+            return Err(Error::NotDirectory);
+        }
+        let identity = self.identity.ok_or(Error::Denied)?;
+        let (component, kind, initial_size) = match creation {
+            Creation::File(value) => (value, Kind::File, 0),
+            #[cfg(fs_directories)]
+            Creation::Directory(value) => (value, Kind::Directory, 2),
+        };
+        name(component)?;
+        if kind == Kind::File && rights.contains(Rights::MUTATE_DIR) {
+            return Err(Error::Denied);
+        }
+        if self.writes == MUTATION_LIMIT || self.write_used {
+            return Err(Error::WriteLimit);
+        }
+        #[cfg(not(fs_directories))]
+        if self.root.identity() != parent.node.identity() {
+            return Err(Error::Denied);
+        }
+        let free = self
+            .handles
+            .iter()
+            .position(Option::is_none)
+            .ok_or(Error::Full)?;
+        if self.next_serial == 0 {
+            return Err(Error::Full);
+        }
+        self.created_parent(parent.node)?;
+        let utc = self.clock.utc()?;
+        if utc.seconds > i64::MAX as u64 || utc.nanoseconds >= 1_000_000_000 {
+            return Err(Error::Clock);
+        }
+        let serial = self.issue(1)?;
+        self.writes = self.writes.checked_add(1).ok_or(Error::WriteLimit)?;
+        self.write_used = true;
+        let result = self.backend.as_mut().ok_or(Error::Closed)?.create_identity(
+            parent.node,
+            creation,
+            identity,
+            utc,
+        );
+        let progress = result.map(|value| value.completion);
+        let entry = (|| {
+            let reported = result.map_err(|Lost| Error::Uncertain)?;
+            let completion = reported.completion;
+            if completion.bytes_staged != 0 {
+                return Err(Error::InvalidCompletion);
+            }
+            if completion.error != 0 || completion.state != 2 || completion.txg == 0 {
+                if (1..=4095).contains(&completion.error) {
+                    if completion.state == 0 && completion.txg == 0 {
+                        return Err(Error::Backend(completion.error));
+                    }
+                    if completion.state == 1 || (completion.state == 2 && completion.txg > 0) {
+                        return Err(Error::WriteFailed(completion));
+                    }
+                }
+                return Err(Error::InvalidCompletion);
+            }
+            let expected = reported.created.ok_or(Error::InvalidMetadata)?;
+            if !expected.valid()
+                || expected.kind != kind
+                || expected.size != initial_size
+                || expected.identity() == parent.node.identity()
+            {
+                return Err(Error::InvalidMetadata);
+            }
+            let refreshed = self.created_parent(parent.node)?;
+            if self.root.identity() == refreshed.identity() {
+                self.root = refreshed;
+            }
+            for open in self.handles.iter_mut().flatten() {
+                if open.node.identity() == refreshed.identity() {
+                    open.node = refreshed;
+                }
+            }
+            let node = self
+                .backend
+                .as_mut()
+                .ok_or(Error::Closed)?
+                .lookup(refreshed, component)?;
+            // Compare the retained provider identity, never a same-name replacement.
+            if !node.valid()
+                || node.identity() != expected.identity()
+                || node.kind != expected.kind
+                || node.size != expected.size
+            {
+                return Err(Error::InvalidMetadata);
+            }
+            if self.handles.iter().flatten().any(|open| {
+                open.node.identity() == node.identity()
+                    && (open.node.kind != node.kind || open.node.size != node.size)
+            }) {
+                return Err(Error::InvalidMetadata);
+            }
+            self.handles[free] = Some(Open {
+                serial,
+                session: session.serial,
+                node,
+                rights,
+            });
+            Ok(self.entry(serial, node))
+        })();
+        if entry.is_err() {
+            self.retire();
+        } else {
+            self.write_used = false;
+        }
+        Ok(CreatedAcquisition { progress, entry })
     }
 }
