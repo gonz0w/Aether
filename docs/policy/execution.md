@@ -6,6 +6,38 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Ordinary-app namespace and clock contract —2026-10-28
+
+The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)
+for implementation and bounded host/offline-fit work. Proposal identity is
+`258723ec94c221185e379fe7e67becd55b1497fd6efcbcdb36d565945e8a080e`;
+separate technical review is
+`7b19aa147eb9603131a993a7886ca5fd582022cefa4a5dfa1533b89e4bd73095`.
+The decision covers one positive ordinary-app temporary-directory experiment.
+
+Implement the fixed launch record of 320 bytes and startup record of 64 bytes, atomic
+pre-greeting handoff of the sole AF09 namespace connection, and a distinct
+read-only monotonic-clock grant bound to the app's nonreused lifetime. The
+reviewed kernel operations are 0x2300a and 0x28012, startup tag 0xa003 and clock
+capability kind 0x36. Preserve existing operations and callers. The proposal's
+holder, direction, generation, epoch, admission, revocation and copy/exec denials
+remain part of the accepted contract.
+
+Use the existing 304-byte descriptor startup and stream wire for stdout/stderr,
+with the reviewed one-app sys-init stream owner and app-local musl vector-write
+adaptation. The app's actual EOF/EPIPE observations and once-only raw closes do
+not establish engine export: sys-init independently requires app/engine terminal
+outcomes, ordered export, reclaim and existing clean-halt settlement.
+
+Ordinary limits remain 1 MiB ELF, 128 image-plus-fixed-stack pages, 128 backing pages
+and 4096 TLS bytes, with 64 KiB mapped stack and initial SP at 48 KiB. Existing engine,
+owner, channel, capture, source-freeze, retention and focused-test limits remain.
+No larger Zsh profile, resource exception, ambient authority, SDK/provider rebuild,
+new filesystem wire operation or general broker is selected. Implementation
+requires finite issues, affected checks and separate review before integration.
+This decision grants no QEMU, hardware, native sufficiency or release acceptance;
+a later campaign needs its own reviewed artifacts and explicit execution grant.
+
 ## Bounded Zsh application trial —2026-10-25
 
 The owner approved implementing and host-testing the separately reviewed

@@ -1244,3 +1244,39 @@ checker, compiler or guest run was selected for this documentation-only patch.
 [Issue #88](https://github.com/gonz0w/Aether/issues/88) is the sole live owner for
 exact receipts, quality validation, separate final review and protected
 integration; this note does not claim an unrun quality pass or a merged PR.
+
+## Issue #97 directory-only mktemp — host candidate, 2026-10-28
+
+The accepted [issue #97](https://github.com/gonz0w/Aether/issues/97) pre-code
+handoff selected only `mktemp -d TEMPLATE` with the existing 31-byte active-string
+bound, a provisioned home parent, mode 0700/mask 0077, checked monotonic/TLS name
+input and one MakeDirectory. It introduced no FD acquisition, kernel or wire
+operation, reconnect/retry or pathname rollback. Typed progress is retained
+through output and finalization failures. C/Rust callbacks borrow stable,
+disjoint storage synchronously; they do not unwind across the boundary.
+
+The 2026-10-28 HOST07 entry exited zero in 14.126 seconds. It exercised eight
+scripted C cases, a positive repeated-finish case, nine compiling C omissions,
+twelve isolated Rust tests, three compiling Rust omissions, three Clippy checks,
+and five actual Toybox terminal cases through the Client/service and a typed C
+provider fixture. Its 105 child groups reached known cleanup; owned output was
+removed. Preparation separately generated a mktemp-only effective applet table
+and recorded the consumed host inputs. The result identity is
+`c4514399054b3478e4f8755187d1b1010ce52dc44f0bffc766f24766e1a9b834`.
+A separate result review accepted the host result. The process/docs quality gate
+is a separate integration prerequisite; issue #97 and the PR retain its exact
+current receipt. The host fixture is not an OpenZFS disk, a native application
+or an assembled-system test.
+
+Earlier attempts remain failed and their compact records are retained. The
+corrective work addressed a linker option, an incomplete finish-order oracle, a
+Rust/Clang loader conflict and two Clippy diagnostics. The public producer
+library remains unselected; the private qualification inputs and entry are not
+available for public replay. No SDK or provider rebuild, SDK copy or per-run
+source archive was used.
+
+The matched native clock, parent bootstrap, transport and finalizer remain open.
+[Issue #98](https://github.com/gonz0w/Aether/issues/98) holds the owner-approved
+contract. Its implementation and matched fit remain pending; an injected fixture
+cannot establish the positive whole-application fit. Issue #97 remains the live work authority. Coverage stays
+draft and no release or guest qualification follows from this host result.
