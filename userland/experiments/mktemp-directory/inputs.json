@@ -1,0 +1,291 @@
+{
+  "admission": {
+    "active_string_bytes": 31,
+    "argv": [
+      "mktemp",
+      "-d",
+      "TEMPLATE"
+    ],
+    "attempts": 1,
+    "env": [
+      "LC_ALL=C"
+    ],
+    "mask": 63,
+    "max_argc": 4,
+    "max_envc": 4,
+    "mode": 448,
+    "parent": "Client::connect_home().home() provisioned rights15; prefix text is not authority",
+    "template_suffix": "XXXXXX"
+  },
+  "clang_format": {
+    "path": "userland/docs/quality/clang-format.yaml",
+    "sha256": "bd69a0980ab96c87e3ff8fe3dbd6fcdea0a01a6a890ae5f3d87c8cda1735a716"
+  },
+  "compile_hooks": {
+    "adapter_and_tests": "compiled without upstream macros; scripted C boundary binary and actual Rust/service applet binary are separate",
+    "main_c": [
+      "-Dmain=amk_toybox_main"
+    ],
+    "upstream_only": [
+      "-Dmkdtemp=amk_checked_mkdtemp",
+      "-Dumask=amk_target_umask",
+      "-D_exit=amk_target_terminal_exit"
+    ]
+  },
+  "host": {
+    "header_closure": "NOT FROZEN: actual compiler dependency discovery and exact consumed closure required before qualification",
+    "limits": "Host libc/dyld/shared-library closure is not hermetically pinned; Darwin host evidence is not target libc evidence",
+    "sdk": "/Library/Developer/CommandLineTools/SDKs/MacOSX27.0.sdk",
+    "sdk_settings_sha256": "7b93ad7e534cc4b31c6a4e39d19b5e0288acf2168c2649479a796d1cb51939fb",
+    "target": "arm64-apple-macos"
+  },
+  "issue": "https://github.com/gonz0w/Aether/issues/97",
+  "musl": {
+    "archive_sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+    "libc_sha256": "2459a32ba53cfc1dd62160d4bb8ea8e1afbac3615f2784c7351ad04f91183719",
+    "manifest_sha256": "f6bc6d6da3b051e1e4617e60ae256cbd35d193b608631ac29f7c42dbe73b13dc",
+    "sdk": ".deps/native-current/sdk",
+    "target_internal_headers": "pthread_impl.h/architecture/internal include closure is not exported by SDK stage; separately identified maintained input required before native fixture build",
+    "version": "1.2.6"
+  },
+  "native": {
+    "elf_bytes": 1048576,
+    "image_plus_fixed_stack_pages": 128,
+    "initial_sp_offset": 49152,
+    "stack_map_bytes": 65536,
+    "status": "injected-bootstrap fixture fit only; matched clock/app transport/startup remains unavailable",
+    "target": "x86_64-unknown-none",
+    "tls_bytes": 4096,
+    "total_backing_pages": 128
+  },
+  "owned_sources": [
+    "inputs.json",
+    "miniconfig",
+    "check.py",
+    "README.md",
+    "namespace.h",
+    "namespace.rs",
+    "namespace-tests.rs",
+    "integration-main.rs",
+    "target.h",
+    "target.c",
+    "checked-mkdtemp.c",
+    "host-tests.c"
+  ],
+  "producer": {
+    "aggregate_seconds": 300,
+    "child_seconds": 60,
+    "execution_cutoff_seconds": 270,
+    "file_bytes": 16777216,
+    "legacy_make": "unselected: old make pin drifted; old tool lock remains unchanged",
+    "legacy_process_helper": "unselected: issue94 spawn/journal ownership defect; no default import/execution",
+    "normal_cli_selected": false,
+    "private_runner_sha256": "7324037f82103ed487579cd3de30cde95eb2675af78f676ecde1d705ed8ab43f",
+    "stream_bytes": 4194304
+  },
+  "schema": "aether-mktemp-directory-inputs-v1",
+  "script_tools": {
+    "/bin/cat": {
+      "resolved_path": "/bin/cat",
+      "sha256": "2d839ffe60c9119a8c30256a04dec5a84751d3c07c3a63aa3762215b7c27996d"
+    },
+    "/bin/chmod": {
+      "resolved_path": "/bin/chmod",
+      "sha256": "3374f3be69005a61ebbcc5caac4c70892bb42220e6191f76121eafbb31449516"
+    },
+    "/bin/cp": {
+      "resolved_path": "/bin/cp",
+      "sha256": "a589d802b1c0dcafb205223774d7652a1d0a08b835a2dfbcf72692bfbe412880"
+    },
+    "/bin/ls": {
+      "resolved_path": "/bin/ls",
+      "sha256": "a7a0dcb67e60a7b726801c220a17ed7e139c99fe7c7bbacf4880e9779ba11e9c"
+    },
+    "/bin/mkdir": {
+      "resolved_path": "/bin/mkdir",
+      "sha256": "0874c3d6ea54d668f7b8eee5334e185117619ec4b624e6bc753b300b7a2cc71e"
+    },
+    "/bin/rm": {
+      "resolved_path": "/bin/rm",
+      "sha256": "379becb11a3bda18c5ecce9bacafef5137de0ed037b07d49e44ffaf5ae8e3d71"
+    },
+    "/bin/sh": {
+      "resolved_path": "/bin/sh",
+      "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+    },
+    "/usr/bin/basename": {
+      "resolved_path": "/usr/bin/basename",
+      "sha256": "192b040dbc93264442ad5833bd10c42b0086fada7c289b5c5c9ce2849713f7d2"
+    },
+    "/usr/bin/cmp": {
+      "resolved_path": "/usr/bin/cmp",
+      "sha256": "db24187bc1000aac1e2194f83e5c58f776ee9c2d856dec966cdd73e58b3526f2"
+    },
+    "/usr/bin/dirname": {
+      "resolved_path": "/usr/bin/dirname",
+      "sha256": "f5c8543daba1600272936484717c0261f88f4581ef8b516a1b12ba1326c5431e"
+    },
+    "/usr/bin/egrep": {
+      "resolved_path": "/usr/bin/egrep",
+      "sha256": "eb3a00dd156cd5e605d890f40775a0aec151e798fd9745a448e6ef16401d4ddf"
+    },
+    "/usr/bin/fold": {
+      "resolved_path": "/usr/bin/fold",
+      "sha256": "db7823cbb0d5b6eaeb3eadba27f252935128eab670925aef40e3e4a2647dee3c"
+    },
+    "/usr/bin/grep": {
+      "resolved_path": "/usr/bin/grep",
+      "sha256": "7077d92f9203ad16ec6644aaf4980057f54c7277256516e00ac5caa255b5910d"
+    },
+    "/usr/bin/head": {
+      "resolved_path": "/usr/bin/head",
+      "sha256": "1774a27eec1a39f7bfb6e4873f5ea5d797f6b2bad2680dc926a60aebb73c1777"
+    },
+    "/usr/bin/readlink": {
+      "resolved_path": "/usr/bin/readlink",
+      "sha256": "3ad8db37327a0052b54eeb79312b41f97d05849fa656808a3c4cd31f0a15c304"
+    },
+    "/usr/bin/sort": {
+      "resolved_path": "/usr/bin/sort",
+      "sha256": "d3633d807e3aec681b5cff4f1df035beefa3e3b0b62b8dcb2f8863d918d7a505"
+    },
+    "/usr/bin/tail": {
+      "resolved_path": "/usr/bin/tail",
+      "sha256": "57244c5b7a064430c30df12deaec96d1b05dda1ed4a5f705c318551edfe77206"
+    },
+    "/usr/bin/tr": {
+      "resolved_path": "/usr/bin/tr",
+      "sha256": "4363262b04f2aeb2081bb1e7326dbe3b204847deec27073d3fe97aa25b49b927"
+    },
+    "/usr/bin/uname": {
+      "resolved_path": "/usr/bin/uname",
+      "sha256": "cd64921fefa266e4e608abe4d1db976aacbc5c63d5af0e681460af58a1005794"
+    },
+    "/usr/bin/wc": {
+      "resolved_path": "/usr/bin/wc",
+      "sha256": "1f6160e420e65c2caa11ea9bb63262abb317352d0e2cd2c519fcc995d227ad10"
+    },
+    "/usr/bin/xargs": {
+      "resolved_path": "/usr/bin/xargs",
+      "sha256": "f6adc50116e2d48de1a3c63e26f89212579b23ef3d3d24f3bfdf738ee45884ff"
+    }
+  },
+  "status": "SOURCE ONLY; concrete source/input preparation and producer entries require separate review and explicit selection",
+  "tools": {
+    "ar": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
+      "sha256": "0ae5701cb4be028b9906be4fbe9211800d7aa41b4c049bc72a59eb737409d152",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "bash": {
+      "path": "/bin/bash",
+      "resolved_path": "/bin/bash",
+      "scope": "current Darwin host input; no runtime version query",
+      "sha256": "e0236611691e8bca51b778405812219ff7b64b52057c12538f298dfcdab81e39"
+    },
+    "clang": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang-21",
+      "sha256": "625165a3accc542dafef0264b5bbd18721b8e765c7ec819742ec7d7afd2491f6",
+      "version": "Homebrew clang version 21.1.8"
+    },
+    "clang-format": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang-format",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang-format",
+      "sha256": "bab080efb0e6f87a5cc162e6953cf83a0ee562b883ba4519d8db39331912605d"
+    },
+    "clippy-driver": {
+      "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/clippy-driver",
+      "resolved_path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/clippy-driver",
+      "sha256": "6a1ccc398ad5466587424fd97625bad2a9296d4ef031a853b99eb80362f6e1e9"
+    },
+    "darwin-ld": {
+      "path": "/Library/Developer/CommandLineTools/usr/bin/ld",
+      "resolved_path": "/Library/Developer/CommandLineTools/usr/bin/ld",
+      "scope": "current Darwin host input; no runtime version query",
+      "sha256": "374d9f0713bce2c8a9e1e82bde51615d5433516a10d99b63107eb6ee70542e4c"
+    },
+    "gsed": {
+      "path": "/opt/homebrew/Cellar/gnu-sed/4.10/bin/gsed",
+      "resolved_path": "/opt/homebrew/Cellar/gnu-sed/4.10/bin/gsed",
+      "sha256": "130563b48d1c66445de3d00fe83e352e0447a9f946f042c0164cf8c621e1532b",
+      "version": "4.10"
+    },
+    "lld": {
+      "path": "/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+      "resolved_path": "/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/lld",
+      "sha256": "c2e13eb403e01855c711c3dec8f1df64a725b51435a865650a47558069eeb5f5",
+      "version": "Homebrew LLD 21.1.8 (compatible with GNU linkers)"
+    },
+    "nm": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+      "sha256": "2fdfcd6fe14e1f354d252a70275dbc5bd78e93ba4ae0d0449fc5e90de1983da4",
+      "version": "llvm-nm, compatible with GNU nm"
+    },
+    "objdump": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-objdump",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-objdump",
+      "sha256": "57df889beb6133ffd405ffb84795941c068a13a09dba0a40546d3b740666b9b7",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "readelf": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readelf",
+      "resolved_path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-readobj",
+      "sha256": "928d7a8b16ef4e97e10731b1a2ef80a3ff78bbdd2acc9f70162ae640409b38c4",
+      "version": "Homebrew LLVM version 21.1.8"
+    },
+    "rustc": {
+      "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustc",
+      "resolved_path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustc",
+      "sha256": "a11618eca0956a8aa4372c2bc898690b513cbdfa2cb9125b2a5301e360ed5b49"
+    },
+    "rustfmt": {
+      "path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustfmt",
+      "resolved_path": "/Users/cam/.rustup/toolchains/1.98.0-aarch64-apple-darwin/bin/rustfmt",
+      "sha256": "ca9cbe15a4add6baf62d8ce177015c9c48f209ebcf4364416b1953142e8701f8"
+    }
+  },
+  "toybox": {
+    "archive_sha256": "827e4cdfd69f5da973e00e2a59b30b3c9857fb7fae74c362fd0b4f96be7929b0",
+    "current_tree": ".deps/mktemp-directory-current/toybox-0.8.14",
+    "library_sources": [
+      "lib/args.c",
+      "lib/commas.c",
+      "lib/deflate.c",
+      "lib/dirtree.c",
+      "lib/elf.c",
+      "lib/env.c",
+      "lib/hash.c",
+      "lib/lib.c",
+      "lib/llist.c",
+      "lib/net.c",
+      "lib/password.c",
+      "lib/portability.c",
+      "lib/tty.c",
+      "lib/utf8.c",
+      "lib/xwrap.c"
+    ],
+    "members": {
+      "Config.in": "950f7aa4c5910f5dc602ce491829d1845f3234f8f067a77c4505bf2323d40862",
+      "LICENSE": "948039f91e7e23916019047a035c69214447323c5fc272aefc0fd21e505bf41d",
+      "configure": "6dc3e7d48be3f7ce2973257e02080a0c0793a8ac60fbd1cfe41767f8bebc8c74",
+      "lib/portability.c": "aa266e98470c5be9e37471d78db0a9a537f2075c73a17dbd02053daa07242a62",
+      "lib/portability.h": "7b6d8869260090a5a4e9dbcc3abf881ccb3b4cbd73344692e159929d2819a78b",
+      "lib/xwrap.c": "1bf10aed306c548ac732c79cb3ece1c71b6dc575b1eec621f946746bed147a7d",
+      "main.c": "fadb39573d30456b66639e9d374e604dd27e34665af98560114c1850b1b2d725",
+      "scripts/genconfig.sh": "2335420d8c5fd368eca5c1b44a9747aa1eb7ed94978474ab207741b7e8486440",
+      "scripts/kconfig.c": "72cd69c3b142eb4a3daf8bc368f441ceda81302a15199f5a32998858d319a98e",
+      "scripts/macos_miniconfig": "8fa8d1f5151427544d19ed04244de035100b2afff6ddbcbb02fa7459d2102c91",
+      "scripts/make.sh": "a56f72e811ae89fe90e465c71d20a20bcc225c48b3f62c5c8b289131e0900b38",
+      "scripts/mkflags.c": "2cffd7fd4ac90b96a1846c8be6c99674d4475250e8878bf138a629e868d0e8b4",
+      "scripts/portability.sh": "91b4b7cf085878651b93a0305a5d870a734178b2f594dfb0012bf95c0df7b74a",
+      "toys.h": "1d52d76d0c2d2f324e6f4ed1fe03eb4ead0bd64823639a8d2cb814689f06c822",
+      "toys/lsb/mktemp.c": "b44b8fae691f87efe261571ec8b71ab9d939030c19c7de41b2e5a4ee254dfea4"
+    },
+    "trust": "existing byte-pinned archive; upstream source authentication/security review remains separate",
+    "url": "https://landley.net/toybox/downloads/toybox-0.8.14.tar.gz",
+    "version": "0.8.14"
+  }
+}

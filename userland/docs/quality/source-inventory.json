@@ -4698,6 +4698,177 @@
         "UL-061",
         "UL-063"
       ]
+    },
+    {
+      "path": "experiments/mktemp-directory/check.py",
+      "sha256": "389ad7ff55d0bfd37d28ba3f0c7fbd84eccf96ed63e8476d26a545f2c2bd0130",
+      "bytes": 6041,
+      "language": "Python",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/checked-mkdtemp.c",
+      "sha256": "1a245adfaa432c93fd7c719d14b5456bace3f0f1a3666f9baeb8d1bdb66defd6",
+      "bytes": 3452,
+      "language": "C",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/host-tests.c",
+      "sha256": "ebb283ac1fade54088336089ed3352060767245e17d7d888ec8ef79baf2919ef",
+      "bytes": 14587,
+      "language": "C",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/integration-main.rs",
+      "sha256": "4a3b21c47bff2a175994503b6b49551a067c94e5e1c501bcf2e34aeccef92fba",
+      "bytes": 13063,
+      "language": "Rust",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/namespace-tests.rs",
+      "sha256": "58d5c79566b0742a1c97759b4d3b998e7610e8b2670dfaa3f983cccf9ad9643d",
+      "bytes": 22463,
+      "language": "Rust",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/namespace.h",
+      "sha256": "30b05894240e2d03dd0f22ad090c89b9d3eff7bbda035c6703b4a3c4df9319ff",
+      "bytes": 6219,
+      "language": "C",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/namespace.rs",
+      "sha256": "a01ccad600fcecad23c8855f1d166a6ee8b2a12721d30369feef72f7f0846fd5",
+      "bytes": 19286,
+      "language": "Rust",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/target.c",
+      "sha256": "690bb247b4434e26bebb5143744bb3420d9a002122e7cb1ae575b4ae28028e2e",
+      "bytes": 8478,
+      "language": "C",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
+    },
+    {
+      "path": "experiments/mktemp-directory/target.h",
+      "sha256": "bc1ed961d749a89790e0ee0894d2c55ca0b04c0a5e01a167718d76df4a1c0289",
+      "bytes": 2591,
+      "language": "C",
+      "subsystem": "experiments/mktemp-directory",
+      "owner": "Aether-userland",
+      "coverage_ids": [
+        "UD-mktemp-directory"
+      ],
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "subprocess_call_hints": [],
+      "audit_status": "Host input and behavior exercised and separately reviewed; final quality and native fit remain pending issue97",
+      "follow_ons": [
+        "issue97"
+      ]
     }
   ]
 }

@@ -1,0 +1,9 @@
+# Directory-only candidate: generated effective applet table is authoritative.
+CONFIG_MKTEMP=y
+# CONFIG_TOYBOX is not set
+# CONFIG_TOYBOX_SUID is not set
+# CONFIG_TOYBOX_FLOAT is not set
+# CONFIG_TOYBOX_HELP is not set
+# CONFIG_TOYBOX_HELP_DASHDASH is not set
+# CONFIG_TOYBOX_ZHELP is not set
+# CONFIG_TOYBOX_FREE is not set

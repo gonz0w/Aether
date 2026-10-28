@@ -2525,6 +2525,16 @@
       "invariants": "Generation-bound publication and settled source obligations, primary-only completed-return holds, saved frame/FS/FP, helper and idle progress, actual Events timeout precedence, default zero state, unchanged capability/pointer/direction/cleanup checks.",
       "oracle": "Eight selected cases, actual-body scenarios and compiling semantic omissions; unknown/default selector and enabled-state controls.",
       "gaps": "No hardware IRQ/CR3, real guest scheduling, target fit or native/recovery qualification."
+    },
+    {
+      "id": "AT-MKTEMP-DIRECTORY-HOST",
+      "reference": "userland/experiments/mktemp-directory/README.md",
+      "owner": "Issue97 lead; bounded producer/adapter implementers",
+      "budget_seconds": 300,
+      "command": "Owner-selected private producer_02.py prepare and host_producer_07.py with its reviewed source freeze; neither private entry is available from the public checkout. Public check.py is an unselected library; no implicit execution.",
+      "invariants": "Directory-only31-byte argv/template bound; provisioned home15 parent; mask0077/mode0700; checked MONOTONIC/TLS; one mkdir; typed progress and once-only finalization; unchanged process/resource limits.",
+      "oracle": "Generated effective mktemp-only table; scripted C cases and omissions, isolated Rust tests and omissions, and real Toybox terminal cases with the actual Client/service and a typed C provider fixture.",
+      "gaps": "Host result separately reviewed. Final quality/integration receipts are recorded in issue97 and the PR. Native implementation is tracked in issues99/100 and matched fit in issue97 under the approved issue98 contract; no OpenZFS disk, package import, guest or release qualification."
     }
   ]
 }

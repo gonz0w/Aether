@@ -1929,6 +1929,20 @@
       ],
       "reviewer": null,
       "exclusion": null
+    },
+    {
+      "id": "UD-mktemp-directory",
+      "surface": "Directory-only mktemp source and host candidate",
+      "kind": "subsystem",
+      "owner": "Aether-userland",
+      "status": "draft",
+      "revision": null,
+      "documents": [
+        "experiments/mktemp-directory/README.md"
+      ],
+      "evidence": [],
+      "reviewer": null,
+      "exclusion": null
     }
   ]
 }
