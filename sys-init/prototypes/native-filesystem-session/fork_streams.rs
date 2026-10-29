@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #![no_std]
 //! Owned candidate stream state. Actual native grants/close observations external.
-use fd_startup::{Plan, Source};
-use fork_gate::ForkStreams;
+use fd_startup::{ForkStreams, Plan, Source};
 #[path = "fork_pipe.rs"]
 mod pipe;
 pub use pipe::{Caller, Outcome, SessionPipe};

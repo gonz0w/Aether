@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #[cfg(all(owner_control_host_trap, test, not(target_os = "none")))]
 use super::host_trap::Native;
-use super::{Control, Status};
+use super::{AppControl, Control, Status};
 #[cfg(target_os = "none")]
 use af07_transport::native::Native;
 #[cfg(not(owner_control_host_trap))]
@@ -93,6 +93,17 @@ impl Control for Native {
                 0,
                 0,
             ],
+        )
+        .0
+    }
+}
+
+impl AppControl for Native {
+    /// Separately selected ordinary-app launch; negative status transfers nothing.
+    fn launch_app(&mut self, record: &[u8; 320], reader: u64, writer: u64) -> i64 {
+        call(
+            0x2300a,
+            [0xa001, 0xc002, 1, record.as_ptr() as u64, reader, writer],
         )
         .0
     }

@@ -17,6 +17,8 @@ struct execution {
     size_t length;
     mode_t mask;
     unsigned attempted, finished;
+    uint32_t native_status;
+    const struct amk_native_hooks *native;
 };
 static _Thread_local struct execution *active;
 static _Thread_local unsigned running;
@@ -157,6 +159,18 @@ int amk_target_terminal_status(int status)
         status = 1;
     int saved_errno = errno;
     execution->out->command_status = (uint32_t)status;
+    if (execution->native) {
+        int flushed = fflush(NULL);
+        int output_failed = ferror(stdout);
+        int error_failed = ferror(stderr);
+#ifndef AMK_OMIT_STDERR
+        if ((flushed || output_failed || error_failed) && !status)
+#else
+        (void)error_failed;
+        if ((flushed || output_failed) && !status)
+#endif
+            status = 1;
+    }
     struct amk_finish_result finish = {0};
     int32_t result = 0;
 #ifndef AMK_OMIT_FINISH
@@ -168,7 +182,11 @@ int amk_target_terminal_status(int status)
     (void)finish;
     if (result && !status)
         status = 1;
+    if (execution->native &&
+        execution->native->finish(execution->native->state) && !status)
+        status = 1;
     execution->out->final_status = (uint32_t)status;
+    execution->native_status = (uint32_t)status;
     execution->finished = 1;
     active = NULL;
     errno = saved_errno;
@@ -179,6 +197,10 @@ _Noreturn void amk_target_terminal_exit(int status)
     struct execution *execution = active;
     status = amk_target_terminal_status(status);
     running = 0;
+    if (execution && execution->native) {
+        execution->native->terminal((uint32_t)status);
+        __builtin_trap();
+    }
     if (execution && execution->observations &&
         execution->observations->before_exit) {
         const struct amk_observations *observations = execution->observations;
@@ -201,8 +223,8 @@ static int32_t enter(struct amk_namespace *borrowed, void *application)
     /* A returning fixture has the same final output checks. Actual Toybox's
      * normal terminal path performs these inside upstream xexit instead.
      */
-    int flushed = fflush(NULL);
-    int failed = ferror(stdout);
+    int flushed = execution->native ? 0 : fflush(NULL);
+    int failed = execution->native ? 0 : ferror(stdout);
 #ifndef AMK_OMIT_OUTPUT
     if ((flushed || failed) && !status)
         status = 1;
@@ -213,10 +235,10 @@ static int32_t enter(struct amk_namespace *borrowed, void *application)
     (void)amk_target_terminal_status(status);
     return (int32_t)execution->out->command_status;
 }
-int32_t amk_target_run(const struct amk_bootstrap *bootstrap, int argc,
-                       char **argv, char **envp,
-                       const struct amk_observations *observations,
-                       amk_applet_fn applet, struct amk_run_result *out)
+static int32_t run(const struct amk_bootstrap *bootstrap, int argc, char **argv,
+                   char **envp, const struct amk_observations *observations,
+                   const struct amk_native_hooks *native, amk_applet_fn applet,
+                   struct amk_run_result *out)
 {
     if (running || !bootstrap || !argv || !envp || !applet || !out ||
         argc != 3 || !argv[0] || !argv[1] || !argv[2] || argv[3] ||
@@ -227,10 +249,12 @@ int32_t amk_target_run(const struct amk_bootstrap *bootstrap, int argc,
         !valid_template(bootstrap, argv[2], payload_length(argv[2])))
         return reject(out);
 #ifndef AMK_NATIVE_MUSL
-    if (!observations || !observations->monotonic ||
-        !observations->thread_identity)
+    if (!native && (!observations || !observations->monotonic ||
+                    !observations->thread_identity))
         return reject(out);
 #endif
+    if (native && (!native->verify || !native->finish || !native->terminal))
+        return reject(out);
     struct execution execution = {.bootstrap = bootstrap,
                                   .observations = observations,
                                   .applet = applet,
@@ -238,11 +262,37 @@ int32_t amk_target_run(const struct amk_bootstrap *bootstrap, int argc,
                                   .argc = argc,
                                   .argv = argv,
                                   .length = strlen(argv[2]),
-                                  .mask = 0077};
+                                  .mask = 0077,
+                                  .native = native};
     memcpy(execution.original, argv[2], execution.length + 1);
     running = 1;
-    int32_t result = amk_with_namespace(bootstrap, enter, &execution, out);
+    int32_t result =
+        native ? amk_with_native_namespace(bootstrap, native->verify, enter,
+                                           &execution, out)
+               : amk_with_namespace(bootstrap, enter, &execution, out);
+    /* Rust retains the original command status separately. A descriptor or
+     * stderr failure observed by the C finalizer must survive its return path.
+     */
+    if (native && execution.finished && execution.native_status &&
+        !out->final_status)
+        out->final_status = execution.native_status;
     active = NULL;
     running = 0;
     return result;
+}
+int32_t amk_target_run(const struct amk_bootstrap *bootstrap, int argc,
+                       char **argv, char **envp,
+                       const struct amk_observations *observations,
+                       amk_applet_fn applet, struct amk_run_result *out)
+{
+    return run(bootstrap, argc, argv, envp, observations, NULL, applet, out);
+}
+int32_t amk_target_run_native(const struct amk_bootstrap *bootstrap, int argc,
+                              char **argv, char **envp,
+                              const struct amk_native_hooks *native,
+                              amk_applet_fn applet, struct amk_run_result *out)
+{
+    if (!native)
+        return reject(out);
+    return run(bootstrap, argc, argv, envp, NULL, native, applet, out);
 }

@@ -252,6 +252,16 @@ fn poisoned() -> Guard {
 }
 #[test]
 fn final_slot_home_constructor_initializes_every_record_and_outcome() {
+    assert_eq!(
+        core::any::TypeId::of::<dyn fd_startup::ForkStreams>(),
+        core::any::TypeId::of::<dyn fork_gate::ForkStreams>(),
+        "FORK_STREAMS_ALIAS_IDENTITY",
+    );
+    fn both_trait_paths<T: fd_startup::ForkStreams>() {
+        fn legacy_trait_path<U: fork_gate::ForkStreams>() {}
+        legacy_trait_path::<T>();
+    }
+    both_trait_paths::<fork_streams::State>();
     let k = kernel(vec![greet(1), greet(2)]);
     let mut g = poisoned();
     let r = Runtime::connect_home_in_place(&mut g.slot, k.clone(), 99, source(&k), 77, 5000)

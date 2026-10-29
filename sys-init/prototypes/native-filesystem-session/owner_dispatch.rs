@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #![no_std]
 //! One mixed-channel exchange under sole-owner admission; native ownership external.
+#[path = "stream_transport.rs"]
+mod stream_transport;
 use abi29_dispatch_core::startup::Identity;
 use fd_dispatch::Peer;
 use fd_startup::{BYTES, Plan};
@@ -25,30 +27,27 @@ fn transfer(
     budget: &mut u32,
     writing: bool,
 ) -> Result<(), i64> {
-    let mut at = 0;
-    while at < bytes.len() {
-        if *budget == 0 {
-            return Err(-110);
+    struct Legacy<'a, I> {
+        io: &'a mut I,
+        budget: &'a mut u32,
+    }
+    impl<I: Io> stream_transport::Steps for Legacy<'_, I> {
+        fn transfer(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
+            if *self.budget == 0 {
+                return -110;
+            }
+            *self.budget -= 1;
+            self.io.transfer(writing, bytes)
         }
-        *budget -= 1;
-        let count = (bytes.len() - at).min(16);
-        let result = io.transfer(writing, &mut bytes[at..at + count]);
-        if result == -11 {
-            if *budget == 0 {
-                return Err(-110);
+        fn wait(&mut self, writing: bool) -> i64 {
+            if *self.budget == 0 {
+                return -110;
             }
-            *budget -= 1;
-            let status = io.wait(writing);
-            if status != 0 {
-                return Err(if status < 0 { status } else { -5 });
-            }
-        } else if result <= 0 || result as u64 > count as u64 {
-            return Err(if result < 0 { result } else { -5 });
-        } else {
-            at += result as usize;
+            *self.budget -= 1;
+            self.io.wait(writing)
         }
     }
-    Ok(())
+    stream_transport::transfer(&mut Legacy { io, budget }, bytes, writing)
 }
 fn receive<I: Io>(
     peer: &mut Peer<Framed<I>>,

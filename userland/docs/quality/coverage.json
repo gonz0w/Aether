@@ -1940,8 +1940,14 @@
       "documents": [
         "experiments/mktemp-directory/README.md"
       ],
-      "evidence": [],
-      "reviewer": null,
+      "evidence": [
+        "experiments/mktemp-directory/README.md",
+        "experiments/mktemp-directory/namespace-tests.rs",
+        "experiments/mktemp-directory/native-tests.rs",
+        "experiments/mktemp-directory/native-stdio-tests.c",
+        "experiments/mktemp-directory/host-tests.c"
+      ],
+      "reviewer": "Separate peer agents reviewed the issue100 host source and evidence; reader, native fit and release reviews remain open.",
       "exclusion": null
     }
   ]

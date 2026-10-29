@@ -1,8 +1,9 @@
 # Proposed AEFDB001 startup producer
 
-Decision0200 prepares fd_startup.rs as a separate no_std crate, consuming the
-unchanged ABI29 startup core. No accepted owner, linked shell, old32/64-byte
-startup path, SDK or released pin is changed. Userland startup56 candidate seal
+Decision0200 proposed fd_startup.rs as a separate no_std crate, consuming the
+unchanged ABI29 startup core. That decision did not change an accepted owner,
+linked shell, old32/64-byte startup path, SDK or released pin. The userland
+startup56 candidate seal
 `709a2c0f33b3cbf8dbecc3143d2976d5dd9093120cb4460eb41f697805147094`
 is the exact proposal/consumer input, not a released cross-project ABI.
 
@@ -28,9 +29,11 @@ The trusted caller must own actual admitted instance/process/channel and source/
 factory rights. Shape validation supplies no native authority, authentication or
 endpoint transfer. Emit only on that exact instance's authenticated channel and
 only to the new selected sole consumer; never send this proposal to the old linked
-shell. Full single-consumer delivery, partial-send failure, endpoint retirement,
-readiness and native cleanup are future full dispatcher responsibilities. There
-is no fallback, reconnect or implicit grant acquisition in this function.
+shell. [Issue #100](https://github.com/gonz0w/Aether/issues/100) adds a bounded
+one-app owner and consumer using this startup record; its delivery, refusal and
+cleanup behavior has focused host evidence. Full dispatcher readiness and native
+cleanup remain separate requirements. There is no fallback, reconnect or implicit
+grant acquisition in this function.
 
 Wire layout: AEFDB001/version1/length304 at0..16; unchanged AEFSH001 identity at16;
 AEFDT001 map at48; seven16-byte source records at176; histories at288/292; role
@@ -50,10 +53,9 @@ that extern. Exact bounded commands/tool/native-library/header/runtime/source pi
 and inert reproduction runner are retained in evidence. All16 selected closures/
 494 members verify. Do not rerun into sealed evidence; choose fresh private roots.
 
-Next userland wires this sole consumer/context into libc/shell and replaces old
-64-byte table/process snapshot/copy/exec framing explicitly. Child rebind/TLS,
-source/file/channel generation and immutable image/failed-or-unknown-exec parent/
-FD preservation and actual off-stack placement/full resource fit remain required.
-Then sys-init composes full matched dispatcher/readiness/shutdown and Aether
-qualifies fresh native commands/errors/cleanup/readback. Native/context helper
-code now exists; authenticated linked runtime selection is still absent.
+The selected one-app consumer now wires this record to its namespace and stdout/
+stderr adapters under issue #100. Its host tests do not qualify the linked native
+runtime or the whole Decision0200 proposal. A general shell still needs child
+rebind/TLS, source/file/channel generation and immutable-image/failed-or-unknown-
+exec parent/FD preservation, plus actual placement and full resource fit. A matched
+native run must establish dispatcher readiness, shutdown and cleanup separately.

@@ -48,9 +48,26 @@ source tree and the selected miniconfig. The generated configuration and
 preprocessed applet table selected only mktemp, with two recorded support flags.
 A separate discovery receipt recorded the used tool and header identities before
 the host source freeze. The host SDK, libc, dynamic loader and shared libraries
-are not a hermetic runtime closure. [inputs.json](inputs.json) retains the initial
-public candidate metadata; its source-only and header-discovery wording describes
-that starting lock, not the later private host receipt.
+are not a hermetic runtime closure. [inputs.json](inputs.json) records the current
+source inventory and matched one-app host composition. Positive native linking and
+whole-app fit remain pending. Earlier private run locks and receipts retain their
+original input identities; current metadata does not select an execution entry.
+
+The selected one-app adapter host family completed on 2026-10-29 in 53.288
+seconds with exit zero, 144 known-clean child processes and owned outputs removed.
+Its result identity is
+`fd55aca6574bd3fdac5670e824eb3fed8feae551e3a517760f36ffbcc9158531`;
+a separate peer evidence review is
+`527258c3fe1f1c8c00b035cc3b84306b51aef4c4e87cb7eb946bb629ad09a984`.
+It exercised 16 namespace cases and 14 normal plus seven isolated fatal app cases
+in both debug and optimized builds, seven compiling semantic omissions, C
+finalizer/stdio checks and the five real Toybox compatibility cases. The
+[test definitions](native-tests.rs), [stdio fixture](native-stdio-tests.c),
+[namespace cases](namespace-tests.rs) and [C cases](host-tests.c) identify the
+selected sources; they are not execution receipts. The
+[app binding](native.rs) and [C startup glue](native-main.c) are the corresponding
+one-app sources. Issue #100 records exact source and tool identities and the
+separate review. These are host results; native execution and fit remain open.
 
 ## Reproducing the recorded run
 
@@ -72,15 +89,41 @@ finish-order omission, a Rust/Clang loader conflict with preserved intermediate
 objects, and two Clippy diagnostics. Their owned outputs were disposed after
 known cleanup; compact commands, identities and failure records remain private.
 
+The one-app host checks used the separately selected private `owner_host_06.py`,
+`legacy_host_02.py` and `app_host_09.py` entries. Each used its own fixed
+300-second aggregate and reviewed source freeze. Issue #100 records the exact
+outcomes and peer reviews. These entries and their qualification inputs
+are not included in the public checkout; the public `check.py` and root `AT-HOST`
+do not run the selected one-app consumer checks.
+
 ## Native boundary
 
-The ordinary application clock and authenticated namespace bootstrap are not
-matched to this candidate. The current clock operation requires a threaded role,
-while an ordinary process-app slot is not threaded and its auxv 0xa001 is a
-channel endpoint. The provisioned parent, epoch, transport and finalizer also need
-a matched application route. [Issue #98](https://github.com/gonz0w/Aether/issues/98)
-records the owner-approved contract. Implementation and matched native fit remain
-pending; host fixtures do not replace that route or prove a native positive fit.
+The accepted [kernel extension](../../../docs/NATIVE-LAUNCH.md#ordinary-one-app-namespace-launch)
+supplies the ordinary app record at auxv0xa003 and the separate lifetime clock
+grant0x28012. Auxv0xa001 remains the process channel endpoint; it is never a
+clock or thread grant. [Issue100](https://github.com/gonz0w/Aether/issues/100)
+owns the matched native adapters under the approved
+[issue98](https://github.com/gonz0w/Aether/issues/98) contract. Positive whole-app
+link/stack/TLS/backing fit remains with issue97. Host fixtures do not prove native
+bootstrap, filesystem export or runtime sufficiency.
+
+`amk_with_native_namespace` is additive to the existing host entry. Its required
+verifier borrows the same separate callback state and runs through actual
+Client::disconnect_checked after the validated ACK, before both raw closes.
+Only the selected native verifier's actual EOF then nonempty-write EPIPE satisfies
+that contract; a yield or successful default callback is insufficient. The
+namespace unit fixture substitutes this observation solely to check ordering and
+error retention. Matched host checks exercise the app's verifier with controlled
+trap results; native channel quiescence still needs target evidence. Legacy
+`amk_with_namespace` retains its disconnect semantics and C ABI.
+
+App finalization flushes and inspects both streams, finishes namespace while its
+borrow is live, then descriptors, independently caches raw closes and clears TLS
+before terminal exit. Native FD mask-restore failure has a lower fatal path:
+the selected callback uses a disjoint fixed four-capability close ledger, counts
+the two process closes already attempted by actual aefd_native_leave, closes only
+remaining owned ends and exits125 once. It never reenters Client/FD finish or
+performs another mask/clock/wait call. Existing legacy callbacks are unchanged.
 
 The intended ordinary-app bounds remain a 1 MiB ELF, 128 image-plus-stack pages,
 128 backing pages and 4096 TLS bytes. The stack mapping is 64 KiB with an initial

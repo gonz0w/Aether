@@ -2544,7 +2544,17 @@
       "command": "Owner-selected private producer_02.py prepare and host_producer_07.py with its reviewed source freeze; neither private entry is available from the public checkout. Public check.py is an unselected library; no implicit execution.",
       "invariants": "Directory-only31-byte argv/template bound; provisioned home15 parent; mask0077/mode0700; checked MONOTONIC/TLS; one mkdir; typed progress and once-only finalization; unchanged process/resource limits.",
       "oracle": "Generated effective mktemp-only table; scripted C cases and omissions, isolated Rust tests and omissions, and real Toybox terminal cases with the actual Client/service and a typed C provider fixture.",
-      "gaps": "Host result separately reviewed. Final quality/integration receipts are recorded in issue97 and the PR. Native implementation is tracked in issues99/100 and matched fit in issue97 under the approved issue98 contract; no OpenZFS disk, package import, guest or release qualification."
+      "gaps": "Host result separately reviewed. Final quality/integration receipts are recorded in issue97 and the PR. Kernel prerequisite issue99 is merged; issue100 tracks the separately reviewed one-app host binding and issue97 owns matched fit under the approved issue98 contract; no OpenZFS disk, package import, guest or release qualification."
+    },
+    {
+      "id": "AT-NATIVE-ONE-APP-HOST",
+      "reference": "sys-init/prototypes/native-filesystem-session/README.md",
+      "owner": "Issue100 lead; sys-init and Aether-userland",
+      "budget_seconds": 300,
+      "command": "Separate selected private owner_host_06.py, legacy_host_02.py and app_host_09.py entries with their reviewed source freezes, pinned Python and 300-second aggregate per family. Issue100 records results and peer reviews. Entries and qualification inputs are not present in the public checkout; root AT-HOST does not execute these consumer binaries.",
+      "invariants": "Sole filesystem handoff before greetings; authenticated startup and fd1/fd2 source identity; bounded clock, transfer and cleanup; denied operations and rights; no replay or false export after unknown outcomes; legacy AEFDB001/AEFDB002 consumers remain compatible.",
+      "oracle": "Owner host tests and typed-control/compiling omissions; 113 legacy compatibility cases; app namespace and normal/fatal cases in debug and optimized modes, seven compiling omissions, C finalizer/stdio controls and five real Toybox/Client/service host cases. Exact results and separate peer evidence reviews are recorded in issue100.",
+      "gaps": "These host observations do not establish native authority, linked application or owner fit, real engine export, guest execution, package integration or release acceptance. Issue97 owns whole-app fit."
     }
   ]
 }

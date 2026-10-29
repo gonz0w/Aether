@@ -37,6 +37,12 @@ pub struct Plan {
     pub sources: [Source; 7],
     pub history: [u32; 2],
 }
+/// Trusted owner state, not native authentication. Validation must inspect
+/// authoritative state without effects. Activation follows exact context-ready.
+pub trait ForkStreams {
+    fn validate_fork(&self, plan: &Plan) -> Result<(), i32>;
+    fn child_ready(&mut self, pid: u32) -> Result<(), i32>;
+}
 /// The caller owns the admitted instance, authenticated channel and actual
 /// source/factory rights. This validates labels only; no authority is acquired.
 /// On any error output remains unchanged. Delivery/partial failure is external.

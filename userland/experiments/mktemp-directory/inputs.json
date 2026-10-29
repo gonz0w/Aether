@@ -53,7 +53,7 @@
     "image_plus_fixed_stack_pages": 128,
     "initial_sp_offset": 49152,
     "stack_map_bytes": 65536,
-    "status": "injected-bootstrap fixture fit only; matched clock/app transport/startup remains unavailable",
+    "status": "Bootstrap, per-lifetime clock, namespace and stdout/stderr clients implemented with matched host evidence accepted in #100; positive native ELF/link-origin and whole-app fit PENDING (#97); no guest qualification",
     "target": "x86_64-unknown-none",
     "tls_bytes": 4096,
     "total_backing_pages": 128
@@ -70,7 +70,12 @@
     "target.h",
     "target.c",
     "checked-mkdtemp.c",
-    "host-tests.c"
+    "host-tests.c",
+    "native.rs",
+    "native.h",
+    "native-main.c",
+    "native-tests.rs",
+    "native-stdio-tests.c"
   ],
   "producer": {
     "aggregate_seconds": 300,
@@ -170,7 +175,7 @@
       "sha256": "f6adc50116e2d48de1a3c63e26f89212579b23ef3d3d24f3bfdf738ee45884ff"
     }
   },
-  "status": "SOURCE ONLY; concrete source/input preparation and producer entries require separate review and explicit selection",
+  "status": "Matched host composition accepted for #100 under the approved #98 contract and implemented #99 kernel ABI; positive native link and whole-app fit PENDING in #97. This metadata does not select an execution entry",
   "tools": {
     "ar": {
       "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
