@@ -25,6 +25,7 @@ const Execution = E.Execution;
 const Child = E.Child;
 const Page = struct {address:usize=0,flags:u64=0};
 const State = struct {
+ app_binding:struct{clock:u64=0}=.{},
  generation:u64=1, admitted:bool=false,terminal:bool=false,terminal_kind:u64=0,status:u64=0,ready:bool=false,revision:u64=0,yields:usize=0,
  frozen:bool=false,on_child:bool=false,selected_child:usize=0,execution:Execution=.{},children:[1]Child=@splat(.{}),
  channel_cap:u64=0,channel_reply_cap:u64=0,channel_wait:C.Wait=.{},

@@ -437,6 +437,12 @@ pub fn build(b: *std.Build) void {
         .optimize = .Debug,
     }) });
     test_step.dependOn(&b.addRunArtifact(launch_tests).step);
+    const app_tests = b.addTest(.{ .root_module = b.createModule(.{
+        .root_source_file = b.path("kernel/native_app.zig"),
+        .target = b.graph.host,
+        .optimize = .Debug,
+    }) });
+    test_step.dependOn(&b.addRunArtifact(app_tests).step);
     const fs_session_tests = b.addTest(.{ .root_module = b.createModule(.{
         .root_source_file = b.path("kernel/native_fs_session.zig"),
         .target = b.graph.host,

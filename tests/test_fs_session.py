@@ -104,7 +104,7 @@ class FilesystemRoleOperations(unittest.TestCase):
         prefixes={}
         for name,anchor in [('exec','    if (f.rax == 0x23008)'),('copy','    const reader = ownedChannel'),('launch','    var raw: [launch.record_size]u8')]:
             text=block(native,'fn '+name+'Operation(')
-            prefixes[name]=text[:text.index(anchor)]+(block(text,'if (failure != 0)') if name=='launch' else '')+('    _=s;\n' if name=='exec' else '')+'    effects+=1; result(caller,77); return select();\n}'
+            prefixes[name]=text[:text.index(anchor)]+(block(text,'if (failure != 0)') if name=='launch' else '')+'    effects+=1; result(caller,77); return select();\n}'
         # Both actual delegations: the older whole-device path must not bypass
         # the new region path's role restriction. Execute their complete bodies.
         for op in ('27003','27005'):
@@ -114,7 +114,7 @@ class FilesystemRoleOperations(unittest.TestCase):
         scaffold=r"""
 const std=@import("std");const FsRoles=@import("roles");const combined_profile=true;
 const Frame=struct{rax:u64=0,rdi:u64=0,rsi:u64=0,rdx:u64=0,r10:u64=0,r8:u64=0,r9:u64=0};
-const State=struct{terminal:bool=false,frozen:bool=true,admitted:bool=false,generation:u64=1,freeze_sequence:u64=1,image_commit:struct{pending:bool=false}=.{},frame:Frame=.{}};
+const State=struct{app_binding:struct{clock:u64=0,fn bound(b:*const @This())bool{return b.clock!=0;}}=.{},terminal:bool=false,frozen:bool=true,admitted:bool=false,generation:u64=1,freeze_sequence:u64=1,image_commit:struct{pending:bool=false}=.{},frame:Frame=.{}};
 var states:[7]State=@splat(.{});var active:usize=6;var effects:usize=0;
 var block_base:u64=0;var block_count:u64=2097160;var block_rights:u64=7;
 var block_recipient:?struct{slot:usize,generation:u64}=null;

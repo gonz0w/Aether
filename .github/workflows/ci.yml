@@ -127,7 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(zig version)" = 0.16.0
-          for source in kernel/capability.zig kernel/lifetime.zig kernel/native_elf.zig kernel/native_launch.zig kernel/native_af09_drain.zig; do
+          for source in kernel/capability.zig kernel/lifetime.zig kernel/native_elf.zig kernel/native_launch.zig kernel/native_app.zig kernel/native_af09_drain.zig; do
             timeout 180 zig test "$source" \
               --cache-dir "$RUNNER_TEMP/zig-cache" \
               --global-cache-dir "$RUNNER_TEMP/zig-global-cache" 2>&1 | tee "$RUNNER_TEMP/kernel-model.log"

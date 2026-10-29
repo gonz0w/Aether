@@ -22,6 +22,7 @@ const Execution=struct{
  fn forImage(_: *const Execution, entry:usize, stack:usize) Execution{return .{.frame=.{.rip=entry,.rsp=stack}};}
 };
 const State=struct{
+ app_binding:struct{clock:u64=0,fn bound(b:*const @This())bool{return b.clock!=0;}}=.{},
  pages:[]memory.Page=undefined,backing:[]align(4096) [4096]u8=undefined,
  root:[1]u64=.{0},pdpt:[1]u64=.{0},pd:[512]u64=@splat(0),pts:[32][512]u64=@splat(@splat(0)),pt_index:[32]usize=@splat(0),pt_count:usize=0,count:usize=0,
  execution:Execution=.{},generation:u64=7,terminal:bool=false,frozen:bool=false,freeze_sequence:u64=5,admitted:bool=false,ready:bool=false,parent_pid:u64=0,memory_cap:u64=0,channel_cap:u64=0,channel_reply_cap:u64=0,
@@ -129,6 +130,7 @@ const std=@import("std");const memory=@import("memory");const Page=memory.Page;c
 const service_memory=true;const service_workers=false;const external_backing=true;const combined_profile=true;const combined_application_profile=true;
 const Reset=struct{value:usize=9,fn reset(s:*@This())void{s.value=0;}};
 const State=struct{
+ app_binding:struct{clock:u64=0}=.{},
  pages:[]Page=undefined,backing:[]align(4096) [4096]u8=undefined,root:[1]u64=.{7},generation:u64=5,count:usize=0,admitted:bool=true,terminal:bool=true,execution:Reset=.{},children:[0]Reset=.{},
  fn records(s:*State)[]Page{return s.pages;}
  fn payload(s:*State)[]align(4096) [4096]u8{return s.backing;}

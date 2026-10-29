@@ -2527,6 +2527,16 @@
       "gaps": "No hardware IRQ/CR3, real guest scheduling, target fit or native/recovery qualification."
     },
     {
+      "id": "AT-NATIVE-APP",
+      "reference": "docs/NATIVE-LAUNCH.md",
+      "owner": "Aether kernel; issue99 lead",
+      "budget_seconds": 300,
+      "command": "Pure root registered in hosted CI: zig test kernel/native_app.zig. Local actual-body reference: PYTHONPATH=tests python3 -B -m unittest test_native_app -v, qualified through the separately reviewed private local adapter. The direct Python entry is not a new hosted gate; no guest.",
+      "invariants": "Exact320/64-byte records and checked fixed-stack placement; actual four holders/directions/generations and live engine counterpart/epoch; positive-progress history; all denial/resource preflights before effects; app-local kind0x36 clock validation before sampling; every terminal/stop/reclaim/reset/close revocation; bound freeze/copy/exec/publication denial; unchanged ordinary resources and legacy bytes.",
+      "oracle": "Shared production core and extracted actual selector/launch/stack/channel/clock/lifecycle bodies, new-op dispatch clauses, full destination/engine/channel snapshots, and compiling counterpart/history/revocation/profile/dispatch omissions. Existing full-body tests retain unbound copy/exec coverage.",
+      "gaps": "Maintained capture-helper execution boundary remains separate from private qualified local execution. MMU load/alias flush, device reads, scheduler returns and notification/trace effects are host substitutes; State uses fixed host backing. Dispatch has a fallback sentinel, copy/exec use actual pre-effect prefixes, reset its scalar prefix and init close its detach loop. Execution/results remain in issue99. No guest, adapter acceptance, whole-app fit or release qualification."
+    },
+    {
       "id": "AT-MKTEMP-DIRECTORY-HOST",
       "reference": "userland/experiments/mktemp-directory/README.md",
       "owner": "Issue97 lead; bounded producer/adapter implementers",

@@ -3,7 +3,7 @@
 const std = @import("std");
 
 pub const generation_limit: u32 = 0x0fffffff;
-pub const Kind = enum(u8) { instance = 0x31, memory = 0x32, thread = 0x33, reader = 0x34, writer = 0x35 };
+pub const Kind = enum(u8) { instance = 0x31, memory = 0x32, thread = 0x33, reader = 0x34, writer = 0x35, clock = 0x36 };
 
 // The caller must enforce holder authority and object liveness before using this identity.
 pub fn identity(kind: Kind, object: u8, generation: u32) error{InvalidGeneration}!u64 {
@@ -79,7 +79,7 @@ pub const Events = struct {
 };
 
 test "sustained identities separate kind object and lifetime at boundaries" {
-    const kinds = [_]Kind{ .instance, .memory, .thread, .reader, .writer };
+    const kinds = [_]Kind{ .instance, .memory, .thread, .reader, .writer, .clock };
     const generations = [_]u32{ 1, 3, 15, 255, 256, 65535, 65536, generation_limit };
     for (kinds) |kind| for ([_]u8{ 0, 1, 5, 255 }) |object| for (generations) |generation| {
         const value = try identity(kind, object, generation);
