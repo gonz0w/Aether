@@ -49,9 +49,12 @@ preprocessed applet table selected only mktemp, with two recorded support flags.
 A separate discovery receipt recorded the used tool and header identities before
 the host source freeze. The host SDK, libc, dynamic loader and shared libraries
 are not a hermetic runtime closure. [inputs.json](inputs.json) records the current
-source inventory and matched one-app host composition. Positive native linking and
-whole-app fit remain pending. Earlier private run locks and receipts retain their
-original input identities; current metadata does not select an execution entry.
+source inventory and matched one-app host composition. The selected native app
+and owner inputs have now been linked for the one-app experiment. Full application
+stack, heap, TLS and backing sufficiency remain with
+[issue #97](https://github.com/gonz0w/Aether/issues/97). Earlier private run locks
+and receipts retain their original input identities; current metadata does not
+select an execution entry.
 
 The selected one-app adapter host family completed on 2026-10-29 in 53.288
 seconds with exit zero, 144 known-clean child processes and owned outputs removed.
@@ -103,9 +106,18 @@ supplies the ordinary app record at auxv0xa003 and the separate lifetime clock
 grant0x28012. Auxv0xa001 remains the process channel endpoint; it is never a
 clock or thread grant. [Issue100](https://github.com/gonz0w/Aether/issues/100)
 owns the matched native adapters under the approved
-[issue98](https://github.com/gonz0w/Aether/issues/98) contract. Positive whole-app
-link/stack/TLS/backing fit remains with issue97. Host fixtures do not prove native
-bootstrap, filesystem export or runtime sufficiency.
+[issue98](https://github.com/gonz0w/Aether/issues/98) contract. The selected
+native app and owner inputs and the positive source and linked path have separate
+review under issue #100. The selected link places the existing zero-initialized
+`.tbss` after `.data`, so the TLS view lies within one writable LOAD as the
+unchanged kernel requires.
+
+The current kernel parser, layout and backing checks accepted the linked app in
+an offline host probe. The ELF is 865,344 bytes; its image plus fixed stack uses
+47 of the ordinary 128 backing pages, leaving 81 pages available. These checks do
+not establish later heap or stack demand. Issue #97 owns whole-app sufficiency and
+the matched native handoff. Host and offline checks do not establish a native run,
+filesystem export or a usable shell.
 
 `amk_with_native_namespace` is additive to the existing host entry. Its required
 verifier borrows the same separate callback state and runs through actual
