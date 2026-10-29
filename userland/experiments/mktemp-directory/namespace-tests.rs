@@ -22,6 +22,12 @@ pub mod fixture {
         pub sent: Vec<Message>,
         pub closes: usize,
         pub close_values: [i64; 2],
+        #[cfg(test)]
+        pub verification_calls: usize,
+        #[cfg(test)]
+        pub verification_status: i64,
+        #[cfg(test)]
+        pub verification_after_ack_before_close: bool,
         live: Option<(Option<mpsc::Sender<Message>>, mpsc::Receiver<Message>)>,
     }
     #[cfg(test)]
@@ -48,6 +54,12 @@ pub mod fixture {
                 sent: Vec::new(),
                 closes: 0,
                 close_values: [0, 0],
+                #[cfg(test)]
+                verification_calls: 0,
+                #[cfg(test)]
+                verification_status: 0,
+                #[cfg(test)]
+                verification_after_ack_before_close: false,
                 live: None,
             }
         }
@@ -128,6 +140,24 @@ pub mod fixture {
     }
     unsafe extern "C" fn wait(_state: *mut c_void, _writing: u32) -> i64 {
         0
+    }
+    /// Boundary observation only: the real native EOF/EPIPE verifier is tested
+    /// with native.rs. This tests actual Client ACK/verify/close ordering and
+    /// required-callback/error propagation, not native channel quiescence.
+    #[cfg(test)]
+    pub unsafe extern "C" fn verify(state: *mut c_void) -> i64 {
+        let wire = unsafe { &mut *state.cast::<Wire>() };
+        wire.verification_calls += 1;
+        wire.verification_after_ack_before_close = wire.closes == 0
+            && wire
+                .sent
+                .last()
+                .is_some_and(|frame| u64::from_le_bytes(frame[8..16].try_into().unwrap()) == 4)
+            && wire.receive_bytes.is_empty();
+        if !wire.verification_after_ack_before_close {
+            return -5;
+        }
+        wire.verification_status
     }
     unsafe extern "C" fn close(state: *mut c_void, output: *mut i64) {
         // SAFETY: actual adapter supplies exactly two initialized output cells.
@@ -329,6 +359,124 @@ fn run(wire: &mut fixture::Wire, app: &mut Application) -> (i32, Run) {
     let result =
         unsafe { amk_with_namespace(&bootstrap, Some(entry), ptr::from_mut(app).cast(), &mut out) };
     (result, out)
+}
+
+#[cfg(test)]
+fn run_native(wire: &mut fixture::Wire, app: &mut Application) -> (i32, Run) {
+    let bootstrap = wire.bootstrap();
+    let mut out = Run::default();
+    // SAFETY: same stable disjoint Wire/Application/report as the host entry;
+    // fixture verify substitutes only its explicit boundary observation.
+    let result = unsafe {
+        amk_with_native_namespace(
+            &bootstrap,
+            Some(fixture::verify),
+            Some(entry),
+            ptr::from_mut(app).cast(),
+            &mut out,
+        )
+    };
+    (result, out)
+}
+
+#[test]
+fn native_checked_namespace_requires_verifier_before_endpoint_acceptance() {
+    let mut wire = fixture::Wire::normal(Ok(fixture::reply(0, 7, 2)));
+    let bootstrap = wire.bootstrap();
+    let mut out = Run::default();
+    let result = unsafe {
+        amk_with_native_namespace(
+            &bootstrap,
+            None,
+            Some(empty_entry),
+            ptr::null_mut(),
+            &mut out,
+        )
+    };
+    assert_eq!(result, -22, "NATIVE_VERIFY_REQUIRED");
+    assert_eq!(
+        (
+            out.admission.endpoints_accepted,
+            wire.closes,
+            wire.verification_calls
+        ),
+        (0, 0, 0)
+    );
+    assert!(wire.sent.is_empty());
+}
+
+#[test]
+fn native_checked_namespace_preserves_verifier_errors_and_both_raw_closes() {
+    for status in [0, -5, -110, -75, 7] {
+        let mut wire = fixture::Wire::normal(Ok(fixture::reply(0, 7, 2)));
+        wire.verification_status = status;
+        wire.close_values = [-9, -5];
+        let mut app =
+            Application::new(vec![Step::Mkdir(b"dir", 0o700), Step::Finish, Step::Finish]);
+        let (entry_status, out) = run_native(&mut wire, &mut app);
+        assert_eq!(entry_status, 0);
+        assert_eq!(wire.verification_calls, 1, "NATIVE_VERIFY_ONCE");
+        assert!(
+            wire.verification_after_ack_before_close,
+            "NATIVE_VERIFY_ORDER"
+        );
+        assert_eq!(wire.closes, 1);
+        assert_eq!(app.finishes[0], app.finishes[1], "NATIVE_FINISH_CACHED");
+        assert_eq!(
+            (out.finalization.reader_close, out.finalization.writer_close),
+            (-9, -5)
+        );
+        assert_eq!(out.mutation.outcome, 3, "NATIVE_MUTATION_RETAINED");
+        assert_eq!(out.final_status, 1);
+        if status != 0 {
+            assert_eq!(
+                out.finalization.error_kind, 5,
+                "NATIVE_VERIFY_ERROR_RETAINED"
+            );
+            assert_eq!(
+                out.finalization.error_value,
+                if status < 0 { status } else { -5 }
+            );
+        }
+    }
+}
+
+#[test]
+fn native_bad_ack_never_invokes_verifier_but_closes_once() {
+    let mut bad_ack = message(91, 0);
+    bad_ack[24] = 1;
+    let mut wire = fixture::Wire::scripted(vec![
+        Ok(fixture::greeting(1)),
+        Ok(fixture::greeting(2)),
+        Ok(fixture::reply(0, 7, 2)),
+        Ok(bad_ack),
+    ]);
+    let mut app = Application::new(vec![Step::Mkdir(b"dir", 0o700), Step::Finish]);
+    let (_, out) = run_native(&mut wire, &mut app);
+    assert_eq!(
+        (wire.verification_calls, wire.closes),
+        (0, 1),
+        "NATIVE_ACK_BEFORE_VERIFY"
+    );
+    assert_eq!((out.finalization.error_kind, out.final_status), (4, 1));
+}
+
+#[test]
+fn legacy_namespace_disconnect_does_not_select_native_verifier() {
+    let mut wire = fixture::Wire::normal(Ok(fixture::reply(0, 7, 2)));
+    wire.verification_status = -75;
+    let mut app = Application::new(vec![Step::Mkdir(b"dir", 0o700), Step::Finish]);
+    let (result, out) = run(&mut wire, &mut app);
+    assert_eq!(
+        (
+            result,
+            out.final_status,
+            wire.verification_calls,
+            wire.closes
+        ),
+        (0, 0, 0, 1),
+        "LEGACY_DISCONNECT_UNCHANGED"
+    );
 }
 
 #[test]

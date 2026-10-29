@@ -19,6 +19,7 @@ compile_error!("mktemp namespace does not select native drain counters");
 pub type Transfer = unsafe extern "C" fn(*mut c_void, u32, *mut u8, usize) -> i64;
 pub type Wait = unsafe extern "C" fn(*mut c_void, u32) -> i64;
 pub type Close = unsafe extern "C" fn(*mut c_void, *mut i64);
+pub type Verify = unsafe extern "C" fn(*mut c_void) -> i64;
 pub type Entry = unsafe extern "C" fn(*mut Namespace, *mut c_void) -> i32;
 
 #[repr(C)]
@@ -229,6 +230,12 @@ struct Context {
     attempted: bool,
     busy: bool,
     finished: Option<Finish>,
+    finalization: Finalization,
+}
+#[derive(Clone, Copy)]
+enum Finalization {
+    Host,
+    NativeChecked(Option<Verify>),
 }
 // Admission serialization only, not mutable authority or a second object table.
 static ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -254,7 +261,21 @@ unsafe fn finish_context(context: *mut Context) -> Finish {
     if let Some(mut client) = client {
         if client.cleanup().is_none() {
             out.disconnect_attempted = 1;
-            if let Err(error) = client.disconnect() {
+            let disconnected = match unsafe { (*context).finalization } {
+                Finalization::Host => client.disconnect(),
+                Finalization::NativeChecked(Some(verify)) => client.disconnect_checked(|channel| {
+                    // SAFETY: the selected verifier borrows the same separately
+                    // owned stable callback state; no Context reference is live.
+                    let status = unsafe { verify(channel.0.callbacks.state) };
+                    if status == 0 {
+                        Ok(())
+                    } else {
+                        Err(Error::Transport(if status < 0 { status } else { -5 }))
+                    }
+                }),
+                Finalization::NativeChecked(None) => Err(Error::Invalid),
+            };
+            if let Err(error) = disconnected {
                 let p = project(error);
                 out.error_kind = p.kind;
                 out.errno_value = p.errno;
@@ -301,6 +322,39 @@ pub unsafe extern "C" fn amk_with_namespace(
     application: *mut c_void,
     out: *mut Run,
 ) -> i32 {
+    // SAFETY: identical caller obligations; legacy disconnect semantics retained.
+    unsafe { with_namespace(bootstrap, entry, application, out, Finalization::Host) }
+}
+
+/// # Safety
+/// Same synchronous disjoint-borrow contract as amk_with_namespace. The required
+/// verifier must observe actual EOF then EPIPE on this accepted native transport.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn amk_with_native_namespace(
+    bootstrap: *const Bootstrap,
+    verify: Option<Verify>,
+    entry: Option<Entry>,
+    application: *mut c_void,
+    out: *mut Run,
+) -> i32 {
+    unsafe {
+        with_namespace(
+            bootstrap,
+            entry,
+            application,
+            out,
+            Finalization::NativeChecked(verify),
+        )
+    }
+}
+
+unsafe fn with_namespace(
+    bootstrap: *const Bootstrap,
+    entry: Option<Entry>,
+    application: *mut c_void,
+    out: *mut Run,
+    finalization: Finalization,
+) -> i32 {
     if out.is_null() || !out.is_aligned() {
         return -22;
     }
@@ -322,6 +376,9 @@ pub unsafe extern "C" fn amk_with_namespace(
         }
         -(p.errno as i32)
     };
+    if matches!(finalization, Finalization::NativeChecked(None)) {
+        return reject(Error::Invalid);
+    }
     let Some(entry) = entry else {
         return reject(Error::Invalid);
     };
@@ -436,6 +493,7 @@ pub unsafe extern "C" fn amk_with_namespace(
         attempted: false,
         busy: false,
         finished: None,
+        finalization,
     };
     unsafe {
         (*out).admission.phase = 3;

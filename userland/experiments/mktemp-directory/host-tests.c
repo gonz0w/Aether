@@ -20,6 +20,10 @@ static unsigned entries, effects, finishes, closes, flushes, inspections;
 static int mutation_error, finish_error, flush_error, stream_error;
 static int clock_error, clock_dirty, app_status, short_write, callback_error;
 static int check_nested, check_repeat, check_mask, check_wrong_template;
+static int native_mode, stderr_error;
+#ifdef AMK_TARGET_NATIVE_TESTS
+static int native_finish_error, native_finishes;
+#endif
 static struct amk_timespec clock_value;
 static _Thread_local int64_t actual_fixture_tls_identity = 1;
 static unsigned char leaf_seen[32];
@@ -50,9 +54,9 @@ int amk_fixture_fflush(FILE *stream)
 }
 int amk_fixture_ferror(FILE *stream)
 {
-    CHECK(stream == stdout);
+    CHECK(stream == stdout || (native_mode && stream == stderr));
     inspections++;
-    return stream_error;
+    return stream == stderr ? stderr_error : stream_error;
 }
 static int32_t monotonic(void *state, struct amk_timespec *out)
 {
@@ -151,6 +155,15 @@ int32_t amk_with_namespace(const struct amk_bootstrap *boot, amk_entry_fn entry,
     out->phase = AMK_RUN_FINISHED;
     context.live = 0;
     return 0;
+}
+int32_t amk_with_native_namespace(const struct amk_bootstrap *boot,
+                                  amk_verify_fn verify, amk_entry_fn entry,
+                                  void *application, struct amk_run_result *out)
+{
+    CHECK(verify != NULL);
+    /* ABI double only. Native Client/EOF verification is a separate Rust
+     * actual-body gate; legacy cases never select this constructor. */
+    return amk_with_namespace(boot, entry, application, out);
 }
 static int applet(int argc, char **argv)
 {
@@ -396,6 +409,59 @@ static void cleanup_reentry_cleared_tls(void)
     CHECK(closes == 1 && effects == 1);
     pass();
 }
+#ifdef AMK_TARGET_NATIVE_TESTS
+static int64_t native_verify(void *state)
+{
+    (void)state;
+    return 0;
+}
+static int32_t native_finish(void *state)
+{
+    (void)state;
+    CHECK(context.finished && closes == 1);
+    native_finishes++;
+    return native_finish_error;
+}
+static void native_terminal(uint32_t status)
+{
+    CHECK(native_finishes == 1 && inspections == 2 && closes == 1);
+    CHECK(status == 1);
+    char path[] = "/home/t.XXXXXX";
+    CHECK(amk_checked_mkdtemp(path) == NULL && errno == EBADF);
+    puts("AMK_C_PASS native_terminal_stderr_and_order");
+    exit(0);
+}
+static int native_applet(int argc, char **argv)
+{
+    CHECK(argc == 3 && argv != NULL);
+#ifdef AMK_TARGET_NATIVE_TERMINAL
+    amk_target_terminal_exit(0);
+#endif
+    return 0;
+}
+static void native_finalization_cases(void)
+{
+    const struct amk_native_hooks hooks = {native_verify, native_finish,
+                                           native_terminal, NULL};
+    for (unsigned failure = 0; failure < 4; ++failure) {
+        reset("native_finalization_cases");
+        native_mode = 1;
+        native_finishes = 0;
+        stderr_error = failure == 0;
+        native_finish_error = failure == 1 ? -5 : 0;
+        finish_error = failure == 2 ? -5 : 0;
+        flush_error = failure == 3 ? EOF : 0;
+        struct amk_run_result out;
+        CHECK(amk_target_run_native(&bootstrap, 3, arguments, environment,
+                                    &hooks, native_applet, &out) == 0);
+        CHECK(out.command_status == 0 && out.final_status == 1);
+        CHECK(native_finishes == 1 && closes == 1 && inspections == 2);
+        char path[] = "/home/t.XXXXXX";
+        CHECK(amk_checked_mkdtemp(path) == NULL && errno == EBADF);
+    }
+    pass();
+}
+#endif
 int main(void)
 {
     exact_path_one_effect();
@@ -406,5 +472,8 @@ int main(void)
     typed_progress_preserved();
     completed_output_failure();
     cleanup_reentry_cleared_tls();
+#ifdef AMK_TARGET_NATIVE_TESTS
+    native_finalization_cases();
+#endif
     return 0;
 }

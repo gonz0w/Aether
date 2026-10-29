@@ -15,6 +15,7 @@ typedef int64_t (*amk_transfer_fn)(void *, uint32_t, unsigned char *, size_t);
 typedef int64_t (*amk_wait_fn)(void *, uint32_t);
 typedef void (*amk_close_fn)(void *, int64_t[2]);
 typedef int32_t (*amk_entry_fn)(struct amk_namespace *, void *);
+typedef int64_t (*amk_verify_fn)(void *);
 struct amk_io {
     void *state;
     amk_transfer_fn transfer;
@@ -85,6 +86,14 @@ struct amk_run_result {
  */
 int32_t amk_with_namespace(const struct amk_bootstrap *, amk_entry_fn, void *,
                            struct amk_run_result *out);
+/* Additive selected native entry; verify is mandatory before accepting
+ * endpoints. It borrows io.state, observes actual EOF then EPIPE under the one
+ * app budget, and cannot reenter Context. Every outcome still consumes both raw
+ * closes once.
+ */
+int32_t amk_with_native_namespace(const struct amk_bootstrap *, amk_verify_fn,
+                                  amk_entry_fn, void *,
+                                  struct amk_run_result *);
 /* One valid mkdir0700 invocation; invalid local input has no effect. Initialize
  * every out. Return negative errno without modifying libc errno; C projects it.
  * The first dispatched progress record remains in the run report thereafter.

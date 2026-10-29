@@ -1,5 +1,56 @@
 # ABI29 dispatcher startup and child/wait core
 
+## Selected ordinary one-app owner
+
+[Issue100](https://github.com/gonz0w/Aether/issues/100) adds the separately linked
+`native_app_owner.rs` / `native_app_runtime.rs` composition for one ordinary
+`mktemp -d /home/t.XXXXXX` app. The unchanged ABI31 entry and owner region supply
+the runtime and4096-byte workspace. The owner provisions and journals the service
+pair, actual engine, process pair and app, transferring four app endpoints through
+kernel0x2300a before any filesystem greeting is consumed. It constructs no Client,
+Peer, ProcessFiles or filesystem Owner. Existing mixed owner entries retain their
+selection and namespace ownership.
+
+The new runtime emits the existing304-byte AEFDB001 startup with the actual
+admitted Identity, process request-reader generation and distinct write-only
+console Sources for fd1/fd2. No stdin, pipe, FILE, fork, exec or wait operation is
+admitted. `stream_transport.rs` shares the existing16-byte transfer/32-byte reply
+mechanics with `owner_dispatch.rs`; the old wrapper retains its transfer/wait
+budget charging. New EAGAIN paths use bounded yield, with positive request effects
+never replayed after partial reply loss.
+
+One500-delivered-tick deadline starts before provisioning and one1,000,000-attempt
+allowance reserves12 for one-shot containment. A scalar acquisition ledger retains
+partial pairs and every raw close result. A once-entry containment latch prevents
+repeated stop/query/reclaim after early failure; unknown terminal observations do
+not justify reclaim. App normal exit0 is independent of engine normal exit0 and
+ordered export. Both terminal records, reclaim/stale checks and console closure
+precede successful halt. Forced stop, timeout or uncertain cleanup cannot claim
+that result. Source and host tests alone do not establish native export.
+
+The standalone focused Rust test root is `native_app_owner_tests.rs`; it requires
+the exact filesystem and init rlibs named in the issue's reviewed private runner.
+It is not a directly selected unbounded helper command. Runtime remains limited
+to4096 data bytes plus4096 workspace,49152 code bytes and8184 usable entry stack
+bytes; complete linked code/stack/resource evidence remains a separate fit gate.
+
+The selected private owner host family passed 18 owner tests, three typed-control
+cases and three compiling omission controls. Its result is
+`74bb95496bb40555fc3a7c1123b65619821f6272545eb9f0fa8b3b5cf1345af6`;
+its separate peer evidence review is
+`f0ac3b165f75cf35e4dee446e36b9c7091d1157e65bca820bcd99c41e5e98cbf`.
+A legacy compatibility family passed 113 cases across AEFDB001, AEFDB002 and
+the AF09 home owner, with 65 known-clean children and owned outputs removed.
+Its result is
+`0ff6b04dbd1a4dba83538b918cf6346b3d8a39d87d0c55261a4c14284639581e`;
+its separate peer evidence review is
+`3e47c7ce27543031456d1124388f6374d6b5632e78f392868a2f6b8ab48e0a23`.
+[Issue #100](https://github.com/gonz0w/Aether/issues/100) records the selected
+private results, source freezes, failed attempts and reviews. The private runners
+and their inputs are not included in the public checkout. Root `AT-HOST` does not
+execute these consumer binaries. These host results do not establish native launch,
+engine export or linked owner fit.
+
 [Issue3](https://github.com/gonz0w/Aether/issues/3) owns live AF09 integration;
 [FS-HOME-PREP](../../../userland/docs/proposals/FS-HOME-PREP.md) retains the durable
 composition contract and dated private qualification summary. `scripts/home_owner_build.py`

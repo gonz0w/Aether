@@ -63,6 +63,10 @@ pub trait Control: Kernel + Clone {
     fn receipt(&mut self, process: u64) -> Status;
     fn publish(&mut self, process: u64, token: u64) -> i64;
 }
+/// Additive selected one-app seam; existing Control implementors are unchanged.
+pub trait AppControl: Control {
+    fn launch_app(&mut self, record: &[u8; 320], reader: u64, writer: u64) -> i64;
+}
 #[cfg(all(owner_control_host_trap, any(target_os = "none", not(test))))]
 compile_error!("owner control host trap requires host tests and forbids native target");
 #[cfg(any(target_os = "none", all(owner_control_host_trap, test)))]
@@ -117,6 +121,29 @@ mod host_trap {
         });
         native.observe_events();
         LAST.with(|cell| assert_eq!(*cell.borrow(), Some((0x2a000, [0xe002, 0, 0, 0, 0, 0]))));
+    }
+    #[test]
+    fn actual_native_app_launch_uses_exact_record_and_four_endpoint_seam() {
+        let mut native = Native;
+        let record = [0u8; 320];
+        assert_eq!(native.launch_app(&record, 0xd1010101, 0xd1000102), 0);
+        LAST.with(|cell| {
+            assert_eq!(
+                *cell.borrow(),
+                Some((
+                    0x2300a,
+                    [
+                        0xa001,
+                        0xc002,
+                        1,
+                        record.as_ptr() as u64,
+                        0xd1010101,
+                        0xd1000102
+                    ]
+                )),
+                "ACTUAL_APP_LAUNCH_REGISTERS"
+            )
+        });
     }
     #[test]
     fn observation_and_deadline_errors_ignore_aux_and_keep_tie_precedence() {

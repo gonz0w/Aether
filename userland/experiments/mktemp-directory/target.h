@@ -26,6 +26,16 @@ struct amk_observations {
     int32_t (*before_exit)(void *, const struct amk_run_result *, uint32_t);
 };
 typedef int (*amk_applet_fn)(int, char **);
+/* Selected one-app callbacks live in stable disjoint native storage. This is a
+ * private C call contract, never a launch/wire record. finish runs only after
+ * namespace completion and caches descriptor/raw cleanup. terminal must not
+ * return or unwind. No callback may reenter the active target/namespace. */
+struct amk_native_hooks {
+    amk_verify_fn verify;
+    int32_t (*finish)(void *);
+    void (*terminal)(uint32_t);
+    void *state;
+};
 /* argv/envp and every active string are initialized stable caller storage.
  * Arrays include their terminating NULL; each active payload is <=31 bytes.
  * envp must describe the actual applet process environment; this function does
@@ -37,6 +47,9 @@ typedef int (*amk_applet_fn)(int, char **);
 int32_t amk_target_run(const struct amk_bootstrap *, int, char **, char **,
                        const struct amk_observations *, amk_applet_fn,
                        struct amk_run_result *);
+int32_t amk_target_run_native(const struct amk_bootstrap *, int, char **,
+                              char **, const struct amk_native_hooks *,
+                              amk_applet_fn, struct amk_run_result *);
 char *amk_checked_mkdtemp(char *);
 mode_t amk_target_umask(mode_t);
 /* Upstream _exit compile-name hook: callbacks and fflush/ferror already ran in

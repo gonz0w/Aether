@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #![no_std]
 //! Sole-owner admission across serialized copy and handshake, not a native lock.
+pub use fd_startup::ForkStreams;
 use fd_startup::{Binding, Plan};
 use filesystem_remote_descriptors::{
     CopyAttempt, CopyInheritanceError, NativeIdentity, Process, ProcessError, ProcessFiles,
@@ -30,12 +31,6 @@ pub enum GateError {
     FileView(ProcessError),
     Streams(i32),
     Capture(i64),
-}
-/// Trusted owner state, not native authentication. Validation must inspect
-/// authoritative state without effects. Activation follows exact context-ready.
-pub trait ForkStreams {
-    fn validate_fork(&self, plan: &Plan) -> Result<(), i32>;
-    fn child_ready(&mut self, pid: u32) -> Result<(), i32>;
 }
 /// One ordinary exchange, or a fully decoded fork under the SAME admission.
 /// Request labels are inert; the caller authenticates the actual process channel.
