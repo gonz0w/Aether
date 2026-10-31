@@ -60,7 +60,7 @@ queue. This is a scoped policy change, not a file-order precedence rule.
 ## Method and local contracts
 
 Use the [Agent Temper method](.agent-temper/METHOD.md), pinned at
-`781a4b9f71d002b93bc4ad26669d01a3b37c482e`. Its
+`cf928f4120b687f34f1b1f974603a4979b5b874c`. Its
 [source record](.agent-temper/SOURCE.md), [complete manifest](.agent-temper/SHA256SUMS)
 and [license](.agent-temper/LICENSE) identify the unchanged import. This consumer
 selects the [GitHub profile](.agent-temper/profiles/github.md) for work routing
