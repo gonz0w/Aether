@@ -2585,6 +2585,16 @@
       "gaps": "No native claim from host fixtures. Fresh app+owner geometry/TLS/stack, target denials and matched byte exchange remain required; canonical modes/Zsh/login remain later. Private adoption checker excludes public new prose/inventory review.",
       "budget_seconds": 300,
       "owner": "Aether-userland/sys-init; issue114 bounded ordinary-app byte exchange"
+    },
+    {
+      "id": "UL-NATIVE-TTY-DESCRIPTORS",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "Explicit native_tty_descriptor_probe/AMK_NATIVE_TTY_DESCRIPTOR_PROBE with AEFD_TERMINAL_BINDINGS and one AEFD_EXTERNAL_STARTUP context;003 typing follows authenticated owner classification, preserves READ0/WRITE1-2 and canonical alias lifetime;001/002 profiles unchanged.",
+      "command": "Use the actual default/byte/descriptor owner, startup and native C/libc test roots and flags in serial-tty/README.md with bounded capture, UBSan, no_std, formatting and Clippy. Review selected semantic controls and fresh target app/owner fit before one separately reviewed native run.",
+      "oracle": "Explicit terminal versus file/pipe/raw-console isatty; actual access flags, idempotent F_SETFL and unsupported mutation denial; high dup/CLOEXEC, original-close and last-alias retirement through one canonical context; fixed16-byte exchange and normal app/engine cleanup.",
+      "gaps": "Descriptor prerequisite only; no O_RDWR acquisition, NONBLOCK, MODE/termios, drain, signals/groups or Zsh login. Target libc routing and fresh stack/heap/TLS require actual linked-artifact analysis; merged UART alone does not prove descriptor origin.",
+      "budget_seconds": 300,
+      "owner": "Aether-userland/sys-init; issue116 terminal descriptor classification, status and aliases"
     }
   ]
 }

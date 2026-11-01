@@ -8,7 +8,8 @@
 #define AEFD_BIND_EMPTY 0U
 #define AEFD_BIND_CONSOLE 1U
 #define AEFD_BIND_PIPE 2U
-#define AEFD_BIND_FILE 3U
+#define AEFD_BIND_FILE 3
+#define AEFD_BIND_TERMINAL 4U
 
 struct aefd_binding {
     unsigned char kind, selector, cloexec, reserved;
@@ -25,6 +26,9 @@ static inline int aefd_binding_valid(struct aefd_binding slot)
     case AEFD_BIND_EMPTY:
         return !slot.selector && !slot.cloexec;
     case AEFD_BIND_CONSOLE:
+#ifdef AEFD_TERMINAL_BINDINGS
+    case AEFD_BIND_TERMINAL:
+#endif
         return slot.selector <= 2;
     case AEFD_BIND_PIPE:
         return slot.selector >= 3 && slot.selector <= 6;
@@ -58,6 +62,16 @@ static inline int aefd_bindings_decode(const unsigned char *raw, size_t length,
                 if (value.slots[j].kind == AEFD_BIND_FILE &&
                     value.slots[j].selector == slot.selector)
                     return 0;
+#ifdef AEFD_TERMINAL_BINDINGS
+        /* A source has one admitted type, including all of its aliases. */
+        if (slot.kind == AEFD_BIND_CONSOLE || slot.kind == AEFD_BIND_TERMINAL)
+            for (unsigned j = 0; j < i; ++j)
+                if ((value.slots[j].kind == AEFD_BIND_CONSOLE ||
+                     value.slots[j].kind == AEFD_BIND_TERMINAL) &&
+                    value.slots[j].selector == slot.selector &&
+                    value.slots[j].kind != slot.kind)
+                    return 0;
+#endif
         value.slots[i] = slot;
     }
     *out = value;

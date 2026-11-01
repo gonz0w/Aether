@@ -64,10 +64,10 @@ fn all_identities_and_wire_fields() {
             let p = plan(slot, epoch, shell);
             let mut out = [0xa5; BYTES];
             encode(&p, &mut out).unwrap();
-            assert_eq!(&out[..8], b"AEFDB001");
+            assert_eq!(&out[..8], fd_startup::MAGIC);
             assert_eq!(&out[8..12], &1u32.to_le_bytes());
             assert_eq!(&out[12..16], &304u32.to_le_bytes());
-            assert_eq!(&out[48..56], b"AEFDT001");
+            assert_eq!(&out[48..56], fd_startup::MAP_MAGIC);
             assert_eq!(&out[56..64], &p.generation.to_le_bytes());
             assert_eq!(&out[64..72], &16u64.to_le_bytes());
             assert!(out[72..112].iter().all(|v| *v == 0));
@@ -151,4 +151,28 @@ fn histories_survive_absent_pipes_and_labels_are_opaque() {
     encode(&p, &mut out).unwrap();
     assert_eq!(&out[288..296], &[5, 0, 0, 0, 9, 0, 0, 0]);
     assert_eq!(&out[176..180], &0x12345678u32.to_le_bytes());
+}
+
+#[test]
+fn terminal_typing_is_selected_and_consistent_for_aliases() {
+    let mut p = plan(1, 1, 1);
+    p.bindings[0].kind = 4;
+    let mut out = [0xa5; BYTES];
+    if fd_startup::TERMINAL_BINDINGS {
+        encode(&p, &mut out).unwrap();
+        assert_eq!(&out[..8], b"AEFDB003");
+        assert_eq!(&out[48..56], b"AEFDT003");
+        assert_eq!(out[112], 4);
+        p.bindings[10] = Binding {
+            kind: 1,
+            selector: 0,
+            cloexec: 0,
+        };
+        out.fill(0xa5);
+        assert_eq!(encode(&p, &mut out), Err(-22));
+    } else {
+        assert_eq!(encode(&p, &mut out), Err(-22));
+        assert_eq!(fd_startup::MAGIC, b"AEFDB001");
+    }
+    assert_eq!(out, [0xa5; BYTES]);
 }

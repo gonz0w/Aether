@@ -25,7 +25,11 @@ int64_t aefd_context_init(struct aefd_context *c, aefd_native_call call,
     unsigned seen = 0;
     for (unsigned fd = 0; fd < AEFD_BINDINGS_COUNT; ++fd) {
         struct aefd_binding slot = map.slots[fd];
-        if (slot.kind == AEFD_BIND_CONSOLE || slot.kind == AEFD_BIND_PIPE) {
+        if (slot.kind == AEFD_BIND_CONSOLE || slot.kind == AEFD_BIND_PIPE
+#ifdef AEFD_TERMINAL_BINDINGS
+            || slot.kind == AEFD_BIND_TERMINAL
+#endif
+        ) {
             seen |= 1U << slot.selector;
         }
     }
@@ -115,6 +119,35 @@ int64_t aefd_context_close(struct aefd_context *c, int fd)
     if (result)
         return result;
     return end(c, aefd_session_close(&c->session, fd));
+}
+int64_t aefd_context_describe(struct aefd_context *c, int fd,
+                              struct aefd_binding *out, unsigned *rights)
+{
+    if (!out || !rights)
+        return -22;
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    struct aefd_binding binding;
+    unsigned actual = 1; /* This profile's file table is read-only. */
+    result = aefd_session_binding(&c->session, fd, &binding);
+    if (!result && binding.kind != AEFD_BIND_FILE) {
+        const struct aefd_native_source *source =
+            &c->native.sources[binding.selector];
+        if (!source->reference || source->selector != binding.selector ||
+            (source->rights != 1 && source->rights != 2)) {
+            aefd_client_abort(&c->client);
+            result = -5;
+        } else {
+            actual = source->rights;
+        }
+    }
+    result = end(c, result);
+    if (!result) {
+        *out = binding;
+        *rights = actual;
+    }
+    return result;
 }
 int64_t aefd_context_flags(struct aefd_context *c, int fd)
 {

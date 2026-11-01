@@ -45,6 +45,10 @@ struct aefd_redirect_result aefd_context_redirect(struct aefd_context *, int,
                                                   int);
 int64_t aefd_context_pipe(struct aefd_context *, int[2], int);
 int64_t aefd_context_close(struct aefd_context *, int);
+/* Ephemeral description from the same guarded canonical table. Rights are the
+ * admitted source READ/WRITE bits, not a new capability or cached status. */
+int64_t aefd_context_describe(struct aefd_context *, int, struct aefd_binding *,
+                              unsigned *);
 int64_t aefd_context_flags(struct aefd_context *, int);
 int64_t aefd_context_set_flags(struct aefd_context *, int, int);
 int64_t aefd_context_seek(struct aefd_context *, int, int64_t, int);

@@ -2,15 +2,22 @@
 #![no_std]
 //! Proposed AEFDB001 producer. Labels require actual owner admission/delegation.
 use abi29_dispatch_core::startup::{Identity, greeting};
+#[cfg(all(native_tty_descriptor_probe, fs_file16))]
+compile_error!("terminal bindings cannot select file16 startup");
+pub const TERMINAL_BINDINGS: bool = cfg!(native_tty_descriptor_probe);
 pub const BYTES: usize = 304;
 pub const FILE_SLOTS_16: bool = cfg!(fs_file16);
 pub const FIRST_FILE_FD: u8 = if FILE_SLOTS_16 { 0 } else { 3 };
-pub const MAGIC: &[u8; 8] = if FILE_SLOTS_16 {
+pub const MAGIC: &[u8; 8] = if TERMINAL_BINDINGS {
+    b"AEFDB003"
+} else if FILE_SLOTS_16 {
     b"AEFDB002"
 } else {
     b"AEFDB001"
 };
-pub const MAP_MAGIC: &[u8; 8] = if FILE_SLOTS_16 {
+pub const MAP_MAGIC: &[u8; 8] = if TERMINAL_BINDINGS {
+    b"AEFDT003"
+} else if FILE_SLOTS_16 {
     b"AEFDT002"
 } else {
     b"AEFDT001"
@@ -58,7 +65,16 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
         }
         match binding.kind {
             0 if binding.selector == 0 && binding.cloexec == 0 => {}
-            1 if binding.selector <= 2 => seen[binding.selector as usize] = true,
+            1 | 4 if binding.selector <= 2 && (binding.kind == 1 || TERMINAL_BINDINGS) => {
+                if plan.bindings[..i].iter().any(|other| {
+                    matches!(other.kind, 1 | 4)
+                        && other.selector == binding.selector
+                        && other.kind != binding.kind
+                }) {
+                    return Err(-22);
+                }
+                seen[binding.selector as usize] = true;
+            }
             2 if (3..=6).contains(&binding.selector) => seen[binding.selector as usize] = true,
             3 if (FIRST_FILE_FD..=15).contains(&binding.selector) => {
                 if plan.bindings[..i]

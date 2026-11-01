@@ -188,7 +188,11 @@ static int exchange(struct aefd_native *n, unsigned char bytes[32])
 static int source_ok(struct aefd_native *n, unsigned kind, unsigned selector)
 {
     return ready(n) && selector < 7 && n->sources[selector].reference &&
-           kind == (selector < 3 ? AEFD_BIND_CONSOLE : AEFD_BIND_PIPE);
+           (kind == (selector < 3 ? AEFD_BIND_CONSOLE : AEFD_BIND_PIPE)
+#ifdef AEFD_TERMINAL_BINDINGS
+            || (selector < 3 && kind == AEFD_BIND_TERMINAL)
+#endif
+           );
 }
 static struct aefd_stream_result stream(struct aefd_native *n, unsigned kind,
                                         unsigned selector, unsigned char *out,

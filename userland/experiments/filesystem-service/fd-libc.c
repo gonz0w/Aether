@@ -2,6 +2,15 @@
 #include "fd-libc.h"
 #include <errno.h>
 _Static_assert(O_RDONLY == 0 && FD_CLOEXEC == 1, "selected libc FD constants");
+int64_t aefd_libc_isatty(struct aefd_context *c, int fd)
+{
+    struct aefd_binding binding;
+    unsigned rights;
+    int64_t status = aefd_context_describe(c, fd, &binding, &rights);
+    if (status)
+        return status;
+    return binding.kind == AEFD_BIND_TERMINAL ? 1 : -ENOTTY;
+}
 int64_t aefd_libc_open(struct aefd_context *c, const char *path, int flags)
 {
     if (!path)
@@ -25,6 +34,22 @@ int64_t aefd_libc_fcntl(struct aefd_context *c, int fd, int command,
                         int argument)
 {
     switch (command) {
+#ifdef AEFD_TERMINAL_BINDINGS
+    case F_GETFL:
+    case F_SETFL: {
+        struct aefd_binding binding;
+        unsigned rights;
+        int64_t status = aefd_context_describe(c, fd, &binding, &rights);
+        if (status)
+            return status;
+        int access = rights == 1 ? O_RDONLY : O_WRONLY;
+        if (command == F_GETFL)
+            return access;
+        /* No mutable status flags are implemented. In particular NONBLOCK
+         * would lie while the owner retains EAGAIN as Pending. */
+        return argument == 0 || argument == access ? 0 : -EOPNOTSUPP;
+    }
+#endif
     case F_GETFD:
         return aefd_context_flags(c, fd);
     case F_SETFD:
