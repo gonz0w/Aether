@@ -75,6 +75,15 @@ typedef struct {
     int os_encrypted;
     spa_t *spa;
 } objset_t;
+typedef struct {
+    objset_t *os;
+    uint64_t object;
+    unsigned index;
+} zap_cursor_t;
+typedef struct {
+    uint64_t za_integer_length, za_num_integers, za_first_integer;
+    char za_name[256];
+} zap_attribute_t;
 typedef unsigned sa_attr_type_t;
 typedef struct {
     uint64_t object;
@@ -113,6 +122,12 @@ int dmu_object_next(objset_t *, uint64_t *, int, uint64_t);
 int dmu_read(objset_t *, uint64_t, uint64_t, uint64_t, void *, unsigned);
 int zap_lookup(objset_t *, uint64_t, const char *, uint64_t, uint64_t, void *);
 int zap_count(objset_t *, uint64_t, uint64_t *);
+zap_attribute_t *zap_attribute_alloc(void);
+void zap_attribute_free(zap_attribute_t *);
+void zap_cursor_init(zap_cursor_t *, objset_t *, uint64_t);
+void zap_cursor_advance(zap_cursor_t *);
+int zap_cursor_retrieve(zap_cursor_t *, zap_attribute_t *);
+void zap_cursor_fini(zap_cursor_t *);
 int zfs_get_zplprop(objset_t *, int, uint64_t *);
 int sa_handle_get(objset_t *, uint64_t, void *, int, sa_handle_t **);
 void sa_handle_destroy(sa_handle_t *);

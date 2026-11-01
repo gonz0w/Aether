@@ -12,7 +12,8 @@ struct fixture_node {
     unsigned type;
     zfs_ace_hdr_t acl[3];
 };
-static struct fixture_node nodes[11];
+static struct fixture_node nodes[12];
+static unsigned fixture_objects;
 static unsigned selected, recovered, owns, handles, allocations, hash_calls;
 static unsigned object_calls, probe_reads;
 static unsigned char *reference;
@@ -32,7 +33,7 @@ static uint64_t home_object(void) { return selected == 2 ? 210 : 110; }
 static uint64_t probe_object(void) { return selected == 2 ? 211 : 111; }
 static struct fixture_node *find(uint64_t object)
 {
-    for (unsigned i = 0; i < (recovered ? 11U : 9U); ++i)
+    for (unsigned i = 0; i < fixture_objects; ++i)
         if (nodes[i].object == object)
             return &nodes[i];
     return NULL;
@@ -46,6 +47,7 @@ static void stamp(struct fixture_node *n, unsigned kind, uint64_t seconds,
 static void initialize(unsigned phase)
 {
     recovered = phase;
+    fixture_objects = phase ? 11 : 9;
     object_calls = probe_reads = hash_calls = 0;
     memset(nodes, 0, sizeof(nodes));
     static const uint64_t ids[9] = {1, 2, 3, 4, 32, 33, 34, 35, 36};
@@ -241,7 +243,7 @@ int dmu_object_next(objset_t *os, uint64_t *object, int hole, uint64_t txg)
     if (recovered && selected == 26 && object_calls > 1)
         return 0;
     uint64_t next = UINT64_MAX;
-    for (unsigned i = 0; i < (recovered ? 11U : 9U); ++i) {
+    for (unsigned i = 0; i < fixture_objects; ++i) {
         if (recovered && selected == 24 && nodes[i].object == 4)
             continue;
         if (nodes[i].object > *object && nodes[i].object < next)
@@ -469,3 +471,38 @@ int main(int argc, char **argv)
     printf("home recovery case %u passed\n", selected);
     return 0;
 }
+
+/* Legacy fixtures must never enumerate the new mktemp namespace. The separate
+ * mktemp fixture supplies real typed cursor behavior for its actual-body tests.
+ */
+#ifndef AETHER_HOME_MKTEMP_FIXTURE
+zap_attribute_t *zap_attribute_alloc(void) { abort(); }
+void zap_attribute_free(zap_attribute_t *entry)
+{
+    (void)entry;
+    abort();
+}
+void zap_cursor_init(zap_cursor_t *cursor, objset_t *os, uint64_t object)
+{
+    (void)cursor;
+    (void)os;
+    (void)object;
+    abort();
+}
+void zap_cursor_advance(zap_cursor_t *cursor)
+{
+    (void)cursor;
+    abort();
+}
+int zap_cursor_retrieve(zap_cursor_t *cursor, zap_attribute_t *entry)
+{
+    (void)cursor;
+    (void)entry;
+    abort();
+}
+void zap_cursor_fini(zap_cursor_t *cursor)
+{
+    (void)cursor;
+    abort();
+}
+#endif
