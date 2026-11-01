@@ -21,4 +21,15 @@
  */
 int aether_home_readback(spa_t *, int expectation, uint64_t utc_min,
                          uint64_t utc_max, unsigned char digest32[32]);
+/* Separate private mktemp oracle. Same exclusive read-only SPA borrow and
+ * inclusive/exclusive UTC window as above; recovered is exactly 0 or 1.
+ * result40 is caller-owned, live, disjoint writable storage for 40 bytes.
+ * Failure zeros all 40 bytes. Pristine returns preserved digest32 + zero leaf8;
+ * recovery returns preserved digest32 + the actual eight-byte generated leaf.
+ * These are candidate bytes only: the importing caller must withhold external
+ * publication until read-only SPA close/disown/eviction and all later runtime,
+ * TLS, resource and phase-health checks succeed. Readers never spa_export.
+ */
+int aether_home_mktemp_readback(spa_t *, int recovered, uint64_t utc_min,
+                                uint64_t utc_max, unsigned char result40[40]);
 #endif

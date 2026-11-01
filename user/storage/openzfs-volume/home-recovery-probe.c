@@ -197,9 +197,9 @@ static int home_original_file(aether_zpl_view *view, aether_zpl_node file,
     return error;
 }
 static int home_inventory(aether_zpl_view *view, const uint64_t original[9],
-                          const uint64_t extra[2], unsigned extra_count)
+                          const uint64_t extra[3], unsigned extra_count)
 {
-    uint64_t ids[11];
+    uint64_t ids[12];
     memcpy(ids, original, 9 * sizeof(*ids));
     memcpy(ids + 9, extra, extra_count * sizeof(*ids));
     unsigned count = 9 + extra_count;
@@ -209,7 +209,7 @@ static int home_inventory(aether_zpl_view *view, const uint64_t original[9],
                 return EIO;
     unsigned mask = 0;
     uint64_t object = 0;
-    for (unsigned step = 0; step <= 11; ++step) {
+    for (unsigned step = 0; step <= count; ++step) {
         int error = dmu_object_next(view->os, &object, B_FALSE, 0);
         if (error == ESRCH)
             return mask == ((1U << count) - 1) ? 0 : EIO;
@@ -259,8 +259,126 @@ static int home_new_metadata(aether_zpl_view *view, aether_zpl_node node,
     return 0;
 }
 
-int aether_home_readback(spa_t *spa, int expectation, uint64_t minimum,
-                         uint64_t maximum, unsigned char digest32[32])
+/* Fixed two-entry namespace. Upstream owns the cursor/attribute layout. The
+ * copied leaf remains private until the complete oracle succeeds. */
+static int home_mktemp_entries(aether_zpl_view *view, aether_zpl_node home,
+                               uint64_t objects[2], unsigned char leaf[8])
+{
+    zap_attribute_t *entry = zap_attribute_alloc();
+    if (!entry)
+        return ENOMEM;
+    zap_cursor_t cursor;
+    zap_cursor_init(&cursor, view->os, home.object);
+    unsigned seen = 0;
+    int error = 0;
+    for (unsigned i = 0; i < 2; ++i) {
+        error = zap_cursor_retrieve(&cursor, entry);
+        if (error)
+            break;
+        uint64_t value = entry->za_first_integer;
+        size_t length = strnlen(entry->za_name, 256);
+        if (entry->za_integer_length != 8 || entry->za_num_integers != 1 ||
+            ((value >> 48) & 0xfff) || !ZFS_DIRENT_OBJ(value)) {
+            error = EIO;
+            break;
+        }
+        unsigned role;
+        if (length == 5 && !memcmp(entry->za_name, "probe", 5) &&
+            ZFS_DIRENT_TYPE(value) == IFTODT(S_IFREG))
+            role = 0;
+        else if (length == 8 && entry->za_name[0] == 't' &&
+                 entry->za_name[1] == '.' &&
+                 ZFS_DIRENT_TYPE(value) == IFTODT(S_IFDIR)) {
+            role = 1;
+            for (unsigned j = 2; j < 8; ++j) {
+                unsigned char c = (unsigned char)entry->za_name[j];
+                if (!((c >= 'A' && c <= 'P') || (c >= 'a' && c <= 'p'))) {
+                    error = EIO;
+                    break;
+                }
+            }
+            if (error)
+                break;
+            memcpy(leaf, entry->za_name, 8);
+        } else {
+            error = EIO;
+            break;
+        }
+        if (seen & (1U << role)) {
+            error = EIO;
+            break;
+        }
+        objects[role] = ZFS_DIRENT_OBJ(value);
+        seen |= 1U << role;
+        zap_cursor_advance(&cursor);
+    }
+    if (!error) {
+        int end = zap_cursor_retrieve(&cursor, entry);
+        if (end != ENOENT)
+            error = end ? end : EIO;
+    }
+    zap_cursor_fini(&cursor);
+    zap_attribute_free(entry);
+    return error ? error : seen == 3 ? 0 : EIO;
+}
+
+static int home_mktemp_namespace(aether_zpl_view *view, aether_zpl_node home,
+                                 const uint64_t root_time[2], uint64_t minimum,
+                                 uint64_t maximum, aether_zpl_node *probe,
+                                 aether_zpl_node *generated,
+                                 unsigned char leaf[8],
+                                 struct home_workspace *w)
+{
+    if (home.mode != (S_IFDIR | 0700U) || home.size != 4)
+        return EIO;
+    int error = home_count(view, home.object, 2);
+    if (!error)
+        error = home_new_metadata(view, home, view->root.object, 3, minimum,
+                                  maximum, &w->metadata);
+    if (!error && memcmp(w->metadata.birthtime, root_time, 16))
+        error = EIO;
+    uint64_t final_time[2] = {0}, probe_time[2] = {0}, objects[2] = {0};
+    if (!error)
+        memcpy(final_time, w->metadata.mtime, 16);
+    if (!error)
+        error = home_mktemp_entries(view, home, objects, leaf);
+    if (!error)
+        error = aether_zpl_lookup(view, home.object, home.generation,
+                                  (const unsigned char *)"probe", 5, probe);
+    if (!error && (probe->object != objects[0] ||
+                   probe->mode != (S_IFREG | 0600) || probe->size))
+        error = EIO;
+    if (!error)
+        error = home_new_metadata(view, *probe, home.object, 1, minimum,
+                                  maximum, &w->metadata);
+    if (!error && (memcmp(w->metadata.birthtime, w->metadata.mtime, 16) ||
+                   !home_time_before(root_time, w->metadata.birthtime)))
+        error = EIO;
+    if (!error)
+        memcpy(probe_time, w->metadata.birthtime, 16);
+    if (!error)
+        error = home_eof(view, *probe, 0, w->buffer);
+    if (!error)
+        error = aether_zpl_lookup(view, home.object, home.generation, leaf, 8,
+                                  generated);
+    if (!error && (generated->object != objects[1] ||
+                   generated->mode != (S_IFDIR | 0700) || generated->size != 2))
+        error = EIO;
+    if (!error)
+        error = home_count(view, generated->object, 0);
+    if (!error)
+        error = home_new_metadata(view, *generated, home.object, 2, minimum,
+                                  maximum, &w->metadata);
+    if (!error && (memcmp(w->metadata.birthtime, w->metadata.mtime, 16) ||
+                   memcmp(w->metadata.birthtime, final_time, 16) ||
+                   !home_time_before(probe_time, w->metadata.birthtime)))
+        error = EIO;
+    return error;
+}
+
+static int home_readback(spa_t *spa, int expectation, uint64_t minimum,
+                         uint64_t maximum, unsigned char digest32[32],
+                         int mktemp, unsigned char leaf8[8])
 {
     if (!digest32)
         return EINVAL;
@@ -276,7 +394,9 @@ int aether_home_readback(spa_t *spa, int expectation, uint64_t minimum,
         return ENOMEM;
     aether_zpl_view *view = NULL;
     int error = aether_zpl_open(spa, "testpool_zstd/x86_64", &view);
-    aether_zpl_node root = {0}, file = {0}, home = {0}, probe = {0};
+    aether_zpl_node root = {0}, file = {0}, home = {0}, probe = {0},
+                    generated = {0};
+    unsigned char leaf[8] = {0};
     if (!error)
         error = aether_zpl_root(view, &root);
     if (!error &&
@@ -395,7 +515,10 @@ int aether_home_readback(spa_t *spa, int expectation, uint64_t minimum,
         else
             error = found;
     }
-    if (!error && recovered) {
+    if (!error && recovered && mktemp)
+        error = home_mktemp_namespace(view, home, root_time, minimum, maximum,
+                                      &probe, &generated, leaf, w);
+    if (!error && recovered && !mktemp) {
         if (home.mode != (S_IFDIR | 0700) || home.size != 3)
             error = EIO;
         if (!error)
@@ -438,15 +561,36 @@ int aether_home_readback(spa_t *spa, int expectation, uint64_t minimum,
             /* A nonzero request must observe EOF even for an empty object. */
             error = home_eof(view, probe, 0, w->buffer);
     }
-    uint64_t extra[2] = {home.object, probe.object};
+    uint64_t extra[3] = {home.object, probe.object, generated.object};
     if (!error)
-        error = home_inventory(view, original, extra, recovered ? 2 : 0);
+        error = home_inventory(view, original, extra,
+                               recovered ? (mktemp ? 3 : 2) : 0);
     if (!error) {
         SHA2Final(w->buffer, &w->preserved);
         memcpy(digest32, w->buffer, 32);
+        if (mktemp)
+            memcpy(leaf8, leaf, sizeof(leaf));
     }
     aether_zpl_close(&view);
     memset(w, 0, sizeof(*w));
     kmem_free(w, sizeof(*w));
     return error;
+}
+
+int aether_home_readback(spa_t *spa, int expectation, uint64_t minimum,
+                         uint64_t maximum, unsigned char digest32[32])
+{
+    return home_readback(spa, expectation, minimum, maximum, digest32, 0, NULL);
+}
+
+int aether_home_mktemp_readback(spa_t *spa, int recovered, uint64_t minimum,
+                                uint64_t maximum, unsigned char result40[40])
+{
+    if (!result40)
+        return EINVAL;
+    memset(result40, 0, 40);
+    if (recovered != 0 && recovered != 1)
+        return EINVAL;
+    return home_readback(spa, recovered, minimum, maximum, result40, 1,
+                         result40 + 32);
 }
