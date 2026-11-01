@@ -14,7 +14,6 @@ mod stream_transport;
 
 pub const ATTEMPTS: u32 = 1_000_000;
 pub const RESERVED: u32 = 12;
-pub const TICKS: u64 = 500;
 pub const WRITER_DEADLINE_TICK: u64 = 6_000;
 pub const TEMPLATE: &[u8] = b"/home/t.XXXXXX";
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -267,12 +266,6 @@ impl<K: AppControl> Runtime<K> {
                 break;
             }
             self.yield_now()?;
-        }
-        // Engine import may use the fixed writer ceiling. Readiness only
-        // shortens it: app progress can never renew either absolute deadline.
-        let app_deadline = Deadline::after(self.bound.last_tick, TICKS)?;
-        if app_deadline.get() < self.bound.deadline.get() {
-            self.bound.deadline = app_deadline;
         }
         let process = self.pair(0xd001)?;
         let record: &mut [u8; 320] = (&mut workspace[..320]).try_into().unwrap();

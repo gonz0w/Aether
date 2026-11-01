@@ -163,6 +163,7 @@ struct Observed {
     query_error: bool,
     app_final: Status,
     engine_final: Status,
+    engine_terminal_at: u64,
     stopped: [bool; 2],
     reclaimed: [bool; 2],
     reclaim_calls: usize,
@@ -198,6 +199,7 @@ fn fixture() -> NativeBoundary {
         query_error: false,
         app_final: (1, 0, 1),
         engine_final: (1, 0, 1),
+        engine_terminal_at: 0,
         stopped: [false; 2],
         reclaimed: [false; 2],
         reclaim_calls: 0,
@@ -298,6 +300,9 @@ impl Control for NativeBoundary {
                     }
                     (0, u64::from(ready), 0)
                 } else if index == 1 {
+                    if seen.tick.saturating_sub(seen.tick_step) < seen.engine_terminal_at {
+                        return (0, 0, 0);
+                    }
                     seen.engine_final
                 } else {
                     seen.app_final
@@ -534,15 +539,49 @@ fn app_zero_engine_failure_rejected() {
 }
 
 #[test]
-fn delayed_engine_readiness_keeps_the_app_allowance() {
+fn app_success_waits_for_engine_terminal_within_the_absolute_deadline() {
+    for (engine_terminal_at, settled) in [(2000, true), (6000, false)] {
+        let boundary = fixture();
+        workload(&boundary);
+        {
+            let mut seen = boundary.0.borrow_mut();
+            seen.tick_step = 1;
+            seen.ready_at = 600;
+            seen.engine_terminal_at = engine_terminal_at;
+        }
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(
+            runtime.run(&mut [0; 4096]),
+            Err(if settled { -5 } else { -110 }) // Returned halt sentinel or timeout.
+        );
+        let seen = boundary.0.borrow();
+        assert_eq!(seen.output, b"out\nerr\n");
+        assert_eq!(runtime.snapshot().observed_terminal[0], Some((1, 0, 1)));
+        assert!(seen.reclaimed[0], "APP_SUCCESS_PRECEDES_ENGINE_SETTLEMENT");
+        assert_eq!(seen.reclaimed[1], settled);
+        assert_eq!(seen.halted, usize::from(settled));
+        assert_eq!(seen.terminal, 0);
+        assert_eq!(seen.stopped, [false; 2]);
+        if settled {
+            assert!(seen.tick > engine_terminal_at && seen.tick < 6000);
+            assert_eq!(runtime.snapshot().observed_terminal[1], Some((1, 0, 1)));
+        } else {
+            assert_eq!(seen.tick, 6001, "DEADLINE_TIE_PRECEDES_ENGINE_SUCCESS");
+            assert_eq!(runtime.snapshot().observed_terminal[1], None);
+        }
+    }
+}
+
+#[test]
+fn delayed_engine_readiness_keeps_the_absolute_writer_deadline() {
     let boundary = fixture();
     {
         let mut seen = boundary.0.borrow_mut();
         seen.tick_step = 1;
         seen.ready_at = 600;
     }
-    // Continuous output cannot renew the shorter post-readiness allowance.
-    for _ in 0..600 {
+    // Continuous output cannot renew the absolute writer deadline.
+    for _ in 0..2000 {
         boundary.0.borrow_mut().received.extend(frame(2, 1, b"ok"));
     }
     let mut runtime = Runtime::new(boundary.clone()).unwrap();
@@ -550,7 +589,7 @@ fn delayed_engine_readiness_keeps_the_app_allowance() {
     let seen = boundary.0.borrow();
     let ready_tick = seen.ready_observed.expect("DELAYED_READY_REACHED");
     assert!(ready_tick >= 600 && seen.launched && seen.serial_calls > 0);
-    assert_eq!(seen.tick, ready_tick + 501, "POST_READY_EXACT_DEADLINE");
+    assert_eq!(seen.tick, 6001, "ABSOLUTE_DEADLINE_NOT_RENEWED");
     assert_eq!(seen.halted, 0);
 }
 
@@ -562,7 +601,7 @@ fn late_engine_readiness_cannot_extend_the_absolute_writer_ceiling() {
         seen.tick = 5700;
         seen.tick_step = 1;
         seen.ready_at = 5800;
-        for _ in 0..600 {
+        for _ in 0..2000 {
             seen.received.extend(frame(2, 1, b"ok"));
         }
     }
@@ -591,7 +630,7 @@ fn continuous_progress_expires_fixed_deadline() {
     {
         let mut seen = boundary.0.borrow_mut();
         seen.tick_step = 1;
-        for _ in 0..600 {
+        for _ in 0..2000 {
             seen.received.extend(frame(2, 1, b"ok"));
         }
     }
