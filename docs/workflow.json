@@ -2565,6 +2565,16 @@
       "gaps": "Host bodies only. Default/selected linked static layout and matched kernel-only rebuild/native reader qualification remain separate; frozen OpenZFS/controller artifacts are reused.",
       "budget_seconds": 300,
       "owner": "Aether maintainer; issue97 approved capture correction"
+    },
+    {
+      "id": "UL-SERIAL-TTY-CORE",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "One safe no_std userland terminal,4aliases/16-byte stack scratch/noqueues; trusted caller identity+generation and owner-held READ/WRITE/MODE rights; narrow immediate VMIN1/VTIME0 and optionalCRtoLF; no native authority or production placement.",
+      "command": "From system root, use the pinned Rust commands in userland/experiments/serial-tty/README.md: actual-module host tests, x86_64-unknown-none rlib, rustfmt and Clippy under existing bounded capture. Selected compiling guard omissions use the same semantic assertions. No guest or new runner.",
+      "oracle": "Actual lifecycle/aliases, foreign same-generation and stale denial, zero/short/progress-before-error I/O, unknown-completion fail-closed behavior, immediate mode/snapshot restoration and hangup draining before EOF; compiling semantic omissions must reject.",
+      "gaps": "Library/model slice only. Native owner admission/fit, C adapter, real drain/canonical/signals/groups/TERM and actual Zsh remain separate. Private quality pass covers unchanged adoption inputs; public standalone snapshots are unavailable and new docs/inventory need separate review.",
+      "budget_seconds": 300,
+      "owner": "Aether-userland; issue112 bounded terminal core"
     }
   ]
 }
