@@ -119,6 +119,21 @@ See the canonical [execution policy](docs/policy/execution.md#af09-diagnostic-co
 | Integration | Accepted changes require affected checks and separate review before integration. Hosted settings do not replace these requirements. |
 | Operations | Existing owner, affected-owner, native-execution and release approvals remain. A green check grants no additional publication, deployment, credential, physical-device or operational authority. |
 
+## Proportionate milestone work —2026-11-01
+
+The owner's [issue105 direction](https://github.com/gonz0w/Aether/issues/105) keeps
+this hobby OS focused on useful filesystem integration, serial TTY and actual Zsh.
+Trust installed host tools, record versions/commands and use focused checks;
+investigate host internals only for a concrete failure. Do not turn deferred host
+attestation or generic runner work into a milestone prerequisite.
+
+The [standing execution direction](docs/policy/execution.md#current-milestone-execution-direction-2026-11-01)
+authorizes routine bounded fit corrections and reviewed QEMU checks in the current
+filesystem/TTY/Zsh milestone without repeated per-step confirmation. Preserve its
+review, source/media binding, attempt and cleanup boundaries. Stop for consequential
+design/authority/product decisions or hard blockers. This does not authorize a
+release or change the R1 acceptance gates.
+
 ## One work authority
 
 After cutover, read the selected issue and its full discussion before changing

@@ -407,6 +407,7 @@ extern fn restore_context(u64, *const Frame) callconv(.c) noreturn;
 const memory = @import("../../native_memory.zig");
 const Page = memory.Page;
 const service_memory = @import("build_options").native_service_memory;
+const mktemp_reader = @hasDecl(@import("build_options"), "native_mktemp_reader") and @import("build_options").native_mktemp_reader;
 const FsSession = @import("../../native_fs_session.zig");
 const FsRoles = @import("native_fs_roles.zig");
 const combined_profile = @hasDecl(@import("build_options"), "native_fs_session") and @import("build_options").native_fs_session;
@@ -472,7 +473,7 @@ const State = struct {
     errors: [256]u8 = @splat(0),
     errors_count: usize = 0,
     stream_closed: [3]bool = @splat(false),
-    output: [256]u8 = @splat(0),
+    output: [if (mktemp_reader) 320 else 256]u8 = @splat(0),
     output_count: usize = 0,
     yields: usize = 0,
     ticks: usize = 0,
@@ -941,6 +942,7 @@ pub fn start(pbase: u64, vbase: u64, envelope: []const u8, hhdm: u64, map: *cons
         _ = FsSession.parseApplication(envelope) catch @panic("invalid filesystem application envelope");
     }
     require(envelope.len > 40);
+    if (mktemp_reader) require(std.mem.eql(u8, envelope[0..8], "AENBD002"));
     const service_block = @import("build_options").native_service_block;
     const service_channel = @import("build_options").native_service_channel;
     const service_magic = if (combined_profile) (if (combined_application_profile) FsSession.application_magic else if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
@@ -1213,13 +1215,14 @@ pub fn exception(frame: *const Frame) *const Frame {
                 result(s, -14);
             } else {
                 const count: usize = @intCast(@min(frame.rdx, 16));
+                const output_capacity: usize = if (mktemp_reader and active == 0) 320 else 256;
                 var valid = true;
                 for (0..count) |i| if (byte(s, @intCast(frame.rsi + i), false) == null) {
                     valid = false;
                 };
                 if (!valid) {
                     result(s, -14);
-                } else if (count > s.output.len - s.output_count) {
+                } else if (count > output_capacity - s.output_count) {
                     result(s, -28);
                 } else {
                     for (0..count) |i| s.output[s.output_count + i] = byte(s, @intCast(frame.rsi + i), false).?.*;
