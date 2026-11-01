@@ -6,6 +6,37 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Current milestone execution direction —2026-11-01
+
+Cam approved the [fixed reader profile](https://github.com/gonz0w/Aether/issues/97#issuecomment-6563209702)
+and [standing direction](https://github.com/gonz0w/Aether/issues/97#issuecomment-6563276253):
+“yes these type of requests are auto approved, i only want work to stop for desing
+decisions or hard blockers.” For the selected filesystem/TTY/Zsh milestone,
+routine bounded implementation and fit corrections and separately reviewed QEMU
+checks may proceed within existing resource, disposable-media and no-network
+boundaries without another per-step confirmation. This explicitly supersedes the
+older per-run confirmation clauses below for that routine scope only.
+
+Keep finite scope, affected checks, separate review, exact source/artifact/media
+binding, one attempt per reviewed proposal and known stop/cleanup. Stop a cohort
+at its first unexpected result. Diagnose and correct the failure, then review a
+fresh matching candidate before another bounded attempt; consumed attempts stay
+consumed. The standing owner instruction supplies execution authority for that
+reviewed routine candidate. A local record or agent review cannot create it.
+Stop for consequential design, authority or product decisions or genuine hard
+blockers. No hardware, release/deployment, ambient authority or unbounded resource
+expansion follows from this direction.
+
+The approved default-off `native-mktemp-reader` profile enlarges physical
+`State.output` to320 bytes in the existing private BSP read-only ABI14 closure.
+Only engine slot0 has logical320-byte capacity; other slots and default profiles
+retain256. Four States add256 raw bytes; actual linked aligned kernel static growth
+must be measured and must not exceed16KiB. Larger growth needs an owner decision.
+Per-request256/per-transfer16 limits, pointer and authority checks, eight-byte
+observation format, query bounds and generation reset remain unchanged. No new
+syscall, capability kind or ABI is introduced. Reuse the frozen reader engine,
+controller and envelope artifacts; only the reader kernels/ISOs need rebuilding.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

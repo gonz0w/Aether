@@ -4545,3 +4545,35 @@ cover physical parent/path, component-wise dot/dotdot, C/Rust/C framing, inherit
 exec and cleanup, public errno/buffer/allocation/fail-stop behavior, old wire
 rejections and actual matching provider/owner fit. Old AF07/FILE pins and released
 SDK/standards bytes are preserved. No new VM has run from these host/build results.
+
+## Fixed mktemp reader capture profile —2026-11-01
+
+The selected cold reader returns a32-byte preserved-metadata digest and the
+actual8-byte directory leaf through40 eight-byte scalar observations.
+
+The [2026-11-01 owner decision](https://github.com/gonz0w/Aether/issues/97#issuecomment-6563276253)
+approves `-Dnative-mktemp-reader=true` only with the existing private BSP read-only
+reader closure and AENBD002 envelope. The selector defaults off and rejects
+release, SMP, writer, combined/SESSION and incompatible channel/process profiles.
+Its physical output array is320 bytes per State, but only engine slot0 may retain
+320 logical bytes. Other slots and all default profiles retain256. The four-State
+profile adds256 raw bytes; compare actual default/selected linked kernel static
+layout and reject aligned growth above16KiB before native qualification.
+
+The write syscall still admits at most256 requested bytes and returns at most16
+per transfer. Existing pointer/authority errors and eight-byte observation records
+stay exact. The controller query at offset320 returns EAGAIN after40 rows; reset
+clears the complete enlarged buffer before another generation. Reuse the checked
+reader ELF/controller/envelope bytes and rebuild only the two kernels/ISOs.
+
+From the system root, run the focused checks:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_mktemp_reader.py -v
+python3 -B -m unittest discover -s tests -p test_build_policy.py -v
+```
+
+The syscall scaffold executes the actual write, query and reset bodies over host
+storage. It does not establish hardware protection, linked static growth or a
+native reader result. Those remain matched kernel/artifact gates. Routine reviewed
+checks follow the [standing execution direction](policy/execution.md#current-milestone-execution-direction-2026-11-01).

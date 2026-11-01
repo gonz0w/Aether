@@ -38,6 +38,15 @@ Imported hooks remain private; this public checkout has no hook-setup command. C
 the owner-approved public destination; ordinary local integration grants no new
 remote, credential or publication authority.
 
+Owner direction, 2026-11-01: Cam directly approved routine milestone GitHub
+delivery for the current filesystem → serial TTY → Zsh work: issue progress,
+results and closure, bounded next issues, and push/PR/protected merge of reviewed
+fixes after required CI passes. The [recorded owner decision](https://github.com/gonz0w/Aether/issues/97#issuecomment-6563730384)
+applies to the existing public repository and reviewed public source only.
+Preserve private history, dependencies and raw evidence archives. Consequential
+design/authority/product decisions and hard blockers still stop dependent work;
+this grants no release, deployment, credential or physical-device authority.
+
 Before integration, satisfy acceptance, affected checks and separate review of
 the proposed change. The 2026-10-23 owner decision allowing peer-agent reviews
 remains: ordinary implementation/documentation may use a separate peer agent;

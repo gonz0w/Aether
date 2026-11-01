@@ -214,6 +214,18 @@ pub fn build(b: *std.Build) void {
     if (native_exec_denial and (!native_process_copy or !native_process_exec or !native_copy_signals or !native_runner_local)) @panic("native exec denial requires copy, exec, signal copy and local runner");
     options.addOption(bool, "native_exec_denial", native_exec_denial);
 
+    const native_mktemp_reader = b.option(bool, "native-mktemp-reader", "Private read-only mktemp reader capture:320 bytes for engine slot0") orelse false;
+    if (native_mktemp_reader and (release_artifact or smp or native_c_image == null or
+        !native_memory or !native_memory_large or !native_image_large or !native_backing or
+        !native_service_memory or !native_threads or !native_thread_pair or !native_thread_reuse or
+        !native_thread_origin or !native_service_workers or !native_clock or !native_entropy or
+        !native_rtc or !native_service_block or !service_cleanup_trace or
+        native_fs_session or native_session_lifecycle or native_service_channel or
+        service_zpl_budget or service_lifetime or native_init_sustained or native_pipeline_capacity or
+        native_process_freeze or native_runner_local or native_exec_denial or af09_diagnostic))
+        @panic("mktemp reader capture requires its exact private BSP read-only block profile");
+    options.addOption(bool, "native_mktemp_reader", native_mktemp_reader);
+
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));
     options.addOption(bool, "native_exec_token", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-token", "Ignore replacement publication token"));
