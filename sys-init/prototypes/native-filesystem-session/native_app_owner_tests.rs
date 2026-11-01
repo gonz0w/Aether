@@ -157,6 +157,8 @@ struct Observed {
     calls: usize,
     yields: usize,
     ready: bool,
+    ready_at: u64,
+    ready_observed: Option<u64>,
     stop_error: bool,
     query_error: bool,
     app_final: Status,
@@ -190,6 +192,8 @@ fn fixture() -> NativeBoundary {
         calls: 0,
         yields: 0,
         ready: true,
+        ready_at: 0,
+        ready_observed: None,
         stop_error: false,
         query_error: false,
         app_final: (1, 0, 1),
@@ -287,7 +291,12 @@ impl Control for NativeBoundary {
                 } else if seen.stopped[index] {
                     (144, 0, 3)
                 } else if index == 1 && !seen.launched {
-                    (0, u64::from(seen.ready), 0)
+                    let tick = seen.tick.saturating_sub(seen.tick_step);
+                    let ready = seen.ready && tick >= seen.ready_at;
+                    if ready {
+                        seen.ready_observed = Some(tick);
+                    }
+                    (0, u64::from(ready), 0)
                 } else if index == 1 {
                     seen.engine_final
                 } else {
@@ -522,6 +531,58 @@ fn app_zero_engine_failure_rejected() {
     assert_eq!(boundary.0.borrow().halted, 0, "NO_FALSE_CLEAN_HALT");
     let _ = runtime.contain();
     assert_eq!(boundary.0.borrow().terminal, 1);
+}
+
+#[test]
+fn delayed_engine_readiness_keeps_the_app_allowance() {
+    let boundary = fixture();
+    {
+        let mut seen = boundary.0.borrow_mut();
+        seen.tick_step = 1;
+        seen.ready_at = 600;
+    }
+    // Continuous output cannot renew the shorter post-readiness allowance.
+    for _ in 0..600 {
+        boundary.0.borrow_mut().received.extend(frame(2, 1, b"ok"));
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-110));
+    let seen = boundary.0.borrow();
+    let ready_tick = seen.ready_observed.expect("DELAYED_READY_REACHED");
+    assert!(ready_tick >= 600 && seen.launched && seen.serial_calls > 0);
+    assert_eq!(seen.tick, ready_tick + 501, "POST_READY_EXACT_DEADLINE");
+    assert_eq!(seen.halted, 0);
+}
+
+#[test]
+fn late_engine_readiness_cannot_extend_the_absolute_writer_ceiling() {
+    let boundary = fixture();
+    {
+        let mut seen = boundary.0.borrow_mut();
+        seen.tick = 5700;
+        seen.tick_step = 1;
+        seen.ready_at = 5800;
+        for _ in 0..600 {
+            seen.received.extend(frame(2, 1, b"ok"));
+        }
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-110));
+    let seen = boundary.0.borrow();
+    assert!(seen.launched && seen.serial_calls > 0);
+    assert_eq!(seen.tick, 6001, "ABSOLUTE_CEILING_NOT_RENEWED");
+    assert_eq!(seen.halted, 0);
+}
+
+#[test]
+fn absolute_startup_deadline_rejects_the_exact_tie_before_effects() {
+    let boundary = fixture();
+    boundary.0.borrow_mut().tick = 6000;
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.provision(&mut [0; 4096]), Err(-110));
+    let seen = boundary.0.borrow();
+    assert_eq!(seen.created, 0);
+    assert!(!seen.launched);
 }
 
 #[test]

@@ -19,8 +19,12 @@ mechanics with `owner_dispatch.rs`; the old wrapper retains its transfer/wait
 budget charging. New EAGAIN paths use bounded yield, with positive request effects
 never replayed after partial reply loss.
 
-One500-delivered-tick deadline starts before provisioning and one1,000,000-attempt
-allowance reserves12 for one-shot containment. A scalar acquisition ledger retains
+The absolute writer deadline is delivered tick6000, including engine provisioning.
+After checked engine readiness, the owner shortens that deadline to the earlier of
+tick6000 and readiness tick plus500, before creating the process pair or launching
+the app. Progress never renews either deadline; an observation at the deadline
+expires it. One1,000,000-attempt allowance covers both phases and reserves12 for
+one-shot containment. A scalar acquisition ledger retains
 partial pairs and every raw close result. A once-entry containment latch prevents
 repeated stop/query/reclaim after early failure; unknown terminal observations do
 not justify reclaim. App normal exit0 is independent of engine normal exit0 and
