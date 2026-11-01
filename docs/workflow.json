@@ -2575,6 +2575,16 @@
       "gaps": "Library/model slice only. Native owner admission/fit, C adapter, real drain/canonical/signals/groups/TERM and actual Zsh remain separate. Private quality pass covers unchanged adoption inputs; public standalone snapshots are unavailable and new docs/inventory need separate review.",
       "budget_seconds": 300,
       "owner": "Aether-userland; issue112 bounded terminal core"
+    },
+    {
+      "id": "UL-NATIVE-TTY-BYTE-STDIO",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "Explicit native_tty_byte_probe/AMK_NATIVE_TTY_BYTE_PROBE only; owner-held READ0/WRITE1-2/NOMODE, actual admitted handle+epoch, unchanged AEFD and6000tick/1M/12reserve lifecycle; exact16 binary bytes and three closes; default two-output mktemp preserved.",
+      "command": "Use the selected/default actual owner and native C facade host test roots and flags in serial-tty/README.md under existing bounded capture, UBSan, no_std target, formatting and Clippy; selected compiling omissions must fail. No Toybox or guest in host checks.",
+      "oracle": "Exact startup and binary NUL/CR/LF/high-byte routing; positive short/pending, direction/post-close/zero/forged/unknown denial and independent normal settlement. Callback helper/trap controls are scripted; native requires fresh fit and actual kernel witness.",
+      "gaps": "No native claim from host fixtures. Fresh app+owner geometry/TLS/stack, target denials and matched byte exchange remain required; canonical modes/Zsh/login remain later. Private adoption checker excludes public new prose/inventory review.",
+      "budget_seconds": 300,
+      "owner": "Aether-userland/sys-init; issue114 bounded ordinary-app byte exchange"
     }
   ]
 }

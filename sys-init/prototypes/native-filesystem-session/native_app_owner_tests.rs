@@ -172,6 +172,7 @@ struct Observed {
     fail_write_at: usize,
     serial_results: VecDeque<i64>,
     output: Vec<u8>,
+    input: VecDeque<u8>,
     serial_calls: usize,
     closes: BTreeMap<u64, usize>,
     close_error: u64,
@@ -208,6 +209,7 @@ fn fixture() -> NativeBoundary {
         fail_write_at: usize::MAX,
         serial_results: VecDeque::new(),
         output: Vec::new(),
+        input: VecDeque::new(),
         serial_calls: 0,
         closes: BTreeMap::new(),
         close_error: 0,
@@ -356,16 +358,26 @@ impl Control for NativeBoundary {
         panic!("COPY_FORBIDDEN");
     }
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
-        assert!(writing && bytes.len() <= 16, "OUTPUT_ONLY");
+        assert!(
+            bytes.len() <= 16 && (writing || cfg!(native_tty_byte_probe)),
+            "SELECTED_DIRECTION"
+        );
         let mut seen = self.0.borrow_mut();
         seen.calls += 1;
         seen.serial_calls += 1;
-        let result = seen
-            .serial_results
-            .pop_front()
-            .unwrap_or(bytes.len() as i64);
+        let result = seen.serial_results.pop_front().unwrap_or(if writing {
+            bytes.len() as i64
+        } else {
+            bytes.len().min(seen.input.len()) as i64
+        });
         if result > 0 && result as usize <= bytes.len() {
-            seen.output.extend_from_slice(&bytes[..result as usize]);
+            if writing {
+                seen.output.extend_from_slice(&bytes[..result as usize]);
+            } else {
+                for byte in &mut bytes[..result as usize] {
+                    *byte = seen.input.pop_front().expect("PLANNED_INPUT");
+                }
+            }
         }
         result
     }
@@ -416,6 +428,9 @@ fn workload(boundary: &NativeBoundary) {
     ] {
         seen.received.extend(raw);
     }
+    if cfg!(native_tty_byte_probe) {
+        seen.received.extend(frame(3, 0, b""));
+    }
 }
 
 #[test]
@@ -458,6 +473,7 @@ fn launch_rejection_retains_four_app_ends_and_exact_cleanup_reserve() {
 }
 
 #[test]
+#[cfg(not(native_tty_byte_probe))]
 fn handoff_preserves_both_greetings_and_publishes_exact_startup() {
     let boundary = fixture();
     let mut runtime = Runtime::new(boundary.clone()).unwrap();
@@ -688,6 +704,7 @@ fn partial_reply_unknown_never_replayed() {
 }
 
 #[test]
+#[cfg(not(native_tty_byte_probe))]
 fn stream_only_rejects_other_families_before_effects() {
     let mut exec = [0; 32];
     exec[..8].copy_from_slice(b"AEEXEC02");
@@ -778,4 +795,144 @@ fn owner_reserve_covers_post_admission_fault_and_close_errors() {
     let before = boundary.0.borrow().calls;
     let _ = runtime.contain();
     assert_eq!(boundary.0.borrow().calls, before, "CONTAINMENT_ONCE_ENTRY");
+}
+
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn selected_startup_admits_exact_three_sources_and_no_mode() {
+    let boundary = fixture();
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    runtime.provision(&mut [0; 4096]).unwrap();
+    let seen = boundary.0.borrow();
+    assert_eq!(
+        &seen.transmitted[112..124],
+        &[1, 0, 0, 0, 1, 1, 0, 0, 1, 2, 0, 0]
+    );
+    for selector in 0..3usize {
+        let at = 176 + selector * 16;
+        let source: Vec<u32> = seen.transmitted[at..at + 16]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|word| u32::from_le_bytes(*word))
+            .collect();
+        assert_eq!(
+            source,
+            [
+                0x7a000001 | (selector as u32) << 16,
+                selector as u32,
+                if selector == 0 { 1 } else { 2 },
+                16
+            ]
+        );
+    }
+    assert_eq!(&seen.transmitted[224..296], &[0; 72]);
+}
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
+    let boundary = fixture();
+    {
+        let mut seen = boundary.0.borrow_mut();
+        seen.input.extend([0, 13, 10, 128, 255]);
+        seen.serial_results.extend([-11, 1, 4]);
+        seen.received.extend(frame(1, 0, &[0; 5]));
+        seen.received.extend(frame(1, 0, &[0; 4]));
+    }
+    workload(&boundary);
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+    let seen = boundary.0.borrow();
+    assert_eq!(seen.transmitted[304..308], 1u32.to_le_bytes());
+    assert_eq!(seen.transmitted[320], 0, "NUL_IS_ONE_DATA_BYTE");
+    assert_eq!(seen.transmitted[336..340], 4u32.to_le_bytes());
+    assert_eq!(&seen.transmitted[352..356], &[13, 10, 128, 255]);
+    assert!(seen.input.is_empty());
+    assert_eq!((seen.reclaim_calls, seen.halted), (2, 1));
+    assert!(seen.yields > 0);
+}
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
+    let boundary = fixture();
+    {
+        let mut seen = boundary.0.borrow_mut();
+        for raw in [
+            frame(1, 1, &[0]),
+            frame(2, 0, b"x"),
+            frame(1, 0, b""),
+            frame(2, 1, b""),
+            frame(3, 0, b""),
+            frame(1, 0, &[0]),
+        ] {
+            seen.received.extend(raw);
+        }
+        for selector in [1, 2] {
+            seen.received.extend(frame(3, selector, b""));
+        }
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+    let seen = boundary.0.borrow();
+    let results: Vec<i32> = seen.transmitted[304..]
+        .as_chunks::<32>()
+        .0
+        .iter()
+        .map(|raw| i32::from_le_bytes(raw[..4].try_into().unwrap()))
+        .collect();
+    assert_eq!(results, [-13, -13, 0, 0, 0, -13, 0, 0]);
+    assert_eq!(seen.serial_calls, 0);
+    assert_eq!(seen.halted, 1);
+}
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() {
+    for raw in [17, -4096, i64::MAX] {
+        let boundary = fixture();
+        boundary.0.borrow_mut().serial_results.push_back(raw);
+        boundary
+            .0
+            .borrow_mut()
+            .received
+            .extend(frame(1, 0, &[0; 16]));
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+        assert_eq!(
+            boundary.0.borrow().transmitted.len(),
+            304,
+            "NO_KNOWN_UNKNOWN_REPLY"
+        );
+        assert_eq!(boundary.0.borrow().serial_calls, 1);
+        assert_eq!(runtime.contain(), Err(-5));
+        assert!(runtime.run(&mut [0; 4096]).is_err());
+        assert_eq!(boundary.0.borrow().serial_calls, 1);
+    }
+}
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn selected_foreign_stale_and_wrong_family_headers_deny_before_effect() {
+    for mut raw in [frame(1, 0, &[0]), frame(2, 1, b"x")] {
+        raw[4] ^= 1;
+        let boundary = fixture();
+        boundary.0.borrow_mut().received.extend(raw);
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-22));
+        assert_eq!(boundary.0.borrow().serial_calls, 0);
+        assert_eq!(runtime.snapshot().request_bytes, 16);
+    }
+    let boundary = fixture();
+    for selector in [1, 2] {
+        boundary
+            .0
+            .borrow_mut()
+            .received
+            .extend(frame(3, selector, b""));
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+    assert_eq!(
+        boundary.0.borrow().halted,
+        0,
+        "STDIN_MUST_CLOSE_BEFORE_PROCESS_EOF"
+    );
 }

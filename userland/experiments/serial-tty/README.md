@@ -118,3 +118,54 @@ this new README or inventory, which receive separate source/reader review.
 Native terminal admission/fit, UART dispatch, C/musl adaptation, real drain,
 canonical editing/signals/groups, TERM/data and interactive Zsh remain later gates.
 No host result here establishes native TTY, login or R1 acceptance.
+
+
+## Selected ordinary-app byte probe
+
+[Issue114](https://github.com/gonz0w/Aether/issues/114#issuecomment-6564180472)
+selects `native-byte-probe.c` through `AMK_NATIVE_TTY_BYTE_PROBE` in that file and
+`../mktemp-directory/native-main.c`. The entry calls `amk_tty_byte_probe` through
+the existing target callback, replacing the Toybox callback only for this build.
+Do not compile Toybox objects for the probe. The checked helper, native namespace
+adapter, musl TLS/clock, FD startup and returning finalizer retain their roles.
+The callback copies the admitted template into a local 32-byte buffer before its
+single checked directory creation; argv storage need not be writable.
+
+The runtime and owner link select `--cfg native_tty_byte_probe`; build this core
+as `--crate-name=serial_tty --crate-type=rlib` and pass its `--extern serial_tty`
+to `native_app_runtime`. The admitted app's actual handle/epoch authenticates the
+owner-held core caller. The existing process channel and ConsoleRefs route READ0
+and WRITE1–2, with no MODE right. Immediate mode preserves every input byte,
+including NUL, CR, LF and bytes 128–255. Zero-effect EAGAIN retains the current
+request within the original absolute 6000-tick deadline. Unknown completion
+contains the owner before a fabricated reply. All three aliases must close
+before process-channel EOF. Default builds retain two output aliases/two closes.
+
+The frozen exchange is hex `00411b420d430a447f450146024780ff`. After wrong-direction,
+zero-length and raw nonowned-UART denial checks, stdout emits `TTY-BYTE READY\n`.
+The app reads and compares 16 bytes, closes stdin and checks its local EBADF,
+then emits `TTY-BYTE OUT\n` plus those 16 raw bytes and one framing LF. Stderr
+emits `TTY-BYTE ERR\n`, closes and checks EBADF. Stdout emits `TTY-BYTE PASS\n`,
+closes and checks EBADF before return 0. Data loops advance only positive confirmed
+short counts; zero, negative or malformed progress aborts without retry. Markers
+are fixed machine records. PASS requires later normal app/engine terminals,
+namespace/FD/raw finalization, reclaim and clean halt before a native success claim.
+
+For focused host checks, compile the existing owner test root both with and
+without `--cfg native_tty_byte_probe`. Its selected tests cover actual routing,
+binary/short/pending input, three-close settlement, malformed counts and forged
+references; its default tests preserve the exact old startup and lifecycle.
+Compile `native-main.c` and `native-byte-probe.c` with both
+`-DAMK_NATIVE_APP_HOST -DAMK_NATIVE_TTY_BYTE_PROBE`; link `native-byte-tests.c`,
+the existing FD units and native stdio test bridge into the `native.rs --test`
+root with `--cfg amk_native_host --cfg native_tty_byte_probe`. The new callback
+controls explicitly substitute the checked helper and raw trap observations;
+they exercise actual C startup, FD ledger, data path and cached finalizer. The
+unchanged target/helper bodies and real kernel denials require the target witness.
+Use UBSan, existing bounded capture, the 300/180-second aggregate/child ceilings,
+4 MiB streams and 16 MiB files. Apply existing Rust/Clippy/C formatting checks and
+compile the selected no_std runtime for `x86_64-unknown-none`. Compiling omissions
+of unknown-reply containment, CR preservation and either raw denial must fail the
+same assertions. No synthetic or host result qualifies native TTY, persistence,
+terminal modes, interactive Zsh or login. The changed app and owner need fresh
+linked geometry/TLS/stack fit under the existing limits before native execution.
