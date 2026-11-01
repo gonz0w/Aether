@@ -46,6 +46,18 @@
 #endif
 /* Closed descriptor qualification profile; transport operations stay unchanged.
  */
+#if defined(AMK_NATIVE_TTY_DUPLEX_PROBE) &&                                    \
+    !defined(AEFD_TERMINAL_DUPLEX_BINDINGS)
+#define AEFD_TERMINAL_DUPLEX_BINDINGS
+#endif
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+#ifndef AEFD_TERMINAL_BINDINGS
+#define AEFD_TERMINAL_BINDINGS
+#endif
+#if defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_WIRE)
+#error "duplex qualification excludes fork and exec"
+#endif
+#endif
 #if defined(AMK_NATIVE_TTY_DESCRIPTOR_PROBE) && !defined(AEFD_TERMINAL_BINDINGS)
 #define AEFD_TERMINAL_BINDINGS
 #endif
@@ -57,6 +69,12 @@
 #undef AEFD_STARTUP_MAGIC
 #define AEFD_MAP_MAGIC "AEFDT003"
 #define AEFD_STARTUP_MAGIC "AEFDB003"
+#endif
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+#undef AEFD_MAP_MAGIC
+#undef AEFD_STARTUP_MAGIC
+#define AEFD_MAP_MAGIC "AEFDT004"
+#define AEFD_STARTUP_MAGIC "AEFDB004"
 #endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U

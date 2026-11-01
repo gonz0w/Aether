@@ -10,6 +10,7 @@
 #define AEFD_BIND_PIPE 2U
 #define AEFD_BIND_FILE 3
 #define AEFD_BIND_TERMINAL 4U
+#define AEFD_BIND_DUPLEX_TERMINAL 5U
 
 struct aefd_binding {
     unsigned char kind, selector, cloexec, reserved;
@@ -20,7 +21,13 @@ struct aefd_bindings {
 };
 static inline int aefd_binding_valid(struct aefd_binding slot)
 {
-    if (slot.reserved || slot.cloexec > 1)
+    if (slot.cloexec > 1)
+        return 0;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    if (slot.kind == AEFD_BIND_DUPLEX_TERMINAL)
+        return !slot.selector && slot.reserved >= 1 && slot.reserved <= 16;
+#endif
+    if (slot.reserved)
         return 0;
     switch (slot.kind) {
     case AEFD_BIND_EMPTY:
@@ -38,6 +45,18 @@ static inline int aefd_binding_valid(struct aefd_binding slot)
         return 0;
     }
 }
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+/* Bounded canonical dependency relation; IDs do not confer source authority. */
+static inline int aefd_binding_depends(struct aefd_binding slot,
+                                       unsigned source)
+{
+    if (slot.kind == AEFD_BIND_DUPLEX_TERMINAL)
+        return source < 2;
+    return (slot.kind == AEFD_BIND_CONSOLE || slot.kind == AEFD_BIND_TERMINAL ||
+            slot.kind == AEFD_BIND_PIPE) &&
+           slot.selector == source;
+}
+#endif
 /* Fresh proposed startup snapshot only. Labels are not native authority.
  * Full publication after validation; caller must stop on decode failure. */
 static inline int aefd_bindings_decode(const unsigned char *raw, size_t length,

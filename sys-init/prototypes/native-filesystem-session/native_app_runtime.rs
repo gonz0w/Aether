@@ -15,14 +15,26 @@ mod stream_transport;
 pub const ATTEMPTS: u32 = 1_000_000;
 pub const RESERVED: u32 = 12;
 pub const WRITER_DEADLINE_TICK: u64 = 6_000;
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 use serial_tty::{
     Bindings, Completion, Error as TtyError, Mode, ReadOutcome, Rights, Stop, Terminal,
 };
 
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 const DESCRIPTORS: usize = 3;
-#[cfg(not(any(native_tty_byte_probe, native_tty_descriptor_probe)))]
+#[cfg(not(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+)))]
 const DESCRIPTORS: usize = 2;
 pub const TEMPLATE: &[u8] = b"/home/t.XXXXXX";
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -116,7 +128,11 @@ pub struct Runtime<K: AppControl> {
     request_at: usize,
     reply_at: usize,
     closed: [bool; DESCRIPTORS],
-    #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+    #[cfg(any(
+        native_tty_byte_probe,
+        native_tty_descriptor_probe,
+        native_tty_duplex_probe
+    ))]
     tty: Option<(Terminal, Bindings, serial_tty::Caller)>,
     console_attempted: bool,
     terminal_attempted: bool,
@@ -131,7 +147,11 @@ impl<K: AppControl> Runtime<K> {
     pub fn new(kernel: K) -> Result<Self, i64> {
         let streams = State::new(
             [
-                if cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) {
+                if cfg!(any(
+                    native_tty_byte_probe,
+                    native_tty_descriptor_probe,
+                    native_tty_duplex_probe
+                )) {
                     Some(console(0))
                 } else {
                     None
@@ -163,7 +183,11 @@ impl<K: AppControl> Runtime<K> {
             request_at: 0,
             reply_at: 0,
             closed: [false; DESCRIPTORS],
-            #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+            #[cfg(any(
+                native_tty_byte_probe,
+                native_tty_descriptor_probe,
+                native_tty_duplex_probe
+            ))]
             tty: None,
             console_attempted: false,
             terminal_attempted: false,
@@ -302,7 +326,11 @@ impl<K: AppControl> Runtime<K> {
             self.transferred(cap)?;
         }
         self.identity = Some(Identity::admitted(1, 1, self.app).map_err(i64::from)?);
-        #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+        #[cfg(any(
+            native_tty_byte_probe,
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
+        ))]
         {
             let identity = self.identity.ok_or(-9)?;
             let caller = serial_tty::Caller {
@@ -332,7 +360,11 @@ impl<K: AppControl> Runtime<K> {
             selector: 2,
             cloexec: 0,
         };
-        #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+        #[cfg(any(
+            native_tty_byte_probe,
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
+        ))]
         {
             bindings[0] = Binding {
                 kind: 1,
@@ -340,7 +372,7 @@ impl<K: AppControl> Runtime<K> {
                 cloexec: 0,
             };
         }
-        #[cfg(native_tty_descriptor_probe)]
+        #[cfg(any(native_tty_descriptor_probe, native_tty_duplex_probe))]
         {
             let (terminal, references, caller) = self.tty.as_ref().ok_or(-9)?;
             for (selector, reference, role) in [
@@ -355,12 +387,26 @@ impl<K: AppControl> Runtime<K> {
             }
         }
         let mut sources = [Source::default(); 7];
-        #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+        #[cfg(any(
+            native_tty_byte_probe,
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
+        ))]
         {
             sources[0] = console(0);
         }
         sources[1] = console(1);
         sources[2] = console(2);
+        #[cfg(native_tty_duplex_probe)]
+        {
+            let (terminal, references, caller) = self.tty.as_ref().ok_or(-9)?;
+            validate_terminal_sources(
+                terminal,
+                references,
+                *caller,
+                &sources[..3].try_into().unwrap(),
+            )?;
+        }
         let plan = Plan {
             identity: self.identity.unwrap(),
             shell: 1,
@@ -446,15 +492,27 @@ impl<K: AppControl> Runtime<K> {
         loop {
             let kernel = &mut self.kernel;
             let bound = &mut self.bound;
-            #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+            #[cfg(any(
+                native_tty_byte_probe,
+                native_tty_descriptor_probe,
+                native_tty_duplex_probe
+            ))]
             let (terminal, bindings, caller) = self.tty.as_mut().ok_or(-9)?;
-            #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+            #[cfg(any(
+                native_tty_byte_probe,
+                native_tty_descriptor_probe,
+                native_tty_duplex_probe
+            ))]
             let reference = match u32_at(&self.request, 8) {
                 0 => bindings.stdin,
                 1 => bindings.stdout,
                 _ => bindings.stderr,
             };
-            #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+            #[cfg(any(
+                native_tty_byte_probe,
+                native_tty_descriptor_probe,
+                native_tty_duplex_probe
+            ))]
             let mut unknown = false;
             let reply = self
                 .streams
@@ -462,11 +520,19 @@ impl<K: AppControl> Runtime<K> {
                     if let Err(error) = bound.before(kernel) {
                         return error;
                     }
-                    #[cfg(not(any(native_tty_byte_probe, native_tty_descriptor_probe)))]
+                    #[cfg(not(any(
+                        native_tty_byte_probe,
+                        native_tty_descriptor_probe,
+                        native_tty_duplex_probe
+                    )))]
                     {
                         kernel.serial(writing, bytes)
                     }
-                    #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+                    #[cfg(any(
+                        native_tty_byte_probe,
+                        native_tty_descriptor_probe,
+                        native_tty_duplex_probe
+                    ))]
                     {
                         let result = if writing {
                             terminal.write(*caller, &reference, bytes, |role, input| {
@@ -505,11 +571,19 @@ impl<K: AppControl> Runtime<K> {
                         }
                     }
                 });
-            #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+            #[cfg(any(
+                native_tty_byte_probe,
+                native_tty_descriptor_probe,
+                native_tty_duplex_probe
+            ))]
             if unknown {
                 return Err(-5);
             }
-            #[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+            #[cfg(any(
+                native_tty_byte_probe,
+                native_tty_descriptor_probe,
+                native_tty_duplex_probe
+            ))]
             if u32_at(&self.request, 0) == 3
                 && matches!(&reply, Outcome::Reply(raw) if u32_at(raw, 0) == 0)
             {
@@ -537,7 +611,8 @@ impl<K: AppControl> Runtime<K> {
             self.closed[u32_at(&self.request, 8) as usize
                 - usize::from(!cfg!(any(
                     native_tty_byte_probe,
-                    native_tty_descriptor_probe
+                    native_tty_descriptor_probe,
+                    native_tty_duplex_probe
                 )))] = true;
         }
         Ok(true)
@@ -684,11 +759,47 @@ impl<K: AppControl> stream_transport::Steps for OwnerSteps<'_, K> {
         self.kernel.ctl(0x1fffe, 0, 0).0
     }
 }
+#[cfg(native_tty_duplex_probe)]
+pub fn validate_terminal_sources(
+    terminal: &Terminal,
+    references: &Bindings,
+    caller: serial_tty::Caller,
+    sources: &[Source; 3],
+) -> Result<(), i64> {
+    for (i, reference, role, rights) in [
+        (0, &references.stdin, serial_tty::Role::Stdin, Rights::READ),
+        (
+            1,
+            &references.stdout,
+            serial_tty::Role::Stdout,
+            Rights::WRITE,
+        ),
+        (
+            2,
+            &references.stderr,
+            serial_tty::Role::Stderr,
+            Rights::WRITE,
+        ),
+    ] {
+        if sources[i] != console(i as u32)
+            || terminal.classify(caller, reference).map_err(tty_errno)? != role
+            || terminal.access(caller, reference).map_err(tty_errno)? != rights
+        {
+            return Err(-13);
+        }
+    }
+    Ok(())
+}
 fn console(selector: u32) -> Source {
     Source {
         reference: 0x7a000001 | selector << 16,
         selector,
-        rights: if cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) && selector == 0 {
+        rights: if cfg!(any(
+            native_tty_byte_probe,
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
+        )) && selector == 0
+        {
             1
         } else {
             2
@@ -708,10 +819,15 @@ fn u32_at(frame: &[u8; 32], at: usize) -> u32 {
 }
 fn output_header(frame: &[u8; 32]) -> bool {
     (matches!(u32_at(frame, 0), 2 | 3)
-        || cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) && u32_at(frame, 0) == 1)
+        || cfg!(any(
+            native_tty_byte_probe,
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
+        )) && u32_at(frame, 0) == 1)
         && (u32::from(!cfg!(any(
             native_tty_byte_probe,
-            native_tty_descriptor_probe
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
         )))..=2)
             .contains(&u32_at(frame, 8))
         && u32_at(frame, 4) == console(u32_at(frame, 8)).reference
@@ -748,7 +864,11 @@ pub fn encode_launch(
 
 // The native console returns a count, including one for a NUL byte. Only -11
 // means live-empty; an out-of-range count/errno has unknown effects.
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 fn completion(raw: i64, offered: usize) -> Completion {
     if raw >= 0 && raw as u64 <= offered as u64 {
         Completion {
@@ -767,7 +887,11 @@ fn completion(raw: i64, offered: usize) -> Completion {
         }
     }
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 fn tty_errno(error: TtyError) -> i64 {
     match error {
         TtyError::WouldBlock => -11,

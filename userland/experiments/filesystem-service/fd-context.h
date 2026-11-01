@@ -27,6 +27,9 @@ int64_t aefd_context_init(struct aefd_context *, aefd_native_call, void *,
  * running operation alone. Mask failure terminally aborts transport. Private
  * errno/count API, not libc/POSIX interposition; stream counts remain <=16.
  */
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+int64_t aefd_context_open_duplex(struct aefd_context *, int);
+#endif
 int64_t aefd_context_open(struct aefd_context *, const unsigned char *, size_t,
                           int);
 #ifdef AEFD_CWD_WIRE

@@ -26,6 +26,12 @@ int64_t aefd_routed_write(const struct aefd_bindings *map,
         return -38;
     if (count)
         memcpy(client->workspace, input, count);
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    if (binding.kind == AEFD_BIND_DUPLEX_TERMINAL) {
+        binding.kind = AEFD_BIND_TERMINAL;
+        binding.selector = 1;
+    }
+#endif
     struct aefd_stream_result reply =
         streams->write(streams->context, binding.kind, binding.selector,
                        client->workspace, count);

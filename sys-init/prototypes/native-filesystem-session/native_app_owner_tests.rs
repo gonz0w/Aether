@@ -360,7 +360,12 @@ impl Control for NativeBoundary {
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
         assert!(
             bytes.len() <= 16
-                && (writing || cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe))),
+                && (writing
+                    || cfg!(any(
+                        native_tty_byte_probe,
+                        native_tty_descriptor_probe,
+                        native_tty_duplex_probe
+                    ))),
             "SELECTED_DIRECTION"
         );
         let mut seen = self.0.borrow_mut();
@@ -429,7 +434,11 @@ fn workload(boundary: &NativeBoundary) {
     ] {
         seen.received.extend(raw);
     }
-    if cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) {
+    if cfg!(any(
+        native_tty_byte_probe,
+        native_tty_descriptor_probe,
+        native_tty_duplex_probe
+    )) {
         seen.received.extend(frame(3, 0, b""));
     }
 }
@@ -474,7 +483,11 @@ fn launch_rejection_retains_four_app_ends_and_exact_cleanup_reserve() {
 }
 
 #[test]
-#[cfg(not(any(native_tty_byte_probe, native_tty_descriptor_probe)))]
+#[cfg(not(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+)))]
 fn handoff_preserves_both_greetings_and_publishes_exact_startup() {
     let boundary = fixture();
     let mut runtime = Runtime::new(boundary.clone()).unwrap();
@@ -705,7 +718,11 @@ fn partial_reply_unknown_never_replayed() {
 }
 
 #[test]
-#[cfg(not(any(native_tty_byte_probe, native_tty_descriptor_probe)))]
+#[cfg(not(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+)))]
 fn stream_only_rejects_other_families_before_effects() {
     let mut exec = [0; 32];
     exec[..8].copy_from_slice(b"AEEXEC02");
@@ -798,7 +815,11 @@ fn owner_reserve_covers_post_admission_fault_and_close_errors() {
     assert_eq!(boundary.0.borrow().calls, before, "CONTAINMENT_ONCE_ENTRY");
 }
 
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn selected_startup_admits_exact_three_sources_and_no_mode() {
     let boundary = fixture();
@@ -807,7 +828,7 @@ fn selected_startup_admits_exact_three_sources_and_no_mode() {
     let seen = boundary.0.borrow();
     assert_eq!(
         &seen.transmitted[112..124],
-        if cfg!(native_tty_descriptor_probe) {
+        if cfg!(any(native_tty_descriptor_probe, native_tty_duplex_probe)) {
             &[4, 0, 0, 0, 4, 1, 0, 0, 4, 2, 0, 0]
         } else {
             &[1, 0, 0, 0, 1, 1, 0, 0, 1, 2, 0, 0]
@@ -833,7 +854,11 @@ fn selected_startup_admits_exact_three_sources_and_no_mode() {
     }
     assert_eq!(&seen.transmitted[224..296], &[0; 72]);
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
     let boundary = fixture();
@@ -856,7 +881,11 @@ fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
     assert_eq!((seen.reclaim_calls, seen.halted), (2, 1));
     assert!(seen.yields > 0);
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
     let boundary = fixture();
@@ -889,7 +918,11 @@ fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
     assert_eq!(seen.serial_calls, 0);
     assert_eq!(seen.halted, 1);
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() {
     for raw in [17, -4096, i64::MAX] {
@@ -913,7 +946,11 @@ fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() 
         assert_eq!(boundary.0.borrow().serial_calls, 1);
     }
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn selected_foreign_stale_and_wrong_family_headers_deny_before_effect() {
     for mut raw in [frame(1, 0, &[0]), frame(2, 1, b"x")] {
@@ -939,5 +976,71 @@ fn selected_foreign_stale_and_wrong_family_headers_deny_before_effect() {
         boundary.0.borrow().halted,
         0,
         "STDIN_MUST_CLOSE_BEFORE_PROCESS_EOF"
+    );
+}
+
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_attestation_checks_real_terminal_caller_generation_rights_and_source() {
+    use serial_tty::{Caller, Mode, Rights, Terminal};
+    let caller = Caller {
+        identity: 77,
+        generation: 1,
+    };
+    let rights = [Rights::READ, Rights::WRITE, Rights::WRITE];
+    let (mut terminal, refs) = Terminal::admit(41, caller, rights, Mode::IMMEDIATE).unwrap();
+    let sources = core::array::from_fn(|i| fd_startup::Source {
+        reference: 0x7a000001 | (i as u32) << 16,
+        selector: i as u32,
+        rights: if i == 0 { 1 } else { 2 },
+        bound: 16,
+    });
+    assert_eq!(
+        native_app_runtime::validate_terminal_sources(&terminal, &refs, caller, &sources),
+        Ok(())
+    );
+    for bad in [
+        Caller {
+            identity: 78,
+            ..caller
+        },
+        Caller {
+            generation: 2,
+            ..caller
+        },
+    ] {
+        assert!(
+            native_app_runtime::validate_terminal_sources(&terminal, &refs, bad, &sources).is_err()
+        );
+    }
+    let (other, _) = Terminal::admit(42, caller, rights, Mode::IMMEDIATE).unwrap();
+    assert!(
+        native_app_runtime::validate_terminal_sources(&other, &refs, caller, &sources).is_err()
+    );
+    for bad_rights in [
+        [Rights::WRITE, Rights::WRITE, Rights::WRITE],
+        [Rights::READ, Rights::READ, Rights::WRITE],
+        [
+            Rights::READ.union(Rights::MODE),
+            Rights::WRITE,
+            Rights::WRITE,
+        ],
+    ] {
+        let (wrong, b) = Terminal::admit(41, caller, bad_rights, Mode::IMMEDIATE).unwrap();
+        assert_eq!(
+            native_app_runtime::validate_terminal_sources(&wrong, &b, caller, &sources),
+            Err(-13),
+            "ACTUAL_REFERENCE_RIGHTS_DENIED"
+        );
+    }
+    let mut bad_sources = sources;
+    bad_sources[1].reference ^= 1;
+    assert_eq!(
+        native_app_runtime::validate_terminal_sources(&terminal, &refs, caller, &bad_sources),
+        Err(-13)
+    );
+    terminal.close(caller, refs.stdin).unwrap();
+    assert!(
+        native_app_runtime::validate_terminal_sources(&terminal, &refs, caller, &sources).is_err()
     );
 }

@@ -22,6 +22,18 @@ int64_t aefd_context_init(struct aefd_context *c, aefd_native_call call,
         !aefd_native_init(&native, call, owner, input, output, sources,
                           generations, factory))
         return -22;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    /*004 attests this fixed owner-held relationship, never initial kind5. */
+    for (unsigned i = 0; i < 3; ++i)
+        if (map.slots[i].kind != AEFD_BIND_TERMINAL ||
+            map.slots[i].selector != i ||
+            sources[i].reference != (UINT32_C(0x7a000001) | i << 16))
+            return -22;
+    for (unsigned fd = 0; fd < 16; ++fd)
+        if (map.slots[fd].kind != AEFD_BIND_EMPTY &&
+            map.slots[fd].kind != AEFD_BIND_TERMINAL)
+            return -22;
+#endif
     unsigned seen = 0;
     for (unsigned fd = 0; fd < AEFD_BINDINGS_COUNT; ++fd) {
         struct aefd_binding slot = map.slots[fd];
@@ -68,6 +80,29 @@ static int64_t end(struct aefd_context *c, int64_t result)
     aefd_native_leave(&c->native);
     return result;
 }
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+static int duplex_sources(const struct aefd_context *c)
+{
+    for (unsigned i = 0; i < 2; ++i) {
+        const struct aefd_native_source *s = &c->native.sources[i];
+        if (s->reference != (UINT32_C(0x7a000001) | i << 16) ||
+            s->selector != i || s->rights != (i ? 2U : 1U) || s->bound != 16)
+            return 0;
+    }
+    return 1;
+}
+int64_t aefd_context_open_duplex(struct aefd_context *c, int cloexec)
+{
+    if (cloexec < 0 || cloexec > 1)
+        return -22;
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    return end(c, duplex_sources(c)
+                      ? aefd_session_open_duplex(&c->session, cloexec)
+                      : -6);
+}
+#endif
 int64_t aefd_context_open(struct aefd_context *c, const unsigned char *name,
                           size_t length, int flag)
 {
@@ -118,6 +153,24 @@ int64_t aefd_context_close(struct aefd_context *c, int fd)
     int64_t result = begin(c);
     if (result)
         return result;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    struct aefd_binding binding;
+    result = aefd_session_binding(&c->session, fd, &binding);
+    if (result)
+        return end(c, result);
+    if (binding.kind == AEFD_BIND_DUPLEX_TERMINAL && !duplex_sources(c)) {
+        aefd_client_abort(&c->client);
+        return end(c, -5);
+    }
+    /* Validate every component before the first possible physical close. */
+    for (unsigned source = 0; source < 7; ++source)
+        if (aefd_binding_depends(binding, source) &&
+            (!c->native.sources[source].reference ||
+             c->native.sources[source].selector != source)) {
+            aefd_client_abort(&c->client);
+            return end(c, -5);
+        }
+#endif
     return end(c, aefd_session_close(&c->session, fd));
 }
 int64_t aefd_context_describe(struct aefd_context *c, int fd,
@@ -131,7 +184,17 @@ int64_t aefd_context_describe(struct aefd_context *c, int fd,
     struct aefd_binding binding;
     unsigned actual = 1; /* This profile's file table is read-only. */
     result = aefd_session_binding(&c->session, fd, &binding);
-    if (!result && binding.kind != AEFD_BIND_FILE) {
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    if (!result && binding.kind == AEFD_BIND_DUPLEX_TERMINAL) {
+        if (!duplex_sources(c)) {
+            aefd_client_abort(&c->client);
+            result = -5;
+        } else {
+            actual = 3;
+        }
+    } else
+#endif
+        if (!result && binding.kind != AEFD_BIND_FILE) {
         const struct aefd_native_source *source =
             &c->native.sources[binding.selector];
         if (!source->reference || source->selector != binding.selector ||
@@ -206,6 +269,17 @@ int64_t aefd_context_finish(struct aefd_context *c, struct aefd_finish *out)
     int64_t error = begin(c);
     if (error == -16)
         return error;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    if (!error)
+        for (unsigned fd = 0; fd < AEFD_BINDINGS_COUNT; ++fd)
+            if (c->map.slots[fd].kind == AEFD_BIND_DUPLEX_TERMINAL) {
+                /* Finalization must preflight before even an earlier
+                 * directional entry can cause a physical source close. */
+                if (!duplex_sources(c))
+                    aefd_client_abort(&c->client);
+                break;
+            }
+#endif
     c->state = 2;
     struct aefd_finish result = aefd_session_finish(&c->session);
     if (!error)

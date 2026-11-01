@@ -2595,6 +2595,16 @@
       "gaps": "Descriptor prerequisite only; no O_RDWR acquisition, NONBLOCK, MODE/termios, drain, signals/groups or Zsh login. Target libc routing and fresh stack/heap/TLS require actual linked-artifact analysis; merged UART alone does not prove descriptor origin.",
       "budget_seconds": 300,
       "owner": "Aether-userland/sys-init; issue116 terminal descriptor classification, status and aliases"
+    },
+    {
+      "id": "UL-NATIVE-TTY-DUPLEX",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "Selected004 pair0READ/1WRITE attests one actual Terminal/caller/generation with unchanged native rights; canonical16-slot map owns immutable duplex description IDs, aliases and dependency-aware source lifetime;001/002/003 unchanged.",
+      "command": "Use the selected/default actual C/Rust startup, context/libc, native facade and owner test roots in serial-tty/README.md with bounded capture, UBSan, formats, Clippy/no_std and compiling association/dependency/partial-close controls. Fresh actual app/Owner fit and separate image/proposal review precede one native probe.",
+      "oracle": "Literal caller-scoped /dev/tty open O_RDWR with supported NOCTTY/CLOEXEC, distinct opens versus dup IDs, truthful access and unsupported-status denial, source retention after original closes, unknown compound-close containment without replay, one-FD fixed binary exchange and normal app/engine cleanup.",
+      "gaps": "No full ttyname/Zsh, MODE/termios/drain, NONBLOCK, permanent reopen factory or new native grant. Merged UART requires exact qualified C assertions/source and linked libc route; persistence remains separate.",
+      "budget_seconds": 300,
+      "owner": "Aether-userland/sys-init; issue119 scoped duplex acquisition"
     }
   ]
 }

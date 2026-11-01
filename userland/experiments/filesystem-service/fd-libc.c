@@ -9,12 +9,25 @@ int64_t aefd_libc_isatty(struct aefd_context *c, int fd)
     int64_t status = aefd_context_describe(c, fd, &binding, &rights);
     if (status)
         return status;
-    return binding.kind == AEFD_BIND_TERMINAL ? 1 : -ENOTTY;
+    return binding.kind == AEFD_BIND_TERMINAL
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+                   || binding.kind == AEFD_BIND_DUPLEX_TERMINAL
+#endif
+               ? 1
+               : -ENOTTY;
 }
 int64_t aefd_libc_open(struct aefd_context *c, const char *path, int flags)
 {
     if (!path)
         return -EFAULT;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    if (!strcmp(path, "/dev/tty")) {
+        if ((flags & ~(O_RDWR | O_NOCTTY | O_CLOEXEC)) ||
+            (flags & O_ACCMODE) != O_RDWR)
+            return -EOPNOTSUPP;
+        return aefd_context_open_duplex(c, !!(flags & O_CLOEXEC));
+    }
+#endif
     if (flags & ~O_CLOEXEC)
         return -EOPNOTSUPP;
     size_t length = 0;
@@ -43,6 +56,10 @@ int64_t aefd_libc_fcntl(struct aefd_context *c, int fd, int command,
         if (status)
             return status;
         int access = rights == 1 ? O_RDONLY : O_WRONLY;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+        if (rights == 3)
+            access = O_RDWR;
+#endif
         if (command == F_GETFL)
             return access;
         /* No mutable status flags are implemented. In particular NONBLOCK

@@ -9,6 +9,10 @@
  * mutation. Return logical FD/nonnegative success or negative private errno.
  * Occupied metadata survives unknown outcomes; a retired client cannot reuse
  * that state. */
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+int64_t aefd_table_open_duplex(struct aefd_bindings *, struct aefd_client *,
+                               int);
+#endif
 int64_t aefd_table_open(struct aefd_bindings *, struct aefd_client *,
                         const unsigned char *name, size_t length, int cloexec);
 int64_t aefd_table_dup(struct aefd_bindings *, struct aefd_client *, int fd,
