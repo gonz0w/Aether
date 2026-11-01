@@ -49,6 +49,24 @@ pub fn plan(slot: u32, epoch: u32, shell: u32) -> Plan {
         cloexec: 0,
     };
     p.bindings[9] = p.bindings[3];
+    if fd_startup::DUPLEX_BINDINGS {
+        p.bindings = [Binding::default(); 16];
+        p.sources = [Source::default(); 7];
+        p.history = [0; 2];
+        for i in 0..3 {
+            p.bindings[i] = Binding {
+                kind: 4,
+                selector: i as u8,
+                cloexec: 0,
+            };
+            p.sources[i] = Source {
+                reference: 0x7a000001 | (i as u32) << 16,
+                selector: i as u32,
+                rights: if i == 0 { 1 } else { 2 },
+                bound: 16,
+            };
+        }
+    }
     p
 }
 #[test]
@@ -72,8 +90,14 @@ fn all_identities_and_wire_fields() {
             assert_eq!(&out[64..72], &16u64.to_le_bytes());
             assert!(out[72..112].iter().all(|v| *v == 0));
             assert!(out[300..].iter().all(|v| *v == 0));
-            assert_eq!(&out[288..292], &5u32.to_le_bytes());
-            assert_eq!(&out[292..296], &9u32.to_le_bytes());
+            assert_eq!(
+                &out[288..292],
+                &(if fd_startup::DUPLEX_BINDINGS { 0u32 } else { 5 }).to_le_bytes()
+            );
+            assert_eq!(
+                &out[292..296],
+                &(if fd_startup::DUPLEX_BINDINGS { 0u32 } else { 9 }).to_le_bytes()
+            );
             assert_eq!(
                 &out[296..300],
                 &(if slot == 1 { 0x76050001u32 } else { 0 }).to_le_bytes()
@@ -97,7 +121,7 @@ fn invalid_plans_preserve_output() {
     p.history[1] = 10;
     bad.push(p);
     let mut p = plan(1, 1, 1);
-    p.bindings[10] = p.bindings[7];
+    p.bindings[10] = p.bindings[if fd_startup::DUPLEX_BINDINGS { 0 } else { 7 }];
     bad.push(p);
     let mut p = plan(1, 1, 1);
     p.bindings[10] = Binding {
@@ -136,6 +160,7 @@ fn invalid_plans_preserve_output() {
         assert_eq!(out, [0xa5; BYTES]);
     }
 }
+#[cfg(not(native_tty_duplex_probe))]
 #[test]
 fn histories_survive_absent_pipes_and_labels_are_opaque() {
     let mut p = plan(2, 15, 3);
@@ -160,8 +185,8 @@ fn terminal_typing_is_selected_and_consistent_for_aliases() {
     let mut out = [0xa5; BYTES];
     if fd_startup::TERMINAL_BINDINGS {
         encode(&p, &mut out).unwrap();
-        assert_eq!(&out[..8], b"AEFDB003");
-        assert_eq!(&out[48..56], b"AEFDT003");
+        assert_eq!(&out[..8], fd_startup::MAGIC);
+        assert_eq!(&out[48..56], fd_startup::MAP_MAGIC);
         assert_eq!(out[112], 4);
         p.bindings[10] = Binding {
             kind: 1,
@@ -175,4 +200,23 @@ fn terminal_typing_is_selected_and_consistent_for_aliases() {
         assert_eq!(fd_startup::MAGIC, b"AEFDB001");
     }
     assert_eq!(out, [0xa5; BYTES]);
+}
+
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn duplex_startup_has_only_attested_stdio_never_initial_duplex() {
+    for (fd, kind, selector, cloexec) in [(3, 5, 0, 0), (10, 4, 0, 0), (0, 4, 0, 1), (0, 1, 0, 0)] {
+        let mut p = plan(1, 1, 1);
+        p.bindings[fd] = Binding {
+            kind,
+            selector,
+            cloexec,
+        };
+        let mut out = [0xa5; BYTES];
+        assert_eq!(encode(&p, &mut out), Err(-22));
+        assert_eq!(out, [0xa5; BYTES]);
+    }
+    let mut p = plan(1, 1, 1);
+    p.sources[0].reference ^= 1;
+    assert_eq!(encode(&p, &mut [0; BYTES]), Err(-22));
 }

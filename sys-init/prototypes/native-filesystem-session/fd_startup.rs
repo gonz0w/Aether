@@ -2,20 +2,25 @@
 #![no_std]
 //! Proposed AEFDB001 producer. Labels require actual owner admission/delegation.
 use abi29_dispatch_core::startup::{Identity, greeting};
-#[cfg(all(native_tty_descriptor_probe, fs_file16))]
+#[cfg(all(any(native_tty_descriptor_probe, native_tty_duplex_probe), fs_file16))]
 compile_error!("terminal bindings cannot select file16 startup");
-pub const TERMINAL_BINDINGS: bool = cfg!(native_tty_descriptor_probe);
+pub const DUPLEX_BINDINGS: bool = cfg!(native_tty_duplex_probe);
+pub const TERMINAL_BINDINGS: bool = cfg!(any(native_tty_descriptor_probe, native_tty_duplex_probe));
 pub const BYTES: usize = 304;
 pub const FILE_SLOTS_16: bool = cfg!(fs_file16);
 pub const FIRST_FILE_FD: u8 = if FILE_SLOTS_16 { 0 } else { 3 };
-pub const MAGIC: &[u8; 8] = if TERMINAL_BINDINGS {
+pub const MAGIC: &[u8; 8] = if DUPLEX_BINDINGS {
+    b"AEFDB004"
+} else if TERMINAL_BINDINGS {
     b"AEFDB003"
 } else if FILE_SLOTS_16 {
     b"AEFDB002"
 } else {
     b"AEFDB001"
 };
-pub const MAP_MAGIC: &[u8; 8] = if TERMINAL_BINDINGS {
+pub const MAP_MAGIC: &[u8; 8] = if DUPLEX_BINDINGS {
+    b"AEFDT004"
+} else if TERMINAL_BINDINGS {
     b"AEFDT003"
 } else if FILE_SLOTS_16 {
     b"AEFDT002"
@@ -58,6 +63,18 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
     if plan.generation == 0 || plan.history.iter().any(|g| *g > 9) {
         return Err(-22);
     }
+    if DUPLEX_BINDINGS
+        && (plan.history != [0; 2]
+            || plan.bindings.iter().enumerate().any(|(fd, b)| {
+                if fd < 3 {
+                    b.kind != 4 || b.selector as usize != fd || b.cloexec != 0
+                } else {
+                    *b != Binding::default()
+                }
+            }))
+    {
+        return Err(-22);
+    }
     let mut seen = [false; 7];
     for (i, binding) in plan.bindings.iter().enumerate() {
         if binding.cloexec > 1 {
@@ -93,6 +110,9 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
                 return Err(-22);
             }
             continue;
+        }
+        if DUPLEX_BINDINGS && i < 3 && source.reference != 0x7a000001 | (i as u32) << 16 {
+            return Err(-22);
         }
         let rights = if i == 0 || i == 3 || i == 5 { 1 } else { 2 };
         if !seen[i] || source.selector != i as u32 || source.rights != rights || source.bound != 16

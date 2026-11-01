@@ -240,6 +240,11 @@ impl Terminal {
     pub fn classify(&self, caller: Caller, reference: &Reference) -> Result<Role, Error> {
         Ok(self.validate(caller, reference, Rights(0))?.role)
     }
+    /// Read-only validation of an existing reference's admitted data access.
+    /// This checks caller/lifetime exactly like classify and grants nothing.
+    pub fn access(&self, caller: Caller, reference: &Reference) -> Result<Rights, Error> {
+        Ok(self.validate(caller, reference, Rights(0))?.rights)
+    }
     pub fn duplicate(&mut self, caller: Caller, reference: &Reference) -> Result<Reference, Error> {
         let alias = self.validate(caller, reference, Rights(0))?;
         let slot = self

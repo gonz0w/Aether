@@ -31,6 +31,12 @@ int64_t aefd_routed_read(const struct aefd_bindings *map,
     memset(client->workspace, 0, AEFD_READ_MAX);
     if (!streams || !streams->read)
         return -38;
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    if (binding.kind == AEFD_BIND_DUPLEX_TERMINAL) {
+        binding.kind = AEFD_BIND_TERMINAL;
+        binding.selector = 0;
+    }
+#endif
     struct aefd_stream_result reply =
         streams->read(streams->context, binding.kind, binding.selector,
                       client->workspace, count);

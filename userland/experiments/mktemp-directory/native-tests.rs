@@ -27,6 +27,7 @@ struct Fixture {
     delivered: Vec<(u32, Vec<u8>)>,
     input: VecDeque<u8>,
     source_closes: Vec<u32>,
+    unknown_source_close: Option<u32>,
 }
 std::thread_local! { static FIXTURE: RefCell<Fixture> = RefCell::new(Fixture::default()); }
 
@@ -175,7 +176,8 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                                 writing
                                     || cfg!(any(
                                         native_tty_byte_probe,
-                                        native_tty_descriptor_probe
+                                        native_tty_descriptor_probe,
+                                        native_tty_duplex_probe
                                     )),
                                 "STDIO_SELECTED_STDIN"
                             );
@@ -198,7 +200,14 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                         });
                     f.streams = Some(state);
                     match result {
-                        fork_streams::Outcome::Reply(bytes) => f.process_bytes.extend(bytes),
+                        fork_streams::Outcome::Reply(mut bytes) => {
+                            if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 3
+                                && f.unknown_source_close == Some(selector)
+                            {
+                                bytes[4] = 1;
+                            }
+                            f.process_bytes.extend(bytes);
+                        }
                         fork_streams::Outcome::Pending => {
                             panic!("stdio fixture has no Pending selection")
                         }
@@ -506,7 +515,11 @@ fn start_stdio() {
 fn start_stdio_case(_rejection: u8) -> i64 {
     let identity = abi29_dispatch_core::startup::Identity::admitted(1, 1, 0xb0000102).unwrap();
     let console = [
-        if cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) {
+        if cfg!(any(
+            native_tty_byte_probe,
+            native_tty_descriptor_probe,
+            native_tty_duplex_probe
+        )) {
             Some(fd_startup::Source {
                 reference: 0x7a000001,
                 selector: 0,
@@ -540,10 +553,11 @@ fn start_stdio_case(_rejection: u8) -> i64 {
     };
     for (fd, source) in console.iter().enumerate().skip(usize::from(!cfg!(any(
         native_tty_byte_probe,
-        native_tty_descriptor_probe
+        native_tty_descriptor_probe,
+        native_tty_duplex_probe
     )))) {
         plan.bindings[fd] = fd_startup::Binding {
-            kind: if cfg!(native_tty_descriptor_probe) {
+            kind: if cfg!(any(native_tty_descriptor_probe, native_tty_duplex_probe)) {
                 4
             } else {
                 1
@@ -561,6 +575,16 @@ fn start_stdio_case(_rejection: u8) -> i64 {
     }
     let mut greeting = [0u8; fd_startup::BYTES];
     fd_startup::encode(&plan, &mut greeting).unwrap();
+    #[cfg(native_tty_duplex_probe)]
+    match _rejection {
+        1 => {
+            let first: [u8; 4] = greeting[112..116].try_into().unwrap();
+            greeting[152..156].copy_from_slice(&first);
+        }
+        2 => greeting[114] = 1,
+        3 => greeting[124..128].copy_from_slice(&[5, 0, 0, 1]),
+        _ => {}
+    }
     FIXTURE.with(|f| {
         let mut f = f.borrow_mut();
         f.process_bytes.extend(greeting);
@@ -752,27 +776,46 @@ fn fd_leave_terminal_return_faults_without_reentry() {
     );
 }
 
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 unsafe extern "C" {
-    #[cfg(not(native_tty_descriptor_probe))]
+    #[cfg(not(any(native_tty_descriptor_probe, native_tty_duplex_probe)))]
     fn amk_test_tty_probe_case(kind: u32) -> i32;
     #[cfg(native_tty_descriptor_probe)]
     fn amk_test_tty_descriptor_case(kind: u32) -> i32;
+    #[cfg(native_tty_duplex_probe)]
+    fn amk_test_tty_duplex_case(kind: u32) -> i32;
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 unsafe fn selected_tty_case(kind: u32) -> i32 {
     #[cfg(native_tty_descriptor_probe)]
     // SAFETY: the caller holds the serialized admitted native fixture.
     unsafe {
         amk_test_tty_descriptor_case(kind)
     }
-    #[cfg(not(native_tty_descriptor_probe))]
+    #[cfg(native_tty_duplex_probe)]
+    // SAFETY: the caller holds the serialized admitted native fixture.
+    unsafe {
+        amk_test_tty_duplex_case(kind)
+    }
+    #[cfg(not(any(native_tty_descriptor_probe, native_tty_duplex_probe)))]
     // SAFETY: the caller holds the serialized admitted native fixture.
     unsafe {
         amk_test_tty_probe_case(kind)
     }
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn actual_selected_facade_byte_probe_and_finalization() {
     let _serial = setup();
@@ -817,7 +860,11 @@ fn actual_selected_facade_byte_probe_and_finalization() {
     assert_eq!(unsafe { amk_native_test_finish() }, 0, "CACHED_FINALIZER");
     assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
 }
-#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+#[cfg(any(
+    native_tty_byte_probe,
+    native_tty_descriptor_probe,
+    native_tty_duplex_probe
+))]
 #[test]
 fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
     for kind in [1, 2, 3] {
@@ -836,7 +883,7 @@ fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
     }
 }
 
-#[cfg(native_tty_descriptor_probe)]
+#[cfg(any(native_tty_descriptor_probe, native_tty_duplex_probe))]
 #[test]
 fn selected_descriptor_negative_types_and_unknown_map() {
     for kind in [4, 5, 6] {
@@ -852,7 +899,7 @@ fn selected_descriptor_negative_types_and_unknown_map() {
     }
 }
 
-#[cfg(native_tty_descriptor_probe)]
+#[cfg(any(native_tty_descriptor_probe, native_tty_duplex_probe))]
 #[test]
 fn selected_descriptor_rejected_startup_settles_owned_context_once() {
     for rejection in [1, 2] {
@@ -898,4 +945,154 @@ fn selected_descriptor_rejected_startup_settles_owned_context_once() {
         );
         FIXTURE.with(|f| assert_eq!(f.borrow().calls.len(), calls, "NO_REJECTED_REENTRY"));
     }
+}
+
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_acquisition_ids_dependencies_and_lost_component() {
+    for kind in [9, 12, 13, 14, 15, 16, 17] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        assert_eq!(
+            unsafe { selected_tty_case(kind) },
+            0,
+            "DUPLEX_CANONICAL_DEPENDENCIES_KIND_{kind}"
+        );
+        assert_eq!(unsafe { amk_native_test_finish() }, 0);
+        FIXTURE.with(|f| {
+            let mut closed = f.borrow().source_closes.clone();
+            closed.sort_unstable();
+            assert_eq!(closed, [0, 1, 2], "ALL_COMPONENTS_EXACTLY_ONCE");
+        });
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_unknown_close_poison_preserves_progress_without_replay() {
+    for source in [0, 1] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        FIXTURE.with(|f| f.borrow_mut().unknown_source_close = Some(source));
+        assert_eq!(
+            unsafe { selected_tty_case(10 + source) },
+            0,
+            "DUPLEX_PARTIAL_CLOSE_POISON"
+        );
+        let before = FIXTURE.with(|f| f.borrow().source_closes.clone());
+        assert_eq!(
+            before,
+            if source == 0 {
+                std::vec![0]
+            } else {
+                std::vec![0, 1]
+            }
+        );
+        assert_eq!(unsafe { amk_native_test_finish() }, -5);
+        assert_eq!(unsafe { amk_native_test_finish() }, -5);
+        FIXTURE.with(|f| assert_eq!(f.borrow().source_closes, before, "NO_COMPOUND_CLOSE_REPLAY"));
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_rejects_initial_duplex_before_context_admission() {
+    let _serial = setup();
+    let _bootstrap = accepted();
+    assert_eq!(start_stdio_case(3), -22);
+    assert_eq!(unsafe { amk_native_test_finish() }, 0);
+    FIXTURE.with(|f| {
+        let f = f.borrow();
+        assert!(f.source_closes.is_empty());
+        assert!(f.delivered.is_empty());
+    });
+    assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+}
+
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_preflights_both_exact_components_before_any_close() {
+    for kind in [18, 19, 20] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        assert_eq!(
+            unsafe { selected_tty_case(kind) },
+            0,
+            "DUPLEX_PREFLIGHT_COMPONENTS"
+        );
+        FIXTURE.with(|f| {
+            assert!(
+                f.borrow().source_closes.is_empty(),
+                "NO_FIRST_CLOSE_BEFORE_PREFLIGHT"
+            )
+        });
+        assert_eq!(unsafe { amk_native_test_finish() }, -5);
+        FIXTURE.with(|f| {
+            assert!(
+                f.borrow().source_closes.is_empty(),
+                "NO_PREFLIGHT_FAILURE_REPLAY"
+            )
+        });
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_direct_finish_preflights_before_any_source_close() {
+    for kind in [21, 22, 23] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        assert_eq!(unsafe { selected_tty_case(8) }, 0);
+        start_stdio();
+        assert_eq!(unsafe { selected_tty_case(kind) }, 0);
+        FIXTURE.with(|f| assert!(f.borrow().source_closes.is_empty()));
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            -5,
+            "DIRECT_FINISH_PREFLIGHT"
+        );
+        FIXTURE.with(|f| {
+            assert!(
+                f.borrow().source_closes.is_empty(),
+                "NO_DIRECT_FINISH_SOURCE_EFFECT"
+            )
+        });
+        let calls = FIXTURE.with(|f| f.borrow().calls.len());
+        assert_eq!(
+            unsafe { selected_tty_case(24) },
+            0,
+            "DIRECT_FINISH_CONTEXT_RETIRED"
+        );
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            -5,
+            "CACHED_DIRECT_FINISH_FAILURE"
+        );
+        FIXTURE.with(|f| assert_eq!(f.borrow().calls.len(), calls, "NO_DIRECT_FINISH_REPLAY"));
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+
+#[cfg(native_tty_duplex_probe)]
+#[test]
+fn selected_duplex_direct_finish_retires_valid_dependencies_once() {
+    let _serial = setup();
+    let _bootstrap = accepted();
+    start_stdio();
+    assert_eq!(unsafe { selected_tty_case(25) }, 0);
+    FIXTURE.with(|f| assert!(f.borrow().source_closes.is_empty()));
+    assert_eq!(unsafe { amk_native_test_finish() }, 0);
+    FIXTURE.with(|f| {
+        let mut sources = f.borrow().source_closes.clone();
+        sources.sort_unstable();
+        assert_eq!(sources, [0, 1, 2]);
+    });
+    let calls = FIXTURE.with(|f| f.borrow().calls.len());
+    assert_eq!(unsafe { amk_native_test_finish() }, 0);
+    FIXTURE.with(|f| assert_eq!(f.borrow().calls.len(), calls));
+    assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
 }

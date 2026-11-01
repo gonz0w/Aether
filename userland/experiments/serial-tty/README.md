@@ -233,3 +233,41 @@ This prerequisite excludes bidirectional O_RDWR acquisition, MODE/termios,
 NONBLOCK, drain, signals, process groups and interactive Zsh. A new linked app
 requires fresh actual stack/heap fit and reviewed native evidence; host tests
 alone do not qualify a Zsh login.
+
+## Selected duplex acquisition probe
+
+[Issue119](https://github.com/gonz0w/Aether/issues/119) selects
+`native-duplex-probe.c` / `amk_tty_duplex_probe` with
+`AMK_NATIVE_TTY_DUPLEX_PROBE`; the owner and startup use Rust
+`native_tty_duplex_probe`. FD units select `AEFD_TERMINAL_DUPLEX_BINDINGS`
+(implying terminal typing) and the same `AEFD_EXTERNAL_STARTUP` context.
+The new004 tags retain304/128-byte layouts. Fresh startup contains only kind4
+stdio; the owner validates actual same-Terminal/caller/generation references,
+exact READ/WRITE/WRITE access and source mapping. The readonly `Terminal::access`
+query checks existing reference ownership/lifetime; it grants nothing.
+
+Exact `open("/dev/tty", O_RDWR|O_NOCTTY)` with optional O_CLOEXEC composes existing
+source0READ and source1WRITE. There is no lookup, new reference, MODE permission
+or persistent reopen factory. Kind5 with selector0 identifies that pair; its
+fourth byte is a local description ID1–16. Independent opens choose the lowest
+unused ID and FD by scanning the canonical map; dup copies the ID. With both
+bounded by16slots, ID exhaustion cannot precede descriptor exhaustion.
+
+Reads/writes use the original source0/1 operations. Closing scans directional
+and duplex dependencies, including independent opens. Only unreferenced components
+close, in source order0then1. The existing native source records retain confirmed
+progress. Any unknown close poisons the context, preserves the logical entry and
+prevents replay or a usable partial description; owner containment settles
+remaining resources. Acquisition after either component retires fails ENXIO.
+Unsupported flags reject before mutation; isatty/F_GETFL truthfully report the
+composed O_RDWR access.001/002/003 remain separate selections.
+
+The real-libc consumer opens /dev/tty, duplicates to10, closes the opened original,
+sets CLOEXEC, closes stdio0/1, then performs the existing fixed sixteen-byte
+exchange through that one surviving FD with stderr separate. Checked mkdir,
+startup/TLS/clock, raw-UART denials and returning finalization remain in use.
+`native-duplex-tests.c` exports `amk_test_tty_duplex_case` for the existing host
+fixture. Focused source checks cover association/rights, exact path/flags, IDs,
+full-map no-effects, dependency orders, lost components, both unknown-close
+positions and compiling semantic omissions. Target fit/native evidence is
+separate; this does not qualify ttyname, modes, drain or full Zsh.

@@ -31,6 +31,12 @@ int64_t aefd_session_init(struct aefd_session *s, struct aefd_bindings *map,
         .map = map, .client = client, .adapters = adapters, .initialized = 1};
     return 0;
 }
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+int64_t aefd_session_open_duplex(struct aefd_session *s, int flag)
+{
+    return ready(s) ? aefd_table_open_duplex(s->map, s->client, flag) : -5;
+}
+#endif
 int64_t aefd_session_open(struct aefd_session *s, const unsigned char *name,
                           size_t count, int flag)
 {

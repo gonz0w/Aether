@@ -447,3 +447,23 @@ fn owner_hangup_drains_backend_prefix_and_remainder_before_eof() {
         Err(Error::WouldBlock)
     );
 }
+
+#[test]
+fn readonly_access_validates_rights_caller_and_retired_reference() {
+    let (mut terminal, refs) = admitted();
+    assert_eq!(terminal.access(CALLER, &refs.stdin), Ok(GRANTS[0]));
+    assert_eq!(terminal.access(CALLER, &refs.stdout), Ok(Rights::WRITE));
+    assert!(
+        terminal
+            .access(
+                Caller {
+                    generation: 2,
+                    ..CALLER
+                },
+                &refs.stdin
+            )
+            .is_err()
+    );
+    terminal.close(CALLER, refs.stdin).unwrap();
+    assert!(terminal.access(CALLER, &refs.stdin).is_err());
+}

@@ -60,6 +60,44 @@ invalid:
     aefd_client_abort(client);
     return -5;
 }
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+int64_t aefd_table_open_duplex(struct aefd_bindings *map,
+                               struct aefd_client *client, int cloexec)
+{
+    if (!ready(map, client))
+        return -5;
+    unsigned ids = 0, association = 0;
+    int target = -1;
+    for (unsigned fd = 0; fd < 16; ++fd) {
+        struct aefd_binding slot = map->slots[fd];
+        if (!aefd_binding_valid(slot)) {
+            aefd_client_abort(client);
+            return -5;
+        }
+        if (slot.kind == AEFD_BIND_EMPTY && target < 0)
+            target = (int)fd;
+        if (slot.kind == AEFD_BIND_DUPLEX_TERMINAL) {
+            ids |= 1U << slot.reserved;
+            association |= 3;
+        } else if (slot.kind == AEFD_BIND_TERMINAL && slot.selector < 2) {
+            association |= 1U << slot.selector;
+        }
+    }
+    if (association != 3)
+        return -6;
+    if (target < 0)
+        return -24;
+    unsigned id;
+    for (id = 1; id <= 16 && (ids & (1U << id)); ++id) {
+    }
+    if (id > 16)
+        return -24;
+    map->slots[target] =
+        (struct aefd_binding){AEFD_BIND_DUPLEX_TERMINAL, 0,
+                              (unsigned char)cloexec, (unsigned char)id};
+    return target;
+}
+#endif
 int64_t aefd_table_open(struct aefd_bindings *map, struct aefd_client *client,
                         const unsigned char *name, size_t length, int cloexec)
 {
@@ -182,6 +220,43 @@ int64_t aefd_mixed_close(struct aefd_bindings *map, struct aefd_client *client,
         return error;
     if (binding.kind == AEFD_BIND_FILE)
         return aefd_table_close(map, client, fd);
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+    unsigned needed = 0;
+    for (unsigned source = 0; source < 7; ++source) {
+        if (!aefd_binding_depends(binding, source))
+            continue;
+        int retained = 0;
+        for (int other = 0; other < 16; ++other) {
+            if (!aefd_binding_valid(map->slots[other])) {
+                aefd_client_abort(client);
+                return -5;
+            }
+            if (other != fd && aefd_binding_depends(map->slots[other], source))
+                retained = 1;
+        }
+        if (!retained)
+            needed |= 1U << source;
+    }
+    if (needed && (!streams || !streams->close))
+        return -38;
+    for (unsigned source = 0; source < 7; ++source) {
+        if (!(needed & (1U << source)))
+            continue;
+        unsigned kind = binding.kind == AEFD_BIND_DUPLEX_TERMINAL
+                            ? AEFD_BIND_TERMINAL
+                            : binding.kind;
+        struct aefd_stream_close_result result =
+            streams->close(streams->context, kind, source);
+        if (result.complete != 1 || result.consumed != 1 || result.status) {
+            /* Preserve the logical entry and native per-source progress. A
+             * partially retired description must never become usable again. */
+            aefd_client_abort(client);
+            return -5;
+        }
+    }
+    map->slots[fd] = (struct aefd_binding){0};
+    return 0;
+#else
     for (int other = 0; other < 16; ++other)
         if (other != fd && map->slots[other].kind == binding.kind &&
             map->slots[other].selector == binding.selector) {
@@ -202,4 +277,5 @@ int64_t aefd_mixed_close(struct aefd_bindings *map, struct aefd_client *client,
     if (result.consumed)
         map->slots[fd] = (struct aefd_binding){0};
     return result.status;
+#endif
 }

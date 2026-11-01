@@ -32,6 +32,9 @@ int64_t aefd_session_init(struct aefd_session *, struct aefd_bindings *,
                           uint64_t generation, struct aefd_io,
                           unsigned char workspace[AEFD_READ_MAX],
                           struct aefd_adapters);
+#ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+int64_t aefd_session_open_duplex(struct aefd_session *, int);
+#endif
 int64_t aefd_session_open(struct aefd_session *, const unsigned char *, size_t,
                           int);
 int64_t aefd_session_read(struct aefd_session *, int, unsigned char *, size_t);
