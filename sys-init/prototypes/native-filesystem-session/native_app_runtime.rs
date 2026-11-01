@@ -15,6 +15,15 @@ mod stream_transport;
 pub const ATTEMPTS: u32 = 1_000_000;
 pub const RESERVED: u32 = 12;
 pub const WRITER_DEADLINE_TICK: u64 = 6_000;
+#[cfg(native_tty_byte_probe)]
+use serial_tty::{
+    Bindings, Completion, Error as TtyError, Mode, ReadOutcome, Rights, Stop, Terminal,
+};
+
+#[cfg(native_tty_byte_probe)]
+const DESCRIPTORS: usize = 3;
+#[cfg(not(native_tty_byte_probe))]
+const DESCRIPTORS: usize = 2;
 pub const TEMPLATE: &[u8] = b"/home/t.XXXXXX";
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct End {
@@ -106,7 +115,9 @@ pub struct Runtime<K: AppControl> {
     reply: [u8; 32],
     request_at: usize,
     reply_at: usize,
-    closed: [bool; 2],
+    closed: [bool; DESCRIPTORS],
+    #[cfg(native_tty_byte_probe)]
+    tty: Option<(Terminal, Bindings, serial_tty::Caller)>,
     console_attempted: bool,
     terminal_attempted: bool,
     started: bool,
@@ -119,7 +130,15 @@ pub struct Runtime<K: AppControl> {
 impl<K: AppControl> Runtime<K> {
     pub fn new(kernel: K) -> Result<Self, i64> {
         let streams = State::new(
-            [None, Some(console(1)), Some(console(2))],
+            [
+                if cfg!(native_tty_byte_probe) {
+                    Some(console(0))
+                } else {
+                    None
+                },
+                Some(console(1)),
+                Some(console(2)),
+            ],
             [SessionPipe::new(), SessionPipe::new()],
         )
         .map_err(i64::from)?;
@@ -143,7 +162,9 @@ impl<K: AppControl> Runtime<K> {
             reply: [0; 32],
             request_at: 0,
             reply_at: 0,
-            closed: [false; 2],
+            closed: [false; DESCRIPTORS],
+            #[cfg(native_tty_byte_probe)]
+            tty: None,
             console_attempted: false,
             terminal_attempted: false,
             started: false,
@@ -281,6 +302,22 @@ impl<K: AppControl> Runtime<K> {
             self.transferred(cap)?;
         }
         self.identity = Some(Identity::admitted(1, 1, self.app).map_err(i64::from)?);
+        #[cfg(native_tty_byte_probe)]
+        {
+            let identity = self.identity.ok_or(-9)?;
+            let caller = serial_tty::Caller {
+                identity: identity.handle,
+                generation: u64::from(identity.epoch),
+            };
+            let (terminal, bindings) = Terminal::admit(
+                identity.handle,
+                caller,
+                [Rights::READ, Rights::WRITE, Rights::WRITE],
+                Mode::IMMEDIATE,
+            )
+            .map_err(tty_errno)?;
+            self.tty = Some((terminal, bindings, caller));
+        }
         self.endpoints = Some(ManuallyDrop::new(
             Endpoints::new(self.kernel.clone(), process[0], process[3]).map_err(|_| -5)?,
         ));
@@ -295,7 +332,19 @@ impl<K: AppControl> Runtime<K> {
             selector: 2,
             cloexec: 0,
         };
+        #[cfg(native_tty_byte_probe)]
+        {
+            bindings[0] = Binding {
+                kind: 1,
+                selector: 0,
+                cloexec: 0,
+            };
+        }
         let mut sources = [Source::default(); 7];
+        #[cfg(native_tty_byte_probe)]
+        {
+            sources[0] = console(0);
+        }
         sources[1] = console(1);
         sources[2] = console(2);
         let plan = Plan {
@@ -341,7 +390,7 @@ impl<K: AppControl> Runtime<K> {
                 continue;
             }
             if count == 0 {
-                return if self.closed == [true; 2] {
+                return if self.closed == [true; DESCRIPTORS] {
                     Ok(false)
                 } else {
                     Err(-5)
@@ -383,14 +432,75 @@ impl<K: AppControl> Runtime<K> {
         loop {
             let kernel = &mut self.kernel;
             let bound = &mut self.bound;
+            #[cfg(native_tty_byte_probe)]
+            let (terminal, bindings, caller) = self.tty.as_mut().ok_or(-9)?;
+            #[cfg(native_tty_byte_probe)]
+            let reference = match u32_at(&self.request, 8) {
+                0 => bindings.stdin,
+                1 => bindings.stdout,
+                _ => bindings.stderr,
+            };
+            #[cfg(native_tty_byte_probe)]
+            let mut unknown = false;
             let reply = self
                 .streams
                 .request(Caller::Parent, &self.request, |writing, bytes| {
                     if let Err(error) = bound.before(kernel) {
                         return error;
                     }
-                    kernel.serial(writing, bytes)
+                    #[cfg(not(native_tty_byte_probe))]
+                    {
+                        kernel.serial(writing, bytes)
+                    }
+                    #[cfg(native_tty_byte_probe)]
+                    {
+                        let result = if writing {
+                            terminal.write(*caller, &reference, bytes, |role, input| {
+                                debug_assert_eq!(
+                                    role,
+                                    if u32_at(&self.request, 8) == 1 {
+                                        serial_tty::Role::Stdout
+                                    } else {
+                                        serial_tty::Role::Stderr
+                                    }
+                                );
+                                let mut scratch = [0; 16];
+                                scratch[..input.len()].copy_from_slice(input);
+                                completion(
+                                    kernel.serial(true, &mut scratch[..input.len()]),
+                                    input.len(),
+                                )
+                            })
+                        } else {
+                            terminal
+                                .read(*caller, &reference, bytes, |output| {
+                                    completion(kernel.serial(false, output), output.len())
+                                })
+                                .map(|outcome| match outcome {
+                                    ReadOutcome::Bytes(n) => n,
+                                    ReadOutcome::EmptyRequest | ReadOutcome::Eof => 0,
+                                })
+                        };
+                        match result {
+                            Ok(count) => count as i64,
+                            Err(TtyError::UnknownCompletion) => {
+                                unknown = true;
+                                -5
+                            }
+                            Err(error) => tty_errno(error),
+                        }
+                    }
                 });
+            #[cfg(native_tty_byte_probe)]
+            if unknown {
+                return Err(-5);
+            }
+            #[cfg(native_tty_byte_probe)]
+            if u32_at(&self.request, 0) == 3
+                && matches!(&reply, Outcome::Reply(raw) if u32_at(raw, 0) == 0)
+            {
+                terminal.close(*caller, reference).map_err(tty_errno)?;
+            }
             match reply {
                 Outcome::Pending => self.yield_now()?,
                 Outcome::Reply(reply) => {
@@ -410,7 +520,9 @@ impl<K: AppControl> Runtime<K> {
             true,
         )?;
         if u32_at(&self.request, 0) == 3 && u32_at(&self.reply, 0) == 0 {
-            self.closed[u32_at(&self.request, 8) as usize - 1] = true;
+            self.closed
+                [u32_at(&self.request, 8) as usize - usize::from(!cfg!(native_tty_byte_probe))] =
+                true;
         }
         Ok(true)
     }
@@ -560,7 +672,11 @@ fn console(selector: u32) -> Source {
     Source {
         reference: 0x7a000001 | selector << 16,
         selector,
-        rights: 2,
+        rights: if cfg!(native_tty_byte_probe) && selector == 0 {
+            1
+        } else {
+            2
+        },
         bound: 16,
     }
 }
@@ -575,8 +691,8 @@ fn u32_at(frame: &[u8; 32], at: usize) -> u32 {
     u32::from_le_bytes(frame[at..at + 4].try_into().unwrap())
 }
 fn output_header(frame: &[u8; 32]) -> bool {
-    matches!(u32_at(frame, 0), 2 | 3)
-        && (1..=2).contains(&u32_at(frame, 8))
+    (matches!(u32_at(frame, 0), 2 | 3) || cfg!(native_tty_byte_probe) && u32_at(frame, 0) == 1)
+        && (u32::from(!cfg!(native_tty_byte_probe))..=2).contains(&u32_at(frame, 8))
         && u32_at(frame, 4) == console(u32_at(frame, 8)).reference
         && u32_at(frame, 12) <= 16
         && (u32_at(frame, 0) != 3 || u32_at(frame, 12) == 0)
@@ -607,4 +723,38 @@ pub fn encode_launch(
     out[296..304].copy_from_slice(&reader.to_le_bytes());
     out[304..312].copy_from_slice(&writer.to_le_bytes());
     Ok(())
+}
+
+// The native console returns a count, including one for a NUL byte. Only -11
+// means live-empty; an out-of-range count/errno has unknown effects.
+#[cfg(native_tty_byte_probe)]
+fn completion(raw: i64, offered: usize) -> Completion {
+    if raw >= 0 && raw as u64 <= offered as u64 {
+        Completion {
+            count: raw as usize,
+            stop: Stop::Complete,
+        }
+    } else {
+        Completion {
+            count: 0,
+            stop: match raw {
+                -11 => Stop::WouldBlock,
+                -4 => Stop::Interrupted,
+                -4095..=-1 => Stop::Error(raw as i32),
+                _ => Stop::Unknown,
+            },
+        }
+    }
+}
+#[cfg(native_tty_byte_probe)]
+fn tty_errno(error: TtyError) -> i64 {
+    match error {
+        TtyError::WouldBlock => -11,
+        TtyError::Interrupted => -4,
+        TtyError::Denied => -13,
+        TtyError::Stale => -9,
+        TtyError::HungUp => -32,
+        TtyError::Backend(value) => i64::from(value),
+        _ => -5,
+    }
 }

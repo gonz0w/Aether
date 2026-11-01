@@ -101,6 +101,20 @@ copy errno. [Review](../../docs/decisions/0211-owner-structural-fit.md) and
 [results](../../../docs/evidence/owner-structural-fit-2026-10-22/README.md) supersede
 older dated measurements below. No complete owner/VM/Zsh/ISO acceptance.
 
+## Selected byte-stdio variant
+
+[Issue114](https://github.com/gonz0w/Aether/issues/114#issuecomment-6564180472)
+adds only the explicit `native_tty_byte_probe` Rust cfg. It admits read-only stdin0
+alongside write-only stdout1/stderr2 through the unchanged AEFDB001/AEFD process
+channel. The checked `serial_tty` core and references remain inside this owner;
+actual admitted handle/epoch supplies caller context after channel/ConsoleRef
+validation. No MODE right, new kernel call or client FD ledger is introduced.
+Successful close retires the corresponding core alias; all three closes precede
+process EOF. Unknown serial completion cannot become a known reply or be replayed.
+The original 6000-tick/1M-attempt/12-reserve lifecycle and default output-only path
+remain. See the [probe contract and focused commands](../../../userland/experiments/serial-tty/README.md#selected-ordinary-app-byte-probe).
+Actual linked resource fit and native qualification remain separate gates.
+
 ## Current mapped-owner checks
 
 From the system repository root:

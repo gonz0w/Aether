@@ -27,7 +27,11 @@ static int narrow_startup(void)
     const struct aefd_context *context = &descriptors.context;
     for (unsigned fd = 0; fd < 16; ++fd) {
         const struct aefd_binding *binding = &context->map.slots[fd];
-        if (fd == 1 || fd == 2) {
+        if (fd == 1 || fd == 2
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+            || fd == 0
+#endif
+        ) {
             if (binding->kind != AEFD_BIND_CONSOLE || binding->selector != fd ||
                 binding->cloexec)
                 return 0;
@@ -37,15 +41,32 @@ static int narrow_startup(void)
     }
     for (unsigned i = 0; i < 7; ++i) {
         const struct aefd_native_source *source = &context->native.sources[i];
-        if (i == 1 || i == 2) {
+        if (i == 1 || i == 2
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+            || i == 0
+#endif
+        ) {
             if (!source->reference || source->selector != i ||
-                source->rights != 2 || source->bound != 16)
+                source->rights !=
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+                    (i == 0 ? 1U : 2U)
+#else
+                    2
+#endif
+                || source->bound != 16)
                 return 0;
         } else if (source->reference || source->selector || source->rights ||
                    source->bound) {
             return 0;
         }
     }
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+    if (context->native.sources[0].reference ==
+            context->native.sources[1].reference ||
+        context->native.sources[0].reference ==
+            context->native.sources[2].reference)
+        return 0;
+#endif
     return context->native.sources[1].reference !=
                context->native.sources[2].reference &&
            !context->native.generations[0] && !context->native.generations[1];
@@ -69,8 +90,22 @@ int64_t amk_native_fd_start(uint64_t memory, uint64_t input, uint64_t output)
 long __aether_io(unsigned long operation, unsigned long fd,
                  unsigned long pointer, unsigned long count)
 {
-    if (!descriptor_live || descriptor_finished || (fd != 1 && fd != 2))
+    if (!descriptor_live || descriptor_finished ||
+        (fd != 1 && fd != 2
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+         && fd != 0
+#endif
+         ))
         return -EBADF;
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+    if (operation == 0) {
+        if (count > (unsigned long)SSIZE_MAX || (count && !pointer))
+            return -EINVAL;
+        return (long)aefd_context_read(&descriptors.context, (int)fd,
+                                       (unsigned char *)(uintptr_t)pointer,
+                                       (size_t)count);
+    }
+#endif
     if (operation == 1) {
         if (count > (unsigned long)SSIZE_MAX || (count && !pointer))
             return -EINVAL;
@@ -80,8 +115,8 @@ long __aether_io(unsigned long operation, unsigned long fd,
     }
     if (operation == 3)
         return (long)aefd_context_close(&descriptors.context, (int)fd);
-    /* Never alias stdin, duplicate a source, or turn unsupported work into a
-     * successful no-op. The selected utility needs only writes and closes. */
+    /* Unsupported operations never acquire an alias or become a successful
+     * no-op. The default utility still admits only writes and closes. */
     return -EBADF;
 }
 static long descriptor_sink(void *context, int fd, const unsigned char *bytes,
@@ -157,7 +192,13 @@ int clock_gettime(clockid_t id, struct timespec *output)
 {
     return amk_native_monotonic(id, output);
 }
+#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+extern int amk_tty_byte_probe(int, char **);
+#define AMK_SELECTED_APP amk_tty_byte_probe
+#else
 extern int amk_toybox_main(int, char **);
+#define AMK_SELECTED_APP amk_toybox_main
+#endif
 static _Alignas(8) unsigned char startup_record[64];
 static struct amk_bootstrap namespace;
 static struct amk_run_result report;
@@ -185,7 +226,7 @@ int main(int argc, char **argv, char **envp)
     if (__pthread_self()->tid <= 0)
         goto done;
     if (!amk_target_run_native(&namespace, argc, argv, envp, &hooks,
-                               amk_toybox_main, &report))
+                               AMK_SELECTED_APP, &report))
         status = (int)report.final_status;
 done:
     if (finish_descriptors(NULL) && !status)

@@ -25,6 +25,7 @@ struct Fixture {
     streams: Option<fork_streams::State>,
     serial_results: VecDeque<i64>,
     delivered: Vec<(u32, Vec<u8>)>,
+    input: VecDeque<u8>,
 }
 std::thread_local! { static FIXTURE: RefCell<Fixture> = RefCell::new(Fixture::default()); }
 
@@ -166,11 +167,24 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                     let mut state = f.streams.take().unwrap();
                     let result =
                         state.request(fork_streams::Caller::Parent, &frame, |writing, bytes| {
-                            assert!(writing, "STDIO_NO_STDIN");
-                            let count = serial.unwrap_or(bytes.len() as i64);
+                            assert!(
+                                writing || cfg!(native_tty_byte_probe),
+                                "STDIO_SELECTED_STDIN"
+                            );
+                            let count = serial.unwrap_or(if writing {
+                                bytes.len() as i64
+                            } else {
+                                bytes.len().min(f.input.len()) as i64
+                            });
                             if count > 0 && count as usize <= bytes.len() {
-                                f.delivered
-                                    .push((selector, bytes[..count as usize].to_vec()));
+                                if writing {
+                                    f.delivered
+                                        .push((selector, bytes[..count as usize].to_vec()));
+                                } else {
+                                    for byte in &mut bytes[..count as usize] {
+                                        *byte = f.input.pop_front().unwrap();
+                                    }
+                                }
                             }
                             count
                         });
@@ -481,7 +495,16 @@ unsafe extern "C" {
 fn start_stdio() {
     let identity = abi29_dispatch_core::startup::Identity::admitted(1, 1, 0xb0000102).unwrap();
     let console = [
-        None,
+        if cfg!(native_tty_byte_probe) {
+            Some(fd_startup::Source {
+                reference: 0x7a000001,
+                selector: 0,
+                rights: 1,
+                bound: 16,
+            })
+        } else {
+            None
+        },
         Some(fd_startup::Source {
             reference: 0x7a010001,
             selector: 1,
@@ -504,13 +527,17 @@ fn start_stdio() {
         sources: [fd_startup::Source::default(); 7],
         history: [0; 2],
     };
-    for fd in [1, 2] {
+    for (fd, source) in console
+        .iter()
+        .enumerate()
+        .skip(usize::from(!cfg!(native_tty_byte_probe)))
+    {
         plan.bindings[fd] = fd_startup::Binding {
             kind: 1,
             selector: fd as u8,
             cloexec: 0,
         };
-        plan.sources[fd] = console[fd].unwrap();
+        plan.sources[fd] = source.unwrap();
     }
     let mut greeting = [0u8; fd_startup::BYTES];
     fd_startup::encode(&plan, &mut greeting).unwrap();
@@ -707,4 +734,76 @@ fn fd_leave_terminal_return_faults_without_reentry() {
         false,
         true,
     );
+}
+
+#[cfg(native_tty_byte_probe)]
+unsafe extern "C" {
+    fn amk_test_tty_probe_case(kind: u32) -> i32;
+}
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn actual_selected_facade_byte_probe_and_finalization() {
+    let _serial = setup();
+    let _bootstrap = accepted();
+    start_stdio();
+    let payload = [
+        0, 0x41, 0x1b, 0x42, 13, 0x43, 10, 0x44, 0x7f, 0x45, 1, 0x46, 2, 0x47, 128, 255,
+    ];
+    FIXTURE.with(|f| {
+        let mut f = f.borrow_mut();
+        f.input.extend(payload);
+        f.serial_results.extend([3, 2]);
+    });
+    // SAFETY: synchronous C callback borrows only its stack and admitted facade.
+    assert_eq!(
+        unsafe { amk_test_tty_probe_case(0) },
+        0,
+        "SELECTED_CALLBACK_SUCCESS"
+    );
+    FIXTURE.with(|f| {
+        let f = f.borrow();
+        let stdout: Vec<u8> = f
+            .delivered
+            .iter()
+            .filter(|(fd, _)| *fd == 1)
+            .flat_map(|(_, b)| b.clone())
+            .collect();
+        let stderr: Vec<u8> = f
+            .delivered
+            .iter()
+            .filter(|(fd, _)| *fd == 2)
+            .flat_map(|(_, b)| b.clone())
+            .collect();
+        let mut expected = b"TTY-BYTE READY\nTTY-BYTE OUT\n".to_vec();
+        expected.extend(payload);
+        expected.extend(b"\nTTY-BYTE PASS\n");
+        assert_eq!(stdout, expected, "EXACT_BINARY_FRAME");
+        assert_eq!(stderr, b"TTY-BYTE ERR\n");
+        assert!(f.input.is_empty());
+    });
+    assert_eq!(unsafe { amk_native_test_finish() }, 0);
+    assert_eq!(unsafe { amk_native_test_finish() }, 0, "CACHED_FINALIZER");
+    assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+}
+#[cfg(native_tty_byte_probe)]
+#[test]
+fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
+    for kind in [1, 2, 3] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        FIXTURE.with(|f| {
+            let mut f = f.borrow_mut();
+            if kind == 1 {
+                f.input.extend([1; 16]);
+            }
+        });
+        assert_eq!(
+            unsafe { amk_test_tty_probe_case(kind) },
+            0,
+            "CALLBACK_NEGATIVE"
+        );
+        assert_eq!(unsafe { amk_native_test_finish() }, 0);
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
 }
