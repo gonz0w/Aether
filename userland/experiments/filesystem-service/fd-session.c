@@ -79,6 +79,24 @@ int64_t aefd_session_close(struct aefd_session *s, int fd)
                ? aefd_mixed_close(s->map, s->client, &s->adapters.closer, fd)
                : -5;
 }
+int64_t aefd_session_binding(struct aefd_session *s, int fd,
+                             struct aefd_binding *out)
+{
+    if (!out)
+        return -22;
+    if (!ready(s))
+        return -5;
+    struct aefd_binding value;
+    int found = aefd_bindings_lookup(s->map, s->client->generation, fd, &value);
+    if (found < 0) {
+        aefd_client_abort(s->client);
+        return -5;
+    }
+    if (!found)
+        return -9;
+    *out = value;
+    return 0;
+}
 int64_t aefd_session_flags(struct aefd_session *s, int fd)
 {
     if (!ready(s))

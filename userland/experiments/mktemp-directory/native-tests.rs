@@ -26,6 +26,7 @@ struct Fixture {
     serial_results: VecDeque<i64>,
     delivered: Vec<(u32, Vec<u8>)>,
     input: VecDeque<u8>,
+    source_closes: Vec<u32>,
 }
 std::thread_local! { static FIXTURE: RefCell<Fixture> = RefCell::new(Fixture::default()); }
 
@@ -159,6 +160,9 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                     let frame: [u8; 32] = f.request.as_slice().try_into().unwrap();
                     f.request.clear();
                     let selector = u32::from_le_bytes(frame[8..12].try_into().unwrap());
+                    if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 3 {
+                        f.source_closes.push(selector);
+                    }
                     let serial = if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 2 {
                         f.serial_results.pop_front()
                     } else {
@@ -168,7 +172,11 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                     let result =
                         state.request(fork_streams::Caller::Parent, &frame, |writing, bytes| {
                             assert!(
-                                writing || cfg!(native_tty_byte_probe),
+                                writing
+                                    || cfg!(any(
+                                        native_tty_byte_probe,
+                                        native_tty_descriptor_probe
+                                    )),
                                 "STDIO_SELECTED_STDIN"
                             );
                             let count = serial.unwrap_or(if writing {
@@ -493,9 +501,12 @@ unsafe extern "C" {
     fn amk_test_actual_stdio_case(kind: u32) -> i32;
 }
 fn start_stdio() {
+    assert_eq!(start_stdio_case(0), 0, "STDIO_MATCHED_304_STARTUP");
+}
+fn start_stdio_case(_rejection: u8) -> i64 {
     let identity = abi29_dispatch_core::startup::Identity::admitted(1, 1, 0xb0000102).unwrap();
     let console = [
-        if cfg!(native_tty_byte_probe) {
+        if cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) {
             Some(fd_startup::Source {
                 reference: 0x7a000001,
                 selector: 0,
@@ -527,17 +538,26 @@ fn start_stdio() {
         sources: [fd_startup::Source::default(); 7],
         history: [0; 2],
     };
-    for (fd, source) in console
-        .iter()
-        .enumerate()
-        .skip(usize::from(!cfg!(native_tty_byte_probe)))
-    {
+    for (fd, source) in console.iter().enumerate().skip(usize::from(!cfg!(any(
+        native_tty_byte_probe,
+        native_tty_descriptor_probe
+    )))) {
         plan.bindings[fd] = fd_startup::Binding {
-            kind: 1,
+            kind: if cfg!(native_tty_descriptor_probe) {
+                4
+            } else {
+                1
+            },
             selector: fd as u8,
             cloexec: 0,
         };
         plan.sources[fd] = source.unwrap();
+    }
+    #[cfg(native_tty_descriptor_probe)]
+    match _rejection {
+        1 => plan.bindings[10] = plan.bindings[0],
+        2 => plan.bindings[0].cloexec = 1,
+        _ => {}
     }
     let mut greeting = [0u8; fd_startup::BYTES];
     fd_startup::encode(&plan, &mut greeting).unwrap();
@@ -561,11 +581,7 @@ fn start_stdio() {
     unsafe {
         amk_native_test_reset();
     }
-    assert_eq!(
-        unsafe { amk_native_fd_start(identity.memory, CAPS[2], CAPS[3]) },
-        0,
-        "STDIO_MATCHED_304_STARTUP"
-    );
+    unsafe { amk_native_fd_start(identity.memory, CAPS[2], CAPS[3]) }
 }
 #[test]
 fn actual_stdio_partial_vectors_route_fd1_and_fd2() {
@@ -736,11 +752,27 @@ fn fd_leave_terminal_return_faults_without_reentry() {
     );
 }
 
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 unsafe extern "C" {
+    #[cfg(not(native_tty_descriptor_probe))]
     fn amk_test_tty_probe_case(kind: u32) -> i32;
+    #[cfg(native_tty_descriptor_probe)]
+    fn amk_test_tty_descriptor_case(kind: u32) -> i32;
 }
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
+unsafe fn selected_tty_case(kind: u32) -> i32 {
+    #[cfg(native_tty_descriptor_probe)]
+    // SAFETY: the caller holds the serialized admitted native fixture.
+    unsafe {
+        amk_test_tty_descriptor_case(kind)
+    }
+    #[cfg(not(native_tty_descriptor_probe))]
+    // SAFETY: the caller holds the serialized admitted native fixture.
+    unsafe {
+        amk_test_tty_probe_case(kind)
+    }
+}
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn actual_selected_facade_byte_probe_and_finalization() {
     let _serial = setup();
@@ -756,7 +788,7 @@ fn actual_selected_facade_byte_probe_and_finalization() {
     });
     // SAFETY: synchronous C callback borrows only its stack and admitted facade.
     assert_eq!(
-        unsafe { amk_test_tty_probe_case(0) },
+        unsafe { selected_tty_case(0) },
         0,
         "SELECTED_CALLBACK_SUCCESS"
     );
@@ -785,7 +817,7 @@ fn actual_selected_facade_byte_probe_and_finalization() {
     assert_eq!(unsafe { amk_native_test_finish() }, 0, "CACHED_FINALIZER");
     assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
 }
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
     for kind in [1, 2, 3] {
@@ -798,12 +830,72 @@ fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
                 f.input.extend([1; 16]);
             }
         });
-        assert_eq!(
-            unsafe { amk_test_tty_probe_case(kind) },
-            0,
-            "CALLBACK_NEGATIVE"
-        );
+        assert_eq!(unsafe { selected_tty_case(kind) }, 0, "CALLBACK_NEGATIVE");
         assert_eq!(unsafe { amk_native_test_finish() }, 0);
         assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+
+#[cfg(native_tty_descriptor_probe)]
+#[test]
+fn selected_descriptor_negative_types_and_unknown_map() {
+    for kind in [4, 5, 6] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        assert_eq!(unsafe { selected_tty_case(kind) }, 0);
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            if kind >= 5 { -5 } else { 0 }
+        );
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+
+#[cfg(native_tty_descriptor_probe)]
+#[test]
+fn selected_descriptor_rejected_startup_settles_owned_context_once() {
+    for rejection in [1, 2] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        assert_eq!(unsafe { selected_tty_case(8) }, 0);
+        FIXTURE.with(|f| f.borrow_mut().input.extend([0xa5; 16]));
+        assert_eq!(start_stdio_case(rejection), -22, "NARROW_STARTUP_REJECTS");
+        assert_eq!(
+            closes(),
+            [CAPS[2], CAPS[3], CAPS[0], CAPS[1]],
+            "POST_ADMISSION_REJECTION_CLEANUP"
+        );
+        let calls = FIXTURE.with(|f| {
+            let f = f.borrow();
+            let mut sources = f.source_closes.clone();
+            sources.sort_unstable();
+            assert_eq!(sources, [0, 1, 2], "SOURCE_CLOSE_EXACTLY_ONCE");
+            assert!(f.delivered.is_empty(), "NO_REJECTED_STARTUP_OUTPUT");
+            assert_eq!(
+                f.input.iter().copied().collect::<Vec<_>>(),
+                [0xa5; 16],
+                "NO_REJECTED_STARTUP_INPUT"
+            );
+            assert!(f.process_bytes.is_empty());
+            f.calls.len()
+        });
+        assert_eq!(
+            unsafe { selected_tty_case(7) },
+            0,
+            "REJECTED_CONTEXT_RETIRED"
+        );
+        assert_eq!(unsafe { amk_native_test_finish() }, 0);
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            0,
+            "CACHED_REJECTED_FINALIZER"
+        );
+        assert_eq!(
+            unsafe { amk_native_fd_start(0, 0, 0) },
+            -16,
+            "NO_STARTUP_REUSE"
+        );
+        FIXTURE.with(|f| assert_eq!(f.borrow().calls.len(), calls, "NO_REJECTED_REENTRY"));
     }
 }

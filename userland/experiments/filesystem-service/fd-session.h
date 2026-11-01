@@ -43,6 +43,7 @@ struct aefd_redirect_result aefd_session_redirect(struct aefd_session *, int,
 int64_t aefd_session_replace(struct aefd_session *, int, int);
 int64_t aefd_session_pipe(struct aefd_session *, int pair[2], int);
 int64_t aefd_session_close(struct aefd_session *, int);
+int64_t aefd_session_binding(struct aefd_session *, int, struct aefd_binding *);
 int64_t aefd_session_flags(struct aefd_session *, int);
 int64_t aefd_session_set_flags(struct aefd_session *, int, int);
 int64_t aefd_session_seek(struct aefd_session *, int, int64_t, int);

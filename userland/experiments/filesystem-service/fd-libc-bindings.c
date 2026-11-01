@@ -12,6 +12,7 @@
 #define open aefd_test_open
 #define open64 aefd_test_open64
 #define fcntl aefd_test_fcntl
+#define isatty aefd_test_isatty
 #define dup aefd_test_dup
 #define dup2 aefd_test_dup2
 #define pipe aefd_test_pipe
@@ -37,7 +38,12 @@ long __aether_io(unsigned long, unsigned long, unsigned long, unsigned long);
 _Static_assert(sizeof(long) == 8 && sizeof(off_t) == 8,
                "selected64-bit libc ABI");
 /* One concrete stable off-stack owner. Never reset/copy after admission. */
-#ifdef AEFD_FORK_BINDINGS
+#if defined(AEFD_EXTERNAL_STARTUP) && defined(AEFD_FORK_BINDINGS)
+#error "external startup cannot select fork-owned storage"
+#endif
+#ifdef AEFD_EXTERNAL_STARTUP
+#define shell (*aefd_shell_external_startup())
+#elif defined(AEFD_FORK_BINDINGS)
 #include "fd-fork-stage.h"
 static struct aefd_fork fork_shell;
 #define shell fork_shell.boot
@@ -63,7 +69,13 @@ int64_t aefd_shell_start(void)
         return -EIO;
     }
 #endif
+#ifdef AEFD_EXTERNAL_STARTUP
+    /* Admission belongs to the native entry, never initialize a second owner.
+     */
+    int64_t result = shell.phase == 2 ? -16 : -5;
+#else
     int64_t result = aefd_startup_native(&shell);
+#endif
     errno = saved;
     return result;
 }
@@ -94,6 +106,7 @@ struct aefd_redirect_result aefd_shell_redirect(int from, int to)
     errno = saved;
     return result;
 }
+#ifndef AEFD_EXTERNAL_STARTUP
 long __aether_io(unsigned long op, unsigned long fd, unsigned long pointer,
                  unsigned long count)
 {
@@ -102,6 +115,18 @@ long __aether_io(unsigned long op, unsigned long fd, unsigned long pointer,
         aefd_libc_io(&shell.context, op, fd, (uintptr_t)pointer, count);
     errno = saved;
     return (long)(result < -4095 ? -EIO : result);
+}
+#endif
+int isatty(int fd)
+{
+    int saved = errno;
+    int64_t result = aefd_libc_isatty(&shell.context, fd);
+    if (result < 0) {
+        (void)checked(result, saved);
+        return 0;
+    }
+    errno = saved;
+    return 1;
 }
 int open(const char *path, int flags, ...)
 {
@@ -113,7 +138,7 @@ int open64(const char *path, int flags, ...) { return open(path, flags); }
 int fcntl(int fd, int command, ...)
 {
     int saved = errno, argument = 0;
-    if (command == F_SETFD || command == F_DUPFD ||
+    if (command == F_SETFD || command == F_SETFL || command == F_DUPFD ||
         command == F_DUPFD_CLOEXEC) {
         va_list ap;
         va_start(ap, command);

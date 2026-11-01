@@ -2,9 +2,17 @@
 /* Selected one-app glue. The only mutable libc facade is this stable FD
  * context; Rust keeps the namespace, trap budget and four-endpoint ledger
  * disjoint. */
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+#ifndef AMK_NATIVE_TTY_BYTE_PROBE
+#define AMK_NATIVE_TTY_BYTE_PROBE
+#endif
+#endif
 #include "native.h"
 #include "target.h"
 #include "fd-startup.h"
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+#include "fd-libc.h"
+#endif
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -32,8 +40,13 @@ static int narrow_startup(void)
             || fd == 0
 #endif
         ) {
-            if (binding->kind != AEFD_BIND_CONSOLE || binding->selector != fd ||
-                binding->cloexec)
+            if (binding->kind !=
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+                    AEFD_BIND_TERMINAL
+#else
+                    AEFD_BIND_CONSOLE
+#endif
+                || binding->selector != fd || binding->cloexec)
                 return 0;
         } else if (binding->kind || binding->selector || binding->cloexec) {
             return 0;
@@ -72,6 +85,9 @@ static int narrow_startup(void)
            !context->native.generations[0] && !context->native.generations[1];
 }
 
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+static int32_t finish_descriptors(void *state);
+#endif
 int64_t amk_native_fd_start(uint64_t memory, uint64_t input, uint64_t output)
 {
     if (descriptor_live || descriptor_finished)
@@ -81,15 +97,33 @@ int64_t amk_native_fd_start(uint64_t memory, uint64_t input, uint64_t output)
                            (struct aefd_startup_auxv){memory, input, output});
     if (status)
         return status;
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+    /* Generic admission already owns the process endpoints and aliases. */
+    descriptor_live = 1;
+    if (!narrow_startup()) {
+        int32_t cleanup = finish_descriptors(NULL);
+        return cleanup ? cleanup : -22;
+    }
+#else
     if (!narrow_startup())
         return -22;
     descriptor_live = 1;
+#endif
     return 0;
 }
 
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+struct aefd_startup *aefd_shell_external_startup(void) { return &descriptors; }
+#endif
 long __aether_io(unsigned long operation, unsigned long fd,
                  unsigned long pointer, unsigned long count)
 {
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+    if (!descriptor_live || descriptor_finished)
+        return -EBADF;
+    return (long)aefd_libc_io(&descriptors.context, operation, fd, pointer,
+                              count);
+#else
     if (!descriptor_live || descriptor_finished ||
         (fd != 1 && fd != 2
 #ifdef AMK_NATIVE_TTY_BYTE_PROBE
@@ -118,6 +152,7 @@ long __aether_io(unsigned long operation, unsigned long fd,
     /* Unsupported operations never acquire an alias or become a successful
      * no-op. The default utility still admits only writes and closes. */
     return -EBADF;
+#endif
 }
 static long descriptor_sink(void *context, int fd, const unsigned char *bytes,
                             size_t count)
@@ -192,7 +227,10 @@ int clock_gettime(clockid_t id, struct timespec *output)
 {
     return amk_native_monotonic(id, output);
 }
-#ifdef AMK_NATIVE_TTY_BYTE_PROBE
+#ifdef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
+extern int amk_tty_descriptor_probe(int, char **);
+#define AMK_SELECTED_APP amk_tty_descriptor_probe
+#elif defined(AMK_NATIVE_TTY_BYTE_PROBE)
 extern int amk_tty_byte_probe(int, char **);
 #define AMK_SELECTED_APP amk_tty_byte_probe
 #else

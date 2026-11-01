@@ -359,7 +359,8 @@ impl Control for NativeBoundary {
     }
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
         assert!(
-            bytes.len() <= 16 && (writing || cfg!(native_tty_byte_probe)),
+            bytes.len() <= 16
+                && (writing || cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe))),
             "SELECTED_DIRECTION"
         );
         let mut seen = self.0.borrow_mut();
@@ -428,7 +429,7 @@ fn workload(boundary: &NativeBoundary) {
     ] {
         seen.received.extend(raw);
     }
-    if cfg!(native_tty_byte_probe) {
+    if cfg!(any(native_tty_byte_probe, native_tty_descriptor_probe)) {
         seen.received.extend(frame(3, 0, b""));
     }
 }
@@ -473,7 +474,7 @@ fn launch_rejection_retains_four_app_ends_and_exact_cleanup_reserve() {
 }
 
 #[test]
-#[cfg(not(native_tty_byte_probe))]
+#[cfg(not(any(native_tty_byte_probe, native_tty_descriptor_probe)))]
 fn handoff_preserves_both_greetings_and_publishes_exact_startup() {
     let boundary = fixture();
     let mut runtime = Runtime::new(boundary.clone()).unwrap();
@@ -704,7 +705,7 @@ fn partial_reply_unknown_never_replayed() {
 }
 
 #[test]
-#[cfg(not(native_tty_byte_probe))]
+#[cfg(not(any(native_tty_byte_probe, native_tty_descriptor_probe)))]
 fn stream_only_rejects_other_families_before_effects() {
     let mut exec = [0; 32];
     exec[..8].copy_from_slice(b"AEEXEC02");
@@ -797,7 +798,7 @@ fn owner_reserve_covers_post_admission_fault_and_close_errors() {
     assert_eq!(boundary.0.borrow().calls, before, "CONTAINMENT_ONCE_ENTRY");
 }
 
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn selected_startup_admits_exact_three_sources_and_no_mode() {
     let boundary = fixture();
@@ -806,7 +807,11 @@ fn selected_startup_admits_exact_three_sources_and_no_mode() {
     let seen = boundary.0.borrow();
     assert_eq!(
         &seen.transmitted[112..124],
-        &[1, 0, 0, 0, 1, 1, 0, 0, 1, 2, 0, 0]
+        if cfg!(native_tty_descriptor_probe) {
+            &[4, 0, 0, 0, 4, 1, 0, 0, 4, 2, 0, 0]
+        } else {
+            &[1, 0, 0, 0, 1, 1, 0, 0, 1, 2, 0, 0]
+        }
     );
     for selector in 0..3usize {
         let at = 176 + selector * 16;
@@ -828,7 +833,7 @@ fn selected_startup_admits_exact_three_sources_and_no_mode() {
     }
     assert_eq!(&seen.transmitted[224..296], &[0; 72]);
 }
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
     let boundary = fixture();
@@ -851,7 +856,7 @@ fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
     assert_eq!((seen.reclaim_calls, seen.halted), (2, 1));
     assert!(seen.yields > 0);
 }
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
     let boundary = fixture();
@@ -884,7 +889,7 @@ fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
     assert_eq!(seen.serial_calls, 0);
     assert_eq!(seen.halted, 1);
 }
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() {
     for raw in [17, -4096, i64::MAX] {
@@ -908,7 +913,7 @@ fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() 
         assert_eq!(boundary.0.borrow().serial_calls, 1);
     }
 }
-#[cfg(native_tty_byte_probe)]
+#[cfg(any(native_tty_byte_probe, native_tty_descriptor_probe))]
 #[test]
 fn selected_foreign_stale_and_wrong_family_headers_deny_before_effect() {
     for mut raw in [frame(1, 0, &[0]), frame(2, 1, b"x")] {

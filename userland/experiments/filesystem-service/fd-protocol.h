@@ -44,6 +44,20 @@
 #define AEFD_MAGIC "AEFD0001"
 #endif
 #endif
+/* Closed descriptor qualification profile; transport operations stay unchanged.
+ */
+#if defined(AMK_NATIVE_TTY_DESCRIPTOR_PROBE) && !defined(AEFD_TERMINAL_BINDINGS)
+#define AEFD_TERMINAL_BINDINGS
+#endif
+#ifdef AEFD_TERMINAL_BINDINGS
+#ifdef AEFD_DUP2_WIRE
+#error "terminal bindings cannot select the file16 startup profile"
+#endif
+#undef AEFD_MAP_MAGIC
+#undef AEFD_STARTUP_MAGIC
+#define AEFD_MAP_MAGIC "AEFDT003"
+#define AEFD_STARTUP_MAGIC "AEFDB003"
+#endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U
 

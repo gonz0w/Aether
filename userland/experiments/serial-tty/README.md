@@ -169,3 +169,67 @@ of unknown-reply containment, CR preservation and either raw denial must fail th
 same assertions. No synthetic or host result qualifies native TTY, persistence,
 terminal modes, interactive Zsh or login. The changed app and owner need fresh
 linked geometry/TLS/stack fit under the existing limits before native execution.
+
+## Selected descriptor probe
+
+[Issue116](https://github.com/gonz0w/Aether/issues/116) adds a closed descriptor
+selection. `AMK_NATIVE_TTY_DESCRIPTOR_PROBE` selects
+[`native-descriptor-probe.c`](native-descriptor-probe.c), callback
+`amk_tty_descriptor_probe`, and the existing byte-capable native entry. Rust
+`native_tty_descriptor_probe` selects the same owner byte behavior. Neither
+selection changes the default utility or the earlier byte probe.
+
+The matching producer and C consumer use `AEFDB003`/`AEFDT003`, retaining the
+304-byte startup and 128-byte map layouts. Kind4 means an admitted terminal,
+with the existing source selector and READ-only stdin or WRITE-only stdout/stderr
+rights. Before publishing kind4, the owner calls `Terminal::classify` on each
+actual held reference with its authenticated caller and checks the expected role.
+This is type information, not terminal health, MODE authority or direct UART
+access. Data operations still pass through the authenticated owner. Kind1 raw
+console, files and pipes remain nonterminals. A source cannot have conflicting
+raw-console/terminal labels among its aliases. Default001 and file16's002
+profiles retain their bytes and reject kind4;003 cannot mix with file16.
+
+Compile all descriptor FD units with `AEFD_TERMINAL_BINDINGS` and
+`AEFD_EXTERNAL_STARTUP`, including `fd-libc.c` and `fd-libc-bindings.c`.
+`aefd_shell_external_startup` borrows the native entry's stable, already admitted
+startup object; bindings allocate no second context or greeting consumer.
+`__aether_io` stays in the native entry. The target uses strong `isatty`/`fcntl`
+bindings and the pinned SDK's ordinary `read`/`write`/`close` functions.
+No SDK rebuild or new kernel operation is required.
+
+`isatty` returns1 only for admitted kind4, preserving errno. Live raw console,
+file and pipe entries return0/ENOTTY; absent entries return0/EBADF; unadmitted,
+stale or poisoned contexts return0/EIO. Selected `F_GETFL` reports the actual
+admitted O_RDONLY/O_WRONLY access. `F_SETFL` accepts only0 or that same access
+value as an idempotent request; all other changes return EOPNOTSUPP without
+mutation. In particular NONBLOCK cannot succeed while the owner holds EAGAIN as
+Pending. FD_CLOEXEC remains per alias. Duplication copies the canonical kind and
+source; the existing final-alias close owns the physical reference close.
+
+The one consumer duplicates stdin/stdout to10/11, checks classification, access,
+CLOEXEC independence and NONBLOCK refusal, then closes original0/1. It emits the
+existing READY marker through11, reads the same fixed sixteen binary bytes
+through10, emits OUT plus those bytes and an external LF through11, writes the
+distinct ERR marker through2, and closes input/stderr. PASS precedes final output
+close and normal return through the existing finalizer. The checked mkdir occurs
+once using a local copy of the template, preserving the existing three engine
+mutations, startup, TLS and monotonic clock behavior.
+
+Focused host verification reuses `mktemp-directory/native-tests.rs` and the
+actual C native entry/startup/table/libc sources. Compile the new
+`native-descriptor-tests.c` and probe with `AMK_NATIVE_APP_HOST`,
+`AMK_NATIVE_TTY_DESCRIPTOR_PROBE`; host bindings also use `AEFD_LIBC_HOST_TEST`.
+The host-only read/write/close bridges substitute the libc/kernel boundary
+explicitly; they do not establish the target SDK path. The tests cover exact
+binary framing and short counts, aliases after original close, wrong-direction
+and direct-trap refusal, errno/status/CLOEXEC, nonterminal types, unknown typing,
+stale/unadmitted contexts and cached finalization. The startup producer's
+`sys-init/tests/native_fd_startup.rs` covers default/selected typing and rejects
+mixed classifications without publishing output. Use the existing300-second
+aggregate,180-second child,4MiB streams and16MiB compiler-file bounds.
+
+This prerequisite excludes bidirectional O_RDWR acquisition, MODE/termios,
+NONBLOCK, drain, signals, process groups and interactive Zsh. A new linked app
+requires fresh actual stack/heap fit and reviewed native evidence; host tests
+alone do not qualify a Zsh login.
