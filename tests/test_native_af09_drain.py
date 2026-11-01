@@ -44,6 +44,7 @@ var active:usize=6;var idle=false;var idle_ticks:usize=0;var total_ticks:usize=0
 var console_closed=true;var block_closed=true;var reclaimed:usize=0;
 const supervised=true;const session_lifecycle=true;const combined_profile=true;const sustained=false;const pipeline_session=true;
 const native_tick_limit:usize=6000;const io_profile=false;const channel_profile=true;
+const mktemp_reader=false; // AF09 keeps its legacy256-byte output capture.
 var capture:[32768]u8=undefined;var captured:usize=0;
 const serial=struct {
  fn write(text:[]const u8)void{if(text.len>capture.len-captured)@panic("CAPTURE");@memcpy(capture[captured..][0..text.len],text);captured+=text.len;}
