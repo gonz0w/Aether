@@ -15,6 +15,7 @@ mod stream_transport;
 pub const ATTEMPTS: u32 = 1_000_000;
 pub const RESERVED: u32 = 12;
 pub const TICKS: u64 = 500;
+pub const WRITER_DEADLINE_TICK: u64 = 6_000;
 pub const TEMPLATE: &[u8] = b"/home/t.XXXXXX";
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct End {
@@ -44,7 +45,7 @@ pub struct Snapshot {
 struct Bound {
     left: u32,
     reserved: u32,
-    deadline: Option<Deadline>,
+    deadline: Deadline,
     sequence: u64,
     last_tick: u64,
     failed: i64,
@@ -70,10 +71,7 @@ impl Bound {
                 return Err(-5);
             }
             self.last_tick = observation.tick;
-            if self.deadline.is_none() {
-                self.deadline = Some(Deadline::after(observation.tick, TICKS)?);
-            }
-            self.sequence = self.deadline.unwrap().check(raw)?;
+            self.sequence = self.deadline.check(raw)?;
             Ok(())
         })();
         if let Err(error) = result {
@@ -131,7 +129,7 @@ impl<K: AppControl> Runtime<K> {
             bound: Bound {
                 left: ATTEMPTS - RESERVED,
                 reserved: RESERVED,
-                deadline: None,
+                deadline: Deadline::after(0, WRITER_DEADLINE_TICK)?,
                 sequence: 0,
                 last_tick: 0,
                 failed: 0,
@@ -269,6 +267,12 @@ impl<K: AppControl> Runtime<K> {
                 break;
             }
             self.yield_now()?;
+        }
+        // Engine import may use the fixed writer ceiling. Readiness only
+        // shortens it: app progress can never renew either absolute deadline.
+        let app_deadline = Deadline::after(self.bound.last_tick, TICKS)?;
+        if app_deadline.get() < self.bound.deadline.get() {
+            self.bound.deadline = app_deadline;
         }
         let process = self.pair(0xd001)?;
         let record: &mut [u8; 320] = (&mut workspace[..320]).try_into().unwrap();
