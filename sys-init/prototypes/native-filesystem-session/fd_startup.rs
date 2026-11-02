@@ -10,6 +10,8 @@ use abi29_dispatch_core::startup::{Identity, greeting};
     fs_file16
 ))]
 compile_error!("terminal bindings cannot select file16 startup");
+#[cfg(all(native_zsh_process, not(native_zsh_filesystem)))]
+compile_error!("Zsh process startup requires the selected filesystem profile");
 pub const CANONICAL_BINDINGS: bool = cfg!(native_tty_canonical_probe);
 pub const SIGNAL_BINDINGS: bool = cfg!(native_tty_signal_probe);
 pub const MODE_BINDINGS: bool = cfg!(native_tty_mode_probe);
@@ -34,7 +36,9 @@ pub const BYTES: usize = if cfg!(native_zsh_filesystem) {
 };
 pub const FILE_SLOTS_16: bool = cfg!(fs_file16);
 pub const FIRST_FILE_FD: u8 = if FILE_SLOTS_16 { 0 } else { 3 };
-pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_filesystem) {
+pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_process) {
+    b"AEFDB009"
+} else if cfg!(native_zsh_filesystem) {
     b"AEFDB008"
 } else if CANONICAL_BINDINGS {
     b"AEFDB007"
@@ -51,7 +55,9 @@ pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_filesystem) {
 } else {
     b"AEFDB001"
 };
-pub const MAP_MAGIC: &[u8; 8] = if cfg!(native_zsh_filesystem) {
+pub const MAP_MAGIC: &[u8; 8] = if cfg!(native_zsh_process) {
+    b"AEFDT009"
+} else if cfg!(native_zsh_filesystem) {
     b"AEFDT008"
 } else if CANONICAL_BINDINGS {
     b"AEFDT007"
@@ -104,7 +110,11 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
     if plan.generation == 0 || plan.history.iter().any(|g| *g > 9) {
         return Err(-22);
     }
+    if cfg!(native_zsh_process) && !matches!(plan.identity.slot, 1 | 2) {
+        return Err(-22);
+    }
     if DUPLEX_BINDINGS
+        && !cfg!(native_zsh_process)
         && (plan.history != [0; 2]
             || plan.bindings.iter().enumerate().any(|(fd, b)| {
                 if fd < 3 {
@@ -123,7 +133,11 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
         }
         match binding.kind {
             0 if binding.selector == 0 && binding.cloexec == 0 => {}
-            1 | 4 if binding.selector <= 2 && (binding.kind == 1 || TERMINAL_BINDINGS) => {
+            1 | 4
+                if binding.selector <= 2
+                    && (binding.kind == 1 || TERMINAL_BINDINGS)
+                    && (!cfg!(native_zsh_process) || binding.kind == 4) =>
+            {
                 if plan.bindings[..i].iter().any(|other| {
                     matches!(other.kind, 1 | 4)
                         && other.selector == binding.selector
@@ -207,13 +221,21 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
     put(
         output,
         296,
-        if plan.identity.slot == 1 && !cfg!(native_zsh_filesystem) {
+        if plan.identity.slot == 1 && (!cfg!(native_zsh_filesystem) || cfg!(native_zsh_process)) {
             0x76050001
         } else {
             0
         },
     );
-    put(output, 300, if MODE_BINDINGS { 0x7d000001 } else { 0 });
+    put(
+        output,
+        300,
+        if MODE_BINDINGS && (!cfg!(native_zsh_process) || plan.identity.slot == 1) {
+            0x7d000001
+        } else {
+            0
+        },
+    );
     #[cfg(native_zsh_filesystem)]
     {
         for offset in [304, 308, 312, 316] {

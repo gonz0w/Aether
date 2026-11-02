@@ -1,11 +1,63 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #include "fd-fork-stage.h"
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#include "fd-zsh-process.h"
+int64_t aefd_zsh_capture(struct aefd_startup *boot,
+                         struct aefd_startup_auxv observed, long pid,
+                         long parent, unsigned char out[336])
+{
+    if (!boot || !out || boot->phase != 2 || boot->context.state != 1 ||
+        !boot->context.native.active || boot->context.native.busy ||
+        observed.input != boot->context.native.input ||
+        observed.output != boot->context.native.output)
+        return -22;
+    memset(out, 0, 336);
+    memcpy(out, "AEFDB009", 8);
+    aefd_put(out, 1, 1 | UINT64_C(336) << 32);
+    memcpy(out + 16, "AEFSH001", 8);
+    aefd_put(out + 24, 0, 29 | UINT64_C(7) << 32);
+    aefd_put(out + 32, 0,
+             boot->identity.slot | (uint64_t)boot->identity.epoch << 32);
+    aefd_put(out + 40, 0,
+             (uint32_t)parent | (uint64_t)boot->identity.shell_generation
+                                    << 32);
+    int64_t result =
+        aefd_session_snapshot(&boot->context.session, out + 48, 128, 0);
+    for (unsigned i = 0; i < 7; ++i) {
+        struct aefd_native_source source = boot->context.native.sources[i];
+        aefd_put(out + 176 + i * 16, 0,
+                 source.reference | (uint64_t)source.selector << 32);
+        aefd_put(out + 176 + i * 16, 1,
+                 source.rights | (uint64_t)source.bound << 32);
+    }
+    aefd_put(out + 288, 0,
+             boot->context.native.generations[0] |
+                 (uint64_t)boot->context.native.generations[1] << 32);
+    aefd_put(out + 296, 0,
+             boot->context.native.factory | (uint64_t)boot->context.mode_control
+                                                << 32);
+    for (unsigned i = 0; i < 2; ++i)
+        aefd_put(out + 304, i,
+                 boot->credentials[i * 2] |
+                     (uint64_t)boot->credentials[i * 2 + 1] << 32);
+    aefd_put(out + 320, 0, 1);
+    struct aefd_zsh_snapshot checked;
+    if (result ||
+        !aefd_zsh_snapshot_decode(out, 336, observed, pid, parent, &checked)) {
+        memset(out, 0, 336);
+        return result ? result : -22;
+    }
+    return 0;
+}
+#endif
 
+#ifndef AEFD_ZSH_PROCESS_BINDINGS
 static void put32(unsigned char *raw, unsigned offset, uint32_t value)
 {
     for (unsigned i = 0; i < 4; ++i)
         raw[offset + i] = (unsigned char)(value >> (i * 8));
 }
+#endif
 static int move(struct aefd_io io, unsigned char *raw, size_t length,
                 int writing, unsigned *budget, int startup)
 {
@@ -53,7 +105,11 @@ int64_t aefd_fork_arm(struct aefd_fork *f, struct aefd_startup_auxv observed)
         observed.input != b->context.native.input ||
         observed.output != b->context.native.output)
         return -22;
-    if (f->counter == UINT64_MAX)
+    if (f->counter == UINT64_MAX
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+        || f->counter == UINT64_MAX - 1
+#endif
+    )
         return -75;
     f->previous_mask = b->context.native.saved_mask;
     int64_t result = aefd_native_enter(&b->context.native);
@@ -64,6 +120,12 @@ int64_t aefd_fork_arm(struct aefd_fork *f, struct aefd_startup_auxv observed)
     int64_t pid = f->call(f->owner, 0x10027, 0, 0, 0, 0);
     int64_t parent = f->call(f->owner, 0x1006e, 0, 0, 0, 0);
     unsigned char *raw = b->scratch;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    result = aefd_zsh_capture(b, observed, (long)pid, (long)parent, raw + 32);
+    if (result ||
+        !aefd_zsh_fork_encode(raw, AEFD_FORK_REQUEST_BYTES, raw + 32, observed,
+                              (long)pid, (long)parent, f->counter + 1)) {
+#else
     memset(raw, 0, AEFD_STARTUP_BYTES);
     memcpy(raw, AEFD_STARTUP_MAGIC, 8);
     put32(raw, 8, 1);
@@ -88,6 +150,7 @@ int64_t aefd_fork_arm(struct aefd_fork *f, struct aefd_startup_auxv observed)
     put32(raw, 296, b->context.native.factory);
     if (result || !aefd_fork_encode(raw, 304, raw, 304, observed, (long)pid,
                                     (long)parent, f->counter + 1)) {
+#endif
         if (!b->context.client.live)
             return parent_failure(f);
         aefd_native_leave(&b->context.native);
@@ -101,7 +164,12 @@ int64_t aefd_fork_arm(struct aefd_fork *f, struct aefd_startup_auxv observed)
     f->phase = AEFD_FORK_SENDING;
     f->status = 0;
     f->budget = AEFD_IO_BUDGET;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    if (!move(aefd_native_io(&b->context.native), raw, AEFD_FORK_REQUEST_BYTES,
+              1, &f->budget, 0))
+#else
     if (!move(aefd_native_io(&b->context.native), raw, 304, 1, &f->budget, 0))
+#endif
         return parent_failure(f);
     f->phase = AEFD_FORK_ARMED;
     return 0;
@@ -118,8 +186,15 @@ int64_t aefd_fork_parent(struct aefd_fork *f, int64_t native_result)
     int64_t result;
     if (!move(aefd_native_io(&f->boot.context.native), f->boot.scratch, 32, 0,
               &f->budget, 0) ||
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+        !aefd_zsh_receipt_decode(f->boot.scratch, "AEZFR001", f->sequence,
+                                 &result) ||
+        (native_result > 0 ? result != native_result : result >= 0)
+#else
         !aefd_fork_parent_reply(f->boot.scratch, 32, f->sequence, native_result,
-                                &result))
+                                &result)
+#endif
+    )
         return parent_failure(f);
     aefd_native_leave(&f->boot.context.native);
     f->boot.context.native.saved_mask = f->previous_mask;
@@ -131,11 +206,14 @@ int64_t aefd_fork_parent(struct aefd_fork *f, int64_t native_result)
 static int child_grants(struct aefd_fork *f, struct aefd_startup_auxv grants,
                         long pid, long parent)
 {
-    if (!aether_fs_session_child_pid(pid) || parent != f->parent_pid ||
-        grants.memory == f->parent.memory || !grants.input || !grants.output ||
-        grants.input == grants.output || grants.input == f->parent.input ||
-        grants.input == f->parent.output || grants.output == f->parent.input ||
-        grants.output == f->parent.output)
+    if (!aether_fs_session_child_pid(pid) ||
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+        (pid - 3) % 7 != 0 ||
+#endif
+        parent != f->parent_pid || grants.memory == f->parent.memory ||
+        !grants.input || !grants.output || grants.input == grants.output ||
+        grants.input == f->parent.input || grants.input == f->parent.output ||
+        grants.output == f->parent.input || grants.output == f->parent.output)
         return 0;
     unsigned value = (unsigned)pid - 1;
     return grants.memory == (UINT64_C(0x40000000) | (uint64_t)(value / 7) << 8 |
@@ -158,7 +236,14 @@ int64_t aefd_fork_child(struct aefd_fork *f, struct aefd_startup_auxv grants,
     unsigned history[2] = {0};
     int borrowed = 0, reset = 0, constructed = 0;
     if (!f->call || !f->sequence ||
-        aefd_word(b->scratch + 296, 0) != f->sequence)
+        aefd_word(b->scratch +
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+                      16
+#else
+                      296
+#endif
+                  ,
+                  0) != f->sequence)
         goto failed;
     int64_t pid = f->call(f->owner, 0x10027, 0, 0, 0, 0);
     int64_t parent = f->call(f->owner, 0x1006e, 0, 0, 0, 0);
@@ -172,15 +257,33 @@ int64_t aefd_fork_child(struct aefd_fork *f, struct aefd_startup_auxv grants,
     borrowed = 1;
     if (aefd_native_enter(&guard))
         goto failed;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    memmove(b->context.workspace, b->scratch, AEFD_FORK_REQUEST_BYTES);
+#else
     memmove(b->context.workspace, b->scratch, AEFD_STARTUP_BYTES);
+#endif
     memset(b->scratch, 0, AEFD_STARTUP_BYTES);
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    if (!move(aefd_native_io(&guard), b->scratch, AEFD_STARTUP_BYTES, 0,
+              &f->budget, 1))
+#else
     if (!move(aefd_native_io(&guard), b->scratch, 304, 0, &f->budget, 1))
+#endif
         goto failed;
     struct aether_fs_session_identity identity;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    struct aefd_zsh_snapshot child;
+    if (!aefd_zsh_child_match(b->context.workspace, AEFD_FORK_REQUEST_BYTES,
+                              f->parent, f->parent_pid, b->scratch, grants,
+                              (long)pid, &child))
+        goto failed;
+    identity = child.identity;
+#else
     if (!aefd_fork_child_match(b->context.workspace, 304, f->parent,
                                f->parent_pid, b->scratch, 304, grants,
                                (long)pid, &identity))
         goto failed;
+#endif
     for (unsigned i = 0; i < 7; ++i) {
         const unsigned char *raw = b->scratch + 176 + i * 16;
         sources[i] = (struct aefd_native_source){
@@ -205,7 +308,15 @@ int64_t aefd_fork_child(struct aefd_fork *f, struct aefd_startup_auxv grants,
     guard.active = 0;
     guard.initialized = 0;
     b->identity = identity;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    b->context.mode_control = aether_fs_session_u32(b->scratch + 300);
+    for (unsigned i = 0; i < 4; ++i)
+        b->credentials[i] = aether_fs_session_u32(b->scratch + 304 + i * 4);
+    if (!aefd_zsh_receipt_encode(b->scratch, "AEZFC001", f->sequence,
+                                 (long)pid) ||
+#else
     if (!aefd_fork_ready_encode(b->scratch, 32, f->sequence, (long)pid) ||
+#endif
         !move(aefd_native_io(&b->context.native), b->scratch, 32, 1, &f->budget,
               0))
         goto failed;

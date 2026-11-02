@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #include "fd-libc.h"
-#ifdef AEFD_ZSH_DIAGNOSTIC
+#if defined(AEFD_ZSH_DIAGNOSTIC) || defined(AEFD_ZSH_PROCESS_BINDINGS)
 #include "fd-zsh-external.h"
 #endif
 #include <errno.h>
@@ -31,6 +31,10 @@ void *aefd_test_malloc(size_t);
 int chdir(const char *);
 char *getcwd(char *, size_t);
 #endif
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#define waitpid aefd_test_waitpid
+pid_t waitpid(pid_t, int *, int);
+#endif
 #define lseek aefd_test_lseek
 #define __aether_io aefd_test_io
 int open(const char *, int, ...);
@@ -45,7 +49,8 @@ long __aether_io(unsigned long, unsigned long, unsigned long, unsigned long);
 _Static_assert(sizeof(long) == 8 && sizeof(off_t) == 8,
                "selected64-bit libc ABI");
 /* One concrete stable off-stack owner. Never reset/copy after admission. */
-#if defined(AEFD_EXTERNAL_STARTUP) && defined(AEFD_FORK_BINDINGS)
+#if defined(AEFD_EXTERNAL_STARTUP) && defined(AEFD_FORK_BINDINGS) &&           \
+    !defined(AEFD_ZSH_PROCESS_BINDINGS)
 #error "external startup cannot select fork-owned storage"
 #endif
 #ifdef AEFD_EXTERNAL_STARTUP
@@ -70,6 +75,9 @@ static long checked(int64_t result, int saved)
 int64_t aefd_shell_start(void)
 {
     int saved = errno;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    int64_t result = aefd_zsh_admit();
+#else
 #ifdef AEFD_FORK_BINDINGS
     if (!aefd_fork_tls_valid()) {
         errno = saved;
@@ -82,6 +90,7 @@ int64_t aefd_shell_start(void)
     int64_t result = shell.phase == 2 ? -16 : -5;
 #else
     int64_t result = aefd_startup_native(&shell);
+#endif
 #endif
     errno = saved;
     return result;
@@ -243,7 +252,12 @@ long __aether_waitpid(int pid, int *status, int options)
     long result = -EINVAL;
     if (shell.phase != 2 || shell.context.state != 1 ||
         shell.identity.slot != 1 || (pid != -1 && pid <= 0) ||
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+        (options & ~11) ||
+        (pid != -1 && (pid < 10 || pid > 108 || (pid - 3) % 7 != 0)))
+#else
         (options != 0 && options != WNOHANG))
+#endif
         return result;
     if (shell.context.native.active || shell.context.native.busy)
         return -EBUSY;
@@ -267,7 +281,18 @@ long __aether_waitpid(int pid, int *status, int options)
                                          : (int64_t)raw - INT64_C(4294967296);
         int valid = (value > 0 && aether_fs_session_child_pid((long)value) &&
                      (pid == -1 || value == pid)) ||
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+                    (value == 0 && (options & WNOHANG)) || value == -ECHILD;
+        if (value > 0) {
+            uint32_t packed = aether_fs_session_u32(frame + 4);
+            valid = valid && value >= 10 && value <= 108 &&
+                    (value - 3) % 7 == 0 &&
+                    ((packed <= 0xff00 && !(packed & 0xff)) ||
+                     (packed > 0 && packed < 127));
+        }
+#else
                     (value == 0 && options == WNOHANG) || value == -ECHILD;
+#endif
         if (value <= 0 && aether_fs_session_u32(frame + 4))
             valid = 0;
         for (unsigned i = 8; i < 32; ++i)
@@ -290,6 +315,13 @@ long __aether_waitpid(int pid, int *status, int options)
     return result;
 }
 
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+pid_t waitpid(pid_t pid, int *status, int options)
+{
+    int saved = errno;
+    return (pid_t)checked(__aether_waitpid((int)pid, status, options), saved);
+}
+#endif
 #ifdef AEFD_CWD_WIRE
 int chdir(const char *path)
 {

@@ -20,7 +20,12 @@ struct aefd_startup_auxv {
 struct aefd_startup {
     struct aefd_context context;
     struct aether_fs_session_identity identity;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    unsigned char
+        scratch[368]; /* Selected fork prefix plus complete startup. */
+#else
     unsigned char scratch[AEFD_STARTUP_BYTES];
+#endif
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
     uint32_t credentials[4]; /* Advisory AECAT002 values, never authority. */
 #endif

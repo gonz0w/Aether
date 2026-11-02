@@ -2,6 +2,9 @@
 #define _POSIX_C_SOURCE 200809L
 #include "fd-zsh-external.h"
 #include "fd-libc.h"
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#include "fd-fork-stage.h"
+#endif
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
@@ -14,7 +17,8 @@
     !defined(AEFD_EXTERNAL_STARTUP)
 #error "current Zsh entry requires canonical external startup"
 #endif
-#if defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_BINDINGS) ||              \
+#if (!defined(AEFD_ZSH_PROCESS_BINDINGS) &&                                    \
+     (defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_BINDINGS))) ||          \
     defined(AEFD_EXEC_WIRE) || defined(AEFD_DUP2_WIRE) ||                      \
     defined(AEFD_WRITE_WIRE) || defined(AEFD_CWD_WIRE)
 #error "current Zsh entry excludes historical process/provider selections"
@@ -24,9 +28,25 @@ _Noreturn void __real__exit(int);
 _Noreturn void __wrap__Exit(int);
 _Noreturn void __wrap__Exit(int status) { __wrap__exit(status); }
 /* Internal borrows point into this object. Never move/reset/reinitialize it. */
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+static struct aefd_fork process;
+#define startup process.boot
+struct aefd_fork *aefd_shell_fork_context(void) { return &process; }
+#else
 static struct aefd_startup startup;
+#endif
 static _Thread_local unsigned entry_fresh = 1;
 struct aefd_startup *aefd_shell_external_startup(void) { return &startup; }
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+int aefd_zsh_tls_valid(void) { return entry_fresh == 0; }
+int64_t aefd_zsh_admit(void)
+{
+    if (entry_fresh != 1)
+        return -16;
+    entry_fresh = 0;
+    return aefd_startup_native(&startup);
+}
+#endif
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
 static size_t path_length(const char *);
 static int entry_path(const char *);
@@ -346,6 +366,7 @@ int aether_zsh_directory_probe(const char *path,
     return (int)libc_result(result, saved);
 }
 #endif
+#ifndef AEFD_ZSH_HELPER_ENTRY
 static int bootstrap(void)
 {
     struct sigaction action = {0};
@@ -388,10 +409,14 @@ int __wrap_main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    if (aefd_zsh_admit() || !live() ||
+#else
     if (entry_fresh != 1)
         failed();
     entry_fresh = 0;
     if (aefd_startup_native(&startup) || !live() ||
+#endif
         startup.identity.slot != 1 ||
         startup.identity.epoch != startup.identity.shell_generation ||
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
@@ -409,3 +434,4 @@ int __wrap_main(int argc, char **argv)
     char *arguments[] = {program, no_rcs, interactive, no_monitor, NULL};
     __wrap__exit(__real_main(4, arguments));
 }
+#endif /* !AEFD_ZSH_HELPER_ENTRY */

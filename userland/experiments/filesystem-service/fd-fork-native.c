@@ -16,12 +16,17 @@ _Static_assert(sizeof(unsigned long) == 8 && sizeof(void *) == 8,
                "native x86-64 fork ABI required");
 /* Real initialized TLS template, retained by live startup/copy checks. This
  * matches the old session invariant; never reset it to conceal a bad rebind. */
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#include "fd-zsh-external.h"
+int aefd_fork_tls_valid(void) { return aefd_zsh_tls_valid(); }
+#else
 static _Thread_local volatile uint32_t fork_tls = UINT32_C(0x73657373);
 int aefd_fork_tls_valid(void) { return fork_tls == UINT32_C(0x73657373); }
 #ifdef AEFD_FORK_HOST_TEST
 void aefd_fork_test_tls_set(uint32_t);
 void aefd_fork_test_tls_set(uint32_t value) { fork_tls = value; }
 #endif
+#endif /* old fork TLS; process reuses the consumed external entry guard */
 static int native_rebind(void *context, struct aefd_startup_auxv parent,
                          struct aefd_startup_auxv child)
 {

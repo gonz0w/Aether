@@ -2,7 +2,11 @@
 #ifndef AETHER_FD_FORK_FRAME_H
 #define AETHER_FD_FORK_FRAME_H
 #include "fd-startup.h"
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#define AEFD_FORK_REQUEST_BYTES 368U
+#else
 #define AEFD_FORK_REQUEST_BYTES 304U
+#endif
 #define AEFD_FORK_RECEIPT_BYTES 32U
 /* Inert borrowed bytes, never authenticated authority or an admitted context.
  */

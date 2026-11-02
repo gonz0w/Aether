@@ -23,6 +23,7 @@ int64_t aefd_context_init(struct aefd_context *c, aefd_native_call call,
                           generations, factory))
         return -22;
 #ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
+#ifndef AEFD_ZSH_PROCESS_BINDINGS
     /*004 attests this fixed owner-held relationship, never initial kind5. */
     for (unsigned i = 0; i < 3; ++i)
         if (map.slots[i].kind != AEFD_BIND_TERMINAL ||
@@ -33,10 +34,25 @@ int64_t aefd_context_init(struct aefd_context *c, aefd_native_call call,
         if (map.slots[fd].kind != AEFD_BIND_EMPTY &&
             map.slots[fd].kind != AEFD_BIND_TERMINAL)
             return -22;
+#else
+    /*009 snapshots preserve validated terminal aliases, pipes and FILE slots.
+     */
+    for (unsigned fd = 0; fd < AEFD_BINDINGS_COUNT; ++fd)
+        if (map.slots[fd].kind == AEFD_BIND_CONSOLE)
+            return -22;
+    for (unsigned i = 0; i < 3; ++i)
+        if (sources[i].reference &&
+            sources[i].reference != (UINT32_C(0x7a000001) | i << 16))
+            return -22;
+#endif
 #endif
     unsigned seen = 0;
     for (unsigned fd = 0; fd < AEFD_BINDINGS_COUNT; ++fd) {
         struct aefd_binding slot = map.slots[fd];
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+        if (slot.kind == AEFD_BIND_DUPLEX_TERMINAL)
+            seen |= 3U;
+#endif
         if (slot.kind == AEFD_BIND_CONSOLE || slot.kind == AEFD_BIND_PIPE
 #ifdef AEFD_TERMINAL_BINDINGS
             || slot.kind == AEFD_BIND_TERMINAL
