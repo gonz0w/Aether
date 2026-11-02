@@ -2655,6 +2655,16 @@
       "invariants": "One real compiled VT100 file with source closure/notices, no database-free fallback. Same-context stdio semantics; closed expected-six frontend retains oldthree/drain/default and all clean-result checks, original9/96/resource caps and old seal. Same-pin selected input recovery reuses the SDK.",
       "oracle": "Actual tic/infocmp/data identities; source/semantic omission controls; old/new/mixed frontend validation and actual new Zsh/engine origin, ELF/layout/backing/TLS results with known cleanup. Raw/libc errno, partial prefix, EOF and unmask behavior remain truthful.",
       "gaps": "Offline data is not persisted materialization; no activated custody/FILE/metadata/kernel composition, runtime heap/recursive stack/worker peak, native six-mutation completion, terminfo lookup or Zsh/R1 acceptance."
+    },
+    {
+      "id": "UL-ZSH-FILESYSTEM",
+      "reference": "userland/docs/ZSH-FILESYSTEM.md",
+      "owner": "Aether userland/sys-init/kernel; issue137",
+      "budget_seconds": 300,
+      "command": "Focused actual C/startup/FILE/typed-directory and Rust Owner constructor/service/loan checks in the owning private recipes; python3 -B -m unittest discover -s tests -p test_zsh_terminfo_profile.py -v; bounded private zsh-target-fit.py --filesystem, zsh-owner-fit.py and host-only zsh-screen-probe.py after source freeze.",
+      "invariants": "One retained Owner namespace Client/epoch; exact app generation; readonly closed336/AEFP0004; actual held directory, no fake stat; AENAP002 process-only transfer and positive large/MODE/SIGINT closure. Existing resource/default/cleanup limits; old profiles preserved.",
+      "oracle": "Actual realproducer epoch/inplace constructor and semantic omissions; exact libc/raw errno/mask/publication; compiled app/Owner origins, derived-source pins, current loader/TLS/layout/stack; known child cleanup and real hostVT100 input/render/exit.",
+      "gaps": "No current image/guest or complete Zsh startup/parser/handler stack/peakheap/whole-session request demand. Expected33requests and capacity are models, not native evidence; externalexecute still overbudget. Unknown historical interrupted hostattempt remains quarantined."
     }
   ]
 }

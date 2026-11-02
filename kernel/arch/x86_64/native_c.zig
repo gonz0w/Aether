@@ -3290,8 +3290,12 @@ fn execOperation(f: *const Frame) *const Frame {
 }
 
 fn ordinaryAppEnabled() bool {
+    const terminfo = @hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo;
     return combined_profile and combined_init and combined_owner_stack and !combined_application_profile and
-        !@import("build_options").native_service_lifetime and launch_profile and connections_profile;
+        !@import("build_options").native_service_lifetime and launch_profile and connections_profile or
+        (terminfo and combined_profile and combined_init and combined_owner_stack and combined_application_profile and
+            @import("build_options").native_tty_mode_probe and @import("build_options").native_tty_signal_probe and
+            !@import("build_options").native_service_lifetime and launch_profile and connections_profile);
 }
 
 // Separate ordinary ABI31 operation. IF=0 spans the full snapshot, all resource
@@ -3334,7 +3338,8 @@ fn appLaunchOperation(f: *const Frame) *const Frame {
         };
         value.* = p.*;
     }
-    const record = App.decode(&raw) catch {
+    const retained_namespace = @hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo;
+    const record = App.decodeSelected(&raw, retained_namespace) catch {
         result(caller, -22);
         return select();
     };
@@ -3370,8 +3375,12 @@ fn appLaunchOperation(f: *const Frame) *const Frame {
     load(s, if (f.rsi == 0xc001) service_bytes[0..service_len] else if (f.rsi == 0xc002) second_bytes[0..second_len] else third_bytes[0..third_len], image, &bootstrap, slot);
     require(plan.process_reader.transfer(active, f.r8, slot));
     require(plan.process_writer.transfer(active, f.r9, slot));
-    require(plan.namespace_reader.transfer(active, record.reader, slot));
-    require(plan.namespace_writer.transfer(active, record.writer, slot));
+    // The selected Owner keeps both pristine namespace endpoints. The same
+    // preflight still validates their live engine counterparts before effects.
+    if (!retained_namespace) {
+        require(plan.namespace_reader.transfer(active, record.reader, slot));
+        require(plan.namespace_writer.transfer(active, record.writer, slot));
+    }
     s.channel_cap = f.r8;
     s.channel_reply_cap = f.r9;
     s.app_binding = binding;
@@ -3554,7 +3563,7 @@ fn launchStack(s: *State, args: *const launch.Arguments, image: *const elf.Image
         word(s, rsp + (index + 1) * 8, s.channel_reply_cap);
         index += 2;
     }
-    if (s.app_binding.bound()) {
+    if (s.app_binding.bound() and !(@hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo)) {
         const startup = s.app_binding.startup();
         copy(s, App.startup_address, &startup);
         word(s, rsp + index * 8, App.startup_tag);

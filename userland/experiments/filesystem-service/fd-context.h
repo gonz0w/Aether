@@ -19,6 +19,9 @@ struct aefd_context {
 #ifdef AEFD_TERMINAL_MODE_BINDINGS
     uint32_t mode_control;
     uint64_t mode_revision;
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    uint64_t directory_key, directory_epoch;
+#endif
 #endif
 };
 int64_t aefd_context_init(struct aefd_context *, aefd_native_call, void *,
@@ -38,6 +41,17 @@ int64_t aefd_context_open_duplex(struct aefd_context *, int);
 /* Private scalar005 control. Output remains untouched on every failure. */
 int64_t aefd_context_mode(struct aefd_context *, int, unsigned, unsigned,
                           unsigned, unsigned *);
+#endif
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+struct aether_tinfo_directory_view {
+    uint64_t kind, size, key, epoch;
+};
+int64_t aefd_context_access(struct aefd_context *, const unsigned char *,
+                            size_t, unsigned);
+/* Publish checked physical root and typed view before unmasking. */
+int64_t aefd_context_root(struct aefd_context *, unsigned char[2]);
+int64_t aefd_context_directory(struct aefd_context *, const unsigned char *,
+                               size_t, struct aether_tinfo_directory_view *);
 #endif
 int64_t aefd_context_open(struct aefd_context *, const unsigned char *, size_t,
                           int);

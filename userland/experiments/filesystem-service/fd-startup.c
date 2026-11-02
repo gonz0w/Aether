@@ -72,8 +72,18 @@ int64_t aefd_startup_start(struct aefd_startup *b, aefd_native_call call,
     )
         goto cleanup;
     uint32_t factory = aether_fs_session_u32(raw + 296);
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    if (identity.slot != 1 || factory ||
+        aether_fs_session_u32(raw + 320) != 1 ||
+        aether_fs_session_u32(raw + 324) || aefd_word(raw + 328, 0))
+        goto cleanup;
+    for (unsigned i = 0; i < 4; ++i)
+        if (aether_fs_session_u32(raw + 304 + i * 4) != 1000)
+            goto cleanup;
+#else
     if (factory != (identity.slot == 1 ? UINT32_C(0x76050001) : 0))
         goto cleanup;
+#endif
     for (unsigned i = 0; i < 7; ++i) {
         const unsigned char *s = raw + 176 + i * 16;
         sources[i] = (struct aefd_native_source){
@@ -89,6 +99,10 @@ int64_t aefd_startup_start(struct aefd_startup *b, aefd_native_call call,
         goto cleanup;
 #ifdef AEFD_TERMINAL_MODE_BINDINGS
     b->context.mode_control = aether_fs_session_u32(raw + 300);
+#endif
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    for (unsigned i = 0; i < 4; ++i)
+        b->credentials[i] = aether_fs_session_u32(raw + 304 + i * 4);
 #endif
     b->identity = identity;
     b->phase = 2;

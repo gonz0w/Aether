@@ -111,6 +111,30 @@ finite QEMU candidates and routine GitHub delivery. No general process groups,
 stop/continue, canonical queue, full ZLE/Zsh, service relocation or quota increase
 is selected. The fixed recipient is not a POSIX foreground process group.
 
+## Selected real-Zsh filesystem composition —2026-11-02
+
+Cam directly approved [issue137](https://github.com/gonz0w/Aether/issues/137#issuecomment-6576184144):
+“Approve scoped #137 design (Recommended)”. Select the retained Rust Owner
+namespace custody, narrow readonly real-terminfo FILE/startup/access/cwd consumers,
+typed held-directory ncurses port, and one closed positive composition of the
+existing large-Zsh, MODE and exact-generation SIGINT profiles.
+
+The Owner retains existing HOME15/root3 privately; Zsh receives process endpoints
+only. Preserve untouched-namespace preflight/commit, provision/readback before FD
+startup, one Client/epoch and the retained directory until healthy teardown.
+Keep all existing numeric limits, old profiles, ordinary/incompatible guards,
+source/media binding, finite attempts, known cleanup and protected delivery.
+No new syscall, grant, privileged path, full-stat/METADATA16 authority or resource
+increase is selected. The [consumer contract](../../userland/docs/ZSH-FILESYSTEM.md)
+records the closed wire and actual implementation/qualification limits.
+
+The standing milestone policy authorizes routine implementation, reviewed bounded
+builds/tests and GitHub delivery. A guest still requires actual matching artifacts,
+fit/consumer review and the existing concrete execution/cleanup gates. This design
+answer establishes no real prompt, job control, login, external command, cold
+persistence, package or R1 acceptance. Further consequential deviations still go
+to Cam; ordinary bounded corrections do not need another permission question.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

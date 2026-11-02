@@ -6,6 +6,10 @@
 #include <limits.h>
 #include <signal.h>
 #include <string.h>
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+#include <stdlib.h>
+#include <unistd.h>
+#endif
 #if !defined(AEFD_TERMINAL_CANONICAL_BINDINGS) ||                              \
     !defined(AEFD_EXTERNAL_STARTUP)
 #error "current Zsh entry requires canonical external startup"
@@ -23,6 +27,10 @@ _Noreturn void __wrap__Exit(int status) { __wrap__exit(status); }
 static struct aefd_startup startup;
 static _Thread_local unsigned entry_fresh = 1;
 struct aefd_startup *aefd_shell_external_startup(void) { return &startup; }
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+static size_t path_length(const char *);
+static int entry_path(const char *);
+#endif
 static int live(void)
 {
     return !entry_fresh && startup.phase == 2 && startup.context.state == 1 &&
@@ -64,6 +72,15 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
     /* On this x86_64 target O_LARGEFILE is the musl syscall shim's no-op bit,
      * not a request for additional descriptor rights. All other flags remain
      * subject to the existing readonly/terminal admission checks. */
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    size_t length = path_length(path);
+    if (!path || !length)
+        return (int)libc_result(-EFAULT, saved);
+    if (length == 256)
+        return (int)libc_result(-ENAMETOOLONG, saved);
+    if (strcmp(path, "/dev/tty") && !entry_path(path))
+        return (int)libc_result(-ENOENT, saved);
+#endif
     int64_t result =
         live() ? aefd_libc_open(&startup.context, path, flags & ~O_LARGEFILE)
                : -EBADF;
@@ -185,6 +202,105 @@ done:
     errno = saved;
     return result;
 }
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+static size_t path_length(const char *path)
+{
+    if (!path)
+        return 0;
+    size_t n = 0;
+    while (n < 256) {
+        if (!outside_context(path + n, 1))
+            return 0;
+        if (!path[n])
+            return n;
+        ++n;
+    }
+    return n;
+}
+static int entry_path(const char *path)
+{
+    return !strcmp(path, "/home/.terminfo/v/vt100") ||
+           !strcmp(path, "/home/.terminfo/./v/vt100");
+}
+static unsigned identity(unsigned index)
+{
+    int saved = errno;
+    if (!live()) {
+        errno = EAGAIN;
+        return UINT_MAX;
+    }
+    int64_t result = aefd_native_enter(&startup.context.native);
+    if (result) {
+        if (result != -EBUSY)
+            aefd_client_abort(&startup.context.client);
+        (void)libc_result(result, saved);
+        return UINT_MAX;
+    }
+    unsigned value = startup.credentials[index];
+    aefd_native_leave(&startup.context.native);
+    errno = saved;
+    return value;
+}
+uid_t __wrap_getuid(void) { return (uid_t)identity(0); }
+uid_t __wrap_geteuid(void) { return (uid_t)identity(1); }
+gid_t __wrap_getgid(void) { return (gid_t)identity(2); }
+gid_t __wrap_getegid(void) { return (gid_t)identity(3); }
+int __wrap_access(const char *path, int mode)
+{
+    int saved = errno;
+    size_t n = path_length(path);
+    int64_t result =
+        !path || !n                    ? -EFAULT
+        : n == 256                     ? -ENAMETOOLONG
+        : !entry_path(path)            ? -ENOENT
+        : mode != F_OK && mode != R_OK ? -EOPNOTSUPP
+        : !live()
+            ? -EBADF
+            : aefd_context_access(&startup.context, (const unsigned char *)path,
+                                  n, (unsigned)mode);
+    return (int)libc_result(result, saved);
+}
+char *__wrap_getcwd(char *buffer, size_t size)
+{
+    int saved = errno;
+    if ((buffer && !size) || (size && size < 2)) {
+        errno = buffer && !size ? EINVAL : ERANGE;
+        return NULL;
+    }
+    if (!live() || (buffer && !outside_context(buffer, size))) {
+        errno = !live() ? EBADF : EFAULT;
+        return NULL;
+    }
+    char *out = buffer ? buffer : malloc(size ? size : 2);
+    if (!out) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    int64_t result = aefd_context_root(&startup.context, (unsigned char *)out);
+    if (result) {
+        if (!buffer)
+            free(out);
+        (void)libc_result(result, saved);
+        return NULL;
+    }
+    errno = saved;
+    return out;
+}
+int aether_zsh_directory_probe(const char *path,
+                               struct aether_tinfo_directory_view *out)
+{
+    int saved = errno;
+    size_t n = path_length(path);
+    int64_t result =
+        !out || !outside_context(out, sizeof(*out)) || !path || !n ? -EFAULT
+        : n == 256                        ? -ENAMETOOLONG
+        : strcmp(path, "/home/.terminfo") ? -ENOENT
+        : !live()                         ? -EBADF
+                  : aefd_context_directory(&startup.context,
+                                           (const unsigned char *)path, n, out);
+    return (int)libc_result(result, saved);
+}
+#endif
 static int bootstrap(void)
 {
     struct sigaction action = {0};
@@ -233,6 +349,10 @@ int __wrap_main(int argc, char **argv)
     if (aefd_startup_native(&startup) || !live() ||
         startup.identity.slot != 1 ||
         startup.identity.epoch != startup.identity.shell_generation ||
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+        setenv("TERMINFO", "/home/.terminfo", 1) ||
+        setenv("PS1", "AETHER-ZSH> ", 1) ||
+#endif
         bootstrap() || ready())
         failed();
     char *arguments[] = {"zsh", "-f", "-i", "+m", NULL};

@@ -1,12 +1,11 @@
 # Aether Zsh target-link status
 
-[Issue134](https://github.com/gonz0w/Aether/issues/134) owns the current independent
-terminfo/provider preparation, following [issue133](https://github.com/gonz0w/Aether/issues/133).
-[Issue135](https://github.com/gonz0w/Aether/issues/135) restores the necessary
-selected engine inputs. [Issue131](https://github.com/gonz0w/Aether/issues/131)
+[Issue137](https://github.com/gonz0w/Aether/issues/137) owns current real-Zsh
+filesystem/startup integration, following preparation issues134/135 and PR136.
+The [selected consumer contract](ZSH-FILESYSTEM.md) records Owner custody,
+readonly FILE/startup queries, the typed ncurses port and actual offline results.
+Image/native selection still requires its unresolved resource gate. Issue131
 and PR132 established the external entry and first current-provider link.
-These are offline executable/input results; native startup and interactive Zsh
-remain separate acceptance.
 
 ## Current external entry
 
@@ -75,7 +74,7 @@ compact local evidence; public replay requires the private prerequisites.
 
 ## Current offline results
 
-The fresh Zsh/tinfo closure with the scoped stdio units is 1,270,160 bytes and
+The fresh selected Zsh/tinfo closure with filesystem startup is 1,273,720 bytes and
 passes the current application parser, loader layout and backing checks at
 313 pages including the 16 stack pages. The ordinary profile rejects it. Its
 four-byte initialized TLS guard fits existing storage. Actual linked readback
@@ -91,12 +90,13 @@ and the format `%s/./%c/%s`. With the proposed controlled TERMINFO directory, th
 format gives `/home/.terminfo/./v/vt100`. No actual native lookup has run.
 
 Ncurses's database iterator requires directory metadata before retaining the
-TERMINFO directory, then `access(R_OK)` before opening the entry. Both are real
-remaining gates; unsupported `stat` cannot be treated only as Zsh's optional PWD
-probe. The new stdio routing does not provide namespace/path authority or make
-those queries succeed. Matching Owner startup/custody, truthful identity/cwd,
-frontend and runtime resource behavior also remain unqualified. The existing
-large-app+MODE guard stays intact.
+TERMINFO directory, then `access(R_OK)` before opening the entry. The selected typed directory port and checked ACCESS query now reach the one
+Owner binding; this replaces the earlier full-stat prerequisite for that closed
+consumer. General `stat` still fails truthfully. The APIs' actual native
+materialization and lookup remain unqualified. The selected Owner now implements checked startup/custody and identity/cwd
+queries and passes offline fit. A closed opt-in combines large-app/MODE/SIGINT;
+ordinary and incompatible selections retain their guards. Actual filesystem
+materialization, frontend composition and runtime resources remain unqualified.
 
 The old sealed engine requires exactly three mutations. The separate
 `fs_home_terminfo_six` frontend preserves all other clean-result checks and the
@@ -124,7 +124,7 @@ filesystem proof. A strict SDK target compile and named incompatible flag
 rejections check the selected target boundary.
 
 The private development workspace supplies the frozen `entry-checks.py` recipe
-and `tools/zsh-target-fit.py` coordinator recorded in issues131/134. The latter builds
+and `tools/zsh-target-fit.py` coordinator recorded in issues131/134/137. The latter builds
 actual Zsh/tinfo and runs current parser/layout/backing checks. Each uses the
 existing owned-process helper, a 300-second aggregate, 180-second child limits
 and bounded output. Public source alone cannot replay those private-input

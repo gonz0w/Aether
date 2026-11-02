@@ -120,3 +120,24 @@ native acceptance remains separate. The historical one-run exception stays consu
 The separately approved standing complete-host budget is recorded in
 [PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26); it changes no runtime
 resource limit or guest authority.
+
+
+## Scoped filesystem and terminal composition
+
+[Issue137](https://github.com/gonz0w/Aether/issues/137) selects default-off
+`-Dnative-zsh-terminfo=true` with the existing application, MODE and SIGINT
+prerequisites. It keeps all numeric limits and the AENFS006/AENMX011 composition.
+[Admission](ZSH-TERMINFO-ADMISSION.md) retains unchanged untouched-namespace
+preflight and transfers process endpoints only under AENAP002. Namespace custody
+stays with the Rust Owner; the app receives no namespace auxv record.
+
+The [consumer contract](../userland/docs/ZSH-FILESYSTEM.md) records336-byte
+startup, exact readonly paths and the typed directory port. Current actual
+application fit is313 pages, and Owner code/Runtime/stack fit their original
+bounds. The mapped stack still provides only48KiB initial downward space.
+One selected source attribute keeps external-command scratch out of builtin
+execution; the separate external helper remains over that stack budget.
+
+Complete selected-workload stack/heap and actual request demand remain an open
+pre-image gate. No native image or trial is selected by these offline source and
+fit observations; hard capacity is not a measured demand claim.

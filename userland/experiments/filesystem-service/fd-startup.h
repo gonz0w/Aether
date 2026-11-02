@@ -3,7 +3,11 @@
 #define AETHER_FD_STARTUP_H
 #include "fd-context.h"
 #include "startup-identity-vendor.h"
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+#define AEFD_STARTUP_BYTES 336U
+#else
 #define AEFD_STARTUP_BYTES 304U
+#endif
 struct aefd_startup_auxv {
     uint64_t memory, input, output;
 };
@@ -17,6 +21,9 @@ struct aefd_startup {
     struct aefd_context context;
     struct aether_fs_session_identity identity;
     unsigned char scratch[AEFD_STARTUP_BYTES];
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    uint32_t credentials[4]; /* Advisory AECAT002 values, never authority. */
+#endif
     int phase, close_attempted;
     int64_t status;
     struct aefd_close_result closed;

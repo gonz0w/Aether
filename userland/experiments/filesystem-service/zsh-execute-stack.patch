@@ -1,0 +1,12 @@
+--- a/Src/exec.c
++++ b/Src/exec.c
+@@ -681,6 +681,9 @@
+ 
+ /**/
+ static void
++#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
++__attribute__((noinline))
++#endif
+ execute(LinkList args, int flags, int defpath)
+ {
+     Cmdnam cn;

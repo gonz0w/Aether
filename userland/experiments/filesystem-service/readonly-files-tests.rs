@@ -1,0 +1,423 @@
+// SPDX-License-Identifier: BSD-2-Clause
+//! Actual AF09 Owner/service/Client over synthetic storage; native execution is separate.
+use super::*;
+use filesystem_policy as p;
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+    time::Duration,
+    vec::Vec,
+};
+const DATA: &[u8] = b"actual terminfo bytes";
+#[derive(Default)]
+struct StorageState {
+    made: [bool; 3],
+    data: Vec<u8>,
+    mutations: usize,
+    lookups: usize,
+    reads: usize,
+}
+type Shared = Arc<Mutex<StorageState>>;
+struct Storage(Shared);
+fn node(id: u64, size: usize) -> p::Node {
+    p::Node::new(
+        id,
+        1,
+        size as u64,
+        if id == 5 {
+            p::Kind::File
+        } else {
+            p::Kind::Directory
+        },
+    )
+}
+impl p::Backend for Storage {
+    fn root(&mut self) -> Result<p::Node, p::Error> {
+        Ok(node(1, 0))
+    }
+    fn directory(&mut self, n: p::Node) -> Result<p::Node, p::Error> {
+        Ok(n)
+    }
+    fn lookup(&mut self, at: p::Node, name: &[u8]) -> Result<p::Node, p::Error> {
+        let mut s = self.0.lock().unwrap();
+        s.lookups += 1;
+        let id = match (at.identity().0, name) {
+            (1, b"home") => 2,
+            (2, b".terminfo") if s.made[0] => 3,
+            (3, b"v") if s.made[1] => 4,
+            (4, b"vt100") if s.made[2] => 5,
+            _ => return Err(p::Error::Backend(2)),
+        };
+        Ok(node(id, if id == 5 { s.data.len() } else { 0 }))
+    }
+    fn read(&mut self, _: p::Node, offset: u64, out: &mut [u8]) -> Result<usize, p::Error> {
+        let mut s = self.0.lock().unwrap();
+        s.reads += 1;
+        let start = (offset as usize).min(s.data.len());
+        let count = out.len().min(s.data.len() - start);
+        out[..count].copy_from_slice(&s.data[start..start + count]);
+        Ok(count)
+    }
+    fn write(
+        &mut self,
+        n: p::Node,
+        offset: u64,
+        data: &[u8],
+        _: p::Utc,
+    ) -> Result<p::Completion, p::Lost> {
+        assert_eq!((n.identity().0, offset), (5, 0));
+        let mut s = self.0.lock().unwrap();
+        s.mutations += 1;
+        s.data = data.to_vec();
+        Ok(p::Completion {
+            error: 0,
+            txg: s.mutations as u64,
+            bytes_staged: data.len() as u64,
+            state: 2,
+        })
+    }
+    fn mutate(
+        &mut self,
+        n: p::Node,
+        op: p::Namespace<'_>,
+        _: p::Utc,
+    ) -> Result<p::Completion, p::Lost> {
+        let index = match (n.identity().0, op) {
+            (
+                2,
+                p::Namespace::MakeDirectory {
+                    name: b".terminfo", ..
+                },
+            ) => 0,
+            (3, p::Namespace::MakeDirectory { name: b"v", .. }) => 1,
+            (4, p::Namespace::Create { name: b"vt100", .. }) => 2,
+            _ => panic!("UNAUTHORIZED_MUTATION"),
+        };
+        let mut s = self.0.lock().unwrap();
+        assert!(!s.made[index]);
+        s.made[index] = true;
+        s.mutations += 1;
+        Ok(p::Completion {
+            error: 0,
+            txg: s.mutations as u64,
+            bytes_staged: 0,
+            state: 2,
+        })
+    }
+}
+struct Time;
+impl p::Clock for Time {
+    fn utc(&mut self) -> Result<p::Utc, p::Error> {
+        Ok(p::Utc {
+            seconds: 1,
+            nanoseconds: 0,
+        })
+    }
+}
+#[derive(Default)]
+struct Seen {
+    closes: usize,
+    sent: Vec<[u8; 64]>,
+}
+struct Pipe {
+    tx: Option<mpsc::Sender<[u8; 64]>>,
+    rx: mpsc::Receiver<[u8; 64]>,
+    seen: Arc<Mutex<Seen>>,
+}
+impl Channel for Pipe {
+    fn send(&mut self, f: &[u8; 64]) -> Result<(), i64> {
+        self.seen.lock().unwrap().sent.push(*f);
+        self.tx.as_ref().unwrap().send(*f).map_err(|_| -32)
+    }
+    fn receive(&mut self, f: &mut [u8; 64]) -> Result<(), i64> {
+        *f = self
+            .rx
+            .recv_timeout(Duration::from_secs(2))
+            .map_err(|_| -32)?;
+        Ok(())
+    }
+    fn close(&mut self) -> [i64; 2] {
+        if self.tx.take().is_some() {
+            self.seen.lock().unwrap().closes += 1;
+        }
+        [0; 2]
+    }
+}
+fn binding() -> Binding {
+    Binding {
+        slot: 1,
+        epoch: 1,
+        handle: 0xb0000102,
+        generation: 31,
+    }
+}
+struct Harness {
+    slot: MaybeUninit<Files<Pipe>>,
+    worker: Option<thread::JoinHandle<filesystem_service::Report>>,
+    state: Shared,
+    seen: Arc<Mutex<Seen>>,
+}
+impl Harness {
+    fn new() -> Self {
+        let (a, b) = mpsc::channel();
+        let (c, d) = mpsc::channel();
+        let state = Shared::default();
+        let shared = state.clone();
+        let seen = Arc::new(Mutex::new(Seen::default()));
+        let worker = thread::spawn(move || {
+            let mut owner = p::Owner::new(Storage(shared), Time, 91)
+                .unwrap()
+                .with_namespace_identity(p::Identity::new(1000, 1000).unwrap());
+            let a = owner.attach(7, p::Rights::new(15).unwrap()).unwrap();
+            let home = owner
+                .lookup(
+                    7,
+                    a.session,
+                    a.root.handle,
+                    b"home",
+                    p::Rights::new(15).unwrap(),
+                )
+                .unwrap();
+            filesystem_service::run_home(
+                owner,
+                Pipe {
+                    tx: Some(c),
+                    rx: b,
+                    seen: Arc::default(),
+                },
+                7,
+                a.session,
+                home.handle,
+                8,
+                91,
+            )
+        });
+        let mut slot = MaybeUninit::uninit();
+        Files::connect_in_place(
+            &mut slot,
+            Pipe {
+                tx: Some(a),
+                rx: d,
+                seen: seen.clone(),
+            },
+            91,
+            binding(),
+        )
+        .ok()
+        .unwrap();
+        let mut h = Self {
+            slot,
+            worker: Some(worker),
+            state,
+            seen,
+        };
+        h.files().provision(DATA, &mut [0; 4096]).unwrap();
+        h
+    }
+    fn files(&mut self) -> &mut Files<Pipe> {
+        unsafe { self.slot.assume_init_mut() }
+    }
+    fn requests(&self) -> usize {
+        let seen = self.seen.lock().unwrap();
+        let mut frames = 0;
+        let mut requests = 0;
+        for f in &seen.sent {
+            if frames != 0 {
+                frames -= 1;
+                continue;
+            }
+            requests += 1;
+            let op = word(f, 1);
+            let n = word(f, 5);
+            let bytes = match op {
+                1 | 5 => n,
+                7..=11 => (n & 0xffffffff) + (n >> 32),
+                _ => 0,
+            };
+            frames = (bytes as usize).div_ceil(64);
+        }
+        requests
+    }
+    fn rpc(&mut self, op: u64, args: [u64; 4], body: &[u8]) -> ([u8; 64], Vec<u8>) {
+        let files = self.files();
+        let mut raw = [0; 64];
+        raw[..8].copy_from_slice(MAGIC);
+        put(&mut raw, 1, op);
+        put(&mut raw, 2, 31);
+        put(&mut raw, 3, files.next);
+        for (i, a) in args.iter().enumerate() {
+            put(&mut raw, i + 4, *a);
+        }
+        let mut workspace = [0; 4096];
+        workspace[..body.len()].copy_from_slice(body);
+        let length = files.body_length(binding(), &raw).unwrap();
+        let mut reply = files
+            .prepare(binding(), &raw, length, &mut workspace)
+            .unwrap();
+        let header = *reply.header();
+        let body = reply.body_mut().to_vec();
+        reply.delivered();
+        (header, body)
+    }
+}
+impl Drop for Harness {
+    fn drop(&mut self) {
+        self.files().abort();
+        unsafe {
+            self.slot.assume_init_drop();
+        }
+        if let Some(worker) = self.worker.take() {
+            worker.join().unwrap();
+        }
+    }
+}
+#[test]
+fn zsh_actual_service_provision_access_cwd_directory_and_cleanup() {
+    let mut h = Harness::new();
+    assert_eq!(h.requests(), 12);
+    assert_eq!(h.state.lock().unwrap().mutations, 4);
+    for mode in [0, 4] {
+        let (r, b) = h.rpc(8, [mode, ENTRY.len() as u64, 0, 0], ENTRY);
+        assert_eq!((word(&r, 1), word(&r, 4), word(&r, 5)), (0, 0, 0));
+        assert!(b.is_empty());
+    }
+    let (r, b) = h.rpc(9, [0; 4], &[]);
+    assert_eq!((word(&r, 1), word(&r, 4), word(&r, 5)), (0, 0, 2));
+    assert_eq!(&b[..2], b"/\0");
+    assert!(b[2..].iter().all(|v| *v == 0));
+    let (mut key, mut epoch) = (0, 0);
+    for _ in 0..2 {
+        let (r, b) = h.rpc(10, [0, DIRECTORY.len() as u64, 0, 0], DIRECTORY);
+        assert_eq!((word(&r, 1), word(&r, 4), word(&r, 5)), (0, 0, 32));
+        assert_eq!(u64::from_le_bytes(b[..8].try_into().unwrap()), 2);
+        let k = u64::from_le_bytes(b[16..24].try_into().unwrap());
+        let e = u64::from_le_bytes(b[24..32].try_into().unwrap());
+        assert!(k != 0 && e == 91);
+        if key != 0 {
+            assert_eq!((k, e), (key, epoch));
+        }
+        (key, epoch) = (k, e);
+        assert!(b[32..].iter().all(|v| *v == 0));
+    }
+    h.files().disconnect_checked(|_| Ok(())).unwrap();
+    assert_eq!(h.seen.lock().unwrap().closes, 1);
+    let report = h.worker.take().unwrap().join().unwrap();
+    assert_eq!(report.stop, filesystem_service::Stop::Disconnected);
+    assert_eq!(report.requests, h.requests());
+    assert!(report.requests <= 96);
+}
+#[test]
+fn zsh_actual_independent_opens_dup_shared_offsets_eof_and_seek() {
+    let mut h = Harness::new();
+    let (a, _) = h.rpc(1, [0, ENTRY.len() as u64, 0, 0], ENTRY);
+    let first = word(&a, 4);
+    let (a, _) = h.rpc(1, [0, ALIAS.len() as u64, 0, 0], ALIAS);
+    let independent = word(&a, 4);
+    assert_ne!(first, independent);
+    let (a, _) = h.rpc(4, [first, 3, 1, 0], &[]);
+    let alias = word(&a, 4);
+    for (fd, want) in [
+        (first, &DATA[..3]),
+        (alias, &DATA[3..6]),
+        (independent, &DATA[..3]),
+    ] {
+        let (r, b) = h.rpc(2, [fd, 3, 0, 0], &[]);
+        assert_eq!(word(&r, 5), 3);
+        assert_eq!(&b[..3], want);
+    }
+    let (r, _) = h.rpc(3, [first, 0, 2, 0], &[]);
+    assert_eq!(word(&r, 4), DATA.len() as u64);
+    let (r, b) = h.rpc(2, [alias, 1, 0, 0], &[]);
+    assert_eq!(word(&r, 5), 0);
+    assert!(b.is_empty());
+    for fd in [first, alias, independent] {
+        let (r, _) = h.rpc(5, [fd, 0, 0, 0], &[]);
+        assert_eq!(word(&r, 1), 0);
+    }
+    h.files().disconnect_checked(|_| Ok(())).unwrap();
+    let report = h.worker.take().unwrap().join().unwrap();
+    assert_eq!(report.stop, filesystem_service::Stop::Disconnected);
+    assert_eq!(report.requests, h.requests());
+}
+#[test]
+fn zsh_denied_names_do_not_traverse_and_valid_error_does_not_retire() {
+    let mut h = Harness::new();
+    for op in [1, 8, 10] {
+        for name in [
+            b"/".as_slice(),
+            b"/home/.terminfo/../v/vt100",
+            b"/home/.terminfo/x",
+        ] {
+            let before = h.requests();
+            let (r, b) = h.rpc(op, [0, name.len() as u64, 0, 0], name);
+            assert_eq!(word(&r, 1) as i64, -2);
+            assert!(b.is_empty());
+            assert_eq!(h.requests(), before);
+            assert!(h.files().cleanup().is_none());
+        }
+    }
+}
+#[test]
+fn zsh_malformed_unknown_stale_and_padding_retire_before_effects() {
+    for defect in 0..9 {
+        let mut h = Harness::new();
+        let mut raw = [0; 64];
+        raw[..8].copy_from_slice(MAGIC);
+        put(&mut raw, 1, 9);
+        put(&mut raw, 2, 31);
+        put(&mut raw, 3, 1);
+        let mut b = binding();
+        match defect {
+            0 => raw[7] ^= 1,
+            1 => put(&mut raw, 1, 7),
+            2 => put(&mut raw, 1, 11),
+            3 => put(&mut raw, 2, 32),
+            4 => put(&mut raw, 3, 2),
+            5 => put(&mut raw, 4, 1),
+            6 => b.epoch = 2,
+            7 => b.handle ^= 1,
+            _ => {
+                put(&mut raw, 1, 8);
+                put(&mut raw, 4, 2);
+                put(&mut raw, 5, ENTRY.len() as u64);
+            }
+        }
+        let before = h.requests();
+        assert!(h.files().body_length(b, &raw).is_err());
+        assert_eq!(h.requests(), before);
+        assert_eq!(h.seen.lock().unwrap().closes, 1);
+    }
+}
+#[test]
+fn zsh_partial_reply_retires_effect_without_replay() {
+    let mut h = Harness::new();
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    for (i, v) in [(1, 1), (2, 31), (3, 1), (4, 0), (5, ENTRY.len() as u64)] {
+        put(&mut raw, i, v);
+    }
+    let mut w = [0; 4096];
+    w[..ENTRY.len()].copy_from_slice(ENTRY);
+    let needed = h.files().body_length(binding(), &raw).unwrap();
+    let reply = h.files().prepare(binding(), &raw, needed, &mut w).unwrap();
+    assert_eq!(word(reply.header(), 1), 0);
+    drop(reply);
+    let before = h.requests();
+    assert!(h.files().body_length(binding(), &raw).is_err());
+    assert_eq!(h.requests(), before);
+    assert_eq!(h.seen.lock().unwrap().closes, 1);
+}
+#[test]
+fn zsh_bad_body_padding_retires_before_lookup() {
+    let mut h = Harness::new();
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    for (i, v) in [(1, 1), (2, 31), (3, 1), (5, ENTRY.len() as u64)] {
+        put(&mut raw, i, v);
+    }
+    let mut w = [1; 4096];
+    w[..ENTRY.len()].copy_from_slice(ENTRY);
+    let before = h.requests();
+    assert!(h.files().prepare(binding(), &raw, 64, &mut w).is_err());
+    assert_eq!(h.requests(), before);
+}

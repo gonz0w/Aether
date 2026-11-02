@@ -134,6 +134,11 @@ review, source/media binding, attempt and cleanup boundaries. Stop for consequen
 design/authority/product decisions or hard blockers. This does not authorize a
 release or change the R1 acceptance gates.
 
+The owner-approved [real-Zsh filesystem composition](docs/policy/execution.md#selected-real-zsh-filesystem-composition-2026-11-02)
+selects issue137's retained Owner custody, narrow readonly consumers, typed
+ncurses directory view and combined existing large-Zsh/MODE/SIGINT admission.
+All numeric limits and the usual artifact/test/delivery gates remain binding.
+
 ## One work authority
 
 After cutover, read the selected issue and its full discussion before changing

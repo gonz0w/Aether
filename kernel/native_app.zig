@@ -19,7 +19,12 @@ pub const Error = error{InvalidLaunch};
 pub const Record = struct { args: launch.Arguments, engine: u64, reader: u64, writer: u64 };
 
 pub fn decode(raw: *const [record_size]u8) Error!Record {
-    if (!std.mem.eql(u8, raw[0..8], "AENAP001") or
+    return decodeSelected(raw, false);
+}
+
+// Selection is supplied by the kernel; input bytes cannot choose custody.
+pub fn decodeSelected(raw: *const [record_size]u8, retained_namespace: bool) Error!Record {
+    if (!std.mem.eql(u8, raw[0..8], if (retained_namespace) "AENAP002" else "AENAP001") or
         std.mem.readInt(u64, raw[8..16], .little) != record_size or
         std.mem.readInt(u64, raw[312..320], .little) != 0) return error.InvalidLaunch;
     return .{

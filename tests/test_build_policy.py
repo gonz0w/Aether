@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    'native-zsh-terminfo',  # Approved closed large-Zsh/MODE/SIGINT; Owner retains namespace; default-off/private.
     'native-tty-signal-probe',  # Approved default-off MODE Owner/app SIGINT; checked safe unmask; release rejected.
     'native-tty-mode-probe',  # Approved default-off ABI31 holder TEMT query; private BSP only, release rejected.
     'native-mktemp-reader',  # Approved private320-byte slot0 capture; default/other slots256; release rejected.
