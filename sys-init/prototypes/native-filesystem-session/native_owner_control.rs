@@ -27,6 +27,10 @@ fn call(op: u64, args: [u64; 6]) -> Status {
     super::host_trap::call(op, args)
 }
 impl Control for Native {
+    #[cfg(native_tty_signal_probe)]
+    fn terminal_sigint(&mut self, target: u64, post: bool) -> i64 {
+        call(0x29003, [target, 2, u64::from(post), 0, 0, 0]).0
+    }
     fn transmitter_empty(&mut self) -> i64 {
         call(0x26004, [0xf001, 0, 0, 0, 0, 0]).0
     }

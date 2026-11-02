@@ -42,6 +42,16 @@ struct Fixture {
     mode_ready_drains: usize,
     #[cfg(native_tty_mode_probe)]
     stale_mode_get: bool,
+    #[cfg(native_tty_signal_probe)]
+    pending_sigint: bool,
+    #[cfg(native_tty_signal_probe)]
+    saved_sigmask: u64,
+    #[cfg(native_tty_signal_probe)]
+    signal_deliveries: usize,
+    #[cfg(native_tty_signal_probe)]
+    read_eligibility: Vec<u8>,
+    #[cfg(native_tty_signal_probe)]
+    force_read_eintr: bool,
 }
 std::thread_local! { static FIXTURE: RefCell<Fixture> = RefCell::new(Fixture::default()); }
 
@@ -135,6 +145,39 @@ fn closes() -> Vec<u64> {
     })
 }
 pub fn raw(op: u64, args: [u64; 6]) -> i64 {
+    #[cfg(native_tty_signal_probe)]
+    if op == 0x1000e && args[0] == 2 {
+        // SAFETY: native leave lends its initialized saved-mask scalar for this call.
+        let mask = unsafe { *(args[1] as *const u64) };
+        let deliver = FIXTURE.with(|f| {
+            let mut f = f.borrow_mut();
+            if f.pending_sigint && mask & 2 == 0 {
+                f.pending_sigint = false;
+                f.signal_deliveries += 1;
+                true
+            } else {
+                false
+            }
+        });
+        if deliver {
+            // SAFETY: serialized host test; no Fixture borrow survives reentry.
+            unsafe {
+                assert_eq!(
+                    amk_test_signal_idle(),
+                    1,
+                    "SIGNAL_CONTEXT_IDLE_BEFORE_UNMASK"
+                );
+                amk_test_signal_handler(2);
+            }
+            // The handler may have replaced object storage, never the scalar
+            // borrowed by this suspended outer leave.
+            assert_eq!(
+                unsafe { *(args[1] as *const u64) },
+                mask,
+                "STABLE_LOCAL_SAVED_MASK"
+            );
+        }
+    }
     if op == 0x100e7 {
         let fatal = FIXTURE.with(|f| f.borrow().fatal);
         if let Some(name) = fatal {
@@ -174,6 +217,18 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                 if f.request.len() == 32 {
                     let frame: [u8; 32] = f.request.as_slice().try_into().unwrap();
                     f.request.clear();
+                    #[cfg(native_tty_signal_probe)]
+                    let eligible = frame[16] != 0;
+                    #[cfg(native_tty_signal_probe)]
+                    if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 1 {
+                        f.read_eligibility.push(frame[16]);
+                    }
+                    #[cfg(native_tty_signal_probe)]
+                    let mut frame = frame;
+                    #[cfg(native_tty_signal_probe)]
+                    if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 1 {
+                        frame[16] = 0;
+                    }
                     #[cfg(native_tty_mode_probe)]
                     if matches!(tty_mode::u32_at(&frame, 0), 0x10..=0x1f) {
                         f.mode_requests.push(frame);
@@ -231,6 +286,15 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                             #[cfg(native_tty_mode_probe)]
                             if !writing {
                                 let (mut terminal, refs, caller, mode) = f.mode.take().unwrap();
+                                #[cfg(native_tty_signal_probe)]
+                                let result = terminal.read_signalled(
+                                    caller,
+                                    &refs.stdin,
+                                    bytes,
+                                    eligible,
+                                    &mut FixtureSignal { f: &mut f },
+                                );
+                                #[cfg(not(native_tty_signal_probe))]
                                 let result = terminal.read(caller, &refs.stdin, bytes, |out| {
                                     if count > 0 && count as usize <= out.len() {
                                         for byte in &mut out[..count as usize] {
@@ -252,6 +316,8 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                                 return match result {
                                     Ok(ReadOutcome::Bytes(n)) => n as i64,
                                     Ok(_) => 0,
+                                    Err(serial_tty::Error::Interrupted) => -4,
+                                    Err(serial_tty::Error::WouldBlock) => -11,
                                     Err(_) => -5,
                                 };
                             }
@@ -285,6 +351,11 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                             {
                                 bytes[4] = 1;
                             }
+                            #[cfg(native_tty_signal_probe)]
+                            if tty_mode::u32_at(&frame, 0) == 1 && f.force_read_eintr {
+                                bytes.fill(0);
+                                bytes[..4].copy_from_slice(&(-4i32).to_le_bytes());
+                            }
                             f.process_bytes.extend(bytes);
                         }
                         fork_streams::Outcome::Pending => {
@@ -301,7 +372,16 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                 .position(|cap| *cap == args[0])
                 .map_or(-13, |i| f.close_errors[i]),
             0x1000e if args[0] == 2 => f.restore_error,
-            0x1000e => 0,
+            0x1000e => {
+                #[cfg(native_tty_signal_probe)]
+                {
+                    // SAFETY: actual native enter supplied initialized mask output.
+                    unsafe {
+                        *(args[2] as *mut u64) = f.saved_sigmask;
+                    }
+                }
+                0
+            }
             0x10027 => 9,
             0x1006e => 7,
             0x1fffe => 0,
@@ -895,6 +975,10 @@ unsafe extern "C" {
     fn amk_test_tty_duplex_case(kind: u32) -> i32;
     #[cfg(native_tty_mode_probe)]
     fn amk_test_tty_mode_case(kind: u32) -> i32;
+    #[cfg(native_tty_signal_probe)]
+    fn amk_test_signal_idle() -> i32;
+    #[cfg(native_tty_signal_probe)]
+    fn amk_test_signal_handler(number: i32);
 }
 #[cfg(any(
     native_tty_byte_probe,
@@ -941,6 +1025,13 @@ fn actual_selected_facade_byte_probe_and_finalization() {
     ];
     FIXTURE.with(|f| {
         let mut f = f.borrow_mut();
+        #[cfg(native_tty_signal_probe)]
+        {
+            f.input.push_back(3);
+            f.input.extend(payload[..13].iter().copied());
+            f.input.extend(payload[14..].iter().copied());
+        }
+        #[cfg(not(native_tty_signal_probe))]
         f.input.extend(payload);
         #[cfg(native_tty_mode_probe)]
         f.input.extend(payload);
@@ -978,10 +1069,29 @@ fn actual_selected_facade_byte_probe_and_finalization() {
             expected.extend(payload);
             expected.extend(b"\nTTY-MODE PASS\n");
         }
+        #[cfg(native_tty_signal_probe)]
+        {
+            expected = b"TTY-SIGNAL DRAIN\nTTY-SIGNAL READY0\nTTY-SIGNAL READY1\nTTY-SIGNAL OUT1\n"
+                .to_vec();
+            let mut mapped = payload;
+            mapped[4] = 10;
+            expected.extend(&mapped[..13]);
+            expected.extend(&mapped[14..]);
+            expected.extend(b"\nTTY-SIGNAL READY2\nTTY-SIGNAL OUT2\n");
+            expected.extend(payload);
+            expected.extend(b"\nTTY-SIGNAL PASS\n");
+            assert_eq!(f.signal_deliveries, 1, "REAL_C_HANDLER_EXACTLY_ONCE");
+            assert!(
+                f.read_eligibility.iter().all(|v| *v == 1),
+                "PRE_CRITICAL_MASK_METADATA"
+            );
+        }
         assert_eq!(stdout, expected, "EXACT_BINARY_FRAME");
         assert_eq!(
             stderr,
-            if cfg!(native_tty_mode_probe) {
+            if cfg!(native_tty_signal_probe) {
+                b"TTY-SIGNAL ERR\n".as_slice()
+            } else if cfg!(native_tty_mode_probe) {
                 b"TTY-MODE ERR\n".as_slice()
             } else {
                 b"TTY-BYTE ERR\n".as_slice()
@@ -1278,6 +1388,82 @@ fn selected_mode_libc_validation_lifetime_restore_and_unknown_reply() {
             mode.cleanup(terminal, *caller, true).unwrap();
             assert_eq!(mode.cleanup_result(), Some(0));
         });
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+
+#[cfg(native_tty_signal_probe)]
+struct FixtureSignal<'a> {
+    f: &'a mut Fixture,
+}
+#[cfg(native_tty_signal_probe)]
+impl serial_tty::SignalInput for FixtureSignal<'_> {
+    fn read(&mut self, output: &mut [u8]) -> Completion {
+        assert_eq!(output.len(), 1, "NO_UNOWNED_SUFFIX");
+        match self.f.input.pop_front() {
+            Some(byte) => {
+                output[0] = byte;
+                Completion {
+                    count: 1,
+                    stop: Stop::Complete,
+                }
+            }
+            // This retained app-boundary fixture models EOF for negative
+            // consumer cases; actual owner Pending/EAGAIN is tested separately.
+            None => Completion {
+                count: 0,
+                stop: Stop::End,
+            },
+        }
+    }
+    fn post_sigint(&mut self) -> Result<u8, serial_tty::Error> {
+        let pending = self.f.pending_sigint;
+        self.f.pending_sigint = true;
+        Ok(if pending { 2 } else { 1 })
+    }
+}
+
+#[cfg(native_tty_signal_probe)]
+#[test]
+fn selected_signal_c_masked_positive_and_impossible_interrupted_reply() {
+    for kind in [105, 106, 107] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        FIXTURE.with(|f| {
+            let mut f = f.borrow_mut();
+            f.saved_sigmask = if kind == 106 { 0 } else { 2 };
+            f.input.extend(if kind == 106 {
+                b"P\x03X".as_slice()
+            } else {
+                b"\x03X".as_slice()
+            });
+            f.force_read_eintr = kind == 107;
+        });
+        assert_eq!(
+            unsafe { selected_tty_case(kind) },
+            0,
+            "ACTUAL_C_SIGNAL_MASK_PROGRESS_UNKNOWN"
+        );
+        FIXTURE.with(|f| {
+            let f = f.borrow();
+            assert_eq!(f.signal_deliveries, usize::from(kind == 106));
+            assert_eq!(
+                f.read_eligibility,
+                [u8::from(kind == 106)],
+                "SAVED_MASK_NOT_CRITICAL_MASK"
+            );
+            if kind == 105 {
+                assert!(f.pending_sigint, "MASKED_HANDLED_STAYS_PENDING");
+            }
+            if kind == 106 {
+                assert_eq!(f.input, b"X".to_vec(), "POSITIVE_COUNT_NO_SUFFIX");
+            }
+        });
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            if kind == 107 { -5 } else { 0 }
+        );
         assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
     }
 }

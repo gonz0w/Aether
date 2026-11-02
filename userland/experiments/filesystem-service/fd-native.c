@@ -94,6 +94,25 @@ void aefd_native_leave(struct aefd_native *n)
 {
     if (!n || !n->initialized || !n->active)
         return;
+#ifdef AEFD_TERMINAL_SIGNAL_BINDINGS
+    /* A reentrant real handler may change this SAME object's saved mask and
+     * active state. No outer transaction state is written after successful
+     * unmask. Reply validation and all session effects already completed. */
+    uint64_t saved_mask = n->saved_mask;
+    aefd_native_call call = n->call;
+    void *context = n->context;
+    if (n->busy) {
+        (void)close_transport(n);
+        (void)call(context, 0x100e7, 125, 0, 0, 0);
+        __builtin_trap();
+    }
+    n->active = 0;
+    if (call(context, 0x1000e, 2, (uint64_t)(uintptr_t)&saved_mask, 0, 8)) {
+        (void)close_transport(n);
+        (void)call(context, 0x100e7, 125, 0, 0, 0);
+        __builtin_trap();
+    }
+#else
     if (n->busy || n->call(n->context, 0x1000e, 2,
                            (uint64_t)(uintptr_t)&n->saved_mask, 0, 8)) {
         (void)close_transport(n);
@@ -101,6 +120,7 @@ void aefd_native_leave(struct aefd_native *n)
         __builtin_trap();
     }
     n->active = 0;
+#endif
 }
 static int64_t transfer(struct aefd_native *n, unsigned char *data,
                         size_t count, int writing)
@@ -226,6 +246,10 @@ static struct aefd_stream_result stream(struct aefd_native *n, unsigned kind,
     put(bytes, 4, n->sources[selector].reference);
     put(bytes, 8, selector);
     put(bytes, 12, (uint32_t)chunk);
+#ifdef AEFD_TERMINAL_SIGNAL_BINDINGS
+    if (op == 1)
+        bytes[16] = !(n->saved_mask & UINT64_C(2));
+#endif
     if (op == 2 && chunk)
         memcpy(bytes + 16, in, chunk);
     if (!exchange(n, bytes))
@@ -241,6 +265,10 @@ static struct aefd_stream_result stream(struct aefd_native *n, unsigned kind,
         valid = valid && !bytes[i];
     for (unsigned i = start; i < 32; ++i)
         valid = valid && !bytes[i];
+#ifdef AEFD_TERMINAL_SIGNAL_BINDINGS
+    if (result == -4 && (op != 1 || (n->saved_mask & UINT64_C(2))))
+        valid = 0;
+#endif
     if (!valid || (op == 3 && result != 0)) {
         n->retired = 1;
         return unknown;

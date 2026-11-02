@@ -11,6 +11,9 @@ pub struct Request {
     mode: Mode,
 }
 impl Request {
+    pub fn enabling_signals(self) -> bool {
+        self.op == 0x11 && self.mode.signals
+    }
     pub fn drain(self) -> bool {
         self.drain
     }
@@ -73,11 +76,15 @@ impl State {
             return Err(-5);
         }
         let mode = if op == 0x11 {
-            if u32_at(raw, 24) > 1 || raw[28] != 1 || raw[29] != 0 {
+            if u32_at(raw, 24) > if cfg!(native_tty_signal_probe) { 3 } else { 1 }
+                || raw[28] != 1
+                || raw[29] != 0
+            {
                 return Err(-95);
             }
             Mode {
-                icrnl: raw[24] != 0,
+                icrnl: raw[24] & 1 != 0,
+                signals: raw[24] & 2 != 0,
                 ..Mode::IMMEDIATE
             }
         } else {
@@ -140,7 +147,9 @@ impl State {
         out[4..8].copy_from_slice(&request.op.to_le_bytes());
         out[8..12].copy_from_slice(&16u32.to_le_bytes());
         out[16..24].copy_from_slice(&revision.to_le_bytes());
-        out[24..28].copy_from_slice(&u32::from(mode.icrnl).to_le_bytes());
+        out[24..28].copy_from_slice(
+            &(u32::from(mode.icrnl) | (u32::from(mode.signals) << 1)).to_le_bytes(),
+        );
         out[28] = mode.vmin;
         out[29] = mode.vtime;
         Ok(out)
@@ -297,7 +306,12 @@ mod tests {
         for raw in [
             frame(0x11, 0, 1, 0),
             frame(0x11, 2, 1, 0),
-            frame(0x11, 1, 2, 0),
+            frame(
+                0x11,
+                1,
+                if cfg!(native_tty_signal_probe) { 4 } else { 2 },
+                0,
+            ),
             frame(0x11, 1, 1, 2),
         ] {
             assert!(

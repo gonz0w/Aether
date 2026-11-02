@@ -100,7 +100,7 @@
     },
     "docs/NATIVE-CONSOLE.md": {
       "status": "experimental-reference",
-      "validation": "Use the pinned console commands for their existing profiles; selected native-tty-mode-probe additionally uses the current query/model/profile controls and separately reviewed fixed native mode experiment in issue122. Match exact artifacts; private qualification inputs are separate.",
+      "validation": "Use the pinned console commands for their existing profiles; selected native-tty-mode-probe additionally uses the current query/model/profile controls and separately reviewed fixed native mode experiment in issue122. Match exact artifacts; private qualification inputs are separate. The selected native-tty-signal-probe also requires exact-target preflight/post, safe mask-return delivery and the matched issue125 consumer.",
       "gap": "Independent consumer adoption, interrupt service and TTY semantics remain open."
     },
     "docs/NATIVE-BLOCK.md": {
@@ -2625,6 +2625,16 @@
       "gaps": "Native cancellation is not EINTR; host interruption coverage remains labelled. No full canonical/echo/ISIG/groups/ZLE/owner-death recovery, general control factory or R1 claim.",
       "budget_seconds": 300,
       "owner": "Aether-userland/sys-init; issue122 selected mode/drain/restore experiment"
+    },
+    {
+      "id": "UL-NATIVE-TTY-SIGNAL",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "Selected SIGINT-only exact Owner/app-generation relationship; side-effect-free preflight/current-disposition post outcomes, original pre-critical mask eligibility, full reply and idle context before checked handler at unmask, no false EINTR/replay; older001\u2013005/defaults unchanged.",
+      "command": "Use focused actual core/Owner/C/kernel authority, disposition, safe-unmask/reentry and delivery-failure controls documented by issue125. Fresh app/Owner/kernel/handler-frame fit and exact separate image/proposal review precede one fixed three-phase32-byte native exchange.",
+      "oracle": "Real handler restores mode through the sole descriptor context and read returns zero-progress EINTR once; ignored/masked/positive-progress/unknown/error cases remain truthful; checked translated then restored raw bytes and complete app/engine cleanup.",
+      "gaps": "Fixed admitted recipient is not a POSIX foreground group; no canonical queue/fullZLE/MONITOR/stop-continue/actualZsh or R1 qualification, CPU-bound asynchronous signal claim, SDK rebuild or quota increase.",
+      "budget_seconds": 300,
+      "owner": "Aether kernel/userland/sys-init; issue125 approved terminal SIGINT prerequisite"
     }
   ]
 }

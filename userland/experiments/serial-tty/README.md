@@ -322,3 +322,47 @@ normal app/engine finalization remain separate. Raw read/write/query attempts
 from the ordinary app deny. Native timing cannot establish the THRE/TEMT bit
 distinction; the separate pure kernel semantic control does. Full canonical,
 echo/ISIG/groups/ZLE, ttyname, successor recovery and R1 are outside this slice.
+
+## Selected handled SIGINT experiment
+
+[Issue125](https://github.com/gonz0w/Aether/issues/125) adds
+`AMK_NATIVE_TTY_SIGNAL_PROBE` alongside MODE, Rust `native_tty_signal_probe`
+alongside `native_tty_mode_probe`, and `AEFD_TERMINAL_SIGNAL_BINDINGS` (implying
+MODE and its existing dependencies). Pass the Rust signal cfg to the terminal
+core, startup, runtime and owner control. The same `native-mode-probe.c` and
+`amk_tty_mode_probe` callback build `tty-signal.elf`; there is no second program.
+
+006 preserves the304/128-byte layouts and offsets296/300. Its mode tuple adds
+ISIG bit1 beside ICRNL bit0, with fixed VINTR3 only while ISIG is enabled. Other
+signal characters stay disabled; VMIN1/VTIME0 and unsupported-mode errors remain.
+001–005 retain their tags and reject006. Public controls still require the
+original live MODE reference; the existing fourth alias remains cleanup-only.
+
+The Rust owner calls checked0x29003 PREFLIGHT before drain and again before an
+ISIG-enabling commit. POST independently checks the current admitted app and
+signal disposition. Client read byte16 contains only that read's pre-critical
+SIGINT-unblocked condition from the saved mask; bytes17–31 are zero. This grants
+no targeting authority and never overrides the actual kernel delivery mask.
+Input is read one byte at a time within the existing16-byte maximum. VINTR is
+consumed; ignored/masked input continues, positive progress wins over EINTR,
+and only handled POST1/2 plus eligibility permits zero-byte interruption.
+Unknown outcomes poison the exchange without replay. Deadlines and quotas stay
+fixed. Confirmed-stop local baseline restoration retains its original authority.
+
+The C adapter validates the full reply and finishes session effects before
+making native busy/active idle. It restores a stable local saved mask through
+the checked native delivery path, allowing the real handler to use the same FD
+context. No outer transaction state is overwritten after reentry. Failed unmask
+uses existing exit125 containment; it cannot publish a successful EINTR. Host
+checks substitute only the raw signal installation/delivery boundary; the native
+witness must execute pinned musl sigaction/sigprocmask, handler/frame/sigreturn
+and the checked kernel relationship. Host success alone does not qualify those.
+
+The selected consumer enables ICRNL|ISIG after installing its real SIGINT handler.
+DRAIN then READY0 admits only03. Its handler restores saved attributes through
+FD10/TCSANOW; handler count, restoration result, unchanged read sentinel and real
+libc EINTR are checked before READY1. READY1 admits the fixed15-byte translated
+phase; saved-mode restoration precedes READY2 and the final16-byte raw phase.
+OUT1/OUT2, separate ERR/PASS, closes and normal finalization retain their exact
+issue125 markers. No handler output, native retry, process-group/job-control,
+canonical/ZLE or full Zsh qualification is implied.

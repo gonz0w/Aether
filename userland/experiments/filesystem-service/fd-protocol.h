@@ -46,6 +46,15 @@
 #endif
 /* Closed descriptor qualification profile; transport operations stay unchanged.
  */
+#if defined(AMK_NATIVE_TTY_SIGNAL_PROBE) &&                                    \
+    !defined(AEFD_TERMINAL_SIGNAL_BINDINGS)
+#define AEFD_TERMINAL_SIGNAL_BINDINGS
+#endif
+#ifdef AEFD_TERMINAL_SIGNAL_BINDINGS
+#ifndef AEFD_TERMINAL_MODE_BINDINGS
+#define AEFD_TERMINAL_MODE_BINDINGS
+#endif
+#endif
 #if defined(AMK_NATIVE_TTY_MODE_PROBE) && !defined(AEFD_TERMINAL_MODE_BINDINGS)
 #define AEFD_TERMINAL_MODE_BINDINGS
 #endif
@@ -93,6 +102,15 @@
 #define AEFD_MAP_MAGIC "AEFDT005"
 #define AEFD_STARTUP_MAGIC "AEFDB005"
 #define AEFD_MODE_CONTROL UINT32_C(0x7d000001)
+#endif
+#ifdef AEFD_TERMINAL_SIGNAL_BINDINGS
+#undef AEFD_MAP_MAGIC
+#undef AEFD_STARTUP_MAGIC
+#define AEFD_MAP_MAGIC "AEFDT006"
+#define AEFD_STARTUP_MAGIC "AEFDB006"
+#define AEFD_MODE_BITS 3U
+#else
+#define AEFD_MODE_BITS 1U
 #endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U

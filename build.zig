@@ -232,6 +232,10 @@ pub fn build(b: *std.Build) void {
         native_fs_application_profile or native_mktemp_reader or af09_diagnostic or service_lifetime))
         @panic("TTY mode probe requires its private BSP ABI31 ordinary-app filesystem owner closure");
     options.addOption(bool, "native_tty_mode_probe", native_tty_mode_probe);
+    const native_tty_signal_probe = b.option(bool, "native-tty-signal-probe", "Private MODE owner-to-app SIGINT and safe unmask delivery") orelse false;
+    if (native_tty_signal_probe and (!native_tty_mode_probe or !native_signal_actions or !native_signal_public or !native_signal_mask_delivery))
+        @panic("TTY signal probe requires its MODE profile and checked public action/mask-delivery closure");
+    options.addOption(bool, "native_tty_signal_probe", native_tty_signal_probe);
 
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));

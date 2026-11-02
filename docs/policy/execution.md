@@ -74,6 +74,43 @@ milestone direction covers separately reviewed finite QEMU candidates and normal
 GitHub delivery. No quota, alias capacity, raw PIO grant, service placement,
 canonical/ISIG/group support, native EINTR, full Zsh or R1 acceptance follows.
 
+## Selected terminal SIGINT and safe read interruption —2026-11-01
+
+Cam directly approved the reviewed [issue124 design](https://github.com/gonz0w/Aether/issues/124#issuecomment-6567425677):
+“Approve scoped SIGINT design (Recommended)”. Proposal02 identity is
+`c3437226baf99ae4d5bfaaa60ce3eb1a964bc49ac95db6b2de6715b718428912`;
+separate peer review is
+`54ff128f561a6e4f99616360c9e5efad2004e99f863cade476103579a03514ff`.
+This selects one default-off SIGINT-only entry at int81 `0x29003`, bound to the
+existing Rust TTY Owner generation and its exact admitted single-thread app
+handle/generation. Existing limits and default profiles remain unchanged.
+Do not request this same scoped design decision again.
+
+RDI is that admitted app handle, RSI is SIGINT2, RDX is PREFLIGHT0 or POST1,
+and R10/R8/R9 are zero. Validate actual relationship, caller/target generations,
+admission/liveness and current disposition independently on each call.
+PREFLIGHT has no effects: ignored0, supported handler1, default EOPNOTSUPP.
+POST returns ignored0/no effect, newly pending1, or coalesced2; outcomes do not
+claim delivery. Negative returns change no pending/action/execution state.
+A preflight observation is no lease. No PID/group lookup, arbitrary signal,
+handler pointers, general kill or successor authority is added.
+
+Rust owns VINTR0x03 and read policy. A selected typed read carries only its own
+pre-critical saved-mask eligibility, granting no targeting power. Preserve
+positive progress, masked/ignored behavior and current absolute deadlines;
+unknown effects cannot be replayed. Before libc exposes a known zero-byte EINTR,
+validate the full reply, make the sole context idle, restore a stable local
+saved mask, and deliver the actual checked handler at that safe unmask boundary.
+Selected delivery failure returns EIO with the pre-mask-operation mask restored
+and the pending occurrence uncommitted; the runtime takes its known containment
+exit125. Selected self-post/poll0x29002 rejects with EACCES; older profiles retain
+their existing entry behavior. Retain post-stop local MODE restoration.
+
+Standing milestone direction covers focused implementation, separately reviewed
+finite QEMU candidates and routine GitHub delivery. No general process groups,
+stop/continue, canonical queue, full ZLE/Zsh, service relocation or quota increase
+is selected. The fixed recipient is not a POSIX foreground process group.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

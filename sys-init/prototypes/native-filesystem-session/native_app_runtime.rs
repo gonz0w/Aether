@@ -532,6 +532,25 @@ impl<K: AppControl> Runtime<K> {
             self.reply = self.mode_request()?;
         }
         if !control {
+            #[cfg(native_tty_signal_probe)]
+            let eligible = {
+                if u32_at(&self.request, 0) == 1 {
+                    if self.request[16] > 1 || self.request[17..] != [0; 15] {
+                        return Err(-22);
+                    }
+                    self.request[16] != 0
+                } else {
+                    false
+                }
+            };
+            #[cfg(native_tty_signal_probe)]
+            let mut frame = self.request;
+            #[cfg(native_tty_signal_probe)]
+            if u32_at(&frame, 0) == 1 {
+                frame[16] = 0;
+            }
+            #[cfg(not(native_tty_signal_probe))]
+            let frame = self.request;
             loop {
                 let kernel = &mut self.kernel;
                 let bound = &mut self.bound;
@@ -557,63 +576,75 @@ impl<K: AppControl> Runtime<K> {
                     any(native_tty_duplex_probe, native_tty_mode_probe)
                 ))]
                 let mut unknown = false;
-                let reply =
-                    self.streams
-                        .request(Caller::Parent, &self.request, |writing, bytes| {
-                            if let Err(error) = bound.before(kernel) {
-                                return error;
-                            }
-                            #[cfg(not(any(
-                                native_tty_byte_probe,
-                                native_tty_descriptor_probe,
-                                any(native_tty_duplex_probe, native_tty_mode_probe)
-                            )))]
-                            {
-                                kernel.serial(writing, bytes)
-                            }
-                            #[cfg(any(
-                                native_tty_byte_probe,
-                                native_tty_descriptor_probe,
-                                any(native_tty_duplex_probe, native_tty_mode_probe)
-                            ))]
-                            {
-                                let result = if writing {
-                                    terminal.write(*caller, &reference, bytes, |role, input| {
-                                        debug_assert_eq!(
-                                            role,
-                                            if u32_at(&self.request, 8) == 1 {
-                                                serial_tty::Role::Stdout
-                                            } else {
-                                                serial_tty::Role::Stderr
-                                            }
-                                        );
-                                        let mut scratch = [0; 16];
-                                        scratch[..input.len()].copy_from_slice(input);
-                                        completion(
-                                            kernel.serial(true, &mut scratch[..input.len()]),
-                                            input.len(),
-                                        )
-                                    })
-                                } else {
-                                    terminal
-                                        .read(*caller, &reference, bytes, |output| {
-                                            completion(kernel.serial(false, output), output.len())
-                                        })
-                                        .map(|outcome| match outcome {
-                                            ReadOutcome::Bytes(n) => n,
-                                            ReadOutcome::EmptyRequest | ReadOutcome::Eof => 0,
-                                        })
-                                };
-                                match result {
-                                    Ok(count) => count as i64,
-                                    Err(TtyError::UnknownCompletion) => {
-                                        unknown = true;
-                                        -5
-                                    }
-                                    Err(error) => tty_errno(error),
+                let reply = self
+                    .streams
+                    .request(Caller::Parent, &frame, |writing, bytes| {
+                        if let Err(error) = bound.before(kernel) {
+                            return error;
+                        }
+                        #[cfg(not(any(
+                            native_tty_byte_probe,
+                            native_tty_descriptor_probe,
+                            any(native_tty_duplex_probe, native_tty_mode_probe)
+                        )))]
+                        {
+                            kernel.serial(writing, bytes)
+                        }
+                        #[cfg(any(
+                            native_tty_byte_probe,
+                            native_tty_descriptor_probe,
+                            any(native_tty_duplex_probe, native_tty_mode_probe)
+                        ))]
+                        {
+                            let result = if writing {
+                                terminal.write(*caller, &reference, bytes, |role, input| {
+                                    debug_assert_eq!(
+                                        role,
+                                        if u32_at(&self.request, 8) == 1 {
+                                            serial_tty::Role::Stdout
+                                        } else {
+                                            serial_tty::Role::Stderr
+                                        }
+                                    );
+                                    let mut scratch = [0; 16];
+                                    scratch[..input.len()].copy_from_slice(input);
+                                    completion(
+                                        kernel.serial(true, &mut scratch[..input.len()]),
+                                        input.len(),
+                                    )
+                                })
+                            } else {
+                                #[cfg(native_tty_signal_probe)]
+                                let result = terminal.read_signalled(
+                                    *caller,
+                                    &reference,
+                                    bytes,
+                                    eligible,
+                                    &mut SignalBackend {
+                                        kernel,
+                                        bound,
+                                        target: self.app,
+                                    },
+                                );
+                                #[cfg(not(native_tty_signal_probe))]
+                                let result = terminal.read(*caller, &reference, bytes, |output| {
+                                    completion(kernel.serial(false, output), output.len())
+                                });
+                                result.map(|outcome| match outcome {
+                                    ReadOutcome::Bytes(n) => n,
+                                    ReadOutcome::EmptyRequest | ReadOutcome::Eof => 0,
+                                })
+                            };
+                            match result {
+                                Ok(count) => count as i64,
+                                Err(TtyError::UnknownCompletion) => {
+                                    unknown = true;
+                                    -5
                                 }
+                                Err(error) => tty_errno(error),
                             }
-                        });
+                        }
+                    });
                 #[cfg(any(
                     native_tty_byte_probe,
                     native_tty_descriptor_probe,
@@ -716,6 +747,15 @@ impl<K: AppControl> Runtime<K> {
             Ok(request) => request,
             Err(e) => return Ok(tty_mode::error(op, e)),
         };
+        #[cfg(native_tty_signal_probe)]
+        if request.enabling_signals() {
+            self.bound.before(&mut self.kernel)?;
+            match self.kernel.terminal_sigint(self.app, false) {
+                0 | 1 => {}
+                e if e < 0 => return Ok(tty_mode::error(op, e)),
+                _ => return Err(-5),
+            }
+        }
         if request.drain()
             && let Err(e) = self.drain()
         {
@@ -726,6 +766,17 @@ impl<K: AppControl> Runtime<K> {
         }
         self.mode_peer_live()?;
         self.bound.check(&mut self.kernel)?;
+        #[cfg(native_tty_signal_probe)]
+        if request.enabling_signals() {
+            self.bound.spend()?;
+            match self.kernel.terminal_sigint(self.app, false) {
+                0 | 1 => {}
+                e if e < 0 => return Ok(tty_mode::error(op, e)),
+                _ => return Err(-5),
+            }
+            // The kernel preflight is an observation, never a deadline lease.
+            self.bound.check(&mut self.kernel)?;
+        }
         let (terminal, refs, caller) = self.tty.as_mut().ok_or(-9)?;
         Ok(
             match self
@@ -960,6 +1011,33 @@ fn zero(value: i64) -> Result<(), i64> {
 }
 fn u32_at(frame: &[u8; 32], at: usize) -> u32 {
     u32::from_le_bytes(frame[at..at + 4].try_into().unwrap())
+}
+#[cfg(native_tty_signal_probe)]
+struct SignalBackend<'a, K> {
+    kernel: &'a mut K,
+    bound: &'a mut Bound,
+    target: u64,
+}
+#[cfg(native_tty_signal_probe)]
+impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
+    fn read(&mut self, output: &mut [u8]) -> serial_tty::Completion {
+        if self.bound.before(self.kernel).is_err() {
+            return serial_tty::Completion {
+                count: 0,
+                stop: serial_tty::Stop::Unknown,
+            };
+        }
+        completion(self.kernel.serial(false, output), output.len())
+    }
+    fn post_sigint(&mut self) -> Result<u8, TtyError> {
+        self.bound
+            .before(self.kernel)
+            .map_err(|_| TtyError::UnknownCompletion)?;
+        match self.kernel.terminal_sigint(self.target, true) {
+            result @ 0..=2 => Ok(result as u8),
+            _ => Err(TtyError::UnknownCompletion),
+        }
+    }
 }
 fn output_header(frame: &[u8; 32]) -> bool {
     (matches!(u32_at(frame, 0), 2 | 3)

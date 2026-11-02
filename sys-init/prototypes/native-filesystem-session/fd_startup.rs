@@ -10,6 +10,7 @@ use abi29_dispatch_core::startup::{Identity, greeting};
     fs_file16
 ))]
 compile_error!("terminal bindings cannot select file16 startup");
+pub const SIGNAL_BINDINGS: bool = cfg!(native_tty_signal_probe);
 pub const MODE_BINDINGS: bool = cfg!(native_tty_mode_probe);
 pub const DUPLEX_BINDINGS: bool = cfg!(any(native_tty_duplex_probe, native_tty_mode_probe));
 pub const TERMINAL_BINDINGS: bool = cfg!(any(
@@ -19,7 +20,9 @@ pub const TERMINAL_BINDINGS: bool = cfg!(any(
 pub const BYTES: usize = 304;
 pub const FILE_SLOTS_16: bool = cfg!(fs_file16);
 pub const FIRST_FILE_FD: u8 = if FILE_SLOTS_16 { 0 } else { 3 };
-pub const MAGIC: &[u8; 8] = if MODE_BINDINGS {
+pub const MAGIC: &[u8; 8] = if SIGNAL_BINDINGS {
+    b"AEFDB006"
+} else if MODE_BINDINGS {
     b"AEFDB005"
 } else if DUPLEX_BINDINGS {
     b"AEFDB004"
@@ -30,7 +33,9 @@ pub const MAGIC: &[u8; 8] = if MODE_BINDINGS {
 } else {
     b"AEFDB001"
 };
-pub const MAP_MAGIC: &[u8; 8] = if MODE_BINDINGS {
+pub const MAP_MAGIC: &[u8; 8] = if SIGNAL_BINDINGS {
+    b"AEFDT006"
+} else if MODE_BINDINGS {
     b"AEFDT005"
 } else if DUPLEX_BINDINGS {
     b"AEFDT004"
