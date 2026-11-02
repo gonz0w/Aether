@@ -22,6 +22,13 @@ cleanup requirements remain scoped to their contracts. The complete host aggrega
 onboarding's source-integrity/pure-Zig CI is no substitute. A failed or unavailable required gate stays
 blocked coverage. No new guest disposition or expanded resource approval follows
 from this policy or from hosted CI.
+For issue137 only, Cam approved the
+[scoped Zsh checkpoint delivery exception](execution.md#scoped-zsh-checkpoint-delivery-2026-11-02)
+to the full-root major-handoff prerequisite. The failed/incomplete gate and
+unverified descendant/pipe cleanup remain open coverage in
+[issue141](https://github.com/gonz0w/Aether/issues/141); no full-host pass or
+future assembled-system/release exception is implied.
+
 ## Complete host gate budget —2026-10-26
 
 Owner decision, 2026-10-26: the complete unfiltered root `zig build test` / `AT-HOST` gate
