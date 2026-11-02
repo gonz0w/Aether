@@ -24,3 +24,11 @@ all existing boot/emergency markers and upstream terminal bytes. This scoped
 exception adds no renderer/theme conformance claim. Revisit before installed
 presentation or release qualification. Private image preparation uses stdout JSON
 and0/1 results, with no guest launch; native execution remains explicit.
+
+The existing issue137 `native-zsh-terminfo` selection omits routine successful
+channel-wait park/wake and clock park/normal-expiration diagnostics to preserve
+space for actual terminal output within the unchanged64KiB capture. Wait state,
+return values and scheduling remain unchanged. Nonzero channel completions,
+emergency/lifecycle/final markers and application bytes remain exact; other
+profiles retain their traces. This is a scoped diagnostic-presentation change,
+not readiness, renderer conformance or a resource exception.

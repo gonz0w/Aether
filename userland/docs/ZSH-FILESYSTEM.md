@@ -88,6 +88,21 @@ Zsh explicitly requested restoration. The matched expected-six engine normal
 exit and export checks supply mutation completion evidence; this row invents no
 mutation count. Default providers and old machine records remain unchanged.
 
+The existing `native-zsh-terminfo` selection omits routine successful STORAGE
+WAIT park/wake rows, CLOCK park rows and ordinary CLOCK deadline-timeout rows.
+Normal deadline expiration still returns `-110` and its elapsed value; registration,
+completion and scheduling are unchanged. Nonzero channel-wait diagnostics and all
+fault, panic, admission, terminal, cleanup, Owner, halt and PASS rows remain, as do
+raw application terminal bytes. Other profiles keep their exact existing traces.
+The64KiB raw UART ceiling is unchanged; quiet routine output is not completion or
+hang evidence. The focused source checks and actual-emission fixture are in
+`tests/test_native_zsh_terminfo_trace.py`; they do not launch a guest. Run the
+source checks from the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_zsh_terminfo_trace.py -v
+```
+
 ## Authority and lifecycle
 
 The existing Rust Owner retains the sole AF09 namespace endpoints and HOME15/root3

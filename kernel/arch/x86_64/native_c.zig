@@ -702,7 +702,7 @@ fn monotonicNow() ?u64 {
 fn completeWait(context: *Execution, slot: usize, key: usize, monotonic: ?u64) void {
     const clock_wait = context.wait.monotonic;
     if (context.wait.completeAt(key, total_ticks, monotonic)) |done| {
-        if (clock_wait and done.status == -110) {
+        if (clock_wait and done.status == -110 and !(@hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo)) {
             var note: [160]u8 = undefined;
             serial.write(std.fmt.bufPrint(&note, "NATIVE CLOCK timeout task={d} now={d} elapsed={d}\n", .{ slot, monotonic.?, done.elapsed }) catch unreachable);
         }
@@ -1654,8 +1654,10 @@ fn threadOperation(f: *const Frame) *const Frame {
                 result(s, status);
                 s.context().frame.rdx = 0;
                 if (status == 0) {
-                    var note: [160]u8 = undefined;
-                    serial.write(std.fmt.bufPrint(&note, "NATIVE CLOCK park task={d} start={d} deadline={d}\n", .{ active, now, f.r10 }) catch unreachable);
+                    if (!(@hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo)) {
+                        var note: [160]u8 = undefined;
+                        serial.write(std.fmt.bufPrint(&note, "NATIVE CLOCK park task={d} start={d} deadline={d}\n", .{ active, now, f.r10 }) catch unreachable);
+                    }
                     if (@import("build_options").native_clock_skip_wait) {
                         s.context().wait = .{};
                         result(s, -110);
@@ -3713,6 +3715,7 @@ fn storagePrimaryWaiting(s: *const State) bool {
 }
 fn traceStorageChannelWait(owner: usize, phase: []const u8, status: i64) void {
     if (!@import("build_options").native_service_channel_wait) return;
+    if ((@hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo) and status == 0) return;
     // The traced ABI31 console shares UART with partial shell output. Keep the
     // machine row on its own line; old profiles retain their exact output.
     if (combined_owner_stack) serial.write("\n");
