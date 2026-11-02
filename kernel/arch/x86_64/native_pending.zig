@@ -128,6 +128,22 @@ pub const State = struct {
         if (!discarded(signal, self.records[signal - 1].action())) self.pending |= selected;
     }
 
+    // Selected terminal SIGINT only. Caller validates the exact admitted
+    // relationship under serialization before inspecting or publishing state.
+    // Preflight is an observation, never a lease across a later disposition change.
+    pub fn ttySigint(self: *State, posting: bool) error{NotSupported}!i64 {
+        switch (self.records[1].action()) {
+            .default => return error.NotSupported,
+            .ignore => return 0,
+            .handler => {
+                if (!posting) return 1;
+                if (self.pending & 2 != 0) return 2;
+                self.pending |= 2;
+                return 1;
+            },
+        }
+    }
+
     // No dequeue on selection: a failed mapping/copy check must not lose a post.
     pub fn peek(self: *const State, mask: u64) ?Selection {
         const eligible = self.pending & ~@as(u32, @truncate(mask));
@@ -585,4 +601,43 @@ test "readiness interruption excludes masks and retained ignored occurrences wit
     try std.testing.expectEqualDeep(pending, s);
     _ = try s.install(10, .ignore);
     try std.testing.expect(!s.interrupts(0));
+}
+
+test "terminal SIGINT preflight is effect free and post classifies current disposition" {
+    var state: State = .{};
+    const initial = state;
+    try std.testing.expectError(error.NotSupported, state.ttySigint(false));
+    try std.testing.expectError(error.NotSupported, state.ttySigint(true));
+    try std.testing.expectEqualDeep(initial, state);
+    _ = try state.install(2, .ignore);
+    const ignored = state;
+    try std.testing.expectEqual(@as(i64, 0), try state.ttySigint(false));
+    try std.testing.expectEqual(@as(i64, 0), try state.ttySigint(true));
+    try std.testing.expectEqualDeep(ignored, state);
+    _ = try state.install(2, handler);
+    try state.post(10);
+    const installed = state;
+    try std.testing.expectEqual(@as(i64, 1), try state.ttySigint(false));
+    try std.testing.expectEqualDeep(installed, state);
+    try std.testing.expectEqual(@as(i64, 1), try state.ttySigint(true));
+    const pending = state;
+    try std.testing.expectEqual(@as(i64, 2), try state.ttySigint(true));
+    try std.testing.expectEqualDeep(pending, state);
+    try std.testing.expectEqual(@as(u32, 2 | 512), state.pending);
+    try std.testing.expect(state.peek(2).?.signal == 10);
+    _ = try state.install(2, .ignore);
+    const changed = state;
+    try std.testing.expectEqual(@as(i64, 0), try state.ttySigint(true));
+    try std.testing.expectEqualDeep(changed, state);
+    _ = try state.install(2, handler);
+    try std.testing.expectEqual(@as(i64, 1), try state.ttySigint(false));
+    _ = try state.install(2, .default);
+    const unsupported = state;
+    try std.testing.expectError(error.NotSupported, state.ttySigint(true));
+    try std.testing.expectEqualDeep(unsupported, state);
+    var replacement = handler;
+    replacement.handler.entry += 16;
+    _ = try state.install(2, replacement);
+    try std.testing.expectEqual(@as(i64, 1), try state.ttySigint(true));
+    try std.testing.expectEqualDeep(replacement, state.peek(0).?.action);
 }

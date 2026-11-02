@@ -307,7 +307,13 @@ fn unsupported_modes_and_actions_preserve_state_and_snapshot() {
         match index {
             0 => invalid.mode.canonical = true,
             1 => invalid.mode.echo = true,
-            2 => invalid.mode.signals = true,
+            2 => {
+                if cfg!(native_tty_signal_probe) {
+                    invalid.mode.canonical = true;
+                } else {
+                    invalid.mode.signals = true;
+                }
+            }
             3 => invalid.mode.igncr = true,
             4 => invalid.mode.inlcr = true,
             5 => invalid.mode.opost = true,
@@ -547,4 +553,244 @@ fn data_reference_cannot_query_or_snapshot_mode() {
         "EXPLICIT_CORE_MODE_GRANT"
     );
     assert!(matches!(t.snapshot(CALLER, &b.stdin), Err(Error::Denied)));
+}
+
+#[cfg(native_tty_signal_probe)]
+#[test]
+fn selected_signal_mode_admits_only_the_limited_profile() {
+    let caller = Caller {
+        identity: 7,
+        generation: 1,
+    };
+    let mode = Mode {
+        signals: true,
+        icrnl: true,
+        ..Mode::IMMEDIATE
+    };
+    assert!(
+        Terminal::admit(
+            41,
+            caller,
+            [
+                Rights::READ.union(Rights::MODE),
+                Rights::WRITE,
+                Rights::WRITE
+            ],
+            mode
+        )
+        .is_ok(),
+        "SELECTED_LIMITED_ISIG_PROFILE"
+    );
+}
+
+#[cfg(native_tty_signal_probe)]
+mod signal_cases {
+    use super::*;
+    use std::{collections::VecDeque, vec};
+    struct Input {
+        bytes: VecDeque<u8>,
+        posts: VecDeque<Result<u8, Error>>,
+        count: usize,
+    }
+    impl SignalInput for Input {
+        fn read(&mut self, out: &mut [u8]) -> Completion {
+            assert_eq!(out.len(), 1, "ONE_BYTE_NO_SUFFIX");
+            match self.bytes.pop_front() {
+                Some(b) => {
+                    out[0] = b;
+                    Completion {
+                        count: 1,
+                        stop: Stop::Complete,
+                    }
+                }
+                None => Completion {
+                    count: 0,
+                    stop: Stop::WouldBlock,
+                },
+            }
+        }
+        fn post_sigint(&mut self) -> Result<u8, Error> {
+            self.count += 1;
+            self.posts.pop_front().unwrap()
+        }
+    }
+    #[test]
+    fn handled_ignored_masked_positive_and_unknown_outcomes() {
+        for (eligible, post, data, expected, remaining) in [
+            (true, 1, vec![3, b'X'], Err(Error::Interrupted), vec![b'X']),
+            (true, 2, vec![3, b'X'], Err(Error::Interrupted), vec![b'X']),
+            (true, 0, vec![3, b'X'], Ok(ReadOutcome::Bytes(1)), vec![]),
+            (false, 1, vec![3, b'X'], Ok(ReadOutcome::Bytes(1)), vec![]),
+            (
+                true,
+                1,
+                vec![b'P', 3, b'X'],
+                Ok(ReadOutcome::Bytes(1)),
+                vec![b'X'],
+            ),
+        ] {
+            let (mut t, refs) = admitted();
+            let mut saved = t.snapshot(CALLER, &refs.stdin).unwrap();
+            let mut mode = request(true);
+            mode.mode.signals = true;
+            t.apply_now(CALLER, &refs.stdin, &mut saved, mode).unwrap();
+            let mut input = Input {
+                bytes: data.into(),
+                posts: vec![Ok(post)].into(),
+                count: 0,
+            };
+            let mut out = [0xa5; 4];
+            assert_eq!(
+                t.read_signalled(CALLER, &refs.stdin, &mut out, eligible, &mut input),
+                expected,
+                "SIGNAL_ELIGIBILITY_AND_PROGRESS"
+            );
+            assert_eq!(input.count, 1);
+            assert_eq!(input.bytes, remaining);
+            if expected == Err(Error::Interrupted) {
+                assert_eq!(out, [0xa5; 4], "INTERRUPTED_SENTINEL_UNTOUCHED");
+            } else {
+                assert_eq!(out[0], if post == 0 || !eligible { b'X' } else { b'P' });
+            }
+        }
+        for result in [
+            Ok(3),
+            Err(Error::Backend(-95)),
+            Err(Error::UnknownCompletion),
+        ] {
+            let (mut t, refs) = admitted();
+            let mut saved = t.snapshot(CALLER, &refs.stdin).unwrap();
+            let mut mode = request(false);
+            mode.mode.signals = true;
+            t.apply_now(CALLER, &refs.stdin, &mut saved, mode).unwrap();
+            let mut input = Input {
+                bytes: vec![3, b'X'].into(),
+                posts: vec![result].into(),
+                count: 0,
+            };
+            let mut out = [0xa5; 2];
+            assert_eq!(
+                t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+                Err(Error::UnknownCompletion),
+                "UNKNOWN_POST_CONTAINS"
+            );
+            assert_eq!(
+                t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+                Err(Error::UnknownCompletion)
+            );
+            assert_eq!(input.count, 1, "NO_POST_REPLAY");
+            assert_eq!(out, [0xa5; 2]);
+            assert_eq!(input.bytes, vec![b'X']);
+        }
+    }
+}
+
+#[cfg(native_tty_signal_probe)]
+mod signal_review_cases {
+    use super::*;
+    use std::collections::VecDeque;
+    struct Input {
+        results: VecDeque<Completion>,
+        calls: usize,
+    }
+    impl SignalInput for Input {
+        fn read(&mut self, out: &mut [u8]) -> Completion {
+            self.calls += 1;
+            let result = self
+                .results
+                .pop_front()
+                .expect("NO_SECOND_BACKEND_AFTER_FINAL_PREFIX");
+            if result.count == 1 {
+                out[0] = b'P';
+            }
+            result
+        }
+        fn post_sigint(&mut self) -> Result<u8, Error> {
+            panic!("NO_SIGNAL_BYTE")
+        }
+    }
+    #[test]
+    fn known_backend_error_preserves_confirmed_prefix_unknown_stays_closed() {
+        for stop in [Stop::Error(-5), Stop::Unknown] {
+            let (mut t, refs) = admitted();
+            let mut out = [0xa5; 3];
+            let mut input = Input {
+                results: [
+                    Completion {
+                        count: 1,
+                        stop: Stop::Complete,
+                    },
+                    Completion { count: 0, stop },
+                ]
+                .into(),
+                calls: 0,
+            };
+            assert_eq!(
+                t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+                if stop == Stop::Unknown {
+                    Err(Error::UnknownCompletion)
+                } else {
+                    Ok(ReadOutcome::Bytes(1))
+                },
+                "CONFIRMED_PREFIX_BEFORE_KNOWN_ERROR"
+            );
+            assert_eq!(
+                out,
+                if stop == Stop::Unknown {
+                    [0xa5; 3]
+                } else {
+                    [b'P', 0xa5, 0xa5]
+                }
+            );
+            assert_eq!(input.calls, 2);
+            if stop == Stop::Unknown {
+                assert_eq!(
+                    t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+                    Err(Error::UnknownCompletion)
+                );
+                assert_eq!(input.calls, 2, "UNKNOWN_NO_REPLAY");
+            }
+        }
+        let (mut t, refs) = admitted();
+        let mut out = [0xa5; 3];
+        let mut input = Input {
+            results: [Completion {
+                count: 0,
+                stop: Stop::Error(-5),
+            }]
+            .into(),
+            calls: 0,
+        };
+        assert_eq!(
+            t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+            Err(Error::Backend(-5))
+        );
+        assert_eq!(out, [0xa5; 3]);
+        assert_eq!(input.calls, 1);
+    }
+    #[test]
+    fn final_prefix_stops_backend_and_next_read_is_eof() {
+        let (mut t, refs) = admitted();
+        let mut out = [0xa5; 3];
+        let mut input = Input {
+            results: [Completion {
+                count: 1,
+                stop: Stop::End,
+            }]
+            .into(),
+            calls: 0,
+        };
+        assert_eq!(
+            t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+            Ok(ReadOutcome::Bytes(1)),
+            "CERTIFIED_FINAL_PREFIX"
+        );
+        assert_eq!(out, [b'P', 0xa5, 0xa5]);
+        assert_eq!(input.calls, 1);
+        assert_eq!(
+            t.read_signalled(CALLER, &refs.stdin, &mut out, true, &mut input),
+            Ok(ReadOutcome::Eof)
+        );
+        assert_eq!(input.calls, 1, "EOF_NO_BACKEND_REENTRY");
+    }
 }

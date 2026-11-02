@@ -83,7 +83,7 @@ impl Mode {
     fn supported(self) -> bool {
         !self.canonical
             && !self.echo
-            && !self.signals
+            && (!self.signals || cfg!(native_tty_signal_probe))
             && !self.igncr
             && !self.inlcr
             && !self.opost
@@ -124,6 +124,12 @@ pub enum Stop {
 pub struct Completion {
     pub count: usize,
     pub stop: Stop,
+}
+/// Selected owner input; target authority is checked outside this policy core.
+#[cfg(native_tty_signal_probe)]
+pub trait SignalInput {
+    fn read(&mut self, output: &mut [u8]) -> Completion;
+    fn post_sigint(&mut self) -> Result<u8, Error>;
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReadOutcome {
@@ -332,6 +338,90 @@ impl Terminal {
                 *value
             };
         }
+        Ok(if count == 0 {
+            ReadOutcome::Eof
+        } else {
+            ReadOutcome::Bytes(count)
+        })
+    }
+    /// One physical byte at a time: VINTR never owns a suffix. Positive data
+    /// progress wins over interruption; unknown post effects are never replayed.
+    #[cfg(native_tty_signal_probe)]
+    pub fn read_signalled(
+        &mut self,
+        caller: Caller,
+        reference: &Reference,
+        output: &mut [u8],
+        eligible: bool,
+        input: &mut impl SignalInput,
+    ) -> Result<ReadOutcome, Error> {
+        self.validate(caller, reference, Rights::READ)?;
+        if self.failed {
+            return Err(Error::UnknownCompletion);
+        }
+        if output.is_empty() {
+            return Ok(ReadOutcome::EmptyRequest);
+        }
+        if self.input_ended {
+            return Ok(ReadOutcome::Eof);
+        }
+        let mut scratch = [0; TRANSFER];
+        let mut count = 0;
+        for _ in 0..TRANSFER {
+            let mut byte = [0];
+            let done = input.read(&mut byte);
+            if done.stop == Stop::Interrupted {
+                self.failed = true;
+                return Err(Error::UnknownCompletion);
+            }
+            let n = match self.completion(done, 1) {
+                Ok(n) => n,
+                Err(Error::WouldBlock | Error::Backend(_)) if count != 0 => break,
+                Err(Error::WouldBlock) if self.disconnected => {
+                    self.input_ended = true;
+                    break;
+                }
+                Err(e) => return Err(e),
+            };
+            if done.stop == Stop::End {
+                self.input_ended = true;
+            }
+            if n == 0 {
+                break;
+            }
+            if self.mode.signals && byte[0] == 3 {
+                let outcome = match input.post_sigint() {
+                    Ok(outcome @ 0..=2) => outcome,
+                    _ => {
+                        self.failed = true;
+                        return Err(Error::UnknownCompletion);
+                    }
+                };
+                if outcome != 0 && eligible {
+                    if count == 0 {
+                        return Err(Error::Interrupted);
+                    }
+                    break;
+                }
+                if self.input_ended {
+                    break;
+                }
+                continue;
+            }
+            scratch[count] = if self.mode.icrnl && byte[0] == b'\r' {
+                b'\n'
+            } else {
+                byte[0]
+            };
+            count += 1;
+            if self.input_ended || count == output.len().min(TRANSFER) {
+                break;
+            }
+        }
+        if count == 0 && !self.input_ended {
+            return Err(Error::WouldBlock);
+        }
+        output[..count].copy_from_slice(&scratch[..count]);
         Ok(if count == 0 {
             ReadOutcome::Eof
         } else {

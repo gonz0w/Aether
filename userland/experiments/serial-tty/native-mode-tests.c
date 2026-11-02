@@ -14,15 +14,74 @@ int aefd_test_tcsetattr(int, int, const struct termios *);
 long amk_tty_test_trap(unsigned long op, unsigned long cap, unsigned long a,
                        unsigned long b, unsigned long c)
 {
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+    if (op == 0x29003 && cap == 0 && a == 2 && b <= 1 && !c) {
+        ++traps;
+        return -EACCES;
+    }
+#endif
     if ((op != 0x26000 && op != 0x26001 && op != 0x26004) || cap != 0xf001 ||
         a || b || c)
         return -EINVAL;
     ++traps;
     return -EACCES;
 }
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+#include <signal.h>
+extern void amk_test_signal_handler(int);
+int amk_test_signal_configure(int);
+int amk_test_signal_count(void);
+int amk_test_signal_restore(void);
+int amk_test_sigaction(int number, const struct sigaction *action,
+                       struct sigaction *old)
+{
+    if (number != SIGINT || !action || old || action->sa_flags ||
+        !action->sa_handler)
+        return -1;
+    return 0;
+}
+int amk_test_sigprocmask(int how, const sigset_t *mask, sigset_t *old)
+{
+    if (how != SIG_SETMASK || !mask || old)
+        return -1;
+    return 0;
+}
+int amk_test_signal_idle(void)
+{
+    struct aefd_context *ctx = &aefd_shell_external_startup()->context;
+    return ctx->native.active == 0 && ctx->native.busy == 0;
+}
+#endif
 int amk_test_tty_mode_case(uint32_t kind)
 {
     struct aefd_context *ctx = &aefd_shell_external_startup()->context;
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+    if (kind >= 105 && kind <= 107) {
+        struct termios value;
+        if (amk_test_signal_configure(0) || aefd_test_tcgetattr(0, &value))
+            return 110;
+        value.c_lflag |= ISIG;
+        value.c_cc[VINTR] = 3;
+        if (aefd_test_tcsetattr(0, TCSANOW, &value))
+            return 111;
+        unsigned char out[3] = {0xa5, 0xa5, 0xa5};
+        errno = 0;
+        ssize_t result = amk_tty_test_read(0, out, sizeof(out));
+        if (kind == 107)
+            return result == -1 && errno == EIO && out[0] == 0xa5 &&
+                           !ctx->client.live && !amk_test_signal_count()
+                       ? 0
+                       : 112;
+        if (result != 1 || out[0] != (kind == 105 ? 'X' : 'P') ||
+            out[1] != 0xa5 || out[2] != 0xa5)
+            return 113;
+        if (kind == 105)
+            return amk_test_signal_count() == 0 ? 0 : 114;
+        return amk_test_signal_count() == 1 && amk_test_signal_restore() == 0
+                   ? 0
+                   : 115;
+    }
+#endif
     if (kind == 100) {
         errno = 0;
         if (aefd_test_tcgetattr(0, NULL) != -1 || errno != EFAULT)
@@ -134,7 +193,13 @@ int amk_test_tty_mode_case(uint32_t kind)
         return 90;
     if (kind == 3)
         return status == 1 && !creates && !traps ? 0 : 91;
-    if (creates != 1 || traps != 3)
+    if (creates != 1 || traps !=
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+                            5
+#else
+                            3
+#endif
+    )
         return 92;
     return status == (kind == 0 ? 0 : 1) ? 0 : 93;
 }

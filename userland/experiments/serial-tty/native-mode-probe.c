@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /* Selected ordinary app using the real libc descriptor entry points. */
+#if defined(AMK_NATIVE_TTY_SIGNAL_PROBE) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
 #ifndef AMK_NATIVE_TTY_MODE_PROBE
 #error "select the native TTY mode probe explicitly"
 #endif
@@ -10,6 +13,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+#include <signal.h>
+#define TTY_MARK "TTY-SIGNAL"
+#else
+#define TTY_MARK "TTY-MODE"
+#endif
 #ifdef AMK_NATIVE_APP_HOST
 /* Only the host kernel/libc I/O boundary is substituted. The target uses the
  * unmodified pinned musl read/write/close and actual descriptor bindings. */
@@ -32,6 +41,12 @@ int amk_tty_test_close(int);
 extern long amk_tty_test_trap(unsigned long, unsigned long, unsigned long,
                               unsigned long, unsigned long);
 #define memtrap amk_tty_test_trap
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+int amk_test_sigaction(int, const struct sigaction *, struct sigaction *);
+int amk_test_sigprocmask(int, const sigset_t *, sigset_t *);
+#define sigaction(...) amk_test_sigaction(__VA_ARGS__)
+#define sigprocmask amk_test_sigprocmask
+#endif
 #else
 #include "../../../user/native-memory/adapter.h"
 #endif
@@ -57,6 +72,32 @@ static int same_mode(const struct termios *a, const struct termios *b)
            a->c_line == b->c_line && !memcmp(a->c_cc, b->c_cc, NCCS) &&
            a->__c_ispeed == b->__c_ispeed && a->__c_ospeed == b->__c_ospeed;
 }
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+static volatile sig_atomic_t signal_count, signal_restore;
+static int signal_fd;
+static struct termios signal_saved;
+static void tty_sigint(int number)
+{
+    if (number != SIGINT) {
+        signal_restore = -2;
+        return;
+    }
+    ++signal_count;
+    signal_restore = tcsetattr(signal_fd, TCSANOW, &signal_saved);
+}
+#ifdef AMK_NATIVE_APP_HOST
+void amk_test_signal_handler(int number) { tty_sigint(number); }
+int amk_test_signal_configure(int fd)
+{
+    signal_fd = fd;
+    signal_count = 0;
+    signal_restore = -3;
+    return tcgetattr(fd, &signal_saved);
+}
+int amk_test_signal_count(void) { return signal_count; }
+int amk_test_signal_restore(void) { return signal_restore; }
+#endif
+#endif
 int amk_tty_mode_probe(int argc, char **argv)
 {
     char path[32];
@@ -72,6 +113,11 @@ int amk_tty_mode_probe(int argc, char **argv)
         memtrap(0x26001, 0xf001, 0, 0, 0) != -EACCES ||
         memtrap(0x26004, 0xf001, 0, 0, 0) != -EACCES)
         return 1;
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+    if (memtrap(0x29003, 0, 2, 0, 0) != -EACCES ||
+        memtrap(0x29003, 0, 2, 1, 0) != -EACCES)
+        return 1;
+#endif
     int opened = open("/dev/tty", O_RDWR | O_NOCTTY);
     if (opened != 3)
         return 1;
@@ -85,19 +131,59 @@ int amk_tty_mode_probe(int argc, char **argv)
         return 1;
     changed = saved;
     changed.c_iflag |= ICRNL;
-    if (!send_bytes(tty, "TTY-MODE DRAIN\n", sizeof("TTY-MODE DRAIN\n") - 1) ||
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+    signal_count = 0;
+    signal_restore = -3;
+    signal_fd = tty;
+    signal_saved = saved;
+    struct sigaction action = {0};
+    action.sa_handler = tty_sigint;
+    sigset_t unblocked = {0};
+    if (sigaction(SIGINT, &action, NULL) ||
+        sigprocmask(SIG_SETMASK, &unblocked, NULL))
+        return 1;
+    changed.c_lflag |= ISIG;
+    changed.c_cc[VINTR] = 3;
+#endif
+    if (!send_bytes(tty, TTY_MARK " DRAIN\n",
+                    sizeof(TTY_MARK " DRAIN\n") - 1) ||
         tcsetattr(tty, TCSADRAIN, &changed) || tcgetattr(tty, &current) ||
         !same_mode(&current, &changed) ||
-        !send_bytes(tty, "TTY-MODE READY1\n", sizeof("TTY-MODE READY1\n") - 1))
+        !send_bytes(tty,
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+                    TTY_MARK " READY0\n", sizeof(TTY_MARK " READY0\n") - 1))
+#else
+                    TTY_MARK " READY1\n", sizeof(TTY_MARK " READY1\n") - 1))
+#endif
         return 1;
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+    unsigned char sentinel = 0xa5;
+    errno = 0;
+    if (read(tty, &sentinel, 1) != -1 || errno != EINTR || sentinel != 0xa5 ||
+        signal_count != 1 || signal_restore != 0 || tcgetattr(tty, &current) ||
+        !same_mode(&current, &saved) || tcsetattr(tty, TCSADRAIN, &changed) ||
+        !send_bytes(tty, TTY_MARK " READY1\n",
+                    sizeof(TTY_MARK " READY1\n") - 1))
+        return 1;
+#endif
     for (unsigned phase = 0; phase < 2; ++phase) {
+        size_t wanted = sizeof(input);
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+        if (!phase)
+            --wanted;
+#endif
         size_t at = 0;
-        while (at < sizeof(input)) {
-            ssize_t done = read(tty, input + at, sizeof(input) - at);
-            if (done <= 0 || (size_t)done > sizeof(input) - at)
+        while (at < wanted) {
+            ssize_t done = read(tty, input + at, wanted - at);
+            if (done <= 0 || (size_t)done > wanted - at)
                 return 1;
             for (size_t i = at; i < at + (size_t)done; ++i) {
-                unsigned char expected = payload[i];
+                unsigned position = (unsigned)i;
+#ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
+                if (!phase && i >= 13)
+                    ++position;
+#endif
+                unsigned char expected = payload[position];
                 if (!phase && expected == 0x0d)
                     expected = 0x0a;
                 if (input[i] != expected)
@@ -105,20 +191,20 @@ int amk_tty_mode_probe(int argc, char **argv)
             }
             at += (size_t)done;
         }
-        const char *marker = phase ? "TTY-MODE OUT2\n" : "TTY-MODE OUT1\n";
-        if (!send_bytes(tty, marker, sizeof("TTY-MODE OUT1\n") - 1) ||
-            !send_bytes(tty, input, sizeof(input)) || !send_bytes(tty, "\n", 1))
+        const char *marker = phase ? TTY_MARK " OUT2\n" : TTY_MARK " OUT1\n";
+        if (!send_bytes(tty, marker, sizeof(TTY_MARK " OUT1\n") - 1) ||
+            !send_bytes(tty, input, wanted) || !send_bytes(tty, "\n", 1))
             return 1;
         if (!phase &&
             (tcsetattr(tty, TCSADRAIN, &saved) || tcgetattr(tty, &current) ||
              !same_mode(&current, &saved) ||
-             !send_bytes(tty, "TTY-MODE READY2\n",
-                         sizeof("TTY-MODE READY2\n") - 1)))
+             !send_bytes(tty, TTY_MARK " READY2\n",
+                         sizeof(TTY_MARK " READY2\n") - 1)))
             return 1;
     }
-    if (!send_bytes(2, "TTY-MODE ERR\n", sizeof("TTY-MODE ERR\n") - 1) ||
+    if (!send_bytes(2, TTY_MARK " ERR\n", sizeof(TTY_MARK " ERR\n") - 1) ||
         close(2) ||
-        !send_bytes(tty, "TTY-MODE PASS\n", sizeof("TTY-MODE PASS\n") - 1) ||
+        !send_bytes(tty, TTY_MARK " PASS\n", sizeof(TTY_MARK " PASS\n") - 1) ||
         close(tty))
         return 1;
     return 0;

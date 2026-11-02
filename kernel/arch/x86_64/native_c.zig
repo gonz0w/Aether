@@ -462,6 +462,8 @@ const State = struct {
     channel_reply_cap: u64 = 0,
     channel_wait: @import("../../native_channel.zig").Wait = .{},
     app_binding: App.Binding = .{},
+    // Set only by actual ordinary-app admission; no copied lifecycle handle grants it.
+    tty_signal_owner_generation: if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) ?u64 else void = if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) null else {},
     memory_protect_denied: bool = false,
     signal_actions: if (@import("build_options").native_signal_actions) @import("native_pending.zig").State else void = if (@import("build_options").native_signal_actions) .{} else {},
     execution: Execution = .{},
@@ -1114,8 +1116,13 @@ pub fn exception(frame: *const Frame) *const Frame {
     if (pipeline_session and frame.rax == 0x2000a) return sessionObservation(frame);
     if (supervised and frame.rax >= 0x20000 and frame.rax <= 0x20007) return control(frame);
     if (threadedSlot(active) and frame.rax >= 0x28000 and frame.rax <= 0x28011) return threadOperation(frame);
+    if (frame.rax == 0x29003) return ttySignalOperation(frame);
     if (frame.rax == 0x29000 or frame.rax == 0x1000f) return signalFrameOperation(frame);
     if (frame.rax == 0x29002) {
+        if (@import("build_options").native_tty_signal_probe) {
+            result(s, -13);
+            return select();
+        }
         if (@import("build_options").native_signal_actions) {
             if (connections_profile and !threadedSlot(active)) {
                 if (selfSignalOperation(s, frame)) |terminal| return finish(terminal.detail, terminal.kind);
@@ -1154,9 +1161,14 @@ pub fn exception(frame: *const Frame) *const Frame {
                 result(s, -22);
             } else {
                 // Musl's four-argument transport leaves r8/r9 unspecified.
+                const prior_mask = s.context().signal_mask;
                 changeMask(s, frame.rdi, frame.rsi, frame.rdx);
                 if (@import("build_options").native_signal_mask_delivery and !threadedSlot(active)) {
-                    if (s.context().frame.rax == 0) _ = deliverPending(s, &s.context().frame, false);
+                    if (s.context().frame.rax == 0) _ = deliverPending(s, &s.context().frame, false) catch {
+                        s.context().signal_mask = prior_mask;
+                        result(s, -5);
+                        return select();
+                    };
                 }
             }
         },
@@ -1319,17 +1331,21 @@ fn selfSignalOperation(s: *State, frame: *const Frame) ?@import("native_pending.
         s.signal_actions.post(signal) catch unreachable;
     }
     result(s, 0);
-    return deliverPending(s, &s.context().frame, true);
+    return deliverPending(s, &s.context().frame, true) catch unreachable;
 }
 
-// Automatic callers have already committed their syscall: preserve its result
-// on preparation failure. Only explicit polls may publish a default terminal.
-fn deliverPending(s: *State, frame: *const Frame, explicit: bool) ?@import("native_pending.zig").SignalTerminal {
+// Legacy automatic callers preserve their result on preparation failure. The
+// selected TTY unmask caller instead restores its prior mask and reports EIO.
+// Only explicit legacy polls may publish a default terminal.
+fn deliverPending(s: *State, frame: *const Frame, explicit: bool) error{DeliveryFailed}!?@import("native_pending.zig").SignalTerminal {
     const actions = @import("native_pending.zig");
     const selected = s.signal_actions.peek(s.context().signal_mask) orelse {
         return null;
     };
-    if (!explicit and selected.action != .handler) return null;
+    if (!explicit and selected.action != .handler) {
+        if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe and selected.signal == 2 and selected.action == .default) return error.DeliveryFailed;
+        return null;
+    }
     if (selected.action == .default and @import("build_options").native_signal_termination and active != supervisorSlot()) {
         const terminal = actions.defaultTermination(selected.signal) catch {
             if (explicit) result(s, -95);
@@ -1359,6 +1375,7 @@ fn deliverPending(s: *State, frame: *const Frame, explicit: bool) ?@import("nati
     };
     var candidate: signals.Candidate = undefined;
     signals.prepareEntryInto(s.pages[0..s.count], s.backing[0..s.count], &request, if (hardware_mask == 0) 0xffbf else hardware_mask, &candidate) catch {
+        if (!explicit and @hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) return error.DeliveryFailed;
         if (explicit) result(s, -22);
         return null;
     };
@@ -1559,6 +1576,7 @@ fn clearTid(s: *State, context: *Execution) void {
     }
 }
 fn stopContexts(s: *State) void {
+    if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) s.tty_signal_owner_generation = null;
     s.app_binding = .{};
     s.channel_wait = .{};
     if (@import("build_options").native_signal_suspend) s.suspend_mask = null;
@@ -2455,6 +2473,7 @@ fn control(frame: *const Frame) *const Frame {
             nativeCleanupTrace(slot, 6);
             s.admitted = false;
             s.app_binding = .{};
+            if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) s.tty_signal_owner_generation = null;
             // Retired image metadata must not re-protect zeroed backing when a
             // different slot loads before this slot is reused.
             s.count = 0;
@@ -3356,10 +3375,55 @@ fn appLaunchOperation(f: *const Frame) *const Frame {
     s.channel_cap = f.r8;
     s.channel_reply_cap = f.r9;
     s.app_binding = binding;
+    if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) s.tty_signal_owner_generation = caller.generation;
     launchStack(s, &record.args, image);
     for (&states) |*owner| aliases(owner, false);
     publishSustained();
     result(caller, @intCast(handle(slot)));
+    return select();
+}
+
+// One selected relationship, recorded by ordinary app admission. IF=0 spans
+// current disposition classification and pending-bit publication; no lease.
+fn ttySignalOperation(f: *const Frame) *const Frame {
+    const caller = &states[active];
+    if (!@import("build_options").native_tty_signal_probe) {
+        result(caller, -38);
+        return select();
+    }
+    if (f.rsi != 2 or f.rdx > 1 or f.r10 | f.r8 | f.r9 != 0) {
+        result(caller, -22);
+        return select();
+    }
+    if (active != supervisorSlot() or !caller.admitted or caller.terminal) {
+        result(caller, -13);
+        return select();
+    }
+    if (f.rdi == handle(active)) {
+        result(caller, -13);
+        return select();
+    }
+    const slot = lookup(f.rdi) orelse {
+        result(caller, -3);
+        return select();
+    };
+    const target = &states[slot];
+    if (!target.admitted or target.terminal) {
+        result(caller, -3);
+        return select();
+    }
+    if (!processSlot(slot) or threadedSlot(slot) or
+        target.tty_signal_owner_generation != caller.generation or
+        !target.app_binding.valid(slot, target.generation, target.admitted, target.terminal, target.app_binding.clock))
+    {
+        result(caller, -13);
+        return select();
+    }
+    const outcome = target.signal_actions.ttySigint(f.rdx == 1) catch {
+        result(caller, -95);
+        return select();
+    };
+    result(caller, outcome);
     return select();
 }
 
@@ -3720,6 +3784,7 @@ fn closeInit() noreturn {
         s.channel_cap = 0;
         s.channel_reply_cap = 0;
         s.app_binding = .{};
+        if (@hasDecl(@import("build_options"), "native_tty_signal_probe") and @import("build_options").native_tty_signal_probe) s.tty_signal_owner_generation = null;
         s.root[0] = 0;
         closeChannels(i);
     }

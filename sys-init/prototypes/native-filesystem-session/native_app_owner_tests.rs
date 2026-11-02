@@ -192,6 +192,12 @@ struct Observed {
     mode_die_on_park: bool,
     mode_query_tick: Option<u64>,
     fail_write_code: i64,
+    #[cfg(native_tty_signal_probe)]
+    sig_results: VecDeque<i64>,
+    #[cfg(native_tty_signal_probe)]
+    sig_calls: Vec<(u64, bool, usize)>,
+    #[cfg(native_tty_signal_probe)]
+    sig_return_tick: Option<u64>,
 }
 fn fixture() -> NativeBoundary {
     NativeBoundary(Rc::new(RefCell::new(Observed {
@@ -242,6 +248,12 @@ fn fixture() -> NativeBoundary {
         mode_die_on_park: false,
         mode_query_tick: None,
         fail_write_code: -5,
+        #[cfg(native_tty_signal_probe)]
+        sig_results: VecDeque::new(),
+        #[cfg(native_tty_signal_probe)]
+        sig_calls: Vec::new(),
+        #[cfg(native_tty_signal_probe)]
+        sig_return_tick: None,
     })))
 }
 fn cap(object: u64, end: u64) -> u64 {
@@ -285,6 +297,23 @@ impl Kernel for NativeBoundary {
     }
 }
 impl Control for NativeBoundary {
+    #[cfg(native_tty_signal_probe)]
+    fn terminal_sigint(&mut self, target: u64, post: bool) -> i64 {
+        let mut seen = self.0.borrow_mut();
+        let drains = seen.tx_queries;
+        seen.sig_calls.push((target, post, drains));
+        let result = seen
+            .sig_results
+            .pop_front()
+            .expect("PLANNED_SIGINT_OUTCOME");
+        if !post
+            && seen.sig_calls.len() == 2
+            && let Some(tick) = seen.sig_return_tick
+        {
+            seen.tick = tick;
+        }
+        result
+    }
     fn observe_events(&mut self) -> Status {
         let mut seen = self.0.borrow_mut();
         seen.calls += 1;
@@ -928,7 +957,11 @@ fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
     {
         let mut seen = boundary.0.borrow_mut();
         seen.input.extend([0, 13, 10, 128, 255]);
-        seen.serial_results.extend([-11, 1, 4]);
+        if cfg!(native_tty_signal_probe) {
+            seen.serial_results.extend([-11, 1, -11, 1, 1, 1, 1]);
+        } else {
+            seen.serial_results.extend([-11, 1, 4]);
+        }
         seen.received.extend(frame(1, 0, &[0; 5]));
         seen.received.extend(frame(1, 0, &[0; 4]));
     }
@@ -1287,4 +1320,143 @@ fn mode_commit_with_lost_reply_is_known_server_state_never_a_fabricated_eintr_re
     assert_eq!(runtime.contain(), Err(-5));
     assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
     assert_eq!(runtime.snapshot().mode_state, Some((false, 3)));
+}
+
+#[cfg(native_tty_signal_probe)]
+#[test]
+fn signal_preflight_before_drain_and_commit_rejection_preserves_mode() {
+    for outcomes in [vec![-95], vec![1, -95], vec![7]] {
+        let boundary = fixture();
+        mode_workload(&boundary, &[control_frame(0x11, 1, 3, 1)]);
+        boundary.0.borrow_mut().sig_results.extend(&outcomes);
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+        let seen = boundary.0.borrow();
+        assert_eq!(seen.sig_calls.len(), outcomes.len());
+        assert_eq!(
+            seen.sig_calls[0],
+            (0xb0000102, false, 0),
+            "PREFLIGHT_BEFORE_DRAIN"
+        );
+        assert_eq!(seen.tx_queries, if outcomes.len() == 2 { 1 } else { 0 });
+        assert_eq!(
+            runtime.snapshot().mode_state,
+            Some((false, 1)),
+            "DENIED_SET_NO_REVISION_CHANGE"
+        );
+    }
+}
+#[cfg(native_tty_signal_probe)]
+#[test]
+fn signal_actual_owner_uses_original_read_metadata_and_checked_post_outcomes() {
+    for (eligible, post, expected) in [(1, 1, -4), (1, 2, -4), (1, 0, 1), (0, 1, 1)] {
+        let boundary = fixture();
+        let mut read = frame(1, 0, &[0]);
+        read[16] = eligible;
+        mode_workload(
+            &boundary,
+            &[
+                control_frame(0x11, 1, 3, 1),
+                read,
+                frame(3, 0, b""),
+                frame(3, 1, b""),
+                frame(3, 2, b""),
+            ],
+        );
+        {
+            let mut s = boundary.0.borrow_mut();
+            s.sig_results.extend([1, 1, post]);
+            s.input.extend([3, b'X']);
+        }
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+        let s = boundary.0.borrow();
+        assert_eq!(
+            i32::from_le_bytes(s.transmitted[336..340].try_into().unwrap()),
+            expected,
+            "CHECKED_POST_AND_PRECRITICAL_MASK"
+        );
+        assert_eq!(
+            s.sig_calls
+                .iter()
+                .map(|(target, post, _)| (*target, *post))
+                .collect::<Vec<_>>(),
+            [(0xb0000102, false), (0xb0000102, false), (0xb0000102, true)]
+        );
+        assert_eq!(
+            s.input.len(),
+            usize::from(expected == -4),
+            "VINTR_NO_UNOWNED_SUFFIX"
+        );
+        if expected == 1 {
+            assert_eq!(s.transmitted[352], b'X');
+        } else {
+            assert_eq!(&s.transmitted[352..368], &[0; 16]);
+        }
+        assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+    }
+}
+#[cfg(native_tty_signal_probe)]
+#[test]
+fn signal_post_unknown_denial_and_metadata_reject_never_replay() {
+    for post in [-95, 7, -3] {
+        let boundary = fixture();
+        let mut read = frame(1, 0, &[0]);
+        read[16] = 1;
+        mode_workload(&boundary, &[control_frame(0x11, 1, 3, 0), read]);
+        {
+            let mut s = boundary.0.borrow_mut();
+            s.sig_results.extend([1, 1, post]);
+            s.input.extend([3, b'X']);
+        }
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+        let s = boundary.0.borrow();
+        assert_eq!(s.transmitted.len(), 336, "NO_FABRICATED_REPLY");
+        assert_eq!(s.sig_calls.len(), 3);
+        assert_eq!(s.input, vec![b'X']);
+        drop(s);
+        assert_eq!(runtime.contain(), Err(-5));
+        assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+    }
+    for (index, value) in [(16, 2), (17, 1)] {
+        let boundary = fixture();
+        let mut read = frame(1, 0, &[0]);
+        read[index] = value;
+        mode_workload(&boundary, &[read]);
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-22));
+        assert_eq!(
+            boundary.0.borrow().serial_calls,
+            0,
+            "MALFORMED_METADATA_NO_IO"
+        );
+    }
+}
+
+#[cfg(native_tty_signal_probe)]
+#[test]
+fn signal_final_preflight_deadline_equality_has_no_commit() {
+    let boundary = fixture();
+    mode_workload(&boundary, &[control_frame(0x11, 1, 3, 1)]);
+    {
+        let mut s = boundary.0.borrow_mut();
+        s.sig_results.extend([1, 1]);
+        s.sig_return_tick = Some(6000);
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(
+        runtime.run(&mut [0; 4096]),
+        Err(-110),
+        "CLOCK_AT_FINAL_PREFLIGHT_DEADLINE"
+    );
+    assert_eq!(
+        runtime.snapshot().mode_state,
+        Some((false, 1)),
+        "NO_MODE_OR_REVISION_COMMIT_AT_DEADLINE"
+    );
+    let s = boundary.0.borrow();
+    assert_eq!(s.sig_calls.len(), 2);
+    assert_eq!(s.tx_queries, 1);
+    assert_eq!(s.transmitted.len(), 304, "NO_MODE_REPLY_AT_DEADLINE");
 }

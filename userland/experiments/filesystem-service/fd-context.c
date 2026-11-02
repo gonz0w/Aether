@@ -248,9 +248,9 @@ static int64_t mode_exchange(struct aefd_context *c, unsigned operation,
     }
     memcpy(&revision, reply + 16, 8);
     if (length != 16 || !revision ||
-        (operation == 0x10 && revision < c->mode_revision) || reply[24] > 1 ||
-        reply[25] || reply[26] || reply[27] || reply[28] != 1 || reply[29] ||
-        reply[30] || reply[31] ||
+        (operation == 0x10 && revision < c->mode_revision) ||
+        reply[24] > AEFD_MODE_BITS || reply[25] || reply[26] || reply[27] ||
+        reply[28] != 1 || reply[29] || reply[30] || reply[31] ||
         (operation != 0x10 &&
          (c->mode_revision == UINT64_MAX || revision != c->mode_revision + 1)))
         goto unknown;
@@ -266,7 +266,8 @@ int64_t aefd_context_mode(struct aefd_context *c, int fd, unsigned operation,
 {
     if (!out)
         return -14;
-    if (operation < 0x10 || operation > 0x12 || action > 1 || bits > 1)
+    if (operation < 0x10 || operation > 0x12 || action > 1 ||
+        bits > AEFD_MODE_BITS)
         return -95;
     int64_t result = begin(c);
     if (result)

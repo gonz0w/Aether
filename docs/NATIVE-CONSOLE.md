@@ -296,3 +296,55 @@ build arguments using `zig build --help`, and requires compiling omitted-holder
 and THRE-substitution controls to fail the same semantic assertions. Its host
 aggregate is300 seconds, children at most180 seconds, streams4MiB and compiler
 files16MiB. Owned temporary binaries/caches are removed after known cleanup.
+
+
+## Selected terminal SIGINT prerequisite —2026-11-01
+
+`-Dnative-tty-signal-probe=true` is default off and requires the existing MODE
+closure plus `native-signal-actions`, `native-signal-public` and
+`native-signal-mask-delivery`. The current MODE flags already include actions
+and public routing; append only signal-probe and mask-delivery. It inherits
+MODE's BSP/ordinary-app restrictions and existing quotas. Older001–005 defaults
+and entries remain unchanged. This limited recipient is not a process group.
+
+Selected int81 `0x29003` uses RDI=the current admitted application's lifecycle
+handle, RSI=2(SIGINT), RDX=0(PREFLIGHT) or1(POST), R10/R8/R9=0. Actual ordinary
+admission records the live Owner generation in target-local state; generation0
+is the real boot Owner and differs from an absent relationship. Both actions
+revalidate the caller, exact app binding/slot/generation/admission/nonterminal
+state and current disposition under kernel serialization. Numeric handles,
+launch/stop authority and copied or retired relationships confer no signal right.
+Terminal stop/reset/reclaim/shutdown revoke it before reuse. There is no new
+queue, PID lookup, pointer, signal policy or general kill operation.
+
+PREFLIGHT changes no state: ignored0, supported installed handler1, unsupported
+default EOPNOTSUPP(-95). POST rechecks the current disposition and returns ignored0
+with no effect, newly pending1, or already pending2 without another occurrence.
+These outcomes mean pending, never delivered. Handler replacement uses the current
+action; handler→ignore gives0 and handler→default rejects. Malformed scalars return
+EINVAL(-22), wrong caller/relationship EACCES(-13), retired target ESRCH(-3), and
+unselected entry ENOSYS(-38). Negatives do not change target state. The selected
+profile also denies legacy self-post `0x29002` with EACCES; unselected behavior
+is preserved.
+
+Rust owns ISIG/VINTR and interrupted-read policy. The app validates its entire
+reply and makes its sole descriptor context idle before restoring a stable saved
+mask. Only then can the existing checked mask/frame/sigreturn path run the real
+handler. For selected automatic frame-preparation failure or unsupported pending
+SIGINT, rt_sigprocmask returns EIO(-5), restores its pre-operation mask and leaves
+the occurrence pending. The client must enter known containment rather than
+publish EINTR or continue after that failure. No new asynchronous delivery point,
+canonical queue, job control, full ZLE/Zsh or native signal timing claim follows.
+
+Focused host checks (Zig0.16.0; no image or guest):
+
+```sh
+zig test kernel/arch/x86_64/native_pending.zig
+python3 -B -m unittest discover -s tests -p test_native_tty_signal.py -v
+```
+
+The focused suite executes actual dispatch/admission/stop/query/mask-delivery
+bodies and checked frame preparation/return over host-owned mappings. Compiling
+owner/target guard, coalesced-outcome, delivery-failure and mask-rollback omissions
+must fail the same semantic assertions. Native artifact/frame/stack fit, actual
+handler execution and separate review remain additional gates.

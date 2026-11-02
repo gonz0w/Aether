@@ -54,6 +54,11 @@ pub trait Control: Kernel + Clone {
     }
     fn park_events(&mut self, sequence: u64, deadline: Option<Deadline>) -> Status;
     /// Selected holder-only, nonblocking physical transmitter observation.
+    /// Exact admitted app only; this method creates no target relationship.
+    #[cfg(native_tty_signal_probe)]
+    fn terminal_sigint(&mut self, _target: u64, _post: bool) -> i64 {
+        -38
+    }
     fn transmitter_empty(&mut self) -> i64 {
         self.ctl(0x26004, 0xf001, 0).0
     }
@@ -101,6 +106,20 @@ mod host_trap {
     pub fn call(op: u64, args: [u64; 6]) -> Status {
         LAST.with(|cell| *cell.borrow_mut() = Some((op, args)));
         (0, 19, 20)
+    }
+    #[cfg(native_tty_signal_probe)]
+    #[test]
+    fn actual_native_terminal_sigint_actions_are_scalar_and_zero_tail() {
+        let mut native = Native;
+        for post in [false, true] {
+            assert_eq!(native.terminal_sigint(0xb0000102, post), 0);
+            LAST.with(|last| {
+                assert_eq!(
+                    *last.borrow(),
+                    Some((0x29003, [0xb0000102, 2, u64::from(post), 0, 0, 0]))
+                )
+            });
+        }
     }
     #[test]
     fn actual_native_transmitter_query_is_scalar_holder_only_with_zero_tail() {
