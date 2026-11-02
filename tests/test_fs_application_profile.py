@@ -299,6 +299,7 @@ class ApplicationProfile(unittest.TestCase):
 const std=@import("std");const FsSession=@import("composition");const Map=struct{};
 const combined_profile=true;const combined_application_profile=true;const combined_owner_stack=true;const combined_owner_data=true;const combined_init=true;
 const service_memory=true;const external_backing=true;const pipeline_capacity=true;
+const mktemp_reader=false;
 var effects:usize=0;var physical:u64=0;var virtual:u64=0;var block_base:u64=0;var block_count:u64=0;
 var session_lifecycle=false;var sustained=false;var block_regions=false;var block_profile=false;var pipeline_session=false;var pipeline_console=false;var connections_console=false;var console_relay=false;var console_handoff=false;var console_profile=false;var io_profile=false;var connections_large=false;var connections_profile=false;var program_profile=false;var coexist_profile=false;var init_composed=false;var init_large=false;var init_profile=false;var file_profile=false;var channel_profile=false;var launch_profile=false;var supervised=false;
 var channels:[1]struct{sustained:bool=false}=@splat(.{});var service_bytes:[1536*1024]u8=undefined;
