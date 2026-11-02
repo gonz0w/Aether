@@ -111,6 +111,62 @@ finite QEMU candidates and routine GitHub delivery. No general process groups,
 stop/continue, canonical queue, full ZLE/Zsh, service relocation or quota increase
 is selected. The fixed recipient is not a POSIX foreground process group.
 
+## Selected real-Zsh filesystem composition —2026-11-02
+
+Cam directly approved [issue137](https://github.com/gonz0w/Aether/issues/137#issuecomment-6576184144):
+“Approve scoped #137 design (Recommended)”. Select the retained Rust Owner
+namespace custody, narrow readonly real-terminfo FILE/startup/access/cwd consumers,
+typed held-directory ncurses port, and one closed positive composition of the
+existing large-Zsh, MODE and exact-generation SIGINT profiles.
+
+The Owner retains existing HOME15/root3 privately; Zsh receives process endpoints
+only. Preserve untouched-namespace preflight/commit, provision/readback before FD
+startup, one Client/epoch and the retained directory until healthy teardown.
+Keep all existing numeric limits, old profiles, ordinary/incompatible guards,
+source/media binding, finite attempts, known cleanup and protected delivery.
+No new syscall, grant, privileged path, full-stat/METADATA16 authority or resource
+increase is selected. The [consumer contract](../../userland/docs/ZSH-FILESYSTEM.md)
+records the closed wire and actual implementation/qualification limits.
+
+The standing milestone policy authorizes routine implementation, reviewed bounded
+builds/tests and GitHub delivery. A guest still requires actual matching artifacts,
+fit/consumer review and the existing concrete execution/cleanup gates. This design
+answer establishes no real prompt, job control, login, external command, cold
+persistence, package or R1 acceptance. Further consequential deviations still go
+to Cam; ordinary bounded corrections do not need another permission question.
+
+### Fixed diagnostic evidence decision —2026-11-02
+
+Cam [approved bounded diagnostic evidence](https://github.com/gonz0w/Aether/issues/137#issuecomment-6578169276)
+for the fixed issue137 builtin workload. Completed actual route/known-defect/
+structural checks plus one guarded diagnostic workload may establish scoped fit,
+replacing proposal03's complete pre-image startup/parser/handler stack and peak
+heap proof prerequisite for this experiment. Keep all numerical memory/time/
+request/mutation, authority, no-network/disposable-media, finite-attempt/source-
+binding and known-cleanup limits unchanged. Fresh concrete image/media/consumer
+review still precedes execution. No unchanged or uncertain-effect retry is
+selected; failures are diagnosed before a fresh reviewed candidate. This grants
+no exact/general peak demand, external-command/job-control/login, cold recovery,
+package or R1 qualification. The earlier scoped design approval stays effective.
+
+### Scoped Zsh checkpoint delivery —2026-11-02
+
+Cam directly answered
+[“Approve scoped Zsh checkpoint delivery (Recommended)”](https://github.com/gonz0w/Aether/issues/137#issuecomment-6587956406).
+For issue137 only, its reviewed actual prompt/builtin/normal-exit/export/cleanup
+result, affected focused checks and required hosted CI may qualify source
+integration and closure despite the failed/incomplete full-root host gate.
+This is an explicit departure from DEVELOPMENT's major-handoff prerequisite;
+it is not a full-host pass or general policy relaxation.
+
+[Issue141](https://github.com/gonz0w/Aether/issues/141) retains the unclassified
+failures and unverified descendant/pipe cleanup before a later assembled-system
+checkpoint. Later known-clean probes do not reconcile that history. Preserve
+quarantine and all numerical, authority, source/media and execution limits.
+No extra guest, unknown-effect retry or cleanup authority follows. External
+commands, login, persistent write/reboot/readback, packages and R1 retain their
+own gates. The earlier design and fixed diagnostic-fit decisions remain effective.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

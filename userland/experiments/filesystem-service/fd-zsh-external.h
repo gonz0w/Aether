@@ -18,5 +18,25 @@ off_t aether_zsh_seek(int, off_t, int);
  * not change libc errno (including a failed fdopen allocation's errno). */
 long aether_zsh_raw_fcntl(int, int, int);
 long aether_zsh_raw_close(int);
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+struct aether_tinfo_directory_view;
+int aether_zsh_directory_probe(const char *,
+                               struct aether_tinfo_directory_view *);
+uid_t __wrap_getuid(void);
+uid_t __wrap_geteuid(void);
+gid_t __wrap_getgid(void);
+gid_t __wrap_getegid(void);
+int __wrap_access(const char *, int);
+char *__wrap_getcwd(char *, size_t);
+#endif
+#ifdef AEFD_ZSH_DIAGNOSTIC
+#ifndef AEFD_ZSH_FILESYSTEM_BINDINGS
+#error "Zsh diagnostic requires the closed filesystem selection"
+#endif
+/* Diagnostic observation only: real tgetent and actual active TTY input.
+ * Preserve delegated results. Qualify only requested zero exit status. */
+int __wrap_tgetent(char *, const char *);
+int aether_zsh_diagnostic_status(int);
+#endif
 int __wrap_main(int, char **);
 #endif

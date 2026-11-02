@@ -34,6 +34,8 @@ pub fn build(b: *std.Build) void {
     const native_fs_application_profile = b.option(bool, "native-fs-application-profile", "Separate bounded Zsh application composition; existing ABI31 owner") orelse false;
     if (native_fs_application_profile and (!native_fs_owner_stack or release_artifact)) @panic("filesystem application profile requires its private ABI31 owner-stack profile");
     options.addOption(bool, "native_fs_application_profile", native_fs_application_profile);
+    const native_zsh_terminfo = b.option(bool, "native-zsh-terminfo", "Private large-Zsh MODE/SIGINT composition with retained Owner namespace custody") orelse false;
+    options.addOption(bool, "native_zsh_terminfo", native_zsh_terminfo);
     const block_test = b.option([]const u8, "block-test", "Disposable disk bring-up: write or verify");
     if (block_test) |mode| {
         if (smp or native_c_image != null or (!std.mem.eql(u8, mode, "write") and !std.mem.eql(u8, mode, "verify"))) @panic("block test requires write/verify, -Dsmp=false and no native image");
@@ -229,13 +231,15 @@ pub fn build(b: *std.Build) void {
     const native_tty_mode_probe = b.option(bool, "native-tty-mode-probe", "Private ABI31 ordinary-app console-holder TEMT observation") orelse false;
     if (native_tty_mode_probe and (release_artifact or smp or native_c_image == null or
         !native_fs_session or !native_fs_session_init or !native_fs_owner_data or !native_fs_owner_stack or
-        native_fs_application_profile or native_mktemp_reader or af09_diagnostic or service_lifetime))
+        (native_fs_application_profile and !native_zsh_terminfo) or native_mktemp_reader or af09_diagnostic or service_lifetime))
         @panic("TTY mode probe requires its private BSP ABI31 ordinary-app filesystem owner closure");
     options.addOption(bool, "native_tty_mode_probe", native_tty_mode_probe);
     const native_tty_signal_probe = b.option(bool, "native-tty-signal-probe", "Private MODE owner-to-app SIGINT and safe unmask delivery") orelse false;
     if (native_tty_signal_probe and (!native_tty_mode_probe or !native_signal_actions or !native_signal_public or !native_signal_mask_delivery))
         @panic("TTY signal probe requires its MODE profile and checked public action/mask-delivery closure");
     options.addOption(bool, "native_tty_signal_probe", native_tty_signal_probe);
+    if (native_zsh_terminfo and (!native_fs_application_profile or !native_tty_mode_probe or !native_tty_signal_probe))
+        @panic("Zsh terminfo requires its private large-application MODE and exact-generation SIGINT closure");
 
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));
@@ -277,6 +281,8 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("kernel/main.zig"),
             .target = target,
             .optimize = .Debug,
+            // Keep this diagnostic ISO within the existing build-file bound.
+            .strip = native_zsh_terminfo,
             .code_model = .kernel,
             .red_zone = false,
             .stack_check = false,

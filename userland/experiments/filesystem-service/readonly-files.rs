@@ -1,0 +1,480 @@
+// SPDX-License-Identifier: BSD-2-Clause
+#![no_std]
+//! Closed readonly real-terminfo view. Names and equality keys confer no authority.
+use core::mem::MaybeUninit;
+use filesystem_client::{Client, Handle, Kind, NamespaceMutation};
+pub use filesystem_client::{ConnectFailure, Error};
+use filesystem_service::Channel;
+// Shared table also contains exec/disconnect constructors unused by this closed view.
+#[allow(dead_code)]
+#[path = "file-descriptions.rs"]
+mod descriptions;
+pub use descriptions::{Failure, Seek};
+const _: () = assert!(!cfg!(fs_file16) && !cfg!(fs_replace) && !cfg!(fs_process_views));
+const _: () = assert!(matches!(filesystem_service::MAGIC, b"AFSRPC09"));
+pub const MAGIC: &[u8; 8] = b"AEFP0004";
+pub const DIRECTORY: &[u8] = b"/home/.terminfo";
+pub const ENTRY: &[u8] = b"/home/.terminfo/v/vt100";
+const ALIAS: &[u8] = b"/home/.terminfo/./v/vt100";
+pub const FRAME: usize = 64;
+pub const PAYLOAD: usize = 4096;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Binding {
+    pub slot: u8,
+    pub epoch: u8,
+    pub handle: u64,
+    pub generation: u64,
+}
+impl Binding {
+    fn valid(self) -> bool {
+        self.slot == 1
+            && (1..=15).contains(&self.epoch)
+            && self.handle == 0xb0000000 | u64::from(self.epoch) << 8 | 2
+            && self.generation != 0
+    }
+}
+struct Remote<T: Channel> {
+    client: Client<T>,
+    held: Option<Handle>,
+}
+impl<T: Channel> descriptions::Store for Remote<T> {
+    type Handle = Handle;
+    type Error = Error;
+    type Cleanup = [i64; 2];
+    fn open_read(&mut self, name: &[u8]) -> Result<Handle, Error> {
+        if name != ENTRY && name != ALIAS {
+            return Err(Error::Remote(-2));
+        }
+        self.client.open_root_path(ENTRY).map(|entry| entry.handle)
+    }
+    fn read(
+        &mut self,
+        handle: Handle,
+        offset: u64,
+        length: usize,
+        out: &mut [u8; PAYLOAD],
+    ) -> Result<usize, Error> {
+        self.client.read(handle, offset, length, out)
+    }
+    fn size(&mut self, handle: Handle) -> Result<u64, Error> {
+        self.client.stat(handle).map(|entry| entry.size)
+    }
+    fn close(&mut self, handle: Handle) -> Result<(), Error> {
+        self.client.close(handle)
+    }
+    fn failure_is_fatal(&self, _: Error) -> bool {
+        self.client.cleanup().is_some()
+    }
+    fn retire(&mut self) {
+        self.client.abort();
+    }
+    fn disconnect(&mut self) -> Result<[i64; 2], Error> {
+        self.client.disconnect()
+    }
+}
+/// One native-admitted app and one namespace epoch, with the existing sole alias ledger.
+/// Runtime must authenticate the actual endpoint before passing its binding here.
+#[must_use]
+pub struct Files<T: Channel> {
+    descriptions: descriptions::Descriptions<Remote<T>, 1>,
+    binding: Binding,
+    namespace_epoch: u64,
+    next: u64,
+    pending: bool,
+    retired: bool,
+    mutation_failure: Option<filesystem_client::MutationFailure>,
+}
+impl<T: Channel> Files<T> {
+    /// Initialize the Client in final storage; failure consumes both close obligations.
+    /// No Files reference is published before both greetings have validated.
+    pub fn connect_in_place(
+        slot: &mut MaybeUninit<Self>,
+        channel: T,
+        epoch: u64,
+        binding: Binding,
+    ) -> Result<&mut Self, ConnectFailure> {
+        let pointer = slot.as_mut_ptr();
+        if !binding.valid() || epoch == 0 {
+            let mut channel = channel;
+            return Err(ConnectFailure {
+                error: Error::Invalid,
+                cleanup: channel.close(),
+            });
+        }
+        // SAFETY: exclusive MaybeUninit storage, raw disjoint projections only;
+        // all non-Client fields are initialized before any Self reference exists.
+        let client_slot = unsafe {
+            core::ptr::addr_of_mut!((*pointer).binding).write(binding);
+            core::ptr::addr_of_mut!((*pointer).namespace_epoch).write(epoch);
+            core::ptr::addr_of_mut!((*pointer).next).write(1);
+            core::ptr::addr_of_mut!((*pointer).pending).write(false);
+            core::ptr::addr_of_mut!((*pointer).retired).write(false);
+            core::ptr::addr_of_mut!((*pointer).mutation_failure).write(None);
+            let desc = &mut *core::ptr::addr_of_mut!((*pointer).descriptions)
+                .cast::<MaybeUninit<descriptions::Descriptions<Remote<T>, 1>>>();
+            let source = descriptions::Descriptions::prepare_in_place(desc).as_mut_ptr();
+            core::ptr::addr_of_mut!((*source).held).write(None);
+            &mut *core::ptr::addr_of_mut!((*source).client).cast::<MaybeUninit<Client<T>>>()
+        };
+        Client::connect_home_in_place(client_slot, channel, epoch)?;
+        // SAFETY: every field, including the sole Client, is now valid.
+        Ok(unsafe { slot.assume_init_mut() })
+    }
+    /// Scoped transport configuration only; never reconnects or changes admission.
+    pub fn configure(
+        &mut self,
+        configure: impl FnOnce(&mut T) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        self.descriptions.source.client.configure_channel(configure)
+    }
+    pub fn cleanup(&self) -> Option<[i64; 2]> {
+        self.descriptions.source.client.cleanup()
+    }
+    pub fn abort(&mut self) -> [i64; 2] {
+        self.retired = true;
+        self.pending = false;
+        self.descriptions.retire();
+        self.cleanup().unwrap_or([-5; 2])
+    }
+    pub fn mutation_failure(&self) -> Option<filesystem_client::MutationFailure> {
+        self.mutation_failure
+    }
+    /// Fixed pre-startup materialization: 12 real requests, four mutations.
+    /// Keep .terminfo's actual reference until healthy teardown.
+    pub fn provision(&mut self, asset: &[u8], workspace: &mut [u8; PAYLOAD]) -> Result<(), Error> {
+        if self.retired
+            || self.pending
+            || self.descriptions.source.held.is_some()
+            || asset.is_empty()
+            || asset.len() > PAYLOAD
+        {
+            return Err(Error::Invalid);
+        }
+        let mut mutation_failure = None;
+        let result = (|| {
+            let client = &mut self.descriptions.source.client;
+            let home = client.home()?;
+            client
+                .namespace(home, NamespaceMutation::MakeDirectory(b".terminfo"))
+                .map_err(|e| {
+                    mutation_failure = Some(e);
+                    e.error
+                })?;
+            let directory = client.lookup(home, b".terminfo", 15)?;
+            if directory.kind != Kind::Directory {
+                return Err(Error::Protocol);
+            }
+            self.descriptions.source.held = Some(directory.handle);
+            client
+                .namespace(directory.handle, NamespaceMutation::MakeDirectory(b"v"))
+                .map_err(|e| {
+                    mutation_failure = Some(e);
+                    e.error
+                })?;
+            let v = client.lookup(directory.handle, b"v", 15)?;
+            if v.kind != Kind::Directory {
+                return Err(Error::Protocol);
+            }
+            client
+                .namespace(v.handle, NamespaceMutation::Create(b"vt100"))
+                .map_err(|e| {
+                    mutation_failure = Some(e);
+                    e.error
+                })?;
+            let file = client.lookup(v.handle, b"vt100", 6)?;
+            if file.kind != Kind::File {
+                return Err(Error::Protocol);
+            }
+            client.write(file.handle, 0, asset).map_err(|e| {
+                mutation_failure = Some(e);
+                e.error
+            })?;
+            let stat = client.stat(file.handle)?;
+            if stat.kind != Kind::File || stat.size != asset.len() as u64 {
+                return Err(Error::Protocol);
+            }
+            if client.read(file.handle, 0, asset.len(), workspace)? != asset.len()
+                || workspace[..asset.len()] != *asset
+            {
+                return Err(Error::Protocol);
+            }
+            if client.read(file.handle, asset.len() as u64, 1, workspace)? != 0 {
+                return Err(Error::Protocol);
+            }
+            client.close(file.handle)?;
+            client.close(v.handle)?;
+            Ok(())
+        })();
+        self.mutation_failure = mutation_failure;
+        workspace.fill(0);
+        if result.is_err() {
+            self.abort();
+        }
+        result
+    }
+    fn live(&self, binding: Binding) -> bool {
+        !self.retired
+            && !self.pending
+            && self.binding == binding
+            && self.cleanup().is_none()
+            && self.descriptions.source.held.is_some()
+    }
+    /// Validate complete fixed header before body assembly or source effects.
+    pub fn body_length(&mut self, binding: Binding, raw: &[u8; FRAME]) -> Result<usize, Error> {
+        let a = word(raw, 4);
+        let b = word(raw, 5);
+        let c = word(raw, 6);
+        let d = word(raw, 7);
+        let valid = self.live(binding)
+            && raw[..8] == MAGIC[..]
+            && word(raw, 2) == binding.generation
+            && word(raw, 3) == self.next
+            && self.next != u64::MAX
+            && match word(raw, 1) {
+                1 => a <= 1 && (1..=255).contains(&b) && c == 0 && d == 0,
+                2 => fd(a) && b <= PAYLOAD as u64 && c == 0 && d == 0,
+                3 => fd(a) && c <= 2 && d == 0,
+                4 => fd(a) && b < 16 && c <= 1 && d == 0,
+                5 => fd(a) && b == 0 && c == 0 && d == 0,
+                6 => fd(a) && b <= 1 && c == 0 && d == 0,
+                8 => matches!(a, 0 | 4) && (1..=255).contains(&b) && c == 0 && d == 0,
+                9 => a == 0 && b == 0 && c == 0 && d == 0,
+                10 => a == 0 && (1..=255).contains(&b) && c == 0 && d == 0,
+                _ => false,
+            };
+        if !valid {
+            self.abort();
+            return Err(Error::Protocol);
+        }
+        Ok(if matches!(word(raw, 1), 1 | 8 | 10) {
+            (b as usize).div_ceil(FRAME) * FRAME
+        } else {
+            0
+        })
+    }
+    /// Own the effect until the complete reply/header/body has been delivered.
+    pub fn prepare<'a>(
+        &'a mut self,
+        binding: Binding,
+        raw: &[u8; FRAME],
+        received: usize,
+        workspace: &'a mut [u8; PAYLOAD],
+    ) -> Result<Reply<'a, T>, Error> {
+        let needed = self.body_length(binding, raw)?;
+        let b = word(raw, 5) as usize;
+        if received != needed || (needed != 0 && workspace[b..needed].iter().any(|v| *v != 0)) {
+            workspace.fill(0);
+            self.abort();
+            return Err(Error::Protocol);
+        }
+        let (result, body) = self.execute(raw, workspace);
+        if self.cleanup().is_some() {
+            workspace.fill(0);
+            self.abort();
+            return Err(Error::Closed);
+        }
+        let mut reply = [0; FRAME];
+        reply[..8].copy_from_slice(MAGIC);
+        put(&mut reply, 2, binding.generation);
+        put(&mut reply, 3, self.next);
+        let body = match result {
+            Ok(value) => {
+                put(&mut reply, 4, value);
+                put(&mut reply, 5, body as u64);
+                body
+            }
+            Err(error) => {
+                workspace.fill(0);
+                put(&mut reply, 1, errno(error) as u64);
+                0
+            }
+        };
+        self.pending = true;
+        Ok(Reply {
+            files: self,
+            workspace,
+            header: reply,
+            body,
+            delivered: false,
+        })
+    }
+    fn execute(
+        &mut self,
+        raw: &[u8; FRAME],
+        workspace: &mut [u8; PAYLOAD],
+    ) -> (Result<u64, Failure<Error>>, usize) {
+        let a = word(raw, 4);
+        let b = word(raw, 5);
+        let c = word(raw, 6);
+        let mut body = 0;
+        let result = match word(raw, 1) {
+            1 => {
+                let value = self
+                    .descriptions
+                    .open_read(&workspace[..b as usize], a != 0)
+                    .map(|fd| fd as u64);
+                workspace.fill(0);
+                value
+            }
+            2 => self
+                .descriptions
+                .read(a as i32, b as usize, workspace)
+                .map(|count| {
+                    body = count;
+                    count as u64
+                }),
+            8 => {
+                let source = &mut self.descriptions.source;
+                let result = descriptions::Store::open_read(source, &workspace[..b as usize])
+                    .and_then(|handle| source.client.close(handle));
+                workspace.fill(0);
+                result.map(|()| 0).map_err(Failure::Source)
+            }
+            9 => {
+                workspace.fill(0);
+                self.descriptions
+                    .source
+                    .client
+                    .root()
+                    .map(|_| {
+                        workspace[..2].copy_from_slice(b"/\0");
+                        body = 2;
+                        0
+                    })
+                    .map_err(Failure::Source)
+            }
+            10 => {
+                let allowed = workspace[..b as usize] == *DIRECTORY;
+                workspace.fill(0);
+                if !allowed {
+                    Err(Failure::Source(Error::Remote(-2)))
+                } else {
+                    let source = &mut self.descriptions.source;
+                    source
+                        .held
+                        .ok_or(Failure::Retired)
+                        .and_then(|handle| source.client.stat(handle).map_err(Failure::Source))
+                        .and_then(|entry| {
+                            if entry.kind != Kind::Directory {
+                                return Err(Failure::InvalidCompletion);
+                            }
+                            workspace[..8].copy_from_slice(&2u64.to_le_bytes());
+                            workspace[8..16].copy_from_slice(&entry.size.to_le_bytes());
+                            workspace[16..24].copy_from_slice(&1u64.to_le_bytes());
+                            workspace[24..32].copy_from_slice(&self.namespace_epoch.to_le_bytes());
+                            body = 32;
+                            Ok(0)
+                        })
+                }
+            }
+            opcode => {
+                workspace.fill(0);
+                match opcode {
+                    3 => self.descriptions.seek(
+                        a as i32,
+                        match c {
+                            0 => Seek::Set(b as i64),
+                            1 => Seek::Current(b as i64),
+                            _ => Seek::End(b as i64),
+                        },
+                    ),
+                    4 => self
+                        .descriptions
+                        .duplicate(a as i32, b as i32, c != 0)
+                        .map(|fd| fd as u64),
+                    5 => self.descriptions.close(a as i32).map(|()| 0),
+                    6 => self
+                        .descriptions
+                        .set_close_on_exec(a as i32, b != 0)
+                        .map(|()| 0),
+                    _ => Err(Failure::Invalid),
+                }
+            }
+        };
+        (result, body)
+    }
+    /// Called only after app access is retired by its confirmed terminal state.
+    pub fn disconnect_checked(
+        &mut self,
+        verify: impl FnOnce(&mut T) -> Result<(), Error>,
+    ) -> Result<[i64; 2], Error> {
+        if self.retired || self.pending || self.cleanup().is_some() {
+            return Err(Error::Closed);
+        }
+        self.retired = true;
+        for fd in 3..16 {
+            if self.descriptions.position(fd).is_ok() {
+                self.descriptions.close(fd).map_err(|_| Error::Closed)?;
+            }
+        }
+        let held = self.descriptions.source.held.take().ok_or(Error::Closed)?;
+        self.descriptions.source.client.close(held)?;
+        let result = self.descriptions.source.client.disconnect_checked(verify)?;
+        if result != [0; 2] {
+            return Err(Error::Closed);
+        }
+        Ok(result)
+    }
+}
+pub struct Reply<'a, T: Channel> {
+    files: &'a mut Files<T>,
+    workspace: &'a mut [u8; PAYLOAD],
+    header: [u8; FRAME],
+    body: usize,
+    delivered: bool,
+}
+impl<T: Channel> Reply<'_, T> {
+    /// Trusted transport-only scope control; never changes Client authority.
+    pub fn configure(
+        &mut self,
+        configure: impl FnOnce(&mut T) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        self.files.configure(configure)
+    }
+    pub fn header(&self) -> &[u8; FRAME] {
+        &self.header
+    }
+    pub fn body_mut(&mut self) -> &mut [u8] {
+        &mut self.workspace[..self.body.div_ceil(FRAME) * FRAME]
+    }
+    pub fn delivered(mut self) {
+        self.files.next += 1;
+        self.files.pending = false;
+        self.workspace.fill(0);
+        self.delivered = true;
+    }
+}
+impl<T: Channel> Drop for Reply<'_, T> {
+    fn drop(&mut self) {
+        if !self.delivered {
+            self.workspace.fill(0);
+            self.files.abort();
+        }
+    }
+}
+fn fd(value: u64) -> bool {
+    (3..16).contains(&value)
+}
+fn word(raw: &[u8; FRAME], index: usize) -> u64 {
+    u64::from_le_bytes(raw[index * 8..index * 8 + 8].try_into().unwrap())
+}
+fn put(raw: &mut [u8; FRAME], index: usize, value: u64) {
+    raw[index * 8..index * 8 + 8].copy_from_slice(&value.to_le_bytes());
+}
+fn errno(error: Failure<Error>) -> i64 {
+    match error {
+        Failure::BadFd => -9,
+        Failure::Full => -24,
+        Failure::Invalid => -22,
+        Failure::Overflow => -75,
+        Failure::Source(Error::Invalid) => -22,
+        Failure::Source(Error::Full) => -28,
+        Failure::Source(Error::Remote(code)) => code,
+        _ => -5,
+    }
+}
+#[cfg(test)]
+extern crate std;
+#[cfg(test)]
+#[path = "readonly-files-tests.rs"]
+mod tests;

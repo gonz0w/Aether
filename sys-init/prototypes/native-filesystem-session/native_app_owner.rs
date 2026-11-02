@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #![no_std]
 #![no_main]
-//! Separately linked ABI31 ordinary-app owner; no filesystem greeting consumer.
+//! ABI31 ordinary-app owner; selected Zsh retains its filesystem greeting custody.
 use af07_transport::native::Native;
 use native_app_runtime::Runtime;
 pub use owner_entry::_start;
@@ -25,8 +25,13 @@ pub extern "C" fn owner_main(
         // reentry/unmap or second owner. Runtime owns all scalar close receipts.
         let region = unsafe { owner_region::claim(binding)? };
         let (slot, workspace, _) = region.partition::<Runtime<Native>>()?.into_parts();
+        #[cfg(not(native_zsh_filesystem))]
         let runtime = Runtime::new(Native).map_err(|_| owner_region::Error::Binding)?;
+        #[cfg(not(native_zsh_filesystem))]
         let runtime = slot.write(runtime);
+        #[cfg(native_zsh_filesystem)]
+        let runtime =
+            Runtime::initialize_in_place(slot, Native).map_err(|_| owner_region::Error::Binding)?;
         if runtime.run(workspace).is_err() {
             let _ = runtime.contain();
         }

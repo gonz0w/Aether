@@ -18,10 +18,25 @@ pub const TERMINAL_BINDINGS: bool = cfg!(any(
     native_tty_descriptor_probe,
     any(native_tty_duplex_probe, native_tty_mode_probe)
 ));
-pub const BYTES: usize = 304;
+#[cfg(all(
+    native_zsh_filesystem,
+    not(all(
+        native_tty_mode_probe,
+        native_tty_signal_probe,
+        native_tty_canonical_probe
+    ))
+))]
+compile_error!("Zsh filesystem startup requires the matched canonical MODE/SIGINT selection");
+pub const BYTES: usize = if cfg!(native_zsh_filesystem) {
+    336
+} else {
+    304
+};
 pub const FILE_SLOTS_16: bool = cfg!(fs_file16);
 pub const FIRST_FILE_FD: u8 = if FILE_SLOTS_16 { 0 } else { 3 };
-pub const MAGIC: &[u8; 8] = if CANONICAL_BINDINGS {
+pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_filesystem) {
+    b"AEFDB008"
+} else if CANONICAL_BINDINGS {
     b"AEFDB007"
 } else if SIGNAL_BINDINGS {
     b"AEFDB006"
@@ -36,7 +51,9 @@ pub const MAGIC: &[u8; 8] = if CANONICAL_BINDINGS {
 } else {
     b"AEFDB001"
 };
-pub const MAP_MAGIC: &[u8; 8] = if CANONICAL_BINDINGS {
+pub const MAP_MAGIC: &[u8; 8] = if cfg!(native_zsh_filesystem) {
+    b"AEFDT008"
+} else if CANONICAL_BINDINGS {
     b"AEFDT007"
 } else if SIGNAL_BINDINGS {
     b"AEFDT006"
@@ -190,13 +207,20 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
     put(
         output,
         296,
-        if plan.identity.slot == 1 {
+        if plan.identity.slot == 1 && !cfg!(native_zsh_filesystem) {
             0x76050001
         } else {
             0
         },
     );
     put(output, 300, if MODE_BINDINGS { 0x7d000001 } else { 0 });
+    #[cfg(native_zsh_filesystem)]
+    {
+        for offset in [304, 308, 312, 316] {
+            put(output, offset, 1000);
+        }
+        put(output, 320, 1);
+    }
     Ok(())
 }
 fn put(output: &mut [u8; BYTES], offset: usize, value: u32) {

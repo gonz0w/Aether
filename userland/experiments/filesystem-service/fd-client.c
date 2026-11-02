@@ -70,6 +70,16 @@ static int shape(uint64_t opcode, const uint64_t args[4], size_t name_length)
         return args[0] <= 1 && args[1] == name_length && name_length >= 1 &&
                name_length <= 255 && args[2] <= 2;
 #endif
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    if (opcode == 8 || opcode == 10)
+        return (opcode == 8 ? args[0] == 0 || args[0] == 4 : !args[0]) &&
+               args[1] == name_length && name_length >= 1 &&
+               name_length <= 255 && !args[2];
+    if (opcode == 9)
+        return !name_length && !args[0] && !args[1] && !args[2];
+    if (opcode < 1 || opcode > 6)
+        return 0;
+#endif
     if (opcode == 1
 #ifdef AEFD_CWD_WIRE
         || opcode == 8
@@ -126,6 +136,9 @@ int aefd_client_exchange(struct aefd_client *client, uint64_t opcode,
         return -1;
     }
     int path_call = opcode == 1;
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    path_call = path_call || opcode == 8 || opcode == 10;
+#endif
 #ifdef AEFD_WRITE_WIRE
     path_call = path_call || opcode == 10;
 #endif
@@ -183,6 +196,15 @@ int aefd_client_exchange(struct aefd_client *client, uint64_t opcode,
             }
         }
     }
+#endif
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    if (!reply.status &&
+        ((opcode == 9 &&
+          (client->workspace[0] != '/' || client->workspace[1])) ||
+         (opcode == 10 && (aefd_word(client->workspace, 0) != 2 ||
+                           !aefd_word(client->workspace, 2) ||
+                           !aefd_word(client->workspace, 3)))))
+        goto retired;
 #endif
     ++client->sequence;
     *out = reply;

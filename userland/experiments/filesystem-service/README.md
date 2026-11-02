@@ -1350,3 +1350,26 @@ No new namespace custody, FILE authority, kernel profile or guest is enabled by
 this frontend. The [Zsh target status](../../docs/ZSH-TARGET-LINK.md) separates
 actual stdio/data preparation from the remaining metadata, path, startup,
 resource and native gates.
+
+
+## Selected real-Zsh filesystem consumers
+
+[ZSH-FILESYSTEM](../../docs/ZSH-FILESYSTEM.md) specifies the closed336-byte startup,
+AEFP0004 readonly queries and single held-directory view. `readonly-files.rs`
+reuses the existing description table and one real Client without enabling the
+old write/file16/replacement broker. The selected native Owner retains namespace
+custody, provisions and reads back the one VT100 entry, and publishes FD startup
+only after success. Existing default/three/drain and ordinary startup profiles
+remain separate.
+
+`fd-tinfo-directory.patch` changes only the selected ncurses directory probe/cache
+representation and equality; libc stat does not fabricate fields. The separate
+`zsh-execute-stack.patch` outlines only the external execute helper so builtin
+commands do not inherit its large local scratch frame. Both patches are applied
+to single derived sources; pristine upstream trees remain unchanged. The external
+helper still exceeds this trial's downward stack and is not qualified here.
+
+The owning issue137 records actual focused consumer/constructor/profile checks,
+compiled artifact fit, retained failures and remaining resource/native gates.
+Private recipes and dependencies are necessary for full replay. No image, prompt,
+login, external-command or release claim follows from the source alone.

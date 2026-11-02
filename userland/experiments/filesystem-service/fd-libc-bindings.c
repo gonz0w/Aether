@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #include "fd-libc.h"
+#ifdef AEFD_ZSH_DIAGNOSTIC
+#include "fd-zsh-external.h"
+#endif
 #include <errno.h>
 #include <stdarg.h>
 #ifdef AEFD_CWD_WIRE
@@ -208,6 +211,9 @@ _Noreturn void __wrap__exit(int status)
     if (aefd_shell_finish(&result) || result.unknown || result.remaining ||
         result.first_error || result.transport.input || result.transport.output)
         __real__exit(141);
+#ifdef AEFD_ZSH_DIAGNOSTIC
+    status = aether_zsh_diagnostic_status(status);
+#endif
     __real__exit(status);
 }
 static int wait_exchange(unsigned char bytes[32])

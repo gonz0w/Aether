@@ -1,2 +1,7 @@
 # Preserve source, fixtures and immutable evidence bytes. New text uses LF.
 * -text
+
+# Unified-diff context prefixes preserve upstream blank lines and tab indentation.
+# The derived sources retain their pinned style and strict compiler/source checks.
+userland/experiments/filesystem-service/fd-tinfo-directory.patch whitespace=-blank-at-eol,-space-before-tab
+userland/experiments/filesystem-service/zsh-execute-stack.patch whitespace=-blank-at-eol,-space-before-tab

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #include "fd-context.h"
-#ifdef AEFD_CWD_WIRE
+#if defined(AEFD_CWD_WIRE) || defined(AEFD_ZSH_FILESYSTEM_BINDINGS)
 #include <errno.h>
 #endif
 
@@ -403,5 +403,60 @@ int64_t aefd_context_getcwd(struct aefd_context *c, unsigned char out[256])
         result = (int64_t)reply.body;
     }
     return end(c, result);
+}
+#endif
+
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+static int64_t query(struct aefd_context *c, unsigned op,
+                     const unsigned char *path, size_t length, unsigned mode,
+                     unsigned char *root,
+                     struct aether_tinfo_directory_view *view)
+{
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    if (!c->client.live || !c->client.workspace || !c->map.generation ||
+        c->map.generation != c->client.generation) {
+        aefd_client_abort(&c->client);
+        return end(c, -EIO);
+    }
+    uint64_t args[4] = {mode, length, 0, 0};
+    struct aefd_reply reply;
+    int moved =
+        aefd_client_exchange(&c->client, op, args, path, length, &reply);
+    result = moved == 1 ? reply.status : moved < 0 ? -EIO : -EINVAL;
+    if (!result && root)
+        memcpy(root, c->workspace, 2);
+    if (!result && view) {
+        struct aether_tinfo_directory_view value = {
+            aefd_word(c->workspace, 0), aefd_word(c->workspace, 1),
+            aefd_word(c->workspace, 2), aefd_word(c->workspace, 3)};
+        if (c->directory_key && (value.key != c->directory_key ||
+                                 value.epoch != c->directory_epoch)) {
+            aefd_client_abort(&c->client);
+            return end(c, -EIO);
+        }
+        c->directory_key = value.key;
+        c->directory_epoch = value.epoch;
+        *view = value;
+    }
+    if (c->client.workspace)
+        memset(c->workspace, 0, AEFD_READ_MAX);
+    return end(c, result);
+}
+int64_t aefd_context_access(struct aefd_context *c, const unsigned char *path,
+                            size_t length, unsigned mode)
+{
+    return query(c, 8, path, length, mode, NULL, NULL);
+}
+int64_t aefd_context_root(struct aefd_context *c, unsigned char out[2])
+{
+    return out ? query(c, 9, NULL, 0, 0, out, NULL) : -EFAULT;
+}
+int64_t aefd_context_directory(struct aefd_context *c,
+                               const unsigned char *path, size_t length,
+                               struct aether_tinfo_directory_view *out)
+{
+    return out ? query(c, 10, path, length, 0, NULL, out) : -EFAULT;
 }
 #endif

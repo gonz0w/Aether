@@ -1,0 +1,66 @@
+--- a/ncurses/tinfo/db_iterator.c
++++ b/ncurses/tinfo/db_iterator.c
+@@ -68,6 +68,14 @@
+     }
+ }
+ 
++#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
++#include "fd-tinfo-directory.h"
++static bool
++check_existence(const char *name, struct aether_tinfo_directory_view *view)
++{
++    return aether_tinfo_directory_probe(name, view) == 0;
++}
++#else
+ static bool
+ check_existence(const char *name, struct stat *sb)
+ {
+@@ -91,6 +99,7 @@
+ #endif
+     return result;
+ }
++#endif
+ 
+ /*
+  * Trim newlines (and backslashes preceding those) and tab characters to
+@@ -296,7 +305,11 @@
+     if (my_blob == NULL || (cache_has_expired = cache_expired())) {
+ 	size_t blobsize = 0;
+ 	const char *values[dbdLAST];
++#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
++	struct aether_tinfo_directory_view *my_stat;
++#else
+ 	struct stat *my_stat;
++#endif
+ 	int j;
+ 
+ 	if (cache_has_expired)
+@@ -365,7 +378,11 @@
+ 		    ++blobsize;
+ 	    }
+ 	    my_list = typeCalloc(char *, blobsize);
++#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
++	    my_stat = typeCalloc(struct aether_tinfo_directory_view, blobsize);
++#else
+ 	    my_stat = typeCalloc(struct stat, blobsize);
++#endif
+ 	    if (my_list != NULL && my_stat != NULL) {
+ 		int k = 0;
+ 		my_list[k++] = my_blob;
+@@ -409,11 +426,15 @@
+ 		 */
+ 		for (j = 0; my_list[j] != NULL; ++j) {
+ 		    bool found = check_existence(my_list[j], &my_stat[j]);
+-#if HAVE_LINK
++#if HAVE_LINK || defined(AEFD_ZSH_FILESYSTEM_BINDINGS)
+ 		    if (found) {
+ 			for (k = 0; k < j; ++k) {
++#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
++			    if (aether_tinfo_directory_same(&my_stat[j], &my_stat[k])) {
++#else
+ 			    if (my_stat[j].st_dev == my_stat[k].st_dev
+ 				&& my_stat[j].st_ino == my_stat[k].st_ino) {
++#endif
+ 				found = FALSE;
+ 				break;
+ 			    }

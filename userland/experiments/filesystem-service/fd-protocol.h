@@ -5,6 +5,18 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+#if defined(AEFD_PATH_WIRE) || defined(AEFD_DUP2_WIRE) ||                      \
+    defined(AEFD_CWD_WIRE) || defined(AEFD_WRITE_WIRE) ||                      \
+    defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_BINDINGS) ||              \
+    defined(AEFD_EXEC_WIRE)
+#error "Zsh filesystem selection excludes historical authority profiles"
+#endif
+#ifndef AEFD_TERMINAL_CANONICAL_BINDINGS
+#define AEFD_TERMINAL_CANONICAL_BINDINGS
+#endif
+#endif
+
 #if defined(AEFD_CWD_WIRE) && !defined(AEFD_DUP2_WIRE)
 #error "AEFD_CWD_WIRE requires AEFD_DUP2_WIRE"
 #endif
@@ -133,6 +145,14 @@
 #else
 #define AEFD_VALID_MODE_BITS(value) ((value) <= AEFD_MODE_BITS)
 #endif
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+#undef AEFD_MAGIC
+#undef AEFD_MAP_MAGIC
+#undef AEFD_STARTUP_MAGIC
+#define AEFD_MAGIC "AEFP0004"
+#define AEFD_MAP_MAGIC "AEFDT008"
+#define AEFD_STARTUP_MAGIC "AEFDB008"
+#endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U
 
@@ -187,7 +207,18 @@ static inline int aefd_name(unsigned char out[256], const unsigned char *name,
         memset(out, 0, 256);
         return 0;
     }
-#ifdef AEFD_CWD_WIRE
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+    /* This literal alias is the selected ncurses lookup, not normalization. */
+    static const char *const allowed[] = {"/home/.terminfo",
+                                          "/home/.terminfo/v/vt100",
+                                          "/home/.terminfo/./v/vt100"};
+    int found = 0;
+    for (unsigned i = 0; i < sizeof(allowed) / sizeof(allowed[0]); ++i)
+        if (strlen(allowed[i]) == length && !memcmp(name, allowed[i], length))
+            found = 1;
+    if (!found)
+        goto invalid_name;
+#elif defined(AEFD_CWD_WIRE)
     for (size_t i = 0; i < length; ++i)
         if (!name[i])
             goto invalid_name;
@@ -262,6 +293,20 @@ static inline int aefd_decode(const unsigned char *frame, size_t length,
 #ifdef AEFD_CWD_WIRE
         case 9:
             if (result < 2 || result > 256 || body != result)
+                return 0;
+            break;
+#endif
+#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+        case 8:
+            if (result || body)
+                return 0;
+            break;
+        case 9:
+            if (result || body != 2)
+                return 0;
+            break;
+        case 10:
+            if (result || body != 32)
                 return 0;
             break;
 #endif

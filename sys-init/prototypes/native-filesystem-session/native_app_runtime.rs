@@ -1,9 +1,27 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #![no_std]
-//! One ordinary app: direct namespace handoff and a stream-only process owner.
+//! One ordinary app; the selected Zsh variant privately retains filesystem custody.
 use abi29_dispatch_core::startup::Identity;
 use af07_transport::Endpoints;
 use core::mem::ManuallyDrop;
+#[cfg(native_zsh_filesystem)]
+use core::mem::MaybeUninit;
+#[cfg(native_zsh_filesystem)]
+#[path = "zsh_namespace.rs"]
+mod zsh_namespace;
+#[cfg(native_zsh_filesystem)]
+use zsh_namespace::Namespace;
+#[cfg(native_zsh_filesystem)]
+const TERMINFO: &[u8] = include_bytes!(env!("AETHER_ZSH_TERMINFO"));
+#[cfg(all(
+    native_zsh_filesystem,
+    not(all(
+        native_tty_mode_probe,
+        native_tty_signal_probe,
+        native_tty_canonical_probe
+    ))
+))]
+compile_error!("Zsh filesystem requires matched canonical MODE and SIGINT");
 use fd_startup::{Binding, Plan, Source};
 use filesystem_service::channel::Io;
 use fork_streams::{Caller, Outcome, SessionPipe, State};
@@ -64,6 +82,8 @@ pub struct Snapshot {
     pub console_status: i64,
     pub observed_terminal: [Option<Status>; 2],
     pub sequence: u64,
+    #[cfg(native_zsh_filesystem)]
+    pub filesystem_requests: u32,
     #[cfg(native_tty_mode_probe)]
     pub mode_cleanup: Option<i64>,
     #[cfg(native_tty_mode_probe)]
@@ -130,6 +150,18 @@ pub struct Runtime<K: AppControl> {
     // Explicit ledger owns physical close attempts. Suppress Endpoints' fallback
     // Drop so a recorded negative close can never be retried on function return.
     endpoints: Option<ManuallyDrop<Endpoints<K>>>,
+    #[cfg(native_zsh_filesystem)]
+    files: MaybeUninit<filesystem_readonly::Files<Namespace<K>>>,
+    #[cfg(native_zsh_filesystem)]
+    files_live: bool,
+    #[cfg(native_zsh_filesystem)]
+    file_binding: Option<filesystem_readonly::Binding>,
+    #[cfg(native_zsh_filesystem)]
+    file_header: [u8; 64],
+    #[cfg(native_zsh_filesystem)]
+    filesystem_requests: u32,
+    #[cfg(native_zsh_filesystem)]
+    namespace_prepaid: [u64; 2],
     request: [u8; 32],
     reply: [u8; 32],
     request_at: usize,
@@ -187,6 +219,18 @@ impl<K: AppControl> Runtime<K> {
             identity: None,
             streams,
             endpoints: None,
+            #[cfg(native_zsh_filesystem)]
+            files: MaybeUninit::uninit(),
+            #[cfg(native_zsh_filesystem)]
+            files_live: false,
+            #[cfg(native_zsh_filesystem)]
+            file_binding: None,
+            #[cfg(native_zsh_filesystem)]
+            file_header: [0; 64],
+            #[cfg(native_zsh_filesystem)]
+            filesystem_requests: 0,
+            #[cfg(native_zsh_filesystem)]
+            namespace_prepaid: [0; 2],
             request: [0; 32],
             reply: [0; 32],
             request_at: 0,
@@ -210,6 +254,65 @@ impl<K: AppControl> Runtime<K> {
             observed_terminal: [None; 2],
         })
     }
+    /// Selected Owner construction in its final mapped slot. Initialization
+    /// scratch returns before dispatch; no whole Runtime value is copied through
+    /// the entry frame. Existing by-value constructors/profiles stay unchanged.
+    #[cfg(native_zsh_filesystem)]
+    #[inline(never)]
+    pub fn initialize_in_place(slot: &mut MaybeUninit<Self>, kernel: K) -> Result<&mut Self, i64> {
+        let streams = State::new(
+            [Some(console(0)), Some(console(1)), Some(console(2))],
+            [SessionPipe::new(), SessionPipe::new()],
+        )
+        .map_err(i64::from)?;
+        let deadline = Deadline::after(0, WRITER_DEADLINE_TICK)?;
+        let pointer = slot.as_mut_ptr();
+        // SAFETY: slot is unique aligned uninitialized storage. Only raw field
+        // projections are formed; every field is initialized before publication.
+        // State/deadline validation precedes writes and no later step can fail.
+        // Kernel moves last, so no owning field is abandoned by a returned error.
+        // files intentionally remains MaybeUninit until Client admission; no
+        // padding or uninitialized Files bytes are read or copied as Runtime.
+        unsafe {
+            core::ptr::addr_of_mut!((*pointer).bound).write(Bound {
+                left: ATTEMPTS - RESERVED,
+                reserved: RESERVED,
+                deadline,
+                sequence: 0,
+                last_tick: 0,
+                failed: 0,
+            });
+            core::ptr::addr_of_mut!((*pointer).ends).write([End::default(); 8]);
+            core::ptr::addr_of_mut!((*pointer).engine).write(0);
+            core::ptr::addr_of_mut!((*pointer).app).write(0);
+            core::ptr::addr_of_mut!((*pointer).identity).write(None);
+            core::ptr::addr_of_mut!((*pointer).streams).write(streams);
+            core::ptr::addr_of_mut!((*pointer).endpoints).write(None);
+            core::ptr::addr_of_mut!((*pointer).files).write(MaybeUninit::uninit());
+            core::ptr::addr_of_mut!((*pointer).files_live).write(false);
+            core::ptr::addr_of_mut!((*pointer).file_binding).write(None);
+            core::ptr::addr_of_mut!((*pointer).file_header).write([0; 64]);
+            core::ptr::addr_of_mut!((*pointer).filesystem_requests).write(0);
+            core::ptr::addr_of_mut!((*pointer).namespace_prepaid).write([0; 2]);
+            core::ptr::addr_of_mut!((*pointer).request).write([0; 32]);
+            core::ptr::addr_of_mut!((*pointer).reply).write([0; 32]);
+            core::ptr::addr_of_mut!((*pointer).request_at).write(0);
+            core::ptr::addr_of_mut!((*pointer).reply_at).write(0);
+            core::ptr::addr_of_mut!((*pointer).closed).write([false; DESCRIPTORS]);
+            core::ptr::addr_of_mut!((*pointer).tty).write(None);
+            core::ptr::addr_of_mut!((*pointer).mode).write(None);
+            core::ptr::addr_of_mut!((*pointer).console_attempted).write(false);
+            core::ptr::addr_of_mut!((*pointer).terminal_attempted).write(false);
+            core::ptr::addr_of_mut!((*pointer).started).write(false);
+            core::ptr::addr_of_mut!((*pointer).cleanup_started).write(false);
+            core::ptr::addr_of_mut!((*pointer).cleanup_attempted).write([[false; 4]; 2]);
+            core::ptr::addr_of_mut!((*pointer).cleanup).write([[(-5, 0, 0); 4]; 2]);
+            core::ptr::addr_of_mut!((*pointer).console_status).write(-5);
+            core::ptr::addr_of_mut!((*pointer).observed_terminal).write([None; 2]);
+            core::ptr::addr_of_mut!((*pointer).kernel).write(kernel);
+            Ok(slot.assume_init_mut())
+        }
+    }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
             ends: self.ends,
@@ -227,6 +330,8 @@ impl<K: AppControl> Runtime<K> {
             console_status: self.console_status,
             observed_terminal: self.observed_terminal,
             sequence: self.bound.sequence,
+            #[cfg(native_zsh_filesystem)]
+            filesystem_requests: self.filesystem_requests,
             #[cfg(native_tty_mode_probe)]
             mode_cleanup: self.mode.as_ref().and_then(tty_mode::State::cleanup_result),
             #[cfg(native_tty_mode_probe)]
@@ -333,6 +438,14 @@ impl<K: AppControl> Runtime<K> {
         let process = self.pair(0xd001)?;
         let record: &mut [u8; 320] = (&mut workspace[..320]).try_into().unwrap();
         encode_launch(record, self.engine, service[2], service[1])?;
+        #[cfg(native_zsh_filesystem)]
+        {
+            // Prepay exactly two retained namespace closes from the ordinary
+            // allowance before app admission. No reserve increase or refund.
+            self.bound.spend()?;
+            self.bound.spend()?;
+            self.namespace_prepaid = [service[2], service[1]];
+        }
         self.bound.before(&mut self.kernel)?;
         let app = self.kernel.launch_app(record, process[2], process[1]);
         record.fill(0);
@@ -340,7 +453,12 @@ impl<K: AppControl> Runtime<K> {
             return Err(if app < 0 { app } else { -5 });
         }
         self.app = app as u64;
+        #[cfg(not(native_zsh_filesystem))]
         for cap in [service[2], service[1], process[2], process[1]] {
+            self.transferred(cap)?;
+        }
+        #[cfg(native_zsh_filesystem)]
+        for cap in [process[2], process[1]] {
             self.transferred(cap)?;
         }
         self.identity = Some(Identity::admitted(1, 1, self.app).map_err(i64::from)?);
@@ -381,6 +499,49 @@ impl<K: AppControl> Runtime<K> {
         self.endpoints = Some(ManuallyDrop::new(
             Endpoints::new(self.kernel.clone(), process[0], process[3]).map_err(|_| -5)?,
         ));
+        #[cfg(native_zsh_filesystem)]
+        {
+            let identity = self.identity.ok_or(-9)?;
+            let binding = filesystem_readonly::Binding {
+                slot: identity.slot as u8,
+                epoch: identity.epoch as u8,
+                handle: identity.handle,
+                generation: process[0],
+            };
+            let mut namespace = Namespace::new(self.kernel.clone(), service[2], service[1]);
+            // SAFETY: these disjoint Runtime fields stay exclusively borrowed
+            // through construction. No Self reference/move/reentry is possible;
+            // failed construction drops/closes while the loans remain live.
+            unsafe {
+                namespace.arm(
+                    &mut self.bound,
+                    &mut self.ends,
+                    &mut self.filesystem_requests,
+                    &mut self.namespace_prepaid,
+                )
+            }
+            .map_err(fs_errno)?;
+            let connected = filesystem_readonly::Files::connect_in_place(
+                &mut self.files,
+                namespace,
+                service[0],
+                binding,
+            );
+            match connected {
+                Ok(files) => {
+                    files
+                        .configure(|io| {
+                            io.disarm();
+                            Ok(())
+                        })
+                        .map_err(fs_errno)?;
+                    self.files_live = true;
+                    self.file_binding = Some(binding);
+                }
+                Err(error) => return Err(fs_errno(error.error)),
+            }
+            self.with_files(|files| files.provision(TERMINFO, workspace))?;
+        }
         let mut bindings = [Binding::default(); 16];
         bindings[1] = Binding {
             kind: 1,
@@ -451,7 +612,8 @@ impl<K: AppControl> Runtime<K> {
             sources,
             history: [0; 2],
         };
-        let startup: &mut [u8; 304] = (&mut workspace[..304]).try_into().unwrap();
+        let startup: &mut [u8; fd_startup::BYTES] =
+            (&mut workspace[..fd_startup::BYTES]).try_into().unwrap();
         fd_startup::encode(&plan, startup).map_err(i64::from)?;
         let mut progress = 0;
         let result = stream_transport::transfer(
@@ -467,7 +629,10 @@ impl<K: AppControl> Runtime<K> {
         startup.fill(0);
         result
     }
-    fn request(&mut self) -> Result<bool, i64> {
+    fn request(
+        &mut self,
+        #[allow(unused_variables)] workspace: &mut [u8; 4096],
+    ) -> Result<bool, i64> {
         self.request.fill(0);
         self.request_at = 0;
         self.reply_at = 0;
@@ -510,6 +675,23 @@ impl<K: AppControl> Runtime<K> {
                 &mut self.request[start..16],
                 false,
             )?;
+        }
+        #[cfg(native_zsh_filesystem)]
+        if self.request[..8] == filesystem_readonly::MAGIC[..] {
+            self.file_header.fill(0);
+            self.file_header[..16].copy_from_slice(&self.request[..16]);
+            stream_transport::transfer(
+                &mut OwnerSteps {
+                    kernel: &mut self.kernel,
+                    bound: &mut self.bound,
+                    endpoints: self.endpoints.as_mut().ok_or(-9)?,
+                    progress: &mut self.request_at,
+                },
+                &mut self.file_header[16..],
+                false,
+            )?;
+            self.file_request(workspace)?;
+            return Ok(true);
         }
         let control = cfg!(native_tty_mode_probe)
             && (matches!(u32_at(&self.request, 0), 0x10..=0x1f)
@@ -845,6 +1027,137 @@ impl<K: AppControl> Runtime<K> {
         }
         Ok(())
     }
+    #[cfg(native_zsh_filesystem)]
+    fn with_files<R>(
+        &mut self,
+        call: impl FnOnce(
+            &mut filesystem_readonly::Files<Namespace<K>>,
+        ) -> Result<R, filesystem_readonly::Error>,
+    ) -> Result<R, i64> {
+        if !self.files_live {
+            return Err(-9);
+        }
+        // SAFETY: files_live is set only after successful in-place construction;
+        // the field has not moved or been dropped. Other field loans are disjoint.
+        let files = unsafe { self.files.assume_init_mut() };
+        files
+            .configure(|io| {
+                // SAFETY: sole synchronous callback, exclusive disjoint field loans;
+                // all result paths below disarm, and fatal close disarms itself.
+                unsafe {
+                    io.arm(
+                        &mut self.bound,
+                        &mut self.ends,
+                        &mut self.filesystem_requests,
+                        &mut self.namespace_prepaid,
+                    )
+                }
+            })
+            .map_err(fs_errno)?;
+        let result = call(files);
+        if files.cleanup().is_none() {
+            files
+                .configure(|io| {
+                    io.disarm();
+                    Ok(())
+                })
+                .map_err(fs_errno)?;
+        }
+        result.map_err(fs_errno)
+    }
+    #[cfg(native_zsh_filesystem)]
+    fn file_request(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        let binding = self.file_binding.ok_or(-9)?;
+        if self
+            .identity
+            .map(|id| (id.slot as u8, id.epoch as u8, id.handle))
+            != Some((binding.slot, binding.epoch, binding.handle))
+        {
+            return Err(-9);
+        }
+        self.mode_peer_live()?;
+        let header = self.file_header;
+        let length = self.with_files(|files| files.body_length(binding, &header))?;
+        workspace.fill(0);
+        stream_transport::transfer(
+            &mut OwnerSteps {
+                kernel: &mut self.kernel,
+                bound: &mut self.bound,
+                endpoints: self.endpoints.as_mut().ok_or(-9)?,
+                progress: &mut self.request_at,
+            },
+            &mut workspace[..length],
+            false,
+        )?;
+        // Authenticate the exact admitted generation again after body assembly.
+        self.mode_peer_live()?;
+        let files = unsafe { self.files.assume_init_mut() };
+        files
+            .configure(|io| {
+                // SAFETY: same nonmoving disjoint synchronous loans as with_files.
+                unsafe {
+                    io.arm(
+                        &mut self.bound,
+                        &mut self.ends,
+                        &mut self.filesystem_requests,
+                        &mut self.namespace_prepaid,
+                    )
+                }
+            })
+            .map_err(fs_errno)?;
+        let result = (|| {
+            let mut reply = files
+                .prepare(binding, &header, length, workspace)
+                .map_err(fs_errno)?;
+            let mut bytes = *reply.header();
+            // End the namespace loan before process I/O reborrows Bound. A lost
+            // reply rearms only the close journal before Reply's abort/drop.
+            reply
+                .configure(|io| {
+                    io.disarm();
+                    Ok(())
+                })
+                .map_err(fs_errno)?;
+            let delivery = if let Some(endpoints) = self.endpoints.as_mut() {
+                let mut steps = OwnerSteps {
+                    kernel: &mut self.kernel,
+                    bound: &mut self.bound,
+                    endpoints,
+                    progress: &mut self.reply_at,
+                };
+                stream_transport::transfer(&mut steps, &mut bytes, true)
+                    .and_then(|()| stream_transport::transfer(&mut steps, reply.body_mut(), true))
+            } else {
+                Err(-9)
+            };
+            reply
+                .configure(|io| {
+                    // SAFETY: process Steps loan ended above; these four disjoint
+                    // fields are exclusively reloaned through settlement/drop.
+                    unsafe {
+                        io.arm(
+                            &mut self.bound,
+                            &mut self.ends,
+                            &mut self.filesystem_requests,
+                            &mut self.namespace_prepaid,
+                        )
+                    }
+                })
+                .map_err(fs_errno)?;
+            delivery?;
+            reply.delivered();
+            Ok(())
+        })();
+        if files.cleanup().is_none() {
+            files
+                .configure(|io| {
+                    io.disarm();
+                    Ok(())
+                })
+                .map_err(fs_errno)?;
+        }
+        result
+    }
     fn terminal_zero(&mut self, handle: u64) -> Result<(), i64> {
         loop {
             let state = self.ctl(0x20001, handle, 0)?;
@@ -882,10 +1195,19 @@ impl<K: AppControl> Runtime<K> {
     }
     fn run_inner(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
         self.provision(workspace)?;
-        while self.request()? {}
+        while self.request(workspace)? {}
         self.terminal_zero(self.app)?;
         #[cfg(native_tty_mode_probe)]
         self.cleanup_mode()?;
+        #[cfg(native_zsh_filesystem)]
+        {
+            let engine = self.engine;
+            self.with_files(|files| {
+                files
+                    .disconnect_checked(|io| io.verify_disconnect(engine))
+                    .map(|_| ())
+            })?;
+        }
         self.close_owned()?;
         self.reclaim(self.app)?;
         self.app = 0;
@@ -894,11 +1216,70 @@ impl<K: AppControl> Runtime<K> {
         self.reclaim(self.engine)?;
         self.engine = 0;
         self.bound.check(&mut self.kernel)?;
+        #[cfg(native_zsh_filesystem)]
+        self.write_native_oracle(workspace)?;
         self.close_console()?;
         self.bound.reserve()?;
         self.terminal_attempted = true;
         let _ = self.kernel.ctl(0x2a002, 0xf002, 0);
         Err(-5) // A returning successful halt is a defect, never another attempt.
+    }
+    /// Selected version1 diagnostic, only after checked healthy teardown.
+    /// This reports the actual shared request ledger and cached private MODE
+    /// cleanup result. It grants no authority and is not the final halt witness.
+    #[cfg(native_zsh_filesystem)]
+    #[inline(never)]
+    fn write_native_oracle(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        if !(14..=96).contains(&self.filesystem_requests)
+            || self.app != 0
+            || self.engine != 0
+            || !self.files_live
+            || self.cleanup_started
+            || self.console_attempted
+            || self.terminal_attempted
+            || self.bound.failed != 0
+            || self.namespace_prepaid != [0; 2]
+            || self.mode.as_ref().and_then(tty_mode::State::cleanup_result) != Some(0)
+            || self
+                .observed_terminal
+                .iter()
+                .any(|state| !matches!(state, Some((1, _, 1))))
+            || self
+                .ends
+                .iter()
+                .any(|end| end.owned && (!end.attempted || end.status != 0))
+        {
+            return Err(-5);
+        }
+        // SAFETY: files_live is set only after successful final-slot Client
+        // construction. Healthy disconnect consumed both close obligations.
+        if unsafe { self.files.assume_init_ref() }.cleanup() != Some([0; 2]) {
+            return Err(-5);
+        }
+        const ROW: &[u8; 49] = b"\nAETHER ZSH OWNER v=1 requests=00 mode_cleanup=0\n";
+        workspace[..ROW.len()].copy_from_slice(ROW);
+        workspace[31] = b'0' + (self.filesystem_requests / 10) as u8;
+        workspace[32] = b'0' + (self.filesystem_requests % 10) as u8;
+        let result = (|| {
+            let mut offset = 0;
+            while offset < ROW.len() {
+                let length = (ROW.len() - offset).min(16);
+                self.bound.before(&mut self.kernel)?;
+                let count = self
+                    .kernel
+                    .serial(true, &mut workspace[offset..offset + length]);
+                if count == -11 {
+                    self.yield_now()?;
+                } else if count <= 0 || count as u64 > length as u64 {
+                    return Err(if count < 0 { count } else { -5 });
+                } else {
+                    offset += count as usize;
+                }
+            }
+            Ok(())
+        })();
+        workspace[..ROW.len()].fill(0);
+        result
     }
     fn close_owned(&mut self) -> Result<(), i64> {
         let mut failure = 0;
@@ -908,6 +1289,17 @@ impl<K: AppControl> Runtime<K> {
                 continue;
             }
             if !end.attempted {
+                #[cfg(native_zsh_filesystem)]
+                if let Some(credit) = self
+                    .namespace_prepaid
+                    .iter_mut()
+                    .find(|cap| **cap == end.cap)
+                {
+                    *credit = 0;
+                } else {
+                    self.bound.reserve()?;
+                }
+                #[cfg(not(native_zsh_filesystem))]
                 self.bound.reserve()?;
                 self.ends[index].attempted = true;
                 self.ends[index].status = self.kernel.close(end.cap);
@@ -934,6 +1326,13 @@ impl<K: AppControl> Runtime<K> {
             return Err(-5);
         }
         self.cleanup_started = true;
+        #[cfg(native_zsh_filesystem)]
+        if self.files_live {
+            let _ = self.with_files(|files| {
+                files.abort();
+                Ok(())
+            });
+        }
         let _ = self.close_owned();
         for (index, handle) in [self.app, self.engine].into_iter().enumerate() {
             if handle == 0 {
@@ -1129,16 +1528,51 @@ pub fn encode_launch(
         return Err(-22);
     }
     out.fill(0);
-    out[..8].copy_from_slice(b"AENAP001");
+    out[..8].copy_from_slice(if cfg!(native_zsh_filesystem) {
+        b"AENAP002"
+    } else {
+        b"AENAP001"
+    });
     out[8..16].copy_from_slice(&320u64.to_le_bytes());
-    out[16..24].copy_from_slice(&3u64.to_le_bytes());
-    out[24..32].copy_from_slice(&1u64.to_le_bytes());
+    out[16..24].copy_from_slice(
+        &(if cfg!(native_zsh_filesystem) {
+            4u64
+        } else {
+            3u64
+        })
+        .to_le_bytes(),
+    );
+    out[24..32].copy_from_slice(
+        &(if cfg!(native_zsh_filesystem) {
+            4u64
+        } else {
+            1u64
+        })
+        .to_le_bytes(),
+    );
+    #[cfg(not(native_zsh_filesystem))]
     for (slot, text) in [
         (0, b"mktemp".as_slice()),
         (1, b"-d".as_slice()),
         (2, TEMPLATE),
         (4, b"LC_ALL=C".as_slice()),
     ] {
+        out[32 + slot * 32..][..text.len()].copy_from_slice(text);
+    }
+    #[cfg(native_zsh_filesystem)]
+    for (slot, text) in [
+        b"zsh".as_slice(),
+        b"-f",
+        b"-i",
+        b"+m",
+        b"TERM=vt100",
+        b"LC_ALL=C",
+        b"HOME=/",
+        b"PWD=/",
+    ]
+    .iter()
+    .enumerate()
+    {
         out[32 + slot * 32..][..text.len()].copy_from_slice(text);
     }
     out[288..296].copy_from_slice(&engine.to_le_bytes());
@@ -1188,3 +1622,21 @@ fn tty_errno(error: TtyError) -> i64 {
         _ => -5,
     }
 }
+
+#[cfg(native_zsh_filesystem)]
+fn fs_errno(error: filesystem_readonly::Error) -> i64 {
+    match error {
+        filesystem_readonly::Error::Remote(code) | filesystem_readonly::Error::Transport(code) => {
+            code
+        }
+        filesystem_readonly::Error::Invalid => -22,
+        filesystem_readonly::Error::Full => -28,
+        _ => -5,
+    }
+}
+
+#[cfg(all(test, native_zsh_filesystem))]
+extern crate std;
+#[cfg(all(test, native_zsh_filesystem))]
+#[path = "zsh_owner_tests.rs"]
+mod zsh_owner_tests;

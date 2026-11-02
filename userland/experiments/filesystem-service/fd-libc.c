@@ -32,7 +32,7 @@ int64_t aefd_libc_open(struct aefd_context *c, const char *path, int flags)
         return -EOPNOTSUPP;
     size_t length = 0;
     while (length < 256 && path[length]) {
-#ifndef AEFD_PATH_WIRE
+#if !defined(AEFD_PATH_WIRE) && !defined(AEFD_ZSH_FILESYSTEM_BINDINGS)
         if (path[length] == '/')
             return -EOPNOTSUPP;
 #endif

@@ -12,6 +12,28 @@
 #include <string.h>
 #include <unistd.h>
 static struct aefd_startup *admitted;
+static char **main_arguments;
+static void writable_arguments(char **argv)
+{
+    const char *expected[] = {"zsh", "-f", "-i", "+m"};
+    assert(argv && !argv[4]);
+    for (unsigned i = 0; i < 4; ++i) {
+        assert(argv[i] && !strcmp(argv[i], expected[i]));
+        size_t length = strlen(argv[i]);
+        volatile char *bytes = argv[i];
+        bytes[length] = '\0'; /* Real Zsh metafy writes even the ASCII NUL. */
+        char first = bytes[0];
+        bytes[0] = (char)(first ^ 1);
+        assert(bytes[0] == (char)(first ^ 1));
+        bytes[0] = first;
+        char *volatile *slots = argv;
+        char *saved = slots[i];
+        slots[i] = NULL;
+        assert(!slots[i]);
+        slots[i] = saved;
+        assert(!strcmp(argv[i], expected[i]));
+    }
+}
 static unsigned char frame[304], request[32], reply[32], output[16];
 static unsigned mode, starts, ready_calls, main_calls, ignored, rpc_closes[2];
 static unsigned source_closes[3], operations, bits;
@@ -157,6 +179,9 @@ _Noreturn void __wrap__Exit(int);
 _Noreturn void __real__exit(int value)
 {
     assert(starts == 1 && rpc_closes[0] == 1 && rpc_closes[1] == 1);
+    assert(!!main_arguments == !!main_calls);
+    if (main_arguments)
+        writable_arguments(main_arguments); /* Wrapper scope survives finish. */
     assert(value == (mode == 0 || mode == 1 || mode == 8 || mode == 9 ? 19
                      : mode == 4 || mode == 10                        ? 141
                                                                       : 143));
@@ -186,6 +211,8 @@ int __real_main(int argc, char **argv)
     assert(starts == 1 && ready_calls == 1 && ignored == 1 && bits == 7 &&
            argc == 4 && !strcmp(argv[0], "zsh") && !strcmp(argv[1], "-f") &&
            !strcmp(argv[2], "-i") && !strcmp(argv[3], "+m") && !argv[4]);
+    writable_arguments(argv);
+    main_arguments = argv;
     assert(admitted == aefd_shell_external_startup() &&
            admitted->context.client.workspace == admitted->context.workspace &&
            admitted->context.session.map == &admitted->context.map);

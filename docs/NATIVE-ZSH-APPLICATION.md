@@ -14,6 +14,7 @@ or filesystem semantics.
 
 | Resource | Selected application profile |
 | --- | --- |
+| Outer application envelope | 13,156,512 bytes, derived from existing engine/app/Owner file caps and headers |
 | Application ELF file | At most 1.5 MiB |
 | Image plus existing main stack | At most 384 backing pages |
 | Total backing per application | 640 pages; five equal application slots |
@@ -120,3 +121,45 @@ native acceptance remains separate. The historical one-run exception stays consu
 The separately approved standing complete-host budget is recorded in
 [PROJECT](../PROJECT.md#complete-host-gate-budget-2026-10-26); it changes no runtime
 resource limit or guest authority.
+
+
+## Scoped filesystem and terminal composition
+
+[Issue137](https://github.com/gonz0w/Aether/issues/137) selects default-off
+`-Dnative-zsh-terminfo=true` with the existing application, MODE and SIGINT
+prerequisites. It keeps all numeric limits and the AENFS006/AENMX011 composition.
+[Admission](ZSH-TERMINFO-ADMISSION.md) retains unchanged untouched-namespace
+preflight and transfers process endpoints only under AENAP002. Namespace custody
+stays with the Rust Owner; the app receives no namespace auxv record.
+
+The [consumer contract](../userland/docs/ZSH-FILESYSTEM.md) records336-byte
+startup, exact readonly paths and the typed directory port. Current actual
+application fit is314 pages, and Owner code/Runtime/stack fit their original
+bounds. The mapped stack still provides only48KiB initial downward space.
+One selected source attribute keeps external-command scratch out of builtin
+execution; the separate external helper remains over that stack budget.
+
+The [owner's fixed diagnostic evidence decision](policy/execution.md#fixed-diagnostic-evidence-decision-2026-11-02)
+permits scoped workload-fit evidence under unchanged limits after actual route/
+known-defect/structural checks and fresh image/media/consumer review. It replaces
+the complete pre-image peak-proof prerequisite for this builtin experiment;
+hard capacity is still not measured demand, and no successful trial is claimed.
+
+For the selected `native-zsh-terminfo` diagnostic only, the kernel omits debug
+sections so the ISO fits the existing16MiB build-file bound. Debug optimization
+and runtime safety checks remain selected; ordinary kernel builds keep debug
+information. Actual emitted kernel mapping and image size are checked before use.
+
+The boot-module gate selects that derived application bound before slicing the
+module or calling native startup. Ordinary3,154,000-byte and old-large8,392,752-byte
+bounds stay unchanged; the input cannot select a profile. Typed envelope, ELF,
+layout and role checks still follow. The public wiring check is:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_envelope_gate.py -v
+```
+
+This command launches no process and checks extraction/source wiring only. The
+same file supplies the actual scalar boot-guard fixture for the private qualified
+compiler run in issue137, including old-profile and one-over/no-start controls.
+Public committed capture tooling does not provide that private execution API.
