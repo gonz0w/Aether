@@ -119,6 +119,18 @@ impl Children {
         Ok(())
     }
 
+    /// Closed selected parent/helper flags. Stop/continue bits are accepted but
+    /// this profile has no such events; status still comes only from terminal().
+    pub fn wait_flags(&mut self, pid: i32, flags: u32) -> Result<Wait, i32> {
+        if flags & !11 != 0 { return Err(-22); }
+        self.wait(pid, flags & 1 != 0)
+    }
+    pub fn reclaimed_exact(&self, identity: Identity) -> bool {
+        if identity.slot != 2 { return false; }
+        let child = &self.records[0];
+        child.identity.is_none() && child.state == State::Empty
+            && child.last_generation == identity.generation
+    }
     /// At most one parent wait reply is outstanding on its authenticated channel.
     /// The dispatcher retries its cached reply until delivery is confirmed; a new
     /// wait call while that reservation exists is rejected.
@@ -190,6 +202,33 @@ impl Children {
         child.state = State::Empty;
         Ok(())
     }
+}
+
+/// Input ownership is independent of wait eligibility. A terminal child keeps
+/// the lease through known wait delivery and native/transport/ref settlement.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ReadLease {
+    #[default]
+    Parent,
+    Child(Identity),
+    Contained,
+}
+impl ReadLease {
+    pub fn give_child(&mut self, identity: Identity, parent_read_pending: bool) -> Result<(), i32> {
+        Identity::admitted(identity.slot, identity.generation, identity.handle)?;
+        if *self != Self::Parent || identity.slot != 2 || parent_read_pending { return Err(-16); }
+        *self = Self::Child(identity); Ok(())
+    }
+    pub fn restore_parent(&mut self, identity: Identity, children: &Children) -> Result<(), i32> {
+        if *self != Self::Child(identity) || !children.reclaimed_exact(identity) { return Err(-16); }
+        *self = Self::Parent; Ok(())
+    }
+    pub fn child_read(&self, identity: Identity, canonical: bool, isig: bool) -> Result<(), i32> {
+        if *self != Self::Child(identity) { return Err(-13); }
+        if canonical || isig { return Err(-95); }
+        Ok(())
+    }
+    pub fn contain(&mut self) { *self = Self::Contained; }
 }
 
 #[cfg(test)]
@@ -331,5 +370,34 @@ mod tests {
             assert_eq!(children.wait(pid, false), Err(-22));
             assert_eq!(children, before);
         }
+    }
+}
+
+#[cfg(test)]
+mod selected_lease_tests {
+    use super::*;
+    fn child() -> Identity { Identity::admitted(2, 1, 0xb0000103).unwrap() }
+    #[test]
+    fn real_wait_delivery_collection_reclaim_precede_parent_read_lease() {
+        let id = child(); let mut children = Children::new(); let mut lease = ReadLease::Parent;
+        assert!(lease.give_child(id, true).is_err()); lease.give_child(id, false).unwrap(); children.admit(id).unwrap();
+        assert_eq!(children.wait_flags(-1, 11).unwrap(), Wait::NoChange);
+        children.terminal(id, 1792).unwrap();
+        assert!(lease.restore_parent(id, &children).is_err());
+        assert_eq!(children.wait_flags(-1, 11).unwrap(), Wait::Ready { identity: id, status: 1792 });
+        assert!(children.reclaimed(id).is_err()); assert!(lease.restore_parent(id, &children).is_err());
+        children.delivered(id).unwrap(); assert!(lease.restore_parent(id, &children).is_err());
+        children.reclaimed(id).unwrap(); lease.restore_parent(id, &children).unwrap();
+        assert_eq!(lease, ReadLease::Parent); assert_eq!(children.wait_flags(-1, 0).unwrap(), Wait::NoChild);
+    }
+    #[test]
+    fn child_canonical_or_isig_read_is_refused_and_unknown_is_sticky() {
+        let id = child(); let mut lease = ReadLease::Parent; lease.give_child(id, false).unwrap();
+        assert_eq!(lease.child_read(id, true, false), Err(-95)); assert_eq!(lease.child_read(id, false, true), Err(-95));
+        assert_eq!(lease.child_read(id, false, false), Ok(()));
+        assert_eq!(lease.child_read(Identity::admitted(2, 2, 0xb0000203).unwrap(), false, false), Err(-13));
+        lease.contain(); assert!(lease.give_child(id, false).is_err()); assert!(lease.child_read(id, false, false).is_err());
+        let mut children = Children::new(); assert_eq!(children.wait_flags(-1, 4), Err(-22));
+        assert_eq!(children.wait_flags(0, 0), Err(-22));
     }
 }

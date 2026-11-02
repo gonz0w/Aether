@@ -2665,6 +2665,16 @@
       "invariants": "One retained Owner namespace Client/epoch; exact app generation; readonly closed336/AEFP0004; actual held directory, no fake stat; AENAP002 process-only transfer and positive large/MODE/SIGINT closure. Existing resource/default/cleanup limits; old profiles preserved. Application boot-module bound derives from existing AENFS006 component caps; ordinary/large defaults unchanged. Fixed Screen4 private FIFO and original live holder association survive closed diagnostic pipes.",
       "oracle": "Actual realproducer epoch/inplace constructor and semantic omissions; exact libc/raw errno/mask/publication; compiled app/Owner origins, derived-source pins, current loader/TLS/layout/stack; known child cleanup and real hostVT100 input/render/exit. Actual extracted boot guard admits selected9,081,744/exactcap and rejects one-over/u64max before dispatch; compiling old/omitted gate controls reject. Source-only public checks are distinct from the private actual compiler run.",
       "gaps": "No current image/guest or complete Zsh startup/parser/handler stack/peakheap/whole-session request demand. Expected33requests and capacity are models, not native evidence; externalexecute still overbudget. Unknown historical interrupted hostattempt remains quarantined."
+    },
+    {
+      "id": "zsh-external-parent-helper",
+      "reference": "userland/docs/ZSH-FILESYSTEM.md",
+      "invariants": "Selected one-parent/one-helper copy/exec/wait with full descriptor snapshots, Owner namespace custody, child-local binding, parent-only MODE/SIGINT, shared FILE lifetime, known status delivery before reclaim/read-lease restoration, and unchanged resource/default profiles.",
+      "command": "python3 -B -m unittest discover -s tests -p test_native_zsh_external.py -v; focused C process/provider and Rust startup/controller/shared-FILE controls in the owning private recipes; lead-frozen zsh-target-fit.py --external and zsh-owner-fit.py --external, then separately reviewed matching image and fixed native workload.",
+      "oracle": "Real helper ELF executes and exits7; Zsh observes actual status7 and returns to its prompt; normal final app/engine exit, mode restoration, export and three known reclamations. Malformed/stale/unknown effects contain without replay.",
+      "gaps": "Issue143 acceptance remains open until actual linked fits, native workload and integration gates pass. Private toolchain recipes are not a standalone public distribution. No child input/job control, arbitrary filesystem execution, login, persistence, packages or R1 qualification; issue137 exceptions do not transfer.",
+      "owner": "Aether kernel, userland and sys-init",
+      "budget_seconds": 300
     }
   ]
 }

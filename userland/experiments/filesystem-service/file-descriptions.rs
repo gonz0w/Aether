@@ -119,7 +119,7 @@ impl<S: Store, const VIEWS: usize> Descriptions<S, VIEWS> {
         Ok((index, self.descriptors[view][index].ok_or(Failure::BadFd)?))
     }
 
-    #[cfg(fs_process_views)]
+    #[cfg(any(fs_process_views, native_zsh_process))]
     /// Exact remote FD presence/flags, computed from the sole authoritative view.
     pub(crate) fn file_view_in(&self, view: usize) -> Result<(u16, u16), S::Error> {
         self.view(view)?;
@@ -389,7 +389,7 @@ impl<S: Store, const VIEWS: usize> Descriptions<S, VIEWS> {
         }
         Ok(())
     }
-    #[cfg(fs_process_views)]
+    #[cfg(any(fs_process_views, native_zsh_process))]
     pub(crate) fn inherit_view(&mut self, parent: usize, child: usize) -> Result<(), S::Error> {
         self.view(parent)?;
         self.view(child)?;
@@ -399,7 +399,7 @@ impl<S: Store, const VIEWS: usize> Descriptions<S, VIEWS> {
         self.descriptors[child] = self.descriptors[parent];
         Ok(())
     }
-    #[cfg(fs_process_views)]
+    #[cfg(any(fs_process_views, native_zsh_process))]
     pub(crate) fn settle_view(&mut self, view: usize) -> Result<(), S::Error> {
         self.view(view)?;
         for index in 0..SLOTS {

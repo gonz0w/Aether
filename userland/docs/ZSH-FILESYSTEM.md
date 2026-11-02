@@ -1,12 +1,18 @@
 # Selected Zsh filesystem integration
 
-[Issue137](https://github.com/gonz0w/Aether/issues/137) owns implementation and
-qualification. Cam approved this scoped design on2026-11-02; the canonical
+[Issue137](https://github.com/gonz0w/Aether/issues/137) completed the first real
+Zsh prompt, one builtin and normal exit/export/cleanup through
+[PR138](https://github.com/gonz0w/Aether/pull/138). Its scoped fit and delivery
+decisions remain specific to that checkpoint.
+[Issue143](https://github.com/gonz0w/Aether/issues/143) owns the selected
+parent/helper extension below; its native acceptance remains open. The canonical
 [execution policy](../../docs/policy/execution.md#selected-real-zsh-filesystem-composition-2026-11-02)
-records the answer. The contracts below are selected implementation requirements,
-not evidence that a prompt or runtime qualification has passed.
+records the approvals and limits.
 
-## Current offline evidence
+## Retained pre-trial offline evidence for issue137
+
+The following measurements and preparation limits describe that earlier
+builtin-only candidate. They do not qualify the new external-command composition.
 
 The selected source is implemented and separately reviewed. The fresh Zsh/tinfo
 executable is1,274,352 bytes and fits314 pages including the existing mapped stack;
@@ -348,3 +354,27 @@ Its injected native observations are host qualification, not native execution.
 The independently linkable codec fixture remains `fd-zsh-process-tests.c`.
 Matched Rust controller tests, actual linked resource fits, separate review and
 a later approved native trial are still required.
+
+### Selected parent/helper completion observation
+
+Only the external profile uses this exact row, with leading and trailing LF:
+
+```text
+AETHER ZSH OWNER v=2 requests=NN child_status=1792 exec_ready=1 child_reclaimed=1 parent_lease=1 mode_cleanup=0
+```
+
+NN is the actual14..96 service request count. Child status1792 is the actual
+encoded normal exit7 reserved and delivered through the wait reply; it must
+agree with the real child terminal. `exec_ready` requires the matched C003
+receipt, publication and fresh helper readiness. Reclaim, parent read lease and
+mode cleanup report completed phases. Missing or unknown facts contain the
+session instead of emitting this success observation. No capability or pointer
+is printed; the older v1 profile retains its exact row.
+
+The fixed external trial submits `(exec -c /inputs/helper status)`, observes the
+child terminal and reclaim followed by a parent prompt, then submits
+`print -r -- $?` and requires standalone7 plus another prompt before `exit 0`.
+Each input submission is once-only; unknown submission or cleanup stops without
+replay. Supplied UART controls are synthetic and cannot establish execution,
+image association, actual frontend/input or known process cleanup. Fresh linked
+fits and separately reviewed image/media still precede any guest.

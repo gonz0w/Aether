@@ -167,6 +167,34 @@ No extra guest, unknown-effect retry or cleanup authority follows. External
 commands, login, persistent write/reboot/readback, packages and R1 retain their
 own gates. The earlier design and fixed diagnostic-fit decisions remain effective.
 
+## Selected Zsh parent/helper composition —2026-11-02
+
+Cam directly approved
+[the scoped parent/helper design](https://github.com/gonz0w/Aether/issues/142#issuecomment-6589424662):
+“Approve scoped parent/helper design (Recommended)”. Reviewed proposal03 in
+issue142 selects one real Zsh parent and one immutable helper child with the
+actual internal pipe, existing copy/exec/SIGCHLD, one context per process and
+Rust Owner namespace custody. [Issue143](https://github.com/gonz0w/Aether/issues/143)
+owns implementation; the [local consumer contract](../../userland/docs/ZSH-FILESYSTEM.md#selected-parenthelper-extension)
+records the selected ownership and compatibility requirements.
+
+Child bindings are local to its real native slot/generation. MODE/private restore
+and SIGINT stay parent-only; child SIGINT ownership is explicitly null. Only
+READ/WRITE proxy descriptions are delegated, with an exclusive read lease and
+truthful unsupported canonical/ISIG child input. Use complete336-byte selected
+snapshots, preserve old304-byte profiles, and retain actual wait status through
+known delivery/collection, reclaim and parent read-lease restoration. Unknown
+effects contain without replay. No namespace grant, new syscall/capability kind,
+global process table or numeric limit increase is selected.
+
+This approves scoped implementation under the standing milestone direction.
+Correct and measure the known oversized external frame before any image; fresh
+actual integrated fits and applicable verification/artifact/media/cleanup gates
+remain. No image/run result, general utility or filesystem-exec installation,
+child job control/input, login, persistence, package or R1 acceptance is claimed.
+Issue137's diagnostic-fit/full-host exceptions remain issue-only; issue141 retains
+its failed coverage and unverified cleanup.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

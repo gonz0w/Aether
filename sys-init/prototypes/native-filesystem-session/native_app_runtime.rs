@@ -139,6 +139,80 @@ impl Bound {
         Ok(())
     }
 }
+#[cfg(native_zsh_process)]
+// This shared closed codec also provides opposite-direction encoders for tests.
+#[allow(dead_code)]
+#[path = "zsh_process_frames.rs"]
+mod zsh_process_frames;
+#[cfg(native_zsh_process)]
+use abi29_dispatch_core::children::{Children, Identity as ChildIdentity, ReadLease, Wait};
+#[cfg(native_zsh_process)]
+use fd_startup::ForkStreams;
+#[cfg(all(native_zsh_process, not(native_zsh_filesystem)))]
+compile_error!("Zsh process controller requires retained filesystem custody");
+
+#[cfg(native_zsh_process)]
+struct ZshProcess<K: AppControl> {
+    binding: Option<filesystem_readonly::Binding>,
+    endpoints: Option<ManuallyDrop<Endpoints<K>>>,
+    ends: [End; 4],
+    children: Children,
+    lease: ReadLease,
+    request: [u8; 32],
+    at: usize,
+    parent_at: usize,
+    fork_sequence: u64,
+    sequence: u64,
+    epoch: u8,
+    prepaid: u8,
+    fork_ready: bool,
+    committed: bool,
+    exec_ready: bool,
+    wait_status: Option<i32>,
+    terminal: Option<i32>,
+    reclaimed: bool,
+    cleanup_attempted: u8,
+    cleanup_last: Status,
+}
+#[cfg(native_zsh_process)]
+impl<K: AppControl> ZshProcess<K> {
+    fn new() -> Self {
+        Self {
+            binding: None,
+            endpoints: None,
+            ends: [End::default(); 4],
+            children: Children::new(),
+            lease: ReadLease::Parent,
+            request: [0; 32],
+            at: 0,
+            parent_at: 0,
+            fork_sequence: 0,
+            sequence: 0,
+            epoch: 0,
+            prepaid: 0,
+            fork_ready: false,
+            committed: false,
+            exec_ready: false,
+            wait_status: None,
+            terminal: None,
+            reclaimed: false,
+            cleanup_attempted: 0,
+            cleanup_last: (-5, 0, 0),
+        }
+    }
+    fn identity(&self) -> Result<Identity, i64> {
+        let binding = self.binding.ok_or(-9)?;
+        Identity::admitted(2, u32::from(binding.epoch), binding.handle).map_err(i64::from)
+    }
+    fn child(&self) -> Result<ChildIdentity, i64> {
+        let id = self.identity()?;
+        ChildIdentity::admitted(2, id.epoch, id.handle).map_err(i64::from)
+    }
+    fn caller(&self) -> Result<Caller, i64> {
+        Ok(Caller::Child(self.identity()?.epoch))
+    }
+}
+
 pub struct Runtime<K: AppControl> {
     kernel: K,
     bound: Bound,
@@ -183,6 +257,8 @@ pub struct Runtime<K: AppControl> {
     cleanup: [[Status; 4]; 2],
     console_status: i64,
     observed_terminal: [Option<Status>; 2],
+    #[cfg(native_zsh_process)]
+    process: ZshProcess<K>,
 }
 impl<K: AppControl> Runtime<K> {
     pub fn new(kernel: K) -> Result<Self, i64> {
@@ -252,6 +328,8 @@ impl<K: AppControl> Runtime<K> {
             cleanup: [[(-5, 0, 0); 4]; 2],
             console_status: -5,
             observed_terminal: [None; 2],
+            #[cfg(native_zsh_process)]
+            process: ZshProcess::new(),
         })
     }
     /// Selected Owner construction in its final mapped slot. Initialization
@@ -309,6 +387,8 @@ impl<K: AppControl> Runtime<K> {
             core::ptr::addr_of_mut!((*pointer).cleanup).write([[(-5, 0, 0); 4]; 2]);
             core::ptr::addr_of_mut!((*pointer).console_status).write(-5);
             core::ptr::addr_of_mut!((*pointer).observed_terminal).write([None; 2]);
+            #[cfg(native_zsh_process)]
+            core::ptr::addr_of_mut!((*pointer).process).write(ZshProcess::new());
             core::ptr::addr_of_mut!((*pointer).kernel).write(kernel);
             Ok(slot.assume_init_mut())
         }
@@ -629,6 +709,7 @@ impl<K: AppControl> Runtime<K> {
         startup.fill(0);
         result
     }
+    #[cfg(not(native_zsh_process))]
     fn request(
         &mut self,
         #[allow(unused_variables)] workspace: &mut [u8; 4096],
@@ -1066,30 +1147,63 @@ impl<K: AppControl> Runtime<K> {
         result.map_err(fs_errno)
     }
     #[cfg(native_zsh_filesystem)]
-    fn file_request(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+    fn file_request(
+        &mut self,
+        workspace: &mut [u8; 4096],
+        #[cfg(native_zsh_process)] child: bool,
+    ) -> Result<(), i64> {
+        #[cfg(native_zsh_process)]
+        let binding = if child {
+            self.process.binding
+        } else {
+            self.file_binding
+        }
+        .ok_or(-9)?;
+        #[cfg(not(native_zsh_process))]
         let binding = self.file_binding.ok_or(-9)?;
-        if self
-            .identity
-            .map(|id| (id.slot as u8, id.epoch as u8, id.handle))
+        #[cfg(native_zsh_process)]
+        let identity = if child {
+            Some(self.process.identity()?)
+        } else {
+            self.identity
+        };
+        #[cfg(not(native_zsh_process))]
+        let identity = self.identity;
+        if identity.map(|id| (id.slot as u8, id.epoch as u8, id.handle))
             != Some((binding.slot, binding.epoch, binding.handle))
         {
             return Err(-9);
         }
+        #[cfg(native_zsh_process)]
+        self.zsh_live(child)?;
+        #[cfg(not(native_zsh_process))]
         self.mode_peer_live()?;
         let header = self.file_header;
         let length = self.with_files(|files| files.body_length(binding, &header))?;
         workspace.fill(0);
+        #[cfg(native_zsh_process)]
+        let endpoints = if child {
+            self.process.endpoints.as_mut()
+        } else {
+            self.endpoints.as_mut()
+        }
+        .ok_or(-9)?;
+        #[cfg(not(native_zsh_process))]
+        let endpoints = self.endpoints.as_mut().ok_or(-9)?;
         stream_transport::transfer(
             &mut OwnerSteps {
                 kernel: &mut self.kernel,
                 bound: &mut self.bound,
-                endpoints: self.endpoints.as_mut().ok_or(-9)?,
+                endpoints,
                 progress: &mut self.request_at,
             },
             &mut workspace[..length],
             false,
         )?;
         // Authenticate the exact admitted generation again after body assembly.
+        #[cfg(native_zsh_process)]
+        self.zsh_live(child)?;
+        #[cfg(not(native_zsh_process))]
         self.mode_peer_live()?;
         let files = unsafe { self.files.assume_init_mut() };
         files
@@ -1118,7 +1232,15 @@ impl<K: AppControl> Runtime<K> {
                     Ok(())
                 })
                 .map_err(fs_errno)?;
-            let delivery = if let Some(endpoints) = self.endpoints.as_mut() {
+            #[cfg(native_zsh_process)]
+            let endpoint = if child {
+                self.process.endpoints.as_mut()
+            } else {
+                self.endpoints.as_mut()
+            };
+            #[cfg(not(native_zsh_process))]
+            let endpoint = self.endpoints.as_mut();
+            let delivery = if let Some(endpoints) = endpoint {
                 let mut steps = OwnerSteps {
                     kernel: &mut self.kernel,
                     bound: &mut self.bound,
@@ -1158,6 +1280,729 @@ impl<K: AppControl> Runtime<K> {
         }
         result
     }
+    #[cfg(native_zsh_process)]
+    fn zsh_expected(&self, child: bool) -> Result<zsh_process_frames::Expected, i64> {
+        Ok(zsh_process_frames::Expected {
+            identity: if child {
+                self.process.identity()?
+            } else {
+                self.identity.ok_or(-9)?
+            },
+            parent: if child {
+                self.identity.ok_or(-9)?.pid
+            } else {
+                7
+            },
+            generation: if child {
+                self.process.binding.ok_or(-9)?.generation
+            } else {
+                self.file_binding.ok_or(-9)?.generation
+            },
+        })
+    }
+    #[cfg(native_zsh_process)]
+    #[inline(never)]
+    fn zsh_io(&mut self, child: bool, bytes: &mut [u8], writing: bool) -> Result<(), i64> {
+        let endpoints = if child {
+            self.process.endpoints.as_mut()
+        } else {
+            self.endpoints.as_mut()
+        }
+        .ok_or(-9)?;
+        let mut progress = 0;
+        stream_transport::transfer(
+            &mut OwnerSteps {
+                kernel: &mut self.kernel,
+                bound: &mut self.bound,
+                endpoints,
+                progress: &mut progress,
+            },
+            bytes,
+            writing,
+        )
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_live(&mut self, child: bool) -> Result<(), i64> {
+        self.mode_peer_live()?;
+        if child {
+            let state = self.ctl(0x20001, self.process.identity()?.handle, 0)?;
+            if state.0 != 0 {
+                return Err(if state.0 < 0 { state.0 } else { -5 });
+            }
+        }
+        Ok(())
+    }
+    // Child cleanup calls are prepaid from the SAME ordinary allowance before
+    // channel/copy effects. No reserve, deadline or new child budget is created.
+    #[cfg(native_zsh_process)]
+    fn zsh_leaf(&mut self, op: u64, argument: u64) -> Result<Status, i64> {
+        self.bound.check(&mut self.kernel)?;
+        self.zsh_leaf_reserved(op, argument)
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_leaf_reserved(&mut self, op: u64, argument: u64) -> Result<Status, i64> {
+        if self.process.prepaid == 0 {
+            return Err(-5);
+        }
+        self.process.prepaid -= 1;
+        Ok(self
+            .kernel
+            .ctl(op, self.process.identity()?.handle, argument))
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_close_child(&mut self) -> Result<(), i64> {
+        let mut error = 0;
+        for index in 0..4 {
+            let end = self.process.ends[index];
+            if !end.owned || end.attempted {
+                continue;
+            }
+            if self.process.prepaid == 0 {
+                return Err(-5);
+            }
+            self.process.prepaid -= 1;
+            self.process.ends[index].attempted = true;
+            self.process.ends[index].status = self.kernel.close(end.cap);
+            if self.process.ends[index].status != 0 {
+                error = self.process.ends[index].status;
+            }
+        }
+        zero(error)
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_pair(&mut self) -> Result<[u64; 4], i64> {
+        if self.process.ends.iter().any(|e| e.owned && !e.attempted) {
+            return Err(-16);
+        }
+        for _ in 0..6 {
+            self.bound.spend()?;
+        }
+        self.process.prepaid = 6;
+        self.process.ends = [End::default(); 4];
+        for pair in 0..2 {
+            let value = self.ctl(0x24000, 0xd001, 0)?;
+            if value.0 <= 0 {
+                return Err(if value.0 < 0 { value.0 } else { -5 });
+            }
+            for (side, cap) in [value.0 as u64, value.1].into_iter().enumerate() {
+                self.process.ends[pair * 2 + side] = End {
+                    cap,
+                    owned: true,
+                    ..End::default()
+                };
+                if cap >> 24 != 0xd1
+                    || cap & 255 != side as u64 + 1
+                    || ((cap >> 8) & 255) == 0
+                    || ((cap >> 8) & 255) > 15
+                    || ((cap >> 16) & 255) >= 10
+                {
+                    return Err(-5);
+                }
+            }
+        }
+        let caps = self.process.ends.map(|e| e.cap);
+        for i in 0..4 {
+            if caps[..i].contains(&caps[i]) {
+                return Err(-5);
+            }
+        }
+        Ok(caps)
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_frozen(&mut self, handle: u64) -> Result<u64, i64> {
+        loop {
+            let state = self.ctl(0x23004, handle, 0)?;
+            if state.0 > 0 {
+                return Ok(state.0 as u64);
+            }
+            if state.0 < 0 {
+                return Err(state.0);
+            }
+            self.yield_now()?;
+        }
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_validate_files(&mut self, child: bool, raw: &[u8; 336]) -> Result<(), i64> {
+        let binding = if child {
+            self.process.binding
+        } else {
+            self.file_binding
+        }
+        .ok_or(-9)?;
+        let actual = self.with_files(|files| files.file_view(binding))?;
+        let (mut present, mut cloexec) = (0u16, 0u16);
+        for binding in raw[112..176].chunks_exact(4) {
+            if binding[0] == 3 {
+                present |= 1 << binding[1];
+                if binding[2] != 0 {
+                    cloexec |= 1 << binding[1];
+                }
+            }
+        }
+        if actual != (present, cloexec) {
+            return Err(-9);
+        }
+        Ok(())
+    }
+    #[cfg(native_zsh_process)]
+    #[inline(never)]
+    fn zsh_fork(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        let expected = self.zsh_expected(false)?;
+        let (snapshot, sequence) =
+            zsh_process_frames::fork_request(&workspace[..368], expected).map_err(i64::from)?;
+        if sequence != self.process.fork_sequence.checked_add(1).ok_or(-28)?
+            || self.process.binding.is_some()
+            || self.process.lease != ReadLease::Parent
+        {
+            return Err(-16);
+        }
+        let plan = zsh_stream_plan(snapshot.raw(), expected)?;
+        self.streams
+            .validate_context(Caller::Parent, &plan)
+            .map_err(i64::from)?;
+        self.zsh_validate_files(false, snapshot.raw())?;
+        let freeze = self.zsh_frozen(expected.identity.handle)?;
+        let epoch = self
+            .process
+            .epoch
+            .checked_add(1)
+            .filter(|v| *v <= 15)
+            .ok_or(-28)?;
+        let id = Identity::admitted(2, u32::from(epoch), 0xb0000000 | u64::from(epoch) << 8 | 3)
+            .map_err(i64::from)?;
+        let caps = self.zsh_pair()?;
+        self.streams.stage_child(id.pid, &plan).map_err(i64::from)?;
+        self.process.fork_sequence = sequence;
+        self.process.sequence = sequence;
+        self.process.binding = Some(filesystem_readonly::Binding {
+            slot: 2,
+            epoch,
+            handle: id.handle,
+            generation: caps[0],
+        });
+        self.process.fork_ready = false;
+        self.process.committed = false;
+        self.process.exec_ready = false;
+        self.process.terminal = None;
+        self.process.wait_status = None;
+        self.process.reclaimed = false;
+        self.process.cleanup_attempted = 0;
+        self.process.cleanup_last = (-5, 0, 0);
+        // On unknown copy, these two ends may already belong to child2. They
+        // must never be closed as Owner-held capabilities after that ambiguity.
+        self.process.ends[2].owned = false;
+        self.process.ends[1].owned = false;
+        self.bound.before(&mut self.kernel)?;
+        let copied = self
+            .kernel
+            .copy(expected.identity.handle, 2, freeze, caps[2], caps[1]);
+        if copied != id.handle as i64 {
+            if !(-4095..=-1).contains(&copied) {
+                return Err(-5);
+            }
+            self.process.ends[2].owned = true;
+            self.process.ends[1].owned = true;
+            self.process.binding = None;
+            self.streams.cancel_stage(id.pid).map_err(i64::from)?;
+            self.zsh_close_child()?;
+            self.process.prepaid = 0;
+            zero(self.ctl(0x23005, expected.identity.handle, freeze)?.0)?;
+            let mut reply =
+                zsh_process_frames::receipt(b"AEZFR001", sequence, copied).map_err(i64::from)?;
+            self.zsh_io(false, &mut reply, true)?;
+            workspace.fill(0);
+            return Ok(());
+        }
+        self.process.epoch = epoch;
+        self.process
+            .children
+            .admit(self.process.child()?)
+            .map_err(i64::from)?;
+        let binding = self.process.binding.ok_or(-9)?;
+        let parent = self.file_binding.ok_or(-9)?;
+        self.with_files(|files| files.inherit_child(parent, binding))?;
+        self.process.endpoints = Some(ManuallyDrop::new(
+            Endpoints::new(self.kernel.clone(), caps[0], caps[3]).map_err(|_| -5)?,
+        ));
+        self.process
+            .lease
+            .give_child(self.process.child()?, false)
+            .map_err(i64::from)?;
+        // Publish the complete checked raw snapshot, including duplex byte3.
+        let out: &mut [u8; 336] = (&mut workspace[32..368]).try_into().unwrap();
+        zsh_rebind_snapshot(out, id, expected.identity.pid, binding.generation)?;
+        self.zsh_io(true, out, true)?;
+        workspace.fill(0);
+        Ok(())
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_child_ready(&mut self, frame: &[u8; 32]) -> Result<(), i64> {
+        let id = self.process.identity()?;
+        if self.process.fork_ready || self.process.committed {
+            return Err(-9);
+        }
+        let pid = zsh_process_frames::decode_receipt(frame, b"AEZFC001", self.process.sequence)
+            .map_err(i64::from)?;
+        if pid != i64::from(id.pid) {
+            return Err(-9);
+        }
+        self.streams.child_ready(id.pid).map_err(i64::from)?;
+        self.process.fork_ready = true;
+        let mut reply = zsh_process_frames::receipt(b"AEZFR001", self.process.sequence, pid)
+            .map_err(i64::from)?;
+        self.zsh_io(false, &mut reply, true)
+    }
+    #[cfg(native_zsh_process)]
+    #[inline(never)]
+    fn zsh_exec(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        let expected = self.zsh_expected(true)?;
+        let (snapshot, sequence) =
+            zsh_process_frames::exec_request(&workspace[..672], expected).map_err(i64::from)?;
+        if !self.process.fork_ready
+            || self.process.terminal.is_some()
+            || sequence != self.process.sequence.checked_add(1).ok_or(-28)?
+        {
+            return Err(-9);
+        }
+        let mut plan = zsh_stream_plan(snapshot.raw(), expected)?;
+        self.streams
+            .validate_context(self.process.caller()?, &plan)
+            .map_err(i64::from)?;
+        self.zsh_validate_files(true, snapshot.raw())?;
+        let path = &workspace[368..400];
+        let rejection = if path.starts_with(b"/inputs/missing\0") {
+            -2
+        } else if path.starts_with(b"/inputs/denied\0") {
+            -13
+        } else if !path.starts_with(b"/inputs/helper\0") {
+            -13
+        } else if !zsh_helper_arguments((&workspace[400..672]).try_into().unwrap()) {
+            -13
+        } else {
+            0
+        };
+        let freeze = self.zsh_frozen(expected.identity.handle)?;
+        self.process.sequence = sequence;
+        self.bound.before(&mut self.kernel)?;
+        let before = self.kernel.receipt(expected.identity.handle);
+        if before.0 < 0 || before.2 != 0 {
+            return Err(-5);
+        }
+        let arguments: &[u8; 272] = (&workspace[400..672]).try_into().unwrap();
+        self.bound.before(&mut self.kernel)?;
+        let committed = if rejection != 0 {
+            rejection
+        } else {
+            self.kernel
+                .exec(expected.identity.handle, freeze, arguments)
+        };
+        if committed != 0 {
+            if !(-4095..=-1).contains(&committed) {
+                return Err(-5);
+            }
+            self.bound.before(&mut self.kernel)?;
+            if self.kernel.receipt(expected.identity.handle) != before {
+                return Err(-5);
+            }
+            zero(self.ctl(0x23005, expected.identity.handle, freeze)?.0)?;
+            let mut reply =
+                zsh_process_frames::receipt(b"AEZER001", sequence, committed).map_err(i64::from)?;
+            self.zsh_io(true, &mut reply, true)?;
+            workspace.fill(0);
+            return Ok(());
+        }
+        self.bound.before(&mut self.kernel)?;
+        if self.kernel.receipt(expected.identity.handle) != (freeze as i64, 0xc003, 1) {
+            return Err(-5);
+        }
+        self.streams
+            .commit_exec(self.process.caller()?, &mut plan)
+            .map_err(i64::from)?;
+        let old = self.process.binding.ok_or(-9)?;
+        let generation = old
+            .generation
+            .checked_add(1)
+            .filter(|v| *v != u64::MAX)
+            .ok_or(-28)?;
+        let binding = self.with_files(|files| files.exec_child(old, generation))?;
+        self.process.binding = Some(binding);
+        let raw: &mut [u8; 336] = (&mut workspace[32..368]).try_into().unwrap();
+        zsh_exec_snapshot(raw)?;
+        zsh_rebind_snapshot(raw, expected.identity, expected.parent, generation)?;
+        // Publish cannot be inferred from a returning exec or a fake READY.
+        self.bound.before(&mut self.kernel)?;
+        zero(self.kernel.publish(expected.identity.handle, freeze))?;
+        self.process.committed = true;
+        self.process.exec_ready = false;
+        self.zsh_io(true, raw, true)?;
+        workspace.fill(0);
+        Ok(())
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_terminal(&mut self) -> Result<(), i64> {
+        if self.process.binding.is_none() || self.process.terminal.is_some() {
+            return Ok(());
+        }
+        let state = self.ctl(0x20001, self.process.identity()?.handle, 0)?;
+        if state.0 < 0 {
+            return Err(state.0);
+        }
+        if self.process.committed && state.1 == 1 {
+            self.process.exec_ready = true;
+        }
+        if state.0 == 0 {
+            return Ok(());
+        }
+        if !self.process.fork_ready || state.2 != 1 || !(1..=256).contains(&state.0) {
+            return Err(-5);
+        }
+        let status = ((state.0 - 1) as i32) << 8;
+        self.process
+            .children
+            .terminal(self.process.child()?, status)
+            .map_err(i64::from)?;
+        self.streams
+            .confirmed_terminal(self.process.caller()?)
+            .map_err(i64::from)?;
+        self.process.terminal = Some(status);
+        self.process.at = 0;
+        Ok(())
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_collect(&mut self, identity: ChildIdentity, status: i32) -> Result<(), i64> {
+        self.process
+            .children
+            .delivered(identity)
+            .map_err(i64::from)?;
+        self.process.wait_status = Some(status);
+        let binding = self.process.binding.ok_or(-9)?;
+        self.with_files(|files| files.settle_child(binding))?;
+        self.zsh_close_child()?;
+        zero(self.zsh_leaf(0x20002, 0)?.0)?;
+        if self.zsh_leaf(0x20001, 0)?.0 != -9 {
+            return Err(-5);
+        }
+        self.process
+            .children
+            .reclaimed(identity)
+            .map_err(i64::from)?;
+        self.process
+            .lease
+            .restore_parent(identity, &self.process.children)
+            .map_err(i64::from)?;
+        self.process.binding = None;
+        self.process.endpoints = None;
+        self.process.prepaid = 0;
+        self.process.reclaimed = true;
+        self.process.at = 0;
+        Ok(())
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_stream(&mut self, child: bool, frame: &[u8; 32]) -> Result<bool, i64> {
+        let op = u32_at(frame, 0);
+        let selector = u32_at(frame, 8) as usize;
+        if op == 68 {
+            if child || frame[12..] != [0; 20] {
+                return Err(-22);
+            }
+            let wait = self
+                .process
+                .children
+                .wait_flags(u32_at(frame, 4) as i32, u32_at(frame, 8))
+                .map_err(i64::from)?;
+            let (mut reply, collected) = match wait {
+                Wait::Pending => return Ok(false),
+                Wait::NoChange => ([0; 32], None),
+                Wait::NoChild => {
+                    let mut r = [0; 32];
+                    r[..4].copy_from_slice(&(-10i32).to_le_bytes());
+                    (r, None)
+                }
+                Wait::Ready { identity, status } => {
+                    let mut r = [0; 32];
+                    r[..4].copy_from_slice(&identity.pid.to_le_bytes());
+                    r[4..8].copy_from_slice(&status.to_le_bytes());
+                    (r, Some((identity, status)))
+                }
+            };
+            self.zsh_io(false, &mut reply, true)?;
+            if let Some((identity, status)) = collected {
+                self.zsh_collect(identity, status)?;
+            }
+            return Ok(true);
+        }
+        if cfg!(native_tty_mode_probe)
+            && (matches!(op, 0x10..=0x1f) || u32_at(frame, 4) == 0x7d000001)
+        {
+            let mut reply = if child {
+                let mut r = [0; 32];
+                r[..4].copy_from_slice(&(-95i32).to_le_bytes());
+                r
+            } else {
+                self.mode_request()?
+            };
+            self.zsh_io(child, &mut reply, true)?;
+            return Ok(true);
+        }
+        if op == 1 && selector < 3 {
+            if child {
+                let (terminal, refs, caller) = self.tty.as_ref().ok_or(-9)?;
+                let mode = terminal
+                    .mode_state(*caller, &refs.stdin)
+                    .map_err(tty_errno)?
+                    .0;
+                if let Err(error) = self.process.lease.child_read(
+                    self.process.child()?,
+                    mode.canonical,
+                    mode.signals,
+                ) {
+                    let mut reply = [0; 32];
+                    reply[..4].copy_from_slice(&error.to_le_bytes());
+                    self.zsh_io(true, &mut reply, true)?;
+                    return Ok(true);
+                }
+            } else if self.process.lease != ReadLease::Parent {
+                return Ok(false);
+            }
+        }
+        if op == 3 && selector < 3 {
+            self.flush_terminal_output()?;
+        }
+        let who = if child {
+            self.process.caller()?
+        } else {
+            Caller::Parent
+        };
+        let kernel = &mut self.kernel;
+        let bound = &mut self.bound;
+        let (terminal, refs, caller) = self.tty.as_mut().ok_or(-9)?;
+        let reference = match selector {
+            0 => refs.stdin,
+            1 => refs.stdout,
+            _ => refs.stderr,
+        };
+        let mut unknown = false;
+        let mut plain = *frame;
+        let eligible = if op == 1 {
+            if frame[16] > 1 || frame[17..] != [0; 15] {
+                return Err(-22);
+            }
+            plain[16] = 0;
+            frame[16] != 0
+        } else {
+            false
+        };
+        let outcome = self.streams.request(who, &plain, |writing, bytes| {
+            if let Err(e) = bound.before(kernel) {
+                return e;
+            }
+            let result = if writing {
+                terminal.write(*caller, &reference, bytes, |_, input| {
+                    let mut scratch = [0; 16];
+                    scratch[..input.len()].copy_from_slice(input);
+                    completion(
+                        kernel.serial(true, &mut scratch[..input.len()]),
+                        input.len(),
+                    )
+                })
+            } else {
+                terminal
+                    .read_signalled(
+                        *caller,
+                        &reference,
+                        bytes,
+                        eligible,
+                        &mut SignalBackend {
+                            kernel,
+                            bound,
+                            target: self.app,
+                        },
+                    )
+                    .map(|n| match n {
+                        ReadOutcome::Bytes(n) => n,
+                        ReadOutcome::EmptyRequest | ReadOutcome::Eof => 0,
+                    })
+            };
+            match result {
+                Ok(n) => n as i64,
+                Err(TtyError::UnknownCompletion) => {
+                    unknown = true;
+                    -5
+                }
+                Err(e) => tty_errno(e),
+            }
+        });
+        if unknown {
+            return Err(-5);
+        }
+        match outcome {
+            Outcome::Pending => Ok(false),
+            Outcome::Reply(mut reply) => {
+                self.zsh_io(child, &mut reply, true)?;
+                if !child && op == 3 && selector < 3 && u32_at(&reply, 0) == 0 {
+                    self.closed[selector] = true;
+                }
+                Ok(true)
+            }
+        }
+    }
+    #[cfg(native_zsh_process)]
+    fn zsh_poll(&mut self, child: bool, workspace: &mut [u8; 4096]) -> Result<Option<bool>, i64> {
+        if child && (self.process.binding.is_none() || self.process.terminal.is_some()) {
+            return Ok(None);
+        }
+        let mut at = if child {
+            self.process.at
+        } else {
+            self.process.parent_at
+        };
+        if at < 16 {
+            self.bound.before(&mut self.kernel)?;
+            let endpoints = if child {
+                self.process.endpoints.as_mut()
+            } else {
+                self.endpoints.as_mut()
+            }
+            .ok_or(-9)?;
+            let frame = if child {
+                &mut self.process.request
+            } else {
+                &mut self.request
+            };
+            let count = endpoints.transfer(false, &mut frame[at..16]);
+            if count == -11 {
+                return Ok(None);
+            }
+            if count == 0 {
+                if !child
+                    && at == 0
+                    && self.closed == [true; DESCRIPTORS]
+                    && self.process.binding.is_none()
+                {
+                    return Ok(Some(false));
+                }
+                return Err(-5);
+            }
+            if count < 0 || count as usize > 16 - at {
+                return Err(if count < 0 { count } else { -5 });
+            }
+            at += count as usize;
+            if child {
+                self.process.at = at;
+            } else {
+                self.process.parent_at = at;
+            }
+            if at < 16 {
+                return Ok(Some(true));
+            }
+        }
+        if at == 16 {
+            let frame = if child {
+                self.process.request
+            } else {
+                self.request
+            };
+            let large = if &frame[..8] == b"AEZFK001" {
+                if child {
+                    return Err(-13);
+                }
+                368
+            } else if &frame[..8] == b"AEZEX001" {
+                if !child {
+                    return Err(-13);
+                }
+                672
+            } else {
+                0
+            };
+            if large != 0 {
+                workspace.fill(0);
+                workspace[..16].copy_from_slice(&frame[..16]);
+                self.zsh_io(child, &mut workspace[16..large], false)?;
+                let result = if child {
+                    self.zsh_exec(workspace)
+                } else {
+                    self.zsh_fork(workspace)
+                };
+                if child {
+                    self.process.at = 0;
+                } else {
+                    self.process.parent_at = 0;
+                }
+                return result.map(|()| Some(true));
+            }
+            if frame[..8] == filesystem_readonly::MAGIC[..] {
+                self.file_header.fill(0);
+                self.file_header[..16].copy_from_slice(&frame[..16]);
+                let mut tail = [0; 48];
+                self.zsh_io(child, &mut tail, false)?;
+                self.file_header[16..].copy_from_slice(&tail);
+                self.file_request(workspace, child)?;
+                if child {
+                    self.process.at = 0;
+                } else {
+                    self.process.parent_at = 0;
+                }
+                return Ok(Some(true));
+            }
+            // A wrong size prefix cannot be a recoverable32-byte request.
+            // Reject it before reading any guessed tail or resynchronizing.
+            if !zsh_small_header(&frame, child) {
+                return Err(-22);
+            }
+            let mut tail = [0; 16];
+            self.zsh_io(child, &mut tail, false)?;
+            if child {
+                self.process.request[16..].copy_from_slice(&tail);
+                self.process.at = 32;
+            } else {
+                self.request[16..].copy_from_slice(&tail);
+                self.process.parent_at = 32;
+            }
+        }
+        let frame = if child {
+            self.process.request
+        } else {
+            self.request
+        };
+        if &frame[..8] == b"AEZFC001" {
+            if !child {
+                return Err(-13);
+            }
+            self.zsh_child_ready(&frame)?;
+            self.process.at = 0;
+            return Ok(Some(true));
+        }
+        if self.zsh_stream(child, &frame)? {
+            if child {
+                self.process.at = 0;
+            } else {
+                self.process.parent_at = 0;
+            }
+            return Ok(Some(true));
+        }
+        Ok(None)
+    }
+    #[cfg(native_zsh_process)]
+    fn request(&mut self, workspace: &mut [u8; 4096]) -> Result<bool, i64> {
+        loop {
+            self.zsh_terminal()?;
+            if let Some(result) = self.zsh_poll(false, workspace)? {
+                return Ok(result);
+            }
+            if let Some(result) = self.zsh_poll(true, workspace)? {
+                return Ok(result);
+            }
+            self.streams.retire_idle([
+                self.process.parent_at == 32,
+                self.process.at == 32,
+                false,
+                false,
+            ]);
+            self.yield_now()?;
+        }
+    }
+
     fn terminal_zero(&mut self, handle: u64) -> Result<(), i64> {
         loop {
             let state = self.ctl(0x20001, handle, 0)?;
@@ -1186,6 +2031,10 @@ impl<K: AppControl> Runtime<K> {
     }
     pub fn run(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
         let result = self.run_inner(workspace);
+        #[cfg(native_zsh_process)]
+        if result.is_err() {
+            self.process.lease.contain();
+        }
         if let Err(error) = result
             && self.bound.failed == 0
         {
@@ -1197,6 +2046,17 @@ impl<K: AppControl> Runtime<K> {
         self.provision(workspace)?;
         while self.request(workspace)? {}
         self.terminal_zero(self.app)?;
+        #[cfg(native_zsh_process)]
+        {
+            if self.process.binding.is_some() || self.process.lease != ReadLease::Parent {
+                return Err(-5);
+            }
+            self.flush_terminal_output()?;
+            let (terminal, refs, caller) = self.tty.as_mut().ok_or(-9)?;
+            for reference in [refs.stdin, refs.stdout, refs.stderr] {
+                terminal.close(*caller, reference).map_err(tty_errno)?;
+            }
+        }
         #[cfg(native_tty_mode_probe)]
         self.cleanup_mode()?;
         #[cfg(native_zsh_filesystem)]
@@ -1256,6 +2116,25 @@ impl<K: AppControl> Runtime<K> {
         if unsafe { self.files.assume_init_ref() }.cleanup() != Some([0; 2]) {
             return Err(-5);
         }
+        #[cfg(native_zsh_process)]
+        if self.process.wait_status != Some(1792)
+            || self.process.terminal != Some(1792)
+            || !self.process.committed
+            || !self.process.exec_ready
+            || !self.process.reclaimed
+            || self.process.lease != ReadLease::Parent
+            || self.process.binding.is_some()
+            || self
+                .process
+                .ends
+                .iter()
+                .any(|end| end.owned && (!end.attempted || end.status != 0))
+        {
+            return Err(-5);
+        }
+        #[cfg(native_zsh_process)]
+        const ROW: &[u8] = b"\nAETHER ZSH OWNER v=2 requests=00 child_status=1792 exec_ready=1 child_reclaimed=1 parent_lease=1 mode_cleanup=0\n";
+        #[cfg(not(native_zsh_process))]
         const ROW: &[u8; 49] = b"\nAETHER ZSH OWNER v=1 requests=00 mode_cleanup=0\n";
         workspace[..ROW.len()].copy_from_slice(ROW);
         workspace[31] = b'0' + (self.filesystem_requests / 10) as u8;
@@ -1326,6 +2205,33 @@ impl<K: AppControl> Runtime<K> {
             return Err(-5);
         }
         self.cleanup_started = true;
+        #[cfg(native_zsh_process)]
+        {
+            self.process.lease.contain();
+            let _ = self.zsh_close_child();
+            if self.process.binding.is_some() {
+                if let Ok(status) = self.zsh_leaf_reserved(0x20007, 0) {
+                    self.process.cleanup_attempted |= 1;
+                    self.process.cleanup_last = status;
+                }
+                if let Ok(status) = self.zsh_leaf_reserved(0x20001, 0) {
+                    self.process.cleanup_attempted |= 2;
+                    self.process.cleanup_last = status;
+                    if status.0 > 0 && matches!(status.2, 1..=4) {
+                        if let Ok(status) = self.zsh_leaf_reserved(0x20002, 0) {
+                            self.process.cleanup_attempted |= 4;
+                            self.process.cleanup_last = status;
+                            if status.0 == 0 {
+                                if let Ok(status) = self.zsh_leaf_reserved(0x20001, 0) {
+                                    self.process.cleanup_attempted |= 8;
+                                    self.process.cleanup_last = status;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         #[cfg(native_zsh_filesystem)]
         if self.files_live {
             let _ = self.with_files(|files| {
@@ -1368,6 +2274,117 @@ impl<K: AppControl> Runtime<K> {
         Err(-5)
     }
 }
+#[cfg(native_zsh_process)]
+fn zsh_stream_plan(raw: &[u8; 336], expected: zsh_process_frames::Expected) -> Result<Plan, i64> {
+    zsh_process_frames::snapshot(raw, expected).map_err(i64::from)?;
+    let mut plan = Plan {
+        identity: expected.identity,
+        shell: if expected.identity.slot == 1 {
+            expected.identity.epoch
+        } else {
+            (expected.parent - 2) / 7
+        },
+        parent: expected.parent,
+        generation: expected.generation,
+        bindings: [Binding::default(); 16],
+        sources: [Source::default(); 7],
+        history: [0; 2],
+    };
+    let mut held = [false; 7];
+    let mut kept = [false; 7];
+    for b in raw[112..176].chunks_exact(4) {
+        let mut mark = |selector: usize| {
+            held[selector] = true;
+            kept[selector] |= b[2] == 0;
+        };
+        match b[0] {
+            2 | 4 => mark(b[1] as usize),
+            5 => {
+                mark(0);
+                mark(1);
+            }
+            0 | 3 => (),
+            _ => return Err(-22),
+        }
+    }
+    // This is a stream-holder/CLOEXEC projection, never a serialized FD map.
+    // The complete raw map, including every duplex byte3, stays in workspace.
+    for i in 0..7 {
+        if held[i] {
+            plan.bindings[i] = Binding {
+                kind: if i < 3 { 1 } else { 2 },
+                selector: i as u8,
+                cloexec: u8::from(!kept[i]),
+            };
+            let at = 176 + i * 16;
+            plan.sources[i] = Source {
+                reference: u32::from_le_bytes(raw[at..at + 4].try_into().unwrap()),
+                selector: u32::from_le_bytes(raw[at + 4..at + 8].try_into().unwrap()),
+                rights: u32::from_le_bytes(raw[at + 8..at + 12].try_into().unwrap()),
+                bound: 16,
+            };
+        }
+    }
+    plan.history = [
+        u32::from_le_bytes(raw[288..292].try_into().unwrap()),
+        u32::from_le_bytes(raw[292..296].try_into().unwrap()),
+    ];
+    Ok(plan)
+}
+#[cfg(native_zsh_process)]
+fn zsh_rebind_snapshot(
+    raw: &mut [u8; 336],
+    id: Identity,
+    parent: u32,
+    generation: u64,
+) -> Result<(), i64> {
+    let shell = if id.slot == 1 {
+        id.epoch
+    } else {
+        parent.checked_sub(2).ok_or(-9)? / 7
+    };
+    let greeting = abi29_dispatch_core::startup::greeting(id, shell, parent).map_err(i64::from)?;
+    raw[16..48].copy_from_slice(&greeting);
+    raw[56..64].copy_from_slice(&generation.to_le_bytes());
+    raw[296..304].fill(0);
+    zsh_process_frames::snapshot(
+        raw,
+        zsh_process_frames::Expected {
+            identity: id,
+            parent,
+            generation,
+        },
+    )
+    .map_err(i64::from)?;
+    Ok(())
+}
+#[cfg(native_zsh_process)]
+fn zsh_exec_snapshot(raw: &mut [u8; 336]) -> Result<(), i64> {
+    for binding in raw[112..176].chunks_exact_mut(4) {
+        if binding[2] != 0 {
+            binding.fill(0);
+        }
+    }
+    let mut held = [false; 7];
+    for binding in raw[112..176].chunks_exact(4) {
+        match binding[0] {
+            2 | 4 => held[binding[1] as usize] = true,
+            5 => {
+                held[0] = true;
+                held[1] = true;
+            }
+            0 | 3 => (),
+            _ => return Err(-22),
+        }
+    }
+    for (i, used) in held.into_iter().enumerate() {
+        if !used {
+            raw[176 + i * 16..192 + i * 16].fill(0);
+        }
+    }
+    Ok(())
+}
+
 struct OwnerSteps<'a, K: AppControl> {
     kernel: &'a mut K,
     bound: &'a mut Bound,
@@ -1501,6 +2518,55 @@ impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
         }
     }
 }
+// Closed selected workload policy, after the wire codec checked canonical slots.
+#[cfg(native_zsh_process)]
+fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
+    u64::from_le_bytes(raw[..8].try_into().unwrap()) == 2
+        && raw[8..16] == [0; 8]
+        && raw[16..30] == *b"/inputs/helper"
+        && raw[30..48] == [0; 18]
+        && raw[48..54] == *b"status"
+        && raw[54..] == [0; 218]
+}
+#[cfg(native_zsh_process)]
+fn zsh_small_header(raw: &[u8; 32], child: bool) -> bool {
+    if &raw[..8] == b"AEZFC001" {
+        return child;
+    }
+    let op = u32_at(raw, 0);
+    let reference = u32_at(raw, 4);
+    let selector = u32_at(raw, 8);
+    let count = u32_at(raw, 12);
+    match op {
+        1..=3 => {
+            let tagged = if selector < 3 {
+                reference == console(selector).reference
+            } else if selector < 7 {
+                let generation = (reference >> 8) & 255;
+                (1..=9).contains(&generation)
+                    && reference
+                        == 0x79000000
+                            | ((selector - 3) / 2) << 16
+                            | generation << 8
+                            | ((selector - 3) % 2 + 1)
+            } else {
+                false
+            };
+            tagged && count <= 16 && (op != 3 || count == 0)
+        }
+        82 => !child && reference == 0x76050001 && selector == 1 && count == 0,
+        68 => {
+            !child
+                && (reference == u32::MAX
+                    || (10..=108).contains(&reference) && (reference - 10) % 7 == 0)
+                && selector & !11 == 0
+                && count == 0
+        }
+        0x10..=0x12 => reference == tty_mode::CONTROL && count == 0,
+        _ => false,
+    }
+}
+#[cfg(not(native_zsh_process))]
 fn output_header(frame: &[u8; 32]) -> bool {
     (matches!(u32_at(frame, 0), 2 | 3)
         || cfg!(any(
@@ -1637,6 +2703,10 @@ fn fs_errno(error: filesystem_readonly::Error) -> i64 {
 
 #[cfg(all(test, native_zsh_filesystem))]
 extern crate std;
-#[cfg(all(test, native_zsh_filesystem))]
+#[cfg(all(test, native_zsh_filesystem, not(native_zsh_process)))]
 #[path = "zsh_owner_tests.rs"]
 mod zsh_owner_tests;
+
+#[cfg(all(test, native_zsh_process))]
+#[path = "zsh_process_runtime_tests.rs"]
+mod zsh_process_runtime_tests;
