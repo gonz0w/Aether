@@ -2999,7 +2999,20 @@ fn memoryOperation(f: *const Frame) *const Frame {
 fn freezeOperation(f: *const Frame) *const Frame {
     const caller = &states[active];
     if (f.rax == 0x23003) {
-        if (caller.app_binding.bound()) {
+        if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) {
+            const parent = &states[1];
+            const owner = &states[supervisorSlot()];
+            const parent_valid = owner.admitted and !owner.terminal and parent.tty_signal_owner_generation == owner.generation and
+                parent.app_binding.valid(1, parent.generation, parent.admitted, parent.terminal, parent.app_binding.clock);
+            const child_valid = active == 2 and caller.tty_signal_owner_generation == null and
+                caller.parent_pid == parent.generation * states.len + 2 and
+                caller.app_binding.valid(active, caller.generation, caller.admitted, caller.terminal, caller.app_binding.clock) and
+                caller.app_binding.reader == parent.app_binding.reader and caller.app_binding.writer == parent.app_binding.writer and caller.app_binding.epoch == parent.app_binding.epoch;
+            if (!parent_valid or (active != 1 and !child_valid)) {
+                result(caller, -95);
+                return select();
+            }
+        } else if (caller.app_binding.bound()) {
             result(caller, -95);
             return select();
         }
@@ -3069,7 +3082,15 @@ fn copyOperation(f: *const Frame) *const Frame {
         return select();
     }
     const source = &states[from];
-    if (source.app_binding.bound()) {
+    const external = @hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external;
+    if (external) {
+        if (from != 1 or f.rdx != 2 or !caller.admitted or caller.terminal or source.tty_signal_owner_generation != caller.generation or
+            !source.app_binding.valid(from, source.generation, source.admitted, source.terminal, source.app_binding.clock))
+        {
+            result(caller, -95);
+            return select();
+        }
+    } else if (source.app_binding.bound()) {
         result(caller, -95);
         return select();
     }
@@ -3111,6 +3132,14 @@ fn copyOperation(f: *const Frame) *const Frame {
     if (!copyPreflight(source, child)) {
         result(caller, -12);
         return select();
+    }
+    var child_binding = child.app_binding;
+    if (external) {
+        // Namespace fields are retained kernel custody provenance, never grants.
+        child_binding = @TypeOf(source.app_binding).init(slot, child.generation + 1, source.app_binding.reader, source.app_binding.writer, source.app_binding.epoch) orelse {
+            result(caller, -28);
+            return select();
+        };
     }
     // Identical fixed pools bound every source live page and leaf directory. The
     // source metadata is kernel-owned and validated at each map/load operation.
@@ -3160,6 +3189,11 @@ fn copyOperation(f: *const Frame) *const Frame {
         if (@import("build_options").native_copy_signals_pending) child.signal_actions.pending = source.signal_actions.pending;
         if (@import("build_options").native_copy_signals_parent) source.signal_actions.pending = 0;
     }
+    if (external) {
+        child.app_binding = child_binding;
+        // Owner generation0 is valid, so numeric0 would retain signal authority.
+        child.tty_signal_owner_generation = null;
+    }
     child.parent_pid = source.generation * states.len + from + 1;
     child.memory_cap = 0x40000000 | (child.generation << 8) | (slot + 1);
     child.channel_cap = f.r8;
@@ -3192,9 +3226,26 @@ fn execOperation(f: *const Frame) *const Frame {
         return select();
     };
     const s = &states[slot];
-    if (f.rax != 0x23008 and s.app_binding.bound()) {
-        result(caller, -95);
-        return select();
+    if (f.rax != 0x23008) {
+        if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) {
+            const parent = &states[1];
+            if (slot != 2 or !caller.admitted or caller.terminal or parent.tty_signal_owner_generation != caller.generation or
+                !parent.app_binding.valid(1, parent.generation, parent.admitted, parent.terminal, parent.app_binding.clock) or
+                s.parent_pid != parent.generation * states.len + 2 or s.tty_signal_owner_generation != null or
+                !s.app_binding.valid(slot, s.generation, s.admitted, s.terminal, s.app_binding.clock) or
+                s.app_binding.reader != parent.app_binding.reader or s.app_binding.writer != parent.app_binding.writer or s.app_binding.epoch != parent.app_binding.epoch)
+            {
+                result(caller, -95);
+                return select();
+            }
+            if (f.rax == 0x23007 and f.rdx != 0xc003) {
+                result(caller, -13);
+                return select();
+            }
+        } else if (s.app_binding.bound()) {
+            result(caller, -95);
+            return select();
+        }
     }
     if (!processSlot(slot)) {
         result(caller, -13);
@@ -3313,6 +3364,12 @@ fn appLaunchOperation(f: *const Frame) *const Frame {
     {
         result(caller, -13);
         return select();
+    }
+    if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) {
+        if (f.rsi != 0xc002 or f.rdx != 1) {
+            result(caller, -13);
+            return select();
+        }
     }
     if (f.rdx >= workerCount() or !processSlot(@intCast(f.rdx))) {
         result(caller, -22);

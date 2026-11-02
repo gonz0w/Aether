@@ -4577,3 +4577,35 @@ The syscall scaffold executes the actual write, query and reset bodies over host
 storage. It does not establish hardware protection, linked static growth or a
 native reader result. Those remain matched kernel/artifact gates. Routine reviewed
 checks follow the [standing execution direction](policy/execution.md#current-milestone-execution-direction-2026-11-01).
+
+
+## Selected Zsh parent/helper kernel composition
+
+Issue143 adds default-off `-Dnative-zsh-external=true`, requiring the existing
+terminfo, copy/exec, copied signal actions, public actions, suspension and parent
+identity selections. The exact Owner/A001 launch admits only parent1/C002.
+Cooperative freeze accepts that live bound parent or its exact child2; only the
+Owner may copy parent1 into unadmitted child2. The child receives a fresh native
+generation and clock binding with retained namespace provenance only, process
+endpoints and explicitly null TTY signal ownership. Owner generation0 remains
+valid for the parent. Existing selected startup omits namespace/AENAP export.
+
+Only child2 can replace its image with the Owner-held C003 helper. Its current
+parent relationship, child clock and namespace provenance must still match;
+exec preserves native generation/binding and the existing receipt/publication
+transaction. Parent exec and other copy targets remain denied. Existing
+SIGCHLD17 validates the real parent generation. Ordinary profiles and every
+numeric limit remain unchanged. This is host-model coverage, not helper target
+execution or complete resource qualification. See the selected
+[parent/helper contract](../userland/docs/ZSH-FILESYSTEM.md#selected-parenthelper-extension).
+
+Run focused public source checks from the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_zsh_external.py -v
+```
+
+The actual-body fixture uses real Binding/Pending and copy/exec/freeze/notification
+bodies over host storage; MMU/device/scheduler installation is substituted. Its
+private qualified compiler entry and cleanup records remain separate from these
+stdlib-only public checks. No private runner API is required by the public test.

@@ -34,6 +34,8 @@ pub fn build(b: *std.Build) void {
     const native_fs_application_profile = b.option(bool, "native-fs-application-profile", "Separate bounded Zsh application composition; existing ABI31 owner") orelse false;
     if (native_fs_application_profile and (!native_fs_owner_stack or release_artifact)) @panic("filesystem application profile requires its private ABI31 owner-stack profile");
     options.addOption(bool, "native_fs_application_profile", native_fs_application_profile);
+    const native_zsh_external = b.option(bool, "native-zsh-external", "Private selected Zsh parent and one immutable helper child") orelse false;
+    options.addOption(bool, "native_zsh_external", native_zsh_external);
     const native_zsh_terminfo = b.option(bool, "native-zsh-terminfo", "Private large-Zsh MODE/SIGINT composition with retained Owner namespace custody") orelse false;
     options.addOption(bool, "native_zsh_terminfo", native_zsh_terminfo);
     const block_test = b.option([]const u8, "block-test", "Disposable disk bring-up: write or verify");
@@ -240,6 +242,8 @@ pub fn build(b: *std.Build) void {
     options.addOption(bool, "native_tty_signal_probe", native_tty_signal_probe);
     if (native_zsh_terminfo and (!native_fs_application_profile or !native_tty_mode_probe or !native_tty_signal_probe))
         @panic("Zsh terminfo requires its private large-application MODE and exact-generation SIGINT closure");
+    if (native_zsh_external and (!native_zsh_terminfo or !native_process_copy or !native_process_exec or !native_copy_signals or !native_signal_actions or !native_signal_public or !native_signal_suspend or !native_parent_identity))
+        @panic("Zsh external requires its selected terminfo, copy/exec and generation-safe child signal closure");
 
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));
