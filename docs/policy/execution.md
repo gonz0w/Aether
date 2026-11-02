@@ -37,6 +37,43 @@ observation format, query bounds and generation reset remain unchanged. No new
 syscall, capability kind or ABI is introduced. Reuse the frozen reader engine,
 controller and envelope artifacts; only the reader kernels/ISOs need rebuilding.
 
+## Selected terminal MODE and transmitter-empty query —2026-11-01
+
+Cam directly approved the reviewed [issue121 design](https://github.com/gonz0w/Aether/issues/121#issuecomment-6566036292):
+“Approve this scoped design (Recommended)”. This selects explicit MODE permission
+for the one admitted test application's terminal relationship and one opt-in,
+console-holder-only nonblocking int81 operation `0x26004`. Existing limits and
+default profiles remain unchanged. The accepted proposal identity is
+`fe5446691ac214ee4331d7770ae9cae7a97f5064c02d2068b0ac088dd45d7c12`;
+separate peer review is
+`e79003da2596f794d3d3f44b85a2ca433a79272eb1fe12dfb7c2c4c30f2b9f6d`.
+The published lifetime and GET-revision clarifications in that issue bind this
+selection. Do not request the same design approval again.
+
+The query accepts only F001 from the existing exact live console holder under
+current slot/generation/admission/closed checks, with all auxiliary arguments
+zero. It observes COM1 LSR once, enabling receive-error retention before reading
+status. Return zero only for valid TEMT, EAGAIN while busy, and EIO for all-ones
+or impossible TEMT-without-THRE. Preserve receive bytes and pending receive errors. The selected profile enables
+retention before every initial LSR poll, including earlier write-status polls.
+No raw port selection, pointers, queue, allocation or kernel wait is added.
+Existing read/write, `0x26002` close and `0x26003` handoff keep their contracts.
+
+Rust retains waiting and mode policy under the original absolute deadline and
+attempt/containment bounds. The selected experiment saves mode, applies real
+ICRNL with TCSADRAIN, verifies its byte effect, restores and verifies raw CR on
+the existing duplex descriptor. Public mode controls require the original live
+MODE-bearing reference, exact caller/generation, control token and applicable
+revision. The unpublished private duplicate in the existing fourth alias slot
+is only for trusted local cleanup after confirmed app stop; it cannot authorize
+public requests after the original reference retires. GET has a zero request
+body and returns current revision; SET/RESTORE compare expected revision.
+
+This authorizes the scoped implementation and its focused checks. The standing
+milestone direction covers separately reviewed finite QEMU candidates and normal
+GitHub delivery. No quota, alias capacity, raw PIO grant, service placement,
+canonical/ISIG/group support, native EINTR, full Zsh or R1 acceptance follows.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

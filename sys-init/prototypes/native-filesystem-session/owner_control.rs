@@ -53,6 +53,11 @@ pub trait Control: Kernel + Clone {
         self.ctl(0x2a000, 0xe002, 0)
     }
     fn park_events(&mut self, sequence: u64, deadline: Option<Deadline>) -> Status;
+    /// Selected holder-only, nonblocking physical transmitter observation.
+    fn transmitter_empty(&mut self) -> i64 {
+        self.ctl(0x26004, 0xf001, 0).0
+    }
+
     fn ctl(&mut self, op: u64, handle: u64, argument: u64) -> Status;
     fn engine(&mut self, reader: u64, writer: u64) -> i64;
     fn delegate(&mut self, engine: u64, region: &[u64; 3]) -> i64;
@@ -96,6 +101,18 @@ mod host_trap {
     pub fn call(op: u64, args: [u64; 6]) -> Status {
         LAST.with(|cell| *cell.borrow_mut() = Some((op, args)));
         (0, 19, 20)
+    }
+    #[test]
+    fn actual_native_transmitter_query_is_scalar_holder_only_with_zero_tail() {
+        let mut native = Native;
+        assert_eq!(native.transmitter_empty(), 0);
+        LAST.with(|cell| {
+            assert_eq!(
+                *cell.borrow(),
+                Some((0x26004, [0xf001, 0, 0, 0, 0, 0])),
+                "TYPED_TEMT_QUERY_ARGUMENTS"
+            )
+        });
     }
     #[test]
     fn actual_native_park_routes_deadline_in_rdx_and_preserves_generic_ctl() {

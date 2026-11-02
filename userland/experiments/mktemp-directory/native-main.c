@@ -2,6 +2,11 @@
 /* Selected one-app glue. The only mutable libc facade is this stable FD
  * context; Rust keeps the namespace, trap budget and four-endpoint ledger
  * disjoint. */
+#ifdef AMK_NATIVE_TTY_MODE_PROBE
+#ifndef AMK_NATIVE_TTY_DUPLEX_PROBE
+#define AMK_NATIVE_TTY_DUPLEX_PROBE
+#endif
+#endif
 #ifdef AMK_NATIVE_TTY_DUPLEX_PROBE
 #ifndef AMK_NATIVE_TTY_DESCRIPTOR_PROBE
 #define AMK_NATIVE_TTY_DESCRIPTOR_PROBE
@@ -232,7 +237,10 @@ int clock_gettime(clockid_t id, struct timespec *output)
 {
     return amk_native_monotonic(id, output);
 }
-#ifdef AMK_NATIVE_TTY_DUPLEX_PROBE
+#ifdef AMK_NATIVE_TTY_MODE_PROBE
+extern int amk_tty_mode_probe(int, char **);
+#define AMK_SELECTED_APP amk_tty_mode_probe
+#elif defined(AMK_NATIVE_TTY_DUPLEX_PROBE)
 extern int amk_tty_duplex_probe(int, char **);
 #define AMK_SELECTED_APP amk_tty_duplex_probe
 #elif defined(AMK_NATIVE_TTY_DESCRIPTOR_PROBE)

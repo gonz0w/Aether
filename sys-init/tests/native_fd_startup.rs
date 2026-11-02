@@ -89,7 +89,15 @@ fn all_identities_and_wire_fields() {
             assert_eq!(&out[56..64], &p.generation.to_le_bytes());
             assert_eq!(&out[64..72], &16u64.to_le_bytes());
             assert!(out[72..112].iter().all(|v| *v == 0));
-            assert!(out[300..].iter().all(|v| *v == 0));
+            assert_eq!(
+                &out[300..304],
+                &(if fd_startup::MODE_BINDINGS {
+                    0x7d000001u32
+                } else {
+                    0
+                })
+                .to_le_bytes()
+            );
             assert_eq!(
                 &out[288..292],
                 &(if fd_startup::DUPLEX_BINDINGS { 0u32 } else { 5 }).to_le_bytes()
@@ -160,7 +168,7 @@ fn invalid_plans_preserve_output() {
         assert_eq!(out, [0xa5; BYTES]);
     }
 }
-#[cfg(not(native_tty_duplex_probe))]
+#[cfg(not(any(native_tty_duplex_probe, native_tty_mode_probe)))]
 #[test]
 fn histories_survive_absent_pipes_and_labels_are_opaque() {
     let mut p = plan(2, 15, 3);
@@ -202,7 +210,7 @@ fn terminal_typing_is_selected_and_consistent_for_aliases() {
     assert_eq!(out, [0xa5; BYTES]);
 }
 
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn duplex_startup_has_only_attested_stdio_never_initial_duplex() {
     for (fd, kind, selector, cloexec) in [(3, 5, 0, 0), (10, 4, 0, 0), (0, 4, 0, 1), (0, 1, 0, 0)] {

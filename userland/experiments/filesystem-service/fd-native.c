@@ -185,6 +185,21 @@ static int exchange(struct aefd_native *n, unsigned char bytes[32])
         n->retired = 1;
     return ok;
 }
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+int64_t aefd_native_control(struct aefd_native *n,
+                            const unsigned char request[32],
+                            unsigned char reply[32])
+{
+    if (!ready(n) || !request || !reply)
+        return -5;
+    unsigned char bytes[32];
+    memcpy(bytes, request, 32);
+    if (!exchange(n, bytes))
+        return -5;
+    memcpy(reply, bytes, 32);
+    return 0;
+}
+#endif
 static int source_ok(struct aefd_native *n, unsigned kind, unsigned selector)
 {
     return ready(n) && selector < 7 && n->sources[selector].reference &&

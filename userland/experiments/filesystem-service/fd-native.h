@@ -24,6 +24,10 @@ struct aefd_native {
     int initialized, retired, active, busy, closed;
     struct aefd_close_result receipt;
 };
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+int64_t aefd_native_control(struct aefd_native *, const unsigned char[32],
+                            unsigned char[32]);
+#endif
 int aefd_native_init(struct aefd_native *, aefd_native_call, void *, uint64_t,
                      uint64_t, const struct aefd_native_source[7],
                      const unsigned generations[2], uint32_t factory);

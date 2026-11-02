@@ -364,8 +364,19 @@ impl Terminal {
             Ok(count)
         }
     }
-    pub fn snapshot(&self, caller: Caller, reference: &Reference) -> Result<Snapshot, Error> {
+    /// Public control query: lifetime/MODE plus known healthy client state.
+    pub fn mode_state(&self, caller: Caller, reference: &Reference) -> Result<(Mode, u64), Error> {
         self.validate(caller, reference, Rights::MODE)?;
+        if self.failed {
+            return Err(Error::UnknownCompletion);
+        }
+        if self.disconnected {
+            return Err(Error::HungUp);
+        }
+        Ok((self.mode, self.revision))
+    }
+    pub fn snapshot(&self, caller: Caller, reference: &Reference) -> Result<Snapshot, Error> {
+        self.mode_state(caller, reference)?;
         Ok(Snapshot {
             terminal: self.identity,
             caller,
@@ -391,7 +402,7 @@ impl Terminal {
         snapshot: &mut Snapshot,
         request: ModeRequest,
     ) -> Result<u64, Error> {
-        self.validate(caller, reference, Rights::MODE)?;
+        self.mode_state(caller, reference)?;
         self.check_snapshot(snapshot)?;
         if request.action != ApplyWhen::Now || !request.mode.supported() {
             return Err(Error::Unsupported);

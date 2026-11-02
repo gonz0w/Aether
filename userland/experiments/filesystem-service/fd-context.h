@@ -16,6 +16,10 @@ struct aefd_context {
     struct aefd_session session;
     unsigned char workspace[AEFD_READ_MAX];
     int state;
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+    uint32_t mode_control;
+    uint64_t mode_revision;
+#endif
 };
 int64_t aefd_context_init(struct aefd_context *, aefd_native_call, void *,
                           uint64_t input, uint64_t output,
@@ -29,6 +33,11 @@ int64_t aefd_context_init(struct aefd_context *, aefd_native_call, void *,
  */
 #ifdef AEFD_TERMINAL_DUPLEX_BINDINGS
 int64_t aefd_context_open_duplex(struct aefd_context *, int);
+#endif
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+/* Private scalar005 control. Output remains untouched on every failure. */
+int64_t aefd_context_mode(struct aefd_context *, int, unsigned, unsigned,
+                          unsigned, unsigned *);
 #endif
 int64_t aefd_context_open(struct aefd_context *, const unsigned char *, size_t,
                           int);

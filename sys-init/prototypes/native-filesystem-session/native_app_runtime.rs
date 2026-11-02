@@ -11,6 +11,9 @@ pub use owner_control::AppControl;
 use owner_control::{Control, Deadline, Observation, Status};
 #[path = "stream_transport.rs"]
 mod stream_transport;
+#[cfg(native_tty_mode_probe)]
+#[path = "tty_mode.rs"]
+pub mod tty_mode;
 
 pub const ATTEMPTS: u32 = 1_000_000;
 pub const RESERVED: u32 = 12;
@@ -18,7 +21,7 @@ pub const WRITER_DEADLINE_TICK: u64 = 6_000;
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 use serial_tty::{
     Bindings, Completion, Error as TtyError, Mode, ReadOutcome, Rights, Stop, Terminal,
@@ -27,13 +30,13 @@ use serial_tty::{
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 const DESCRIPTORS: usize = 3;
 #[cfg(not(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 )))]
 const DESCRIPTORS: usize = 2;
 pub const TEMPLATE: &[u8] = b"/home/t.XXXXXX";
@@ -61,6 +64,10 @@ pub struct Snapshot {
     pub console_status: i64,
     pub observed_terminal: [Option<Status>; 2],
     pub sequence: u64,
+    #[cfg(native_tty_mode_probe)]
+    pub mode_cleanup: Option<i64>,
+    #[cfg(native_tty_mode_probe)]
+    pub mode_state: Option<(bool, u64)>,
 }
 struct Bound {
     left: u32,
@@ -131,9 +138,11 @@ pub struct Runtime<K: AppControl> {
     #[cfg(any(
         native_tty_byte_probe,
         native_tty_descriptor_probe,
-        native_tty_duplex_probe
+        any(native_tty_duplex_probe, native_tty_mode_probe)
     ))]
     tty: Option<(Terminal, Bindings, serial_tty::Caller)>,
+    #[cfg(native_tty_mode_probe)]
+    mode: Option<tty_mode::State>,
     console_attempted: bool,
     terminal_attempted: bool,
     started: bool,
@@ -150,7 +159,7 @@ impl<K: AppControl> Runtime<K> {
                 if cfg!(any(
                     native_tty_byte_probe,
                     native_tty_descriptor_probe,
-                    native_tty_duplex_probe
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
                 )) {
                     Some(console(0))
                 } else {
@@ -186,9 +195,11 @@ impl<K: AppControl> Runtime<K> {
             #[cfg(any(
                 native_tty_byte_probe,
                 native_tty_descriptor_probe,
-                native_tty_duplex_probe
+                any(native_tty_duplex_probe, native_tty_mode_probe)
             ))]
             tty: None,
+            #[cfg(native_tty_mode_probe)]
+            mode: None,
             console_attempted: false,
             terminal_attempted: false,
             started: false,
@@ -216,6 +227,13 @@ impl<K: AppControl> Runtime<K> {
             console_status: self.console_status,
             observed_terminal: self.observed_terminal,
             sequence: self.bound.sequence,
+            #[cfg(native_tty_mode_probe)]
+            mode_cleanup: self.mode.as_ref().and_then(tty_mode::State::cleanup_result),
+            #[cfg(native_tty_mode_probe)]
+            mode_state: self
+                .tty
+                .as_ref()
+                .and_then(|(t, b, c)| t.mode_state(*c, &b.stdin).ok().map(|(m, r)| (m.icrnl, r))),
         }
     }
     fn ctl(&mut self, op: u64, cap: u64, argument: u64) -> Result<Status, i64> {
@@ -329,7 +347,7 @@ impl<K: AppControl> Runtime<K> {
         #[cfg(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         ))]
         {
             let identity = self.identity.ok_or(-9)?;
@@ -340,10 +358,24 @@ impl<K: AppControl> Runtime<K> {
             let (terminal, bindings) = Terminal::admit(
                 identity.handle,
                 caller,
-                [Rights::READ, Rights::WRITE, Rights::WRITE],
+                [
+                    if cfg!(native_tty_mode_probe) {
+                        Rights::READ.union(Rights::MODE)
+                    } else {
+                        Rights::READ
+                    },
+                    Rights::WRITE,
+                    Rights::WRITE,
+                ],
                 Mode::IMMEDIATE,
             )
             .map_err(tty_errno)?;
+            #[cfg(native_tty_mode_probe)]
+            let (terminal, bindings) = {
+                let mut terminal = terminal;
+                self.mode = Some(tty_mode::State::admit(&mut terminal, &bindings, caller)?);
+                (terminal, bindings)
+            };
             self.tty = Some((terminal, bindings, caller));
         }
         self.endpoints = Some(ManuallyDrop::new(
@@ -363,7 +395,7 @@ impl<K: AppControl> Runtime<K> {
         #[cfg(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         ))]
         {
             bindings[0] = Binding {
@@ -372,7 +404,10 @@ impl<K: AppControl> Runtime<K> {
                 cloexec: 0,
             };
         }
-        #[cfg(any(native_tty_descriptor_probe, native_tty_duplex_probe))]
+        #[cfg(any(
+            native_tty_descriptor_probe,
+            any(native_tty_duplex_probe, native_tty_mode_probe)
+        ))]
         {
             let (terminal, references, caller) = self.tty.as_ref().ok_or(-9)?;
             for (selector, reference, role) in [
@@ -390,14 +425,14 @@ impl<K: AppControl> Runtime<K> {
         #[cfg(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         ))]
         {
             sources[0] = console(0);
         }
         sources[1] = console(1);
         sources[2] = console(2);
-        #[cfg(native_tty_duplex_probe)]
+        #[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
         {
             let (terminal, references, caller) = self.tty.as_ref().ok_or(-9)?;
             validate_terminal_sources(
@@ -476,7 +511,10 @@ impl<K: AppControl> Runtime<K> {
                 false,
             )?;
         }
-        if !output_header(&self.request) {
+        let control = cfg!(native_tty_mode_probe)
+            && (matches!(u32_at(&self.request, 0), 0x10..=0x1f)
+                || u32_at(&self.request, 4) == 0x7d000001);
+        if !output_header(&self.request) && !control {
             return Err(-22);
         }
         stream_transport::transfer(
@@ -489,111 +527,117 @@ impl<K: AppControl> Runtime<K> {
             &mut self.request[16..],
             false,
         )?;
-        loop {
-            let kernel = &mut self.kernel;
-            let bound = &mut self.bound;
-            #[cfg(any(
-                native_tty_byte_probe,
-                native_tty_descriptor_probe,
-                native_tty_duplex_probe
-            ))]
-            let (terminal, bindings, caller) = self.tty.as_mut().ok_or(-9)?;
-            #[cfg(any(
-                native_tty_byte_probe,
-                native_tty_descriptor_probe,
-                native_tty_duplex_probe
-            ))]
-            let reference = match u32_at(&self.request, 8) {
-                0 => bindings.stdin,
-                1 => bindings.stdout,
-                _ => bindings.stderr,
-            };
-            #[cfg(any(
-                native_tty_byte_probe,
-                native_tty_descriptor_probe,
-                native_tty_duplex_probe
-            ))]
-            let mut unknown = false;
-            let reply = self
-                .streams
-                .request(Caller::Parent, &self.request, |writing, bytes| {
-                    if let Err(error) = bound.before(kernel) {
-                        return error;
-                    }
-                    #[cfg(not(any(
-                        native_tty_byte_probe,
-                        native_tty_descriptor_probe,
-                        native_tty_duplex_probe
-                    )))]
-                    {
-                        kernel.serial(writing, bytes)
-                    }
-                    #[cfg(any(
-                        native_tty_byte_probe,
-                        native_tty_descriptor_probe,
-                        native_tty_duplex_probe
-                    ))]
-                    {
-                        let result = if writing {
-                            terminal.write(*caller, &reference, bytes, |role, input| {
-                                debug_assert_eq!(
-                                    role,
-                                    if u32_at(&self.request, 8) == 1 {
-                                        serial_tty::Role::Stdout
-                                    } else {
-                                        serial_tty::Role::Stderr
-                                    }
-                                );
-                                let mut scratch = [0; 16];
-                                scratch[..input.len()].copy_from_slice(input);
-                                completion(
-                                    kernel.serial(true, &mut scratch[..input.len()]),
-                                    input.len(),
-                                )
-                            })
-                        } else {
-                            terminal
-                                .read(*caller, &reference, bytes, |output| {
-                                    completion(kernel.serial(false, output), output.len())
-                                })
-                                .map(|outcome| match outcome {
-                                    ReadOutcome::Bytes(n) => n,
-                                    ReadOutcome::EmptyRequest | ReadOutcome::Eof => 0,
-                                })
-                        };
-                        match result {
-                            Ok(count) => count as i64,
-                            Err(TtyError::UnknownCompletion) => {
-                                unknown = true;
-                                -5
+        #[cfg(native_tty_mode_probe)]
+        if control {
+            self.reply = self.mode_request()?;
+        }
+        if !control {
+            loop {
+                let kernel = &mut self.kernel;
+                let bound = &mut self.bound;
+                #[cfg(any(
+                    native_tty_byte_probe,
+                    native_tty_descriptor_probe,
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
+                ))]
+                let (terminal, bindings, caller) = self.tty.as_mut().ok_or(-9)?;
+                #[cfg(any(
+                    native_tty_byte_probe,
+                    native_tty_descriptor_probe,
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
+                ))]
+                let reference = match u32_at(&self.request, 8) {
+                    0 => bindings.stdin,
+                    1 => bindings.stdout,
+                    _ => bindings.stderr,
+                };
+                #[cfg(any(
+                    native_tty_byte_probe,
+                    native_tty_descriptor_probe,
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
+                ))]
+                let mut unknown = false;
+                let reply =
+                    self.streams
+                        .request(Caller::Parent, &self.request, |writing, bytes| {
+                            if let Err(error) = bound.before(kernel) {
+                                return error;
                             }
-                            Err(error) => tty_errno(error),
-                        }
+                            #[cfg(not(any(
+                                native_tty_byte_probe,
+                                native_tty_descriptor_probe,
+                                any(native_tty_duplex_probe, native_tty_mode_probe)
+                            )))]
+                            {
+                                kernel.serial(writing, bytes)
+                            }
+                            #[cfg(any(
+                                native_tty_byte_probe,
+                                native_tty_descriptor_probe,
+                                any(native_tty_duplex_probe, native_tty_mode_probe)
+                            ))]
+                            {
+                                let result = if writing {
+                                    terminal.write(*caller, &reference, bytes, |role, input| {
+                                        debug_assert_eq!(
+                                            role,
+                                            if u32_at(&self.request, 8) == 1 {
+                                                serial_tty::Role::Stdout
+                                            } else {
+                                                serial_tty::Role::Stderr
+                                            }
+                                        );
+                                        let mut scratch = [0; 16];
+                                        scratch[..input.len()].copy_from_slice(input);
+                                        completion(
+                                            kernel.serial(true, &mut scratch[..input.len()]),
+                                            input.len(),
+                                        )
+                                    })
+                                } else {
+                                    terminal
+                                        .read(*caller, &reference, bytes, |output| {
+                                            completion(kernel.serial(false, output), output.len())
+                                        })
+                                        .map(|outcome| match outcome {
+                                            ReadOutcome::Bytes(n) => n,
+                                            ReadOutcome::EmptyRequest | ReadOutcome::Eof => 0,
+                                        })
+                                };
+                                match result {
+                                    Ok(count) => count as i64,
+                                    Err(TtyError::UnknownCompletion) => {
+                                        unknown = true;
+                                        -5
+                                    }
+                                    Err(error) => tty_errno(error),
+                                }
+                            }
+                        });
+                #[cfg(any(
+                    native_tty_byte_probe,
+                    native_tty_descriptor_probe,
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
+                ))]
+                if unknown {
+                    return Err(-5);
+                }
+                #[cfg(any(
+                    native_tty_byte_probe,
+                    native_tty_descriptor_probe,
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
+                ))]
+                if u32_at(&self.request, 0) == 3
+                    && matches!(&reply, Outcome::Reply(raw) if u32_at(raw, 0) == 0)
+                {
+                    terminal.close(*caller, reference).map_err(tty_errno)?;
+                }
+                match reply {
+                    Outcome::Pending => self.yield_now()?,
+                    Outcome::Reply(reply) => {
+                        self.reply = reply;
+                        break;
                     }
-                });
-            #[cfg(any(
-                native_tty_byte_probe,
-                native_tty_descriptor_probe,
-                native_tty_duplex_probe
-            ))]
-            if unknown {
-                return Err(-5);
-            }
-            #[cfg(any(
-                native_tty_byte_probe,
-                native_tty_descriptor_probe,
-                native_tty_duplex_probe
-            ))]
-            if u32_at(&self.request, 0) == 3
-                && matches!(&reply, Outcome::Reply(raw) if u32_at(raw, 0) == 0)
-            {
-                terminal.close(*caller, reference).map_err(tty_errno)?;
-            }
-            match reply {
-                Outcome::Pending => self.yield_now()?,
-                Outcome::Reply(reply) => {
-                    self.reply = reply;
-                    break;
                 }
             }
         }
@@ -612,10 +656,95 @@ impl<K: AppControl> Runtime<K> {
                 - usize::from(!cfg!(any(
                     native_tty_byte_probe,
                     native_tty_descriptor_probe,
-                    native_tty_duplex_probe
+                    any(native_tty_duplex_probe, native_tty_mode_probe)
                 )))] = true;
         }
         Ok(true)
+    }
+    #[cfg(native_tty_mode_probe)]
+    fn drain(&mut self) -> Result<(), i64> {
+        loop {
+            self.mode_peer_live()?;
+            self.bound.before(&mut self.kernel)?;
+            match self.kernel.transmitter_empty() {
+                0 => return Ok(()),
+                -11 => {}
+                e => return Err(e),
+            }
+            // Observe, recheck, then timed park. No later request can pass this
+            // fixed request while it owns the synchronous owner loop.
+            self.bound.check(&mut self.kernel)?;
+            self.bound.spend()?;
+            match self.kernel.transmitter_empty() {
+                0 => return Ok(()),
+                -11 => {}
+                e => return Err(e),
+            }
+            let wake = self
+                .bound
+                .last_tick
+                .saturating_add(1)
+                .min(self.bound.deadline.get());
+            let deadline = Deadline::after(wake - 1, 1)?;
+            self.bound.spend()?;
+            let status = self.kernel.park_events(self.bound.sequence, Some(deadline));
+            match status.0 {
+                0 => {
+                    self.bound.deadline.check(status)?;
+                }
+                -110 => {} // Timed sample; rescan from a fresh observation.
+                error => return Err(error),
+            }
+        }
+    }
+    #[cfg(native_tty_mode_probe)]
+    fn mode_peer_live(&mut self) -> Result<(), i64> {
+        let state = self.ctl(0x20001, self.app, 0)?;
+        if state.0 == 0 { Ok(()) } else { Err(-125) }
+    }
+    #[cfg(native_tty_mode_probe)]
+    fn mode_request(&mut self) -> Result<[u8; 32], i64> {
+        let op = u32_at(&self.request, 0);
+        let prepared = {
+            let (terminal, refs, caller) = self.tty.as_ref().ok_or(-9)?;
+            self.mode
+                .as_ref()
+                .ok_or(-9)?
+                .prepare(terminal, refs, *caller, &self.request)
+        };
+        let request = match prepared {
+            Ok(request) => request,
+            Err(e) => return Ok(tty_mode::error(op, e)),
+        };
+        if request.drain()
+            && let Err(e) = self.drain()
+        {
+            if matches!(e, -110 | -125) || self.bound.failed != 0 {
+                return Err(e);
+            }
+            return Ok(tty_mode::error(op, e));
+        }
+        self.mode_peer_live()?;
+        self.bound.check(&mut self.kernel)?;
+        let (terminal, refs, caller) = self.tty.as_mut().ok_or(-9)?;
+        Ok(
+            match self
+                .mode
+                .as_mut()
+                .ok_or(-9)?
+                .commit(terminal, refs, *caller, request)
+            {
+                Ok(reply) => reply,
+                Err(error) => tty_mode::error(op, error),
+            },
+        )
+    }
+    #[cfg(native_tty_mode_probe)]
+    fn cleanup_mode(&mut self) -> Result<(), i64> {
+        if let (Some(mode), Some((terminal, _, caller))) = (self.mode.as_mut(), self.tty.as_mut()) {
+            mode.cleanup(terminal, *caller, true)?;
+        }
+        Ok(())
     }
     fn terminal_zero(&mut self, handle: u64) -> Result<(), i64> {
         loop {
@@ -656,6 +785,8 @@ impl<K: AppControl> Runtime<K> {
         self.provision(workspace)?;
         while self.request()? {}
         self.terminal_zero(self.app)?;
+        #[cfg(native_tty_mode_probe)]
+        self.cleanup_mode()?;
         self.close_owned()?;
         self.reclaim(self.app)?;
         self.app = 0;
@@ -717,6 +848,10 @@ impl<K: AppControl> Runtime<K> {
             let state = self.kernel.ctl(0x20001, handle, 0);
             self.cleanup[index][1] = state;
             if state.0 > 0 && matches!(state.2, 1..=4) {
+                #[cfg(native_tty_mode_probe)]
+                if index == 0 {
+                    let _ = self.cleanup_mode();
+                }
                 self.bound.reserve()?;
                 self.cleanup_attempted[index][2] = true;
                 let reclaimed = self.kernel.ctl(0x20002, handle, 0);
@@ -759,7 +894,7 @@ impl<K: AppControl> stream_transport::Steps for OwnerSteps<'_, K> {
         self.kernel.ctl(0x1fffe, 0, 0).0
     }
 }
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 pub fn validate_terminal_sources(
     terminal: &Terminal,
     references: &Bindings,
@@ -767,7 +902,16 @@ pub fn validate_terminal_sources(
     sources: &[Source; 3],
 ) -> Result<(), i64> {
     for (i, reference, role, rights) in [
-        (0, &references.stdin, serial_tty::Role::Stdin, Rights::READ),
+        (
+            0,
+            &references.stdin,
+            serial_tty::Role::Stdin,
+            if cfg!(native_tty_mode_probe) {
+                Rights::READ.union(Rights::MODE)
+            } else {
+                Rights::READ
+            },
+        ),
         (
             1,
             &references.stdout,
@@ -797,7 +941,7 @@ fn console(selector: u32) -> Source {
         rights: if cfg!(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         )) && selector == 0
         {
             1
@@ -822,12 +966,12 @@ fn output_header(frame: &[u8; 32]) -> bool {
         || cfg!(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         )) && u32_at(frame, 0) == 1)
         && (u32::from(!cfg!(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         )))..=2)
             .contains(&u32_at(frame, 8))
         && u32_at(frame, 4) == console(u32_at(frame, 8)).reference
@@ -867,7 +1011,7 @@ pub fn encode_launch(
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 fn completion(raw: i64, offered: usize) -> Completion {
     if raw >= 0 && raw as u64 <= offered as u64 {
@@ -890,7 +1034,7 @@ fn completion(raw: i64, offered: usize) -> Completion {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 fn tty_errno(error: TtyError) -> i64 {
     match error {

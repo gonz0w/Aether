@@ -3,6 +3,12 @@
 #define AETHER_FD_LIBC_H
 #include "fd-startup.h"
 #include <fcntl.h>
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+#include <termios.h>
+int64_t aefd_libc_tcgetattr(struct aefd_context *, int, struct termios *);
+int64_t aefd_libc_tcsetattr(struct aefd_context *, int, int,
+                            const struct termios *);
+#endif
 /* Private negative-errno helpers; no global state or errno mutation. Valid
  * disjoint C strings/buffers and exclusive context borrowing as before. */
 int64_t aefd_libc_isatty(struct aefd_context *, int);

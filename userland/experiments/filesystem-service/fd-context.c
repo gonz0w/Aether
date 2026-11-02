@@ -212,6 +212,84 @@ int64_t aefd_context_describe(struct aefd_context *c, int fd,
     }
     return result;
 }
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+static int64_t mode_exchange(struct aefd_context *c, unsigned operation,
+                             unsigned action, unsigned bits, unsigned *out)
+{
+    unsigned char request[32] = {0}, reply[32];
+    memcpy(request, &operation, 4);
+    memcpy(request + 4, &c->mode_control, 4);
+    if (operation != 0x10) {
+        memcpy(request + 8, &action, 4);
+        memcpy(request + 16, &c->mode_revision, 8);
+        if (operation == 0x11) {
+            memcpy(request + 24, &bits, 4);
+            request[28] = 1;
+        }
+    }
+    if (aefd_native_control(&c->native, request, reply))
+        goto unknown;
+    int32_t status;
+    uint32_t echoed, length, reserved;
+    uint64_t revision;
+    memcpy(&status, reply, 4);
+    memcpy(&echoed, reply + 4, 4);
+    memcpy(&length, reply + 8, 4);
+    memcpy(&reserved, reply + 12, 4);
+    if (echoed != operation || reserved || status > 0 || status < -4095)
+        goto unknown;
+    if (status) {
+        if (length)
+            goto unknown;
+        for (unsigned i = 16; i < 32; ++i)
+            if (reply[i])
+                goto unknown;
+        return status;
+    }
+    memcpy(&revision, reply + 16, 8);
+    if (length != 16 || !revision ||
+        (operation == 0x10 && revision < c->mode_revision) || reply[24] > 1 ||
+        reply[25] || reply[26] || reply[27] || reply[28] != 1 || reply[29] ||
+        reply[30] || reply[31] ||
+        (operation != 0x10 &&
+         (c->mode_revision == UINT64_MAX || revision != c->mode_revision + 1)))
+        goto unknown;
+    c->mode_revision = revision;
+    *out = reply[24];
+    return 0;
+unknown:
+    aefd_client_abort(&c->client);
+    return -5;
+}
+int64_t aefd_context_mode(struct aefd_context *c, int fd, unsigned operation,
+                          unsigned action, unsigned bits, unsigned *out)
+{
+    if (!out)
+        return -14;
+    if (operation < 0x10 || operation > 0x12 || action > 1 || bits > 1)
+        return -95;
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    struct aefd_binding binding;
+    result = aefd_session_binding(&c->session, fd, &binding);
+    if (!result && binding.kind != AEFD_BIND_TERMINAL &&
+        binding.kind != AEFD_BIND_DUPLEX_TERMINAL)
+        result = -25;
+    if (!result && (!c->native.sources[0].reference ||
+                    c->mode_control != AEFD_MODE_CONTROL))
+        result = -9;
+    unsigned value = 0;
+    if (!result && operation != 0x10 && !c->mode_revision)
+        result = mode_exchange(c, 0x10, 0, 0, &value);
+    if (!result)
+        result = mode_exchange(c, operation, action, bits, &value);
+    result = end(c, result);
+    if (!result)
+        *out = value;
+    return result;
+}
+#endif
 int64_t aefd_context_flags(struct aefd_context *c, int fd)
 {
     int64_t result = begin(c);

@@ -409,6 +409,7 @@ const Page = memory.Page;
 const service_memory = @import("build_options").native_service_memory;
 const mktemp_reader = @hasDecl(@import("build_options"), "native_mktemp_reader") and @import("build_options").native_mktemp_reader;
 const FsSession = @import("../../native_fs_session.zig");
+const TtyMode = @import("../../native_tty_mode.zig");
 const FsRoles = @import("native_fs_roles.zig");
 const combined_profile = @hasDecl(@import("build_options"), "native_fs_session") and @import("build_options").native_fs_session;
 const combined_init = @hasDecl(@import("build_options"), "native_fs_session_init") and @import("build_options").native_fs_session_init;
@@ -1092,7 +1093,7 @@ pub fn exception(frame: *const Frame) *const Frame {
     }
     if (@import("build_options").native_entropy and frame.rax >= 0x2b000 and frame.rax <= 0x2b001) return entropyOperation(frame);
     if (block_profile and frame.rax >= 0x27000 and frame.rax <= (if (block_regions) @as(u64, 0x27006) else 0x27004)) return blockOperation(frame);
-    if (console_profile and frame.rax >= 0x26000 and frame.rax <= (if (console_handoff) @as(u64, 0x26003) else 0x26002)) return consoleOperation(frame);
+    if (TtyMode.selectedOperation(console_profile, console_handoff, @import("build_options").native_tty_mode_probe, frame.rax)) return consoleOperation(frame);
     if (ownerEventsEnabled() and frame.rax >= 0x2a000 and frame.rax <= 0x2a002) return sustainedOperation(frame);
     if (init_profile and frame.rax >= 0x25000 and frame.rax <= 0x25005) return waitOperation(frame);
     if (channel_profile and frame.rax >= 0x24000 and frame.rax <= 0x24004) return channelOperation(frame);
@@ -2697,7 +2698,15 @@ fn consoleOperation(f: *const Frame) *const Frame {
         active == owner.slot and s.admitted and !s.terminal and s.generation == owner.generation
     else
         active == supervisorSlot();
-    if (lifecycleEnabled() and (f.r10 != 0 or f.r8 != 0 or f.r9 != 0 or (f.rax == 0x26002 and (f.rsi != 0 or f.rdx != 0)))) {
+    if (f.rax == 0x26004) {
+        result(s, TtyMode.query(.{
+            .selected = @import("build_options").native_tty_mode_probe,
+            .owns = owns,
+            .closed = console_closed,
+            .grant = f.rdi,
+            .arguments = .{ f.rsi, f.rdx, f.r10, f.r8, f.r9 },
+        }, serial));
+    } else if (lifecycleEnabled() and (f.r10 != 0 or f.r8 != 0 or f.r9 != 0 or (f.rax == 0x26002 and (f.rsi != 0 or f.rdx != 0)))) {
         result(s, -22);
     } else if (!owns or f.rdi != 0xf001) {
         result(s, -13);

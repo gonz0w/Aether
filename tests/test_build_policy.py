@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    'native-tty-mode-probe',  # Approved default-off ABI31 holder TEMT query; private BSP only, release rejected.
     'native-mktemp-reader',  # Approved private320-byte slot0 capture; default/other slots256; release rejected.
     'native-fs-application-profile',  # Approved distinct five640-page application pools; old profiles intact, release rejected.
     'native-fs-owner-stack',  # Separate approved ABI31 stack/measured code profile; same backing, release rejected.

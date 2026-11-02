@@ -8,6 +8,10 @@ use std::{
     vec::Vec,
 };
 
+#[cfg(native_tty_mode_probe)]
+use native_app_runtime::tty_mode;
+#[cfg(native_tty_mode_probe)]
+use serial_tty::{Bindings, Caller, Completion, Mode, ReadOutcome, Rights, Stop, Terminal};
 const CAPS: [u64; 4] = [0xd10a0101, 0xd10b0102, 0xd1000101, 0xd1010102];
 static SERIAL: Mutex<()> = Mutex::new(());
 #[derive(Default)]
@@ -28,6 +32,16 @@ struct Fixture {
     input: VecDeque<u8>,
     source_closes: Vec<u32>,
     unknown_source_close: Option<u32>,
+    #[cfg(native_tty_mode_probe)]
+    mode: Option<(Terminal, Bindings, Caller, tty_mode::State)>,
+    #[cfg(native_tty_mode_probe)]
+    mode_requests: Vec<[u8; 32]>,
+    #[cfg(native_tty_mode_probe)]
+    bad_mode_reply: Option<u32>,
+    #[cfg(native_tty_mode_probe)]
+    mode_ready_drains: usize,
+    #[cfg(native_tty_mode_probe)]
+    stale_mode_get: bool,
 }
 std::thread_local! { static FIXTURE: RefCell<Fixture> = RefCell::new(Fixture::default()); }
 
@@ -160,6 +174,34 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                 if f.request.len() == 32 {
                     let frame: [u8; 32] = f.request.as_slice().try_into().unwrap();
                     f.request.clear();
+                    #[cfg(native_tty_mode_probe)]
+                    if matches!(tty_mode::u32_at(&frame, 0), 0x10..=0x1f) {
+                        f.mode_requests.push(frame);
+                        let (mut terminal, refs, caller, mut mode) = f.mode.take().unwrap();
+                        let op = tty_mode::u32_at(&frame, 0);
+                        let mut reply = match mode.prepare(&terminal, &refs, caller, &frame) {
+                            Ok(request) => {
+                                if request.drain() {
+                                    f.mode_ready_drains += 1;
+                                } // Explicit ready provider double; owner drain tests use actual Runtime.
+                                mode.commit(&mut terminal, &refs, caller, request)
+                                    .unwrap_or_else(|e| tty_mode::error(op, e))
+                            }
+                            Err(e) => tty_mode::error(op, e),
+                        };
+                        if f.bad_mode_reply == Some(op) {
+                            reply[8] = 15;
+                        }
+                        if f.stale_mode_get
+                            && op == 0x10
+                            && u64::from_le_bytes(reply[16..24].try_into().unwrap()) > 1
+                        {
+                            reply[16..24].copy_from_slice(&1u64.to_le_bytes());
+                        }
+                        f.mode = Some((terminal, refs, caller, mode));
+                        f.process_bytes.extend(reply);
+                        return args[2] as i64;
+                    }
                     let selector = u32::from_le_bytes(frame[8..12].try_into().unwrap());
                     if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 3 {
                         f.source_closes.push(selector);
@@ -177,7 +219,7 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                                     || cfg!(any(
                                         native_tty_byte_probe,
                                         native_tty_descriptor_probe,
-                                        native_tty_duplex_probe
+                                        any(native_tty_duplex_probe, native_tty_mode_probe)
                                     )),
                                 "STDIO_SELECTED_STDIN"
                             );
@@ -186,6 +228,33 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                             } else {
                                 bytes.len().min(f.input.len()) as i64
                             });
+                            #[cfg(native_tty_mode_probe)]
+                            if !writing {
+                                let (mut terminal, refs, caller, mode) = f.mode.take().unwrap();
+                                let result = terminal.read(caller, &refs.stdin, bytes, |out| {
+                                    if count > 0 && count as usize <= out.len() {
+                                        for byte in &mut out[..count as usize] {
+                                            *byte = f.input.pop_front().unwrap();
+                                        }
+                                    }
+                                    Completion {
+                                        count: if count > 0 { count as usize } else { 0 },
+                                        stop: if count == 0 {
+                                            Stop::End
+                                        } else if count < 0 {
+                                            Stop::Error(count as i32)
+                                        } else {
+                                            Stop::Complete
+                                        },
+                                    }
+                                });
+                                f.mode = Some((terminal, refs, caller, mode));
+                                return match result {
+                                    Ok(ReadOutcome::Bytes(n)) => n as i64,
+                                    Ok(_) => 0,
+                                    Err(_) => -5,
+                                };
+                            }
                             if count > 0 && count as usize <= bytes.len() {
                                 if writing {
                                     f.delivered
@@ -201,6 +270,16 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                     f.streams = Some(state);
                     match result {
                         fork_streams::Outcome::Reply(mut bytes) => {
+                            #[cfg(native_tty_mode_probe)]
+                            if tty_mode::u32_at(&frame, 0) == 3 && bytes[..4] == [0; 4] {
+                                let (terminal, refs, caller, _) = f.mode.as_mut().unwrap();
+                                let reference = match selector {
+                                    0 => refs.stdin,
+                                    1 => refs.stdout,
+                                    _ => refs.stderr,
+                                };
+                                terminal.close(*caller, reference).unwrap();
+                            }
                             if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 3
                                 && f.unknown_source_close == Some(selector)
                             {
@@ -518,7 +597,7 @@ fn start_stdio_case(_rejection: u8) -> i64 {
         if cfg!(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
-            native_tty_duplex_probe
+            any(native_tty_duplex_probe, native_tty_mode_probe)
         )) {
             Some(fd_startup::Source {
                 reference: 0x7a000001,
@@ -554,10 +633,13 @@ fn start_stdio_case(_rejection: u8) -> i64 {
     for (fd, source) in console.iter().enumerate().skip(usize::from(!cfg!(any(
         native_tty_byte_probe,
         native_tty_descriptor_probe,
-        native_tty_duplex_probe
+        any(native_tty_duplex_probe, native_tty_mode_probe)
     )))) {
         plan.bindings[fd] = fd_startup::Binding {
-            kind: if cfg!(any(native_tty_descriptor_probe, native_tty_duplex_probe)) {
+            kind: if cfg!(any(
+                native_tty_descriptor_probe,
+                any(native_tty_duplex_probe, native_tty_mode_probe)
+            )) {
                 4
             } else {
                 1
@@ -575,7 +657,7 @@ fn start_stdio_case(_rejection: u8) -> i64 {
     }
     let mut greeting = [0u8; fd_startup::BYTES];
     fd_startup::encode(&plan, &mut greeting).unwrap();
-    #[cfg(native_tty_duplex_probe)]
+    #[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
     match _rejection {
         1 => {
             let first: [u8; 4] = greeting[112..116].try_into().unwrap();
@@ -588,6 +670,26 @@ fn start_stdio_case(_rejection: u8) -> i64 {
     FIXTURE.with(|f| {
         let mut f = f.borrow_mut();
         f.process_bytes.extend(greeting);
+        #[cfg(native_tty_mode_probe)]
+        {
+            let caller = Caller {
+                identity: identity.handle,
+                generation: u64::from(identity.epoch),
+            };
+            let (mut terminal, refs) = Terminal::admit(
+                identity.handle,
+                caller,
+                [
+                    Rights::READ.union(Rights::MODE),
+                    Rights::WRITE,
+                    Rights::WRITE,
+                ],
+                Mode::IMMEDIATE,
+            )
+            .unwrap();
+            let mode = tty_mode::State::admit(&mut terminal, &refs, caller).unwrap();
+            f.mode = Some((terminal, refs, caller, mode));
+        }
         f.streams = Some(
             fork_streams::State::new(
                 console,
@@ -779,20 +881,25 @@ fn fd_leave_terminal_return_faults_without_reentry() {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 unsafe extern "C" {
-    #[cfg(not(any(native_tty_descriptor_probe, native_tty_duplex_probe)))]
+    #[cfg(not(any(
+        native_tty_descriptor_probe,
+        any(native_tty_duplex_probe, native_tty_mode_probe)
+    )))]
     fn amk_test_tty_probe_case(kind: u32) -> i32;
     #[cfg(native_tty_descriptor_probe)]
     fn amk_test_tty_descriptor_case(kind: u32) -> i32;
     #[cfg(native_tty_duplex_probe)]
     fn amk_test_tty_duplex_case(kind: u32) -> i32;
+    #[cfg(native_tty_mode_probe)]
+    fn amk_test_tty_mode_case(kind: u32) -> i32;
 }
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 unsafe fn selected_tty_case(kind: u32) -> i32 {
     #[cfg(native_tty_descriptor_probe)]
@@ -805,7 +912,15 @@ unsafe fn selected_tty_case(kind: u32) -> i32 {
     unsafe {
         amk_test_tty_duplex_case(kind)
     }
-    #[cfg(not(any(native_tty_descriptor_probe, native_tty_duplex_probe)))]
+    #[cfg(native_tty_mode_probe)]
+    // SAFETY: the caller holds the serialized admitted native fixture.
+    unsafe {
+        amk_test_tty_mode_case(kind)
+    }
+    #[cfg(not(any(
+        native_tty_descriptor_probe,
+        any(native_tty_duplex_probe, native_tty_mode_probe)
+    )))]
     // SAFETY: the caller holds the serialized admitted native fixture.
     unsafe {
         amk_test_tty_probe_case(kind)
@@ -814,7 +929,7 @@ unsafe fn selected_tty_case(kind: u32) -> i32 {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn actual_selected_facade_byte_probe_and_finalization() {
@@ -826,6 +941,8 @@ fn actual_selected_facade_byte_probe_and_finalization() {
     ];
     FIXTURE.with(|f| {
         let mut f = f.borrow_mut();
+        f.input.extend(payload);
+        #[cfg(native_tty_mode_probe)]
         f.input.extend(payload);
         f.serial_results.extend([3, 2]);
     });
@@ -852,8 +969,24 @@ fn actual_selected_facade_byte_probe_and_finalization() {
         let mut expected = b"TTY-BYTE READY\nTTY-BYTE OUT\n".to_vec();
         expected.extend(payload);
         expected.extend(b"\nTTY-BYTE PASS\n");
+        if cfg!(native_tty_mode_probe) {
+            expected = b"TTY-MODE DRAIN\nTTY-MODE READY1\nTTY-MODE OUT1\n".to_vec();
+            let mut mapped = payload;
+            mapped[4] = 10;
+            expected.extend(mapped);
+            expected.extend(b"\nTTY-MODE READY2\nTTY-MODE OUT2\n");
+            expected.extend(payload);
+            expected.extend(b"\nTTY-MODE PASS\n");
+        }
         assert_eq!(stdout, expected, "EXACT_BINARY_FRAME");
-        assert_eq!(stderr, b"TTY-BYTE ERR\n");
+        assert_eq!(
+            stderr,
+            if cfg!(native_tty_mode_probe) {
+                b"TTY-MODE ERR\n".as_slice()
+            } else {
+                b"TTY-BYTE ERR\n".as_slice()
+            }
+        );
         assert!(f.input.is_empty());
     });
     assert_eq!(unsafe { amk_native_test_finish() }, 0);
@@ -863,7 +996,7 @@ fn actual_selected_facade_byte_probe_and_finalization() {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
@@ -883,7 +1016,10 @@ fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
     }
 }
 
-#[cfg(any(native_tty_descriptor_probe, native_tty_duplex_probe))]
+#[cfg(any(
+    native_tty_descriptor_probe,
+    any(native_tty_duplex_probe, native_tty_mode_probe)
+))]
 #[test]
 fn selected_descriptor_negative_types_and_unknown_map() {
     for kind in [4, 5, 6] {
@@ -899,7 +1035,10 @@ fn selected_descriptor_negative_types_and_unknown_map() {
     }
 }
 
-#[cfg(any(native_tty_descriptor_probe, native_tty_duplex_probe))]
+#[cfg(any(
+    native_tty_descriptor_probe,
+    any(native_tty_duplex_probe, native_tty_mode_probe)
+))]
 #[test]
 fn selected_descriptor_rejected_startup_settles_owned_context_once() {
     for rejection in [1, 2] {
@@ -947,7 +1086,7 @@ fn selected_descriptor_rejected_startup_settles_owned_context_once() {
     }
 }
 
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_acquisition_ids_dependencies_and_lost_component() {
     for kind in [9, 12, 13, 14, 15, 16, 17] {
@@ -968,7 +1107,7 @@ fn selected_duplex_acquisition_ids_dependencies_and_lost_component() {
         assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
     }
 }
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_unknown_close_poison_preserves_progress_without_replay() {
     for source in [0, 1] {
@@ -996,7 +1135,7 @@ fn selected_duplex_unknown_close_poison_preserves_progress_without_replay() {
         assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
     }
 }
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_rejects_initial_duplex_before_context_admission() {
     let _serial = setup();
@@ -1011,7 +1150,7 @@ fn selected_duplex_rejects_initial_duplex_before_context_admission() {
     assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
 }
 
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_preflights_both_exact_components_before_any_close() {
     for kind in [18, 19, 20] {
@@ -1040,7 +1179,7 @@ fn selected_duplex_preflights_both_exact_components_before_any_close() {
     }
 }
 
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_direct_finish_preflights_before_any_source_close() {
     for kind in [21, 22, 23] {
@@ -1077,7 +1216,7 @@ fn selected_duplex_direct_finish_preflights_before_any_source_close() {
     }
 }
 
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_direct_finish_retires_valid_dependencies_once() {
     let _serial = setup();
@@ -1095,4 +1234,50 @@ fn selected_duplex_direct_finish_retires_valid_dependencies_once() {
     assert_eq!(unsafe { amk_native_test_finish() }, 0);
     FIXTURE.with(|f| assert_eq!(f.borrow().calls.len(), calls));
     assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+}
+
+#[cfg(native_tty_mode_probe)]
+#[test]
+fn selected_mode_libc_validation_lifetime_restore_and_unknown_reply() {
+    for kind in [100, 101, 102, 103, 104] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        if kind == 102 {
+            FIXTURE.with(|f| f.borrow_mut().bad_mode_reply = Some(0x11));
+        }
+        if kind == 104 {
+            FIXTURE.with(|f| f.borrow_mut().stale_mode_get = true);
+        }
+        assert_eq!(
+            unsafe { selected_tty_case(kind) },
+            0,
+            "MODE_LIBC_CONTRACT_KIND_{kind}"
+        );
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            if kind == 102 || kind == 104 { -5 } else { 0 }
+        );
+        FIXTURE.with(|f| {
+            let mut f = f.borrow_mut();
+            if kind == 100 {
+                assert_eq!(f.mode_requests.len(), 1, "UNSUPPORTED_TERMIOS_BEFORE_WIRE");
+                assert_eq!(f.mode_ready_drains, 0);
+            }
+            if kind == 102 {
+                assert_eq!(
+                    f.mode_requests
+                        .iter()
+                        .filter(|r| tty_mode::u32_at(r, 0) == 0x11)
+                        .count(),
+                    1,
+                    "NO_UNKNOWN_MODE_REPLAY"
+                );
+            }
+            let (terminal, _, caller, mode) = f.mode.as_mut().unwrap();
+            mode.cleanup(terminal, *caller, true).unwrap();
+            assert_eq!(mode.cleanup_result(), Some(0));
+        });
+        assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
 }

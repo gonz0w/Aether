@@ -97,3 +97,48 @@ int64_t aefd_libc_io(struct aefd_context *c, uint64_t op, uint64_t fd,
                    : aefd_context_write(
                          c, (int)fd, (const unsigned char *)pointer, bounded);
 }
+
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+_Static_assert(sizeof(struct termios) == 60 &&
+                   offsetof(struct termios, c_cc) == 17 &&
+                   offsetof(struct termios, __c_ispeed) == 52,
+               "pinned musl termios layout");
+static struct termios immediate_termios(unsigned bits)
+{
+    struct termios value = {0};
+    value.c_iflag = bits ? ICRNL : 0;
+    value.c_cflag = B115200 | ((tcflag_t)B115200 << 16) | CS8 | CREAD | CLOCAL;
+    value.c_cc[VMIN] = 1;
+    value.__c_ispeed = B115200;
+    value.__c_ospeed = B115200;
+    return value;
+}
+int64_t aefd_libc_tcgetattr(struct aefd_context *c, int fd, struct termios *out)
+{
+    if (!out)
+        return -EFAULT;
+    unsigned bits;
+    int64_t result = aefd_context_mode(c, fd, 0x10, 0, 0, &bits);
+    if (!result)
+        *out = immediate_termios(bits);
+    return result;
+}
+int64_t aefd_libc_tcsetattr(struct aefd_context *c, int fd, int action,
+                            const struct termios *value)
+{
+    if (!value)
+        return -EFAULT;
+    if (action != TCSANOW && action != TCSADRAIN)
+        return -EOPNOTSUPP;
+    struct termios expected = immediate_termios(!!(value->c_iflag & ICRNL));
+    if (value->c_iflag != expected.c_iflag || value->c_oflag ||
+        value->c_cflag != expected.c_cflag || value->c_lflag || value->c_line ||
+        memcmp(value->c_cc, expected.c_cc, NCCS) ||
+        value->__c_ispeed != expected.__c_ispeed ||
+        value->__c_ospeed != expected.__c_ospeed)
+        return -EOPNOTSUPP;
+    unsigned bits;
+    return aefd_context_mode(c, fd, 0x11, (unsigned)action,
+                             !!(value->c_iflag & ICRNL), &bits);
+}
+#endif

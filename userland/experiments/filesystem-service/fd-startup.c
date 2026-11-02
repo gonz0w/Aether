@@ -63,7 +63,13 @@ int64_t aefd_startup_start(struct aefd_startup *b, aefd_native_call call,
     b->status = -22;
     if (!aether_fs_session_decode(raw + 16, 32, observed.memory, (long)pid,
                                   (long)parent, &identity) ||
-        aether_fs_session_u32(raw + 300))
+        aether_fs_session_u32(raw + 300) !=
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+            AEFD_MODE_CONTROL
+#else
+            0
+#endif
+    )
         goto cleanup;
     uint32_t factory = aether_fs_session_u32(raw + 296);
     if (factory != (identity.slot == 1 ? UINT32_C(0x76050001) : 0))
@@ -81,6 +87,9 @@ int64_t aefd_startup_start(struct aefd_startup *b, aefd_native_call call,
         128, aefd_word(raw + 48, 1), sources, history, factory);
     if (b->status)
         goto cleanup;
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+    b->context.mode_control = aether_fs_session_u32(raw + 300);
+#endif
     b->identity = identity;
     b->phase = 2;
     /* The temporary guard relinquishes its channel borrow. Only the context
