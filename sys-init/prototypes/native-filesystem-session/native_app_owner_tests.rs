@@ -1460,3 +1460,82 @@ fn signal_final_preflight_deadline_equality_has_no_commit() {
     assert_eq!(s.tx_queries, 1);
     assert_eq!(s.transmitted.len(), 304, "NO_MODE_REPLY_AT_DEADLINE");
 }
+
+#[cfg(native_tty_canonical_probe)]
+#[test]
+fn canonical_owner_drains_software_suffix_before_temt_and_counts_sources() {
+    let boundary = fixture();
+    mode_workload(
+        &boundary,
+        &[
+            control_frame(0x11, 1, 7, 0),
+            frame(2, 1, b"\n"),
+            control_frame(0x11, 2, 11, 1),
+            frame(2, 1, b"\nX"),
+            control_frame(0x11, 3, 0, 1),
+            frame(3, 0, b""),
+            frame(3, 1, b""),
+            frame(3, 2, b""),
+        ],
+    );
+    {
+        let mut s = boundary.0.borrow_mut();
+        s.sig_results.extend([1, 1, 1, 1]);
+        s.serial_results.extend([1, -11, -11, 1]);
+        s.tx.extend([-11, -11, 0]);
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+    let s = boundary.0.borrow();
+    assert_eq!(s.output, b"\r\n\r\nX", "EXACT_SOURCE_EXPANSION_NO_REPLAY");
+    assert_eq!(
+        &s.tx_output_lengths[..3],
+        &[2, 2, 2],
+        "SOFTWARE_BEFORE_PHYSICAL_DRAIN"
+    );
+    assert_eq!(
+        u32::from_le_bytes(s.transmitted[336..340].try_into().unwrap()),
+        1,
+        "SOURCE_BYTE_ACK"
+    );
+    assert_eq!(
+        u32::from_le_bytes(s.transmitted[400..404].try_into().unwrap()),
+        2,
+        "NOT_EXPANDED_UART_COUNT"
+    );
+    assert_eq!(s.mode_parks.len(), 1);
+    assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+}
+#[cfg(native_tty_canonical_probe)]
+#[test]
+fn canonical_owner_overflow_is_explicit_and_cleanup_never_replays_echo() {
+    let boundary = fixture();
+    let mut read = frame(1, 0, &[0; 16]);
+    read[16] = 1;
+    mode_workload(&boundary, &[control_frame(0x11, 1, 7, 0), read]);
+    {
+        let mut s = boundary.0.borrow_mut();
+        s.sig_results.extend([1, 1]);
+        s.input.extend([b'x'; 64]);
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+    {
+        let s = boundary.0.borrow();
+        assert_eq!(s.output, vec![b'x'; 63]);
+        assert!(s.input.is_empty());
+        assert_eq!(
+            i32::from_le_bytes(s.transmitted[336..340].try_into().unwrap()),
+            -75,
+            "OWNER_EXPLICIT_EOVERFLOW"
+        );
+    }
+    let before = boundary.0.borrow().serial_calls;
+    assert_eq!(runtime.contain(), Err(-5));
+    assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+    assert_eq!(
+        boundary.0.borrow().serial_calls,
+        before,
+        "CONFIRMED_CLEANUP_NO_ECHO_REPLAY"
+    );
+}

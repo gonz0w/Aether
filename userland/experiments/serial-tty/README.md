@@ -366,3 +366,49 @@ phase; saved-mode restoration precedes READY2 and the final16-byte raw phase.
 OUT1/OUT2, separate ERR/PASS, closes and normal finalization retain their exact
 issue125 markers. No handler output, native retry, process-group/job-control,
 canonical/ZLE or full Zsh qualification is implied.
+
+## Selected canonical / ZLE experiment
+
+[Issue128](https://github.com/gonz0w/Aether/issues/128) adds only the closed
+canonical selection: C `AMK_NATIVE_TTY_CANONICAL_PROBE` alongside SIGNAL/MODE,
+`AEFD_TERMINAL_CANONICAL_BINDINGS`, and Rust `native_tty_canonical_probe` alongside
+signal/mode on the existing core/startup/runtime/control inputs. The same source
+and callback produce `tty-canonical.elf`. There is no new compilation unit or
+kernel selector.007 preserves304/128-byte layouts and refs;001–006 reject007.
+Existing mode codes0–3 retain their meaning. Code7 is the complete saved tuple S;
+code11 is the complete ZLE tuple Z; other codes reject before effects.
+
+Both preserve115200/8N1 and fix VINTR3/VERASE127/VKILL21/VEOF4/VMIN1/VTIME0, with
+all other cc disabled. S has ICRNL, OPOST|ONLCR and
+ISIG|ICANON|ECHO|ECHOE|ECHOK. Z adds INLCR and clears ICANON/ECHO. Each original
+CR/LF is substituted once: Z swaps them without cascading. NUL/high bytes remain
+data; editing is byte-oriented, with no Unicode or arbitrary-termios claim.
+
+One64-byte record stores63 ordinary bytes plus delimiter. Reads preserve short
+suffixes and record boundaries without repeated echo. Erase emits BS SPACE BS
+only for actual removal; kill echoes newline. Buffered EOF returns its record;
+empty EOF returns zero once and keeps input live. A zero-length read consumes
+nothing; actual hangup drains a partial record and stays EOF. Overflow consumes
+the offending byte once, returns explicit EOVERFLOW and fails closed. Recognized
+canonical VINTR clears unfinished input for ignored/masked/handled outcomes;
+only eligible handled input can interrupt. Unknown effects are never replayed.
+
+At most3 pending output/echo bytes retain their physical offset and authorized
+role. Echo requires a still-held Stdout WRITE alias in the same Terminal, even
+when the application's original fd1 is closed and FD10 retains the source.
+OPOST expands LF to CR LF while acknowledging source bytes. Pending sequences
+drain before another physical input/output source byte and before real TEMT.
+NOW preserves already interpreted output; mode changes preserve input history.
+Snapshots save attributes only. Confirmed-stop cleanup discards the owned input
+and output state and restores the original admission snapshot without echo replay.
+The original deadlines/grants remain unchanged.
+
+The consumer explicitly bootstraps with real SIG_IGN, establishes/GETs S, checks
+SIG_DFL rejection and a no-input zero read, then installs the actual handler.
+Its fixed nine-phase30-byte exchange checks editing, both EOF forms, Z's byte
+swap, handler restoration to S and final restoration to separate admission attrs.
+Markers/result/framing use real ONLCR while S/Z is active; phase8/ERR/PASS use
+raw LF. The host oracle compares physical bytes without normalization. Focused
+core/Owner/C checks cover partial output, source counts, software-before-physical
+drain, cleanup and strict tuples; qualified fit/native execution remain separate.
+This is a terminal prerequisite, not actual Zsh, job control or R1 acceptance.

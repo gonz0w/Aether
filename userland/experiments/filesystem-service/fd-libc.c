@@ -113,6 +113,16 @@ static struct termios immediate_termios(unsigned bits)
         value.c_cc[VINTR] = 3;
     }
 #endif
+#ifdef AEFD_TERMINAL_CANONICAL_BINDINGS
+    if (bits == 7 || bits == 11) {
+        value.c_iflag = ICRNL | (bits == 11 ? INLCR : 0);
+        value.c_oflag = OPOST | ONLCR;
+        value.c_lflag = ISIG | ECHOE | ECHOK | (bits == 7 ? ICANON | ECHO : 0);
+        value.c_cc[VERASE] = 127;
+        value.c_cc[VKILL] = 21;
+        value.c_cc[VEOF] = 4;
+    }
+#endif
     value.c_cflag = B115200 | ((tcflag_t)B115200 << 16) | CS8 | CREAD | CLOCAL;
     value.c_cc[VMIN] = 1;
     value.__c_ispeed = B115200;
@@ -140,8 +150,15 @@ int64_t aefd_libc_tcsetattr(struct aefd_context *c, int fd, int action,
 #ifdef AEFD_TERMINAL_SIGNAL_BINDINGS
     selected |= (unsigned)!!(value->c_lflag & ISIG) << 1;
 #endif
+#ifdef AEFD_TERMINAL_CANONICAL_BINDINGS
+    if (value->c_lflag & ICANON)
+        selected = 7;
+    else if (value->c_iflag & INLCR)
+        selected = 11;
+#endif
     struct termios expected = immediate_termios(selected);
-    if (value->c_iflag != expected.c_iflag || value->c_oflag ||
+    if (value->c_iflag != expected.c_iflag ||
+        value->c_oflag != expected.c_oflag ||
         value->c_cflag != expected.c_cflag ||
         value->c_lflag != expected.c_lflag || value->c_line ||
         memcmp(value->c_cc, expected.c_cc, NCCS) ||

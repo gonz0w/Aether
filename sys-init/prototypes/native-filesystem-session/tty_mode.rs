@@ -76,17 +76,10 @@ impl State {
             return Err(-5);
         }
         let mode = if op == 0x11 {
-            if u32_at(raw, 24) > if cfg!(native_tty_signal_probe) { 3 } else { 1 }
-                || raw[28] != 1
-                || raw[29] != 0
-            {
+            if !valid_bits(u32_at(raw, 24)) || raw[28] != 1 || raw[29] != 0 {
                 return Err(-95);
             }
-            Mode {
-                icrnl: raw[24] & 1 != 0,
-                signals: raw[24] & 2 != 0,
-                ..Mode::IMMEDIATE
-            }
+            mode_from_bits(raw[24])
         } else {
             if raw[24..] != [0; 8] {
                 return Err(-22);
@@ -147,9 +140,7 @@ impl State {
         out[4..8].copy_from_slice(&request.op.to_le_bytes());
         out[8..12].copy_from_slice(&16u32.to_le_bytes());
         out[16..24].copy_from_slice(&revision.to_le_bytes());
-        out[24..28].copy_from_slice(
-            &(u32::from(mode.icrnl) | (u32::from(mode.signals) << 1)).to_le_bytes(),
-        );
+        out[24..28].copy_from_slice(&mode_bits(mode).to_le_bytes());
         out[28] = mode.vmin;
         out[29] = mode.vtime;
         Ok(out)
@@ -169,6 +160,8 @@ impl State {
         if let Some(result) = self.cleanup_result {
             return if result == 0 { Ok(()) } else { Err(result) };
         }
+        #[cfg(native_tty_canonical_probe)]
+        terminal.retire_buffered_io();
         let result = (|| {
             let Some(reference) = self.private else {
                 return Ok(());
@@ -187,6 +180,32 @@ impl State {
         self.cleanup_result = Some(result.as_ref().err().copied().unwrap_or(0));
         result
     }
+}
+fn valid_bits(bits: u32) -> bool {
+    bits <= if cfg!(native_tty_signal_probe) { 3 } else { 1 }
+        || cfg!(native_tty_canonical_probe) && matches!(bits, 7 | 11)
+}
+fn mode_from_bits(bits: u8) -> Mode {
+    #[cfg(native_tty_canonical_probe)]
+    match bits {
+        7 => return Mode::CANONICAL,
+        11 => return Mode::ZLE,
+        _ => {}
+    }
+    Mode {
+        icrnl: bits & 1 != 0,
+        signals: bits & 2 != 0,
+        ..Mode::IMMEDIATE
+    }
+}
+fn mode_bits(mode: Mode) -> u32 {
+    #[cfg(native_tty_canonical_probe)]
+    if mode == Mode::CANONICAL {
+        return 7;
+    } else if mode == Mode::ZLE {
+        return 11;
+    }
+    u32::from(mode.icrnl) | (u32::from(mode.signals) << 1)
 }
 pub fn u32_at(raw: &[u8; 32], at: usize) -> u32 {
     u32::from_le_bytes(raw[at..at + 4].try_into().unwrap())
@@ -405,5 +424,84 @@ mod tests {
             Ok(()),
             "TRUSTED_PRIVATE_CLEANUP_AFTER_UNKNOWN"
         );
+    }
+}
+
+#[cfg(all(test, native_tty_canonical_probe))]
+mod canonical_cleanup {
+    use super::*;
+    use serial_tty::{Completion, Error, ReadOutcome, Rights, Role, SignalInput, Stop};
+    struct Input {
+        first: bool,
+    }
+    impl SignalInput for Input {
+        fn read(&mut self, out: &mut [u8]) -> Completion {
+            if self.first {
+                self.first = false;
+                out[0] = b'a';
+                Completion {
+                    count: 1,
+                    stop: Stop::Complete,
+                }
+            } else {
+                Completion {
+                    count: 0,
+                    stop: Stop::WouldBlock,
+                }
+            }
+        }
+        fn write(&mut self, _: Role, _: &[u8]) -> Completion {
+            Completion {
+                count: 0,
+                stop: Stop::WouldBlock,
+            }
+        }
+        fn post_sigint(&mut self) -> Result<u8, Error> {
+            panic!("NO_POST")
+        }
+    }
+    #[test]
+    fn confirmed_cleanup_discards_input_and_pending_echo_without_replay() {
+        let caller = Caller {
+            identity: 7,
+            generation: 1,
+        };
+        let (mut t, b) = Terminal::admit(
+            41,
+            caller,
+            [
+                Rights::READ.union(Rights::MODE),
+                Rights::WRITE,
+                Rights::WRITE,
+            ],
+            Mode::IMMEDIATE,
+        )
+        .unwrap();
+        let mut state = State::admit(&mut t, &b, caller).unwrap();
+        let mut raw = [0; 32];
+        raw[..4].copy_from_slice(&0x11u32.to_le_bytes());
+        raw[4..8].copy_from_slice(&CONTROL.to_le_bytes());
+        raw[16..24].copy_from_slice(&1u64.to_le_bytes());
+        raw[24] = 7;
+        raw[28] = 1;
+        let req = state.prepare(&t, &b, caller, &raw).unwrap();
+        state.commit(&mut t, &b, caller, req).unwrap();
+        let mut io = Input { first: true };
+        let mut out = [0xa5; 4];
+        assert_eq!(
+            t.read_signalled(caller, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock)
+        );
+        assert!(t.output_pending());
+        state.cleanup(&mut t, caller, true).unwrap();
+        assert!(!t.output_pending(), "CLEANUP_RETIRES_PENDING_OUTPUT");
+        assert_eq!(
+            t.read_signalled(caller, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock),
+            "CLEANUP_RETIRES_UNFINISHED_INPUT"
+        );
+        assert_eq!(out, [0xa5; 4]);
+        assert_eq!(state.cleanup(&mut t, caller, true), Ok(()));
+        let _ = ReadOutcome::Eof;
     }
 }

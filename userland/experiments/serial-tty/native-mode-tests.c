@@ -35,9 +35,17 @@ int amk_test_signal_restore(void);
 int amk_test_sigaction(int number, const struct sigaction *action,
                        struct sigaction *old)
 {
-    if (number != SIGINT || !action || old || action->sa_flags ||
-        !action->sa_handler)
+    if (number != SIGINT || !action || old || action->sa_flags)
         return -1;
+#ifdef AMK_NATIVE_TTY_CANONICAL_PROBE
+    extern void amk_test_signal_disposition(int);
+    amk_test_signal_disposition(action->sa_handler == SIG_IGN   ? 0
+                                : action->sa_handler == SIG_DFL ? 1
+                                                                : 2);
+#else
+    if (!action->sa_handler)
+        return -1;
+#endif
     return 0;
 }
 int amk_test_sigprocmask(int how, const sigset_t *mask, sigset_t *old)
@@ -80,6 +88,56 @@ int amk_test_tty_mode_case(uint32_t kind)
         return amk_test_signal_count() == 1 && amk_test_signal_restore() == 0
                    ? 0
                    : 115;
+    }
+#endif
+#ifdef AMK_NATIVE_TTY_CANONICAL_PROBE
+    if (kind == 108) {
+        struct termios value, current;
+        if (aefd_test_tcgetattr(0, &value))
+            return 120;
+        value.c_iflag = ICRNL;
+        value.c_oflag = OPOST | ONLCR;
+        value.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK;
+        value.c_cc[VINTR] = 3;
+        value.c_cc[VERASE] = 127;
+        value.c_cc[VKILL] = 21;
+        value.c_cc[VEOF] = 4;
+        if (aefd_test_tcsetattr(0, TCSANOW, &value) ||
+            aefd_test_tcgetattr(0, &current) ||
+            memcmp(&value, &current, sizeof(value)))
+            return 121;
+        uint64_t revision = ctx->mode_revision;
+        current = value;
+        current.c_cc[VEOF] = 5;
+        errno = 0;
+        if (aefd_test_tcsetattr(0, TCSANOW, &current) != -1 ||
+            errno != EOPNOTSUPP || ctx->mode_revision != revision)
+            return 122;
+        current = value;
+        current.c_iflag |= INLCR;
+        errno = 0;
+        if (aefd_test_tcsetattr(0, TCSANOW, &current) != -1 ||
+            errno != EOPNOTSUPP || ctx->mode_revision != revision)
+            return 123;
+        value.c_iflag |= INLCR;
+        value.c_lflag &= ~(ICANON | ECHO);
+        if (aefd_test_tcsetattr(0, TCSANOW, &value) ||
+            aefd_test_tcgetattr(0, &current) ||
+            memcmp(&value, &current, sizeof(value)))
+            return 124;
+        return 0;
+    }
+    if (kind == 109) {
+        struct termios value;
+        memset(&value, 0xa5, sizeof(value));
+        errno = 0;
+        if (aefd_test_tcgetattr(0, &value) != -1 || errno != EIO ||
+            ctx->client.live || ctx->mode_revision)
+            return 125;
+        for (unsigned i = 0; i < sizeof(value); ++i)
+            if (((unsigned char *)&value)[i] != 0xa5)
+                return 126;
+        return 0;
     }
 #endif
     if (kind == 100) {

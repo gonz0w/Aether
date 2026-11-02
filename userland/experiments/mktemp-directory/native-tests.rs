@@ -52,6 +52,14 @@ struct Fixture {
     read_eligibility: Vec<u8>,
     #[cfg(native_tty_signal_probe)]
     force_read_eintr: bool,
+    #[cfg(native_tty_canonical_probe)]
+    disposition: i32,
+    #[cfg(native_tty_canonical_probe)]
+    dispositions: Vec<i32>,
+    #[cfg(native_tty_canonical_probe)]
+    default_preflight_revision: Option<u64>,
+    #[cfg(native_tty_canonical_probe)]
+    bad_mode_bits: bool,
 }
 std::thread_local! { static FIXTURE: RefCell<Fixture> = RefCell::new(Fixture::default()); }
 
@@ -85,6 +93,8 @@ fn setup() -> MutexGuard<'static, ()> {
     FIXTURE.with(|f| {
         *f.borrow_mut() = Fixture {
             now: 100,
+            #[cfg(native_tty_canonical_probe)]
+            disposition: 2,
             ..Fixture::default()
         }
     });
@@ -236,7 +246,21 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                         let op = tty_mode::u32_at(&frame, 0);
                         let mut reply = match mode.prepare(&terminal, &refs, caller, &frame) {
                             Ok(request) => {
+                                #[cfg(native_tty_canonical_probe)]
+                                if request.enabling_signals() && f.disposition == 1 {
+                                    f.default_preflight_revision =
+                                        Some(terminal.mode_state(caller, &refs.stdin).unwrap().1);
+                                    f.mode = Some((terminal, refs, caller, mode));
+                                    f.process_bytes.extend(tty_mode::error(op, -95));
+                                    return args[2] as i64;
+                                }
                                 if request.drain() {
+                                    #[cfg(native_tty_canonical_probe)]
+                                    terminal
+                                        .flush_output(caller, |role, bytes| {
+                                            fixture_output(&mut f, role, bytes)
+                                        })
+                                        .unwrap();
                                     f.mode_ready_drains += 1;
                                 } // Explicit ready provider double; owner drain tests use actual Runtime.
                                 mode.commit(&mut terminal, &refs, caller, request)
@@ -244,6 +268,10 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                             }
                             Err(e) => tty_mode::error(op, e),
                         };
+                        #[cfg(native_tty_canonical_probe)]
+                        if f.bad_mode_bits && op == 0x10 {
+                            reply[24] = 5;
+                        }
                         if f.bad_mode_reply == Some(op) {
                             reply[8] = 15;
                         }
@@ -261,7 +289,19 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                     if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 3 {
                         f.source_closes.push(selector);
                     }
-                    let serial = if u32::from_le_bytes(frame[..4].try_into().unwrap()) == 2 {
+                    #[cfg(native_tty_canonical_probe)]
+                    let processed_output =
+                        f.mode.as_ref().is_some_and(|(terminal, refs, caller, _)| {
+                            terminal.output_pending()
+                                || terminal
+                                    .mode_state(*caller, &refs.stdin)
+                                    .is_ok_and(|(mode, _)| mode.opost)
+                        });
+                    #[cfg(not(native_tty_canonical_probe))]
+                    let processed_output = false;
+                    let serial = if !processed_output
+                        && u32::from_le_bytes(frame[..4].try_into().unwrap()) == 2
+                    {
                         f.serial_results.pop_front()
                     } else {
                         None
@@ -318,8 +358,31 @@ pub fn raw(op: u64, args: [u64; 6]) -> i64 {
                                     Ok(_) => 0,
                                     Err(serial_tty::Error::Interrupted) => -4,
                                     Err(serial_tty::Error::WouldBlock) => -11,
+                                    Err(serial_tty::Error::Backend(code)) => i64::from(code),
                                     Err(_) => -5,
                                 };
+                            }
+                            #[cfg(native_tty_canonical_probe)]
+                            if writing && processed_output {
+                                let (mut terminal, refs, caller, mode) = f.mode.take().unwrap();
+                                let reference = if selector == 1 {
+                                    refs.stdout
+                                } else {
+                                    refs.stderr
+                                };
+                                let result =
+                                    terminal.write(caller, &reference, bytes, |role, input| {
+                                        fixture_output(&mut f, role, input)
+                                    });
+                                f.mode = Some((terminal, refs, caller, mode));
+                                return result.map_or_else(
+                                    |e| match e {
+                                        serial_tty::Error::WouldBlock => -11,
+                                        serial_tty::Error::Backend(code) => i64::from(code),
+                                        _ => -5,
+                                    },
+                                    |n| n as i64,
+                                );
                             }
                             if count > 0 && count as usize <= bytes.len() {
                                 if writing {
@@ -1025,7 +1088,7 @@ fn actual_selected_facade_byte_probe_and_finalization() {
     ];
     FIXTURE.with(|f| {
         let mut f = f.borrow_mut();
-        #[cfg(native_tty_signal_probe)]
+        #[cfg(all(native_tty_signal_probe, not(native_tty_canonical_probe)))]
         {
             f.input.push_back(3);
             f.input.extend(payload[..13].iter().copied());
@@ -1033,8 +1096,11 @@ fn actual_selected_facade_byte_probe_and_finalization() {
         }
         #[cfg(not(native_tty_signal_probe))]
         f.input.extend(payload);
-        #[cfg(native_tty_mode_probe)]
+        #[cfg(all(native_tty_mode_probe, not(native_tty_canonical_probe)))]
         f.input.extend(payload);
+        #[cfg(native_tty_canonical_probe)]
+        f.input
+            .extend(b"abX\x7fc\rqr\x15d\ref\x04\x04g\r\0A\r\n\x7f\x04\x03h\r\0i\r\n");
         f.serial_results.extend([3, 2]);
     });
     // SAFETY: synchronous C callback borrows only its stack and admitted facade.
@@ -1086,10 +1152,69 @@ fn actual_selected_facade_byte_probe_and_finalization() {
                 "PRE_CRITICAL_MASK_METADATA"
             );
         }
+        #[cfg(native_tty_canonical_probe)]
+        {
+            expected = b"TTY-CANON DRAIN\n".to_vec();
+            let echoes: [&[u8]; 9] = [
+                b"abX\x08 \x08c\r\n",
+                b"qr\r\nd\r\n",
+                b"ef",
+                b"",
+                b"g\r\n",
+                b"",
+                b"",
+                b"h\r\n",
+                b"",
+            ];
+            let logical: [&[u8]; 9] = [
+                b"abc\n",
+                b"d\n",
+                b"ef",
+                b"",
+                b"g\n",
+                b"\0A\n\r\x7f\x04",
+                b"",
+                b"h\n",
+                b"\0i\r\n",
+            ];
+            for phase in 0..9 {
+                let line = if phase == 8 {
+                    b"\n".as_slice()
+                } else {
+                    b"\r\n".as_slice()
+                };
+                expected.extend(std::format!("TTY-CANON READY{phase}").bytes());
+                expected.extend(line);
+                expected.extend(echoes[phase]);
+                expected.extend(std::format!("TTY-CANON OUT{phase}").bytes());
+                expected.extend(line);
+                for byte in logical[phase] {
+                    if phase != 8 && *byte == 10 {
+                        expected.extend(b"\r\n");
+                    } else {
+                        expected.push(*byte);
+                    }
+                }
+                expected.extend(line);
+            }
+            expected.extend(b"TTY-CANON PASS\n");
+            assert_eq!(
+                f.dispositions,
+                [0, 1, 2],
+                "REAL_BOOTSTRAP_DISPOSITION_ORDER"
+            );
+            assert_eq!(
+                f.default_preflight_revision,
+                Some(2),
+                "DEFAULT_REJECT_BEFORE_REVISION_MUTATION"
+            );
+        }
         assert_eq!(stdout, expected, "EXACT_BINARY_FRAME");
         assert_eq!(
             stderr,
-            if cfg!(native_tty_signal_probe) {
+            if cfg!(native_tty_canonical_probe) {
+                b"TTY-CANON ERR\n".as_slice()
+            } else if cfg!(native_tty_signal_probe) {
                 b"TTY-SIGNAL ERR\n".as_slice()
             } else if cfg!(native_tty_mode_probe) {
                 b"TTY-MODE ERR\n".as_slice()
@@ -1117,7 +1242,11 @@ fn actual_selected_callback_rejects_wrong_bytes_eof_and_bad_argv() {
         FIXTURE.with(|f| {
             let mut f = f.borrow_mut();
             if kind == 1 {
-                f.input.extend([1; 16]);
+                if cfg!(native_tty_canonical_probe) {
+                    f.input.extend([1, 1, 1, 13]);
+                } else {
+                    f.input.extend([1; 16]);
+                }
             }
         });
         assert_eq!(unsafe { selected_tty_case(kind) }, 0, "CALLBACK_NEGATIVE");
@@ -1416,7 +1545,17 @@ impl serial_tty::SignalInput for FixtureSignal<'_> {
             },
         }
     }
+    #[cfg(native_tty_canonical_probe)]
+    fn write(&mut self, role: serial_tty::Role, input: &[u8]) -> Completion {
+        fixture_output(self.f, role, input)
+    }
     fn post_sigint(&mut self) -> Result<u8, serial_tty::Error> {
+        #[cfg(native_tty_canonical_probe)]
+        match self.f.disposition {
+            0 => return Ok(0),
+            1 => return Err(serial_tty::Error::Backend(-95)),
+            _ => {}
+        }
         let pending = self.f.pending_sigint;
         self.f.pending_sigint = true;
         Ok(if pending { 2 } else { 1 })
@@ -1465,5 +1604,74 @@ fn selected_signal_c_masked_positive_and_impossible_interrupted_reply() {
             if kind == 107 { -5 } else { 0 }
         );
         assert_eq!(closes(), [CAPS[2], CAPS[3], CAPS[0], CAPS[1]]);
+    }
+}
+
+#[cfg(native_tty_canonical_probe)]
+#[unsafe(no_mangle)]
+extern "C" fn amk_test_signal_disposition(disposition: i32) {
+    FIXTURE.with(|f| {
+        let mut f = f.borrow_mut();
+        f.disposition = disposition;
+        f.dispositions.push(disposition);
+    });
+}
+#[cfg(native_tty_canonical_probe)]
+fn fixture_output(f: &mut Fixture, role: serial_tty::Role, input: &[u8]) -> Completion {
+    let count = f.serial_results.pop_front().unwrap_or(input.len() as i64);
+    if count > 0 && count as usize <= input.len() {
+        let selector = match role {
+            serial_tty::Role::Stdout => 1,
+            serial_tty::Role::Stderr => 2,
+            _ => panic!("NO_INPUT_OUTPUT_ROLE"),
+        };
+        f.delivered
+            .push((selector, input[..count as usize].to_vec()));
+    }
+    Completion {
+        count: if count > 0 { count as usize } else { 0 },
+        stop: if count > 0 {
+            Stop::Complete
+        } else if count == -11 {
+            Stop::WouldBlock
+        } else if count == 0 {
+            Stop::End
+        } else {
+            Stop::Error(count as i32)
+        },
+    }
+}
+
+#[cfg(native_tty_canonical_probe)]
+#[test]
+fn selected_canonical_c_fixed_tuples_and_unknown_bits() {
+    for kind in [108, 109] {
+        let _serial = setup();
+        let _bootstrap = accepted();
+        start_stdio();
+        if kind == 109 {
+            FIXTURE.with(|f| f.borrow_mut().bad_mode_bits = true);
+        }
+        assert_eq!(
+            unsafe { selected_tty_case(kind) },
+            0,
+            "ACTUAL_C_CLOSED_CANONICAL_TUPLES"
+        );
+        FIXTURE.with(|f| {
+            let f = f.borrow();
+            assert!(f.delivered.is_empty());
+            assert!(f.input.is_empty());
+            if kind == 108 {
+                assert_eq!(
+                    f.mode_requests.len(),
+                    5,
+                    "UNSUPPORTED_CANONICAL_CC_BEFORE_WIRE"
+                );
+            }
+        });
+        assert_eq!(
+            unsafe { amk_native_test_finish() },
+            if kind == 109 { -5 } else { 0 }
+        );
     }
 }

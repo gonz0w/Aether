@@ -532,6 +532,10 @@ impl<K: AppControl> Runtime<K> {
             self.reply = self.mode_request()?;
         }
         if !control {
+            #[cfg(native_tty_canonical_probe)]
+            if u32_at(&self.request, 0) == 3 {
+                self.flush_terminal_output()?;
+            }
             #[cfg(native_tty_signal_probe)]
             let eligible = {
                 if u32_at(&self.request, 0) == 1 {
@@ -598,6 +602,7 @@ impl<K: AppControl> Runtime<K> {
                         {
                             let result = if writing {
                                 terminal.write(*caller, &reference, bytes, |role, input| {
+                                    #[cfg(not(native_tty_canonical_probe))]
                                     debug_assert_eq!(
                                         role,
                                         if u32_at(&self.request, 8) == 1 {
@@ -606,6 +611,16 @@ impl<K: AppControl> Runtime<K> {
                                             serial_tty::Role::Stderr
                                         }
                                     );
+                                    #[cfg(native_tty_canonical_probe)]
+                                    {
+                                        let _ = role;
+                                        if bound.before(kernel).is_err() {
+                                            return Completion {
+                                                count: 0,
+                                                stop: Stop::Unknown,
+                                            };
+                                        }
+                                    }
                                     let mut scratch = [0; 16];
                                     scratch[..input.len()].copy_from_slice(input);
                                     completion(
@@ -692,8 +707,41 @@ impl<K: AppControl> Runtime<K> {
         }
         Ok(true)
     }
+    #[cfg(native_tty_canonical_probe)]
+    fn flush_terminal_output(&mut self) -> Result<(), i64> {
+        loop {
+            if !self.tty.as_ref().ok_or(-9)?.0.output_pending() {
+                return Ok(());
+            }
+            self.mode_peer_live()?;
+            let (terminal, _, caller) = self.tty.as_mut().ok_or(-9)?;
+            let kernel = &mut self.kernel;
+            let bound = &mut self.bound;
+            let result = terminal.flush_output(*caller, |_role, bytes| {
+                if bound.before(kernel).is_err() {
+                    return Completion {
+                        count: 0,
+                        stop: Stop::Unknown,
+                    };
+                }
+                let mut scratch = [0; 3];
+                scratch[..bytes.len()].copy_from_slice(bytes);
+                completion(
+                    kernel.serial(true, &mut scratch[..bytes.len()]),
+                    bytes.len(),
+                )
+            });
+            match result {
+                Ok(()) => return Ok(()),
+                Err(TtyError::WouldBlock) => self.yield_now()?,
+                Err(e) => return Err(tty_errno(e)),
+            }
+        }
+    }
     #[cfg(native_tty_mode_probe)]
     fn drain(&mut self) -> Result<(), i64> {
+        #[cfg(native_tty_canonical_probe)]
+        self.flush_terminal_output()?;
         loop {
             self.mode_peer_live()?;
             self.bound.before(&mut self.kernel)?;
@@ -1028,6 +1076,21 @@ impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
             };
         }
         completion(self.kernel.serial(false, output), output.len())
+    }
+    #[cfg(native_tty_canonical_probe)]
+    fn write(&mut self, _role: serial_tty::Role, input: &[u8]) -> Completion {
+        if self.bound.before(self.kernel).is_err() {
+            return Completion {
+                count: 0,
+                stop: Stop::Unknown,
+            };
+        }
+        let mut scratch = [0; 3];
+        scratch[..input.len()].copy_from_slice(input);
+        completion(
+            self.kernel.serial(true, &mut scratch[..input.len()]),
+            input.len(),
+        )
     }
     fn post_sigint(&mut self) -> Result<u8, TtyError> {
         self.bound
