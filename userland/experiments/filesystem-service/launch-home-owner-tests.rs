@@ -6,6 +6,7 @@ struct State {
     mode: u32,
     attempts: Option<u64>,
     requests: Option<u64>,
+    corrupt: u8,
     calls: usize,
     closes: Vec<u64>,
 }
@@ -49,7 +50,13 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.mutation_attempts = STATE.with(|s| {
         s.borrow()
             .attempts
-            .unwrap_or(if cfg!(fs_home_probe_three) { 3 } else { 2 })
+            .unwrap_or(if cfg!(fs_home_terminfo_six) {
+                6
+            } else if cfg!(fs_home_probe_three) {
+                3
+            } else {
+                2
+            })
     });
     state.phases = 8191;
     state.home.mkdir = BootstrapReceipt {
@@ -70,10 +77,50 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.service.requests = STATE.with(|s| {
         s.borrow()
             .requests
-            .unwrap_or(if cfg!(fs_af09_drain) { 3 } else { 2 })
+            .unwrap_or(if cfg!(fs_home_terminfo_six) {
+                13
+            } else if cfg!(fs_af09_drain) {
+                3
+            } else {
+                2
+            })
     });
     if mode == 5 {
         state.home.flags &= !ORDERED;
+    }
+    match STATE.with(|s| s.borrow().corrupt) {
+        0 => {}
+        1 => state.home.create.returned_error = 5,
+        2 => {
+            state.home.create.returned = 0;
+            state.home.create.provider_state = 3;
+        }
+        3 => state.home.create.provider = 2,
+        4 => state.home.phase = 9,
+        5 => state.home.error_kind = 10,
+        6 => state.home.service.reader_close = -9,
+        7 => state.home.service.writer_close = -5,
+        8 => state.home.service.ready = 0,
+        9 => state.home.service.stop = 2,
+        10 => state.home.service.error = -5,
+        11 => {
+            state.home.service.state = 2;
+            state.home.service.txg = 0;
+        }
+        12 => state.home.service.bytes_staged = 1,
+        13 => state.home.flags &= !ORDERED,
+        14 => state.phases = FINISHED - 1,
+        15 => state.engine_error = 5,
+        16 => state.home.service.state = 3,
+        17 => state.home.create.returned_staged = 4097,
+        18 => state.home.version = 2,
+        19 => state.bytes = 383,
+        20 => {
+            state.home.service.state = 2;
+            state.home.service.txg = 800;
+            state.home.service.bytes_staged = 4096;
+        }
+        _ => panic!("invalid test corruption"),
     }
     0
 }
@@ -182,12 +229,14 @@ fn malformed_launch_prefix_cannot_enter_callback() {
     }
 }
 
+#[cfg(not(fs_home_terminfo_six))]
 #[test]
 fn fixed_home_probe_requires_three_attempts_only_when_selected() {
-    for attempts in [2, 3, 4] {
+    for attempts in [2, 3, 4, 6] {
         STATE.with(|s| {
             *s.borrow_mut() = State {
                 mode: 4,
+                requests: if attempts == 6 { Some(13) } else { None },
                 ..State::default()
             }
         });
@@ -230,5 +279,59 @@ fn drain_two_mutations_three_requests_are_exact() {
                 "AF09_DRAIN_LAUNCH_COUNT"
             );
         }
+    }
+}
+
+#[cfg(fs_home_terminfo_six)]
+#[test]
+fn terminfo_six_requires_exact_count_and_complete_clean_result() {
+    for (attempts, expected) in [(3, 5), (5, 5), (6, 0), (7, 5), (9, 5)] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                attempts: Some(attempts),
+                requests: Some(13),
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_SIX");
+    }
+}
+
+#[cfg(fs_home_terminfo_six)]
+#[test]
+fn terminfo_six_keeps_all_clean_result_and_resource_checks() {
+    for corrupt in 1..=20 {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                attempts: Some(6),
+                requests: Some(13),
+                corrupt,
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(
+            run(&mut selected),
+            if corrupt == 20 { 0 } else { 5 },
+            "HOME_TERMINFO_CLEAN:{corrupt}"
+        );
+    }
+    for (requests, expected) in [(0, 5), (3, 5), (4, 0), (13, 0), (96, 0), (97, 5)] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                attempts: Some(6),
+                requests: Some(requests),
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_REQUEST_CAP");
     }
 }

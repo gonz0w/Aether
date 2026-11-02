@@ -48,6 +48,106 @@ long __aether_io(unsigned long operation, unsigned long fd,
     errno = saved;
     return (long)(result < -4095 ? -EIO : result);
 }
+static long libc_result(int64_t result, int saved)
+{
+    if (result < 0) {
+        errno = result >= -4095 ? (int)-result : EIO;
+        return -1;
+    }
+    errno = saved;
+    return (long)result;
+}
+int aether_zsh_open(const char *path, int flags, mode_t mode)
+{
+    (void)mode; /* Existing readonly opens do not use a creation mode. */
+    int saved = errno;
+    /* On this x86_64 target O_LARGEFILE is the musl syscall shim's no-op bit,
+     * not a request for additional descriptor rights. All other flags remain
+     * subject to the existing readonly/terminal admission checks. */
+    int64_t result =
+        live() ? aefd_libc_open(&startup.context, path, flags & ~O_LARGEFILE)
+               : -EBADF;
+    return (int)libc_result(result, saved);
+}
+long aether_zsh_raw_fcntl(int fd, int command, int argument)
+{
+    int saved = errno;
+    int64_t result =
+        live() ? aefd_libc_fcntl(&startup.context, fd, command, argument)
+               : -EBADF;
+    errno = saved;
+    return result < -4095 ? -EIO : (long)result;
+}
+long aether_zsh_raw_close(int fd)
+{
+    return __aether_io(3, (unsigned long)fd, 0, 0);
+}
+off_t aether_zsh_seek(int fd, off_t offset, int whence)
+{
+    int saved = errno;
+    int64_t result =
+        live() ? aefd_context_seek(&startup.context, fd, offset, whence)
+               : -EBADF;
+    return (off_t)libc_result(result, saved);
+}
+static int outside_context(const void *pointer, size_t length)
+{
+    uintptr_t start = (uintptr_t)pointer;
+    if (!length)
+        return 1;
+    if (!start || length > UINTPTR_MAX - start)
+        return 0;
+    uintptr_t context = (uintptr_t)&startup.context;
+    return start + length <= context ||
+           start >= context + sizeof(startup.context);
+}
+long aether_zsh_vector_read(int fd, const struct iovec *parts, int count)
+{
+    int saved = errno;
+    int64_t result = -EINVAL;
+    if (count < 0 || count > 2)
+        goto done;
+    if (count && !outside_context(parts, (size_t)count * sizeof(*parts))) {
+        result = -EFAULT;
+        goto done;
+    }
+    size_t total = 0;
+    for (int i = 0; i < count; ++i) {
+        if (parts[i].iov_len > (size_t)SSIZE_MAX - total)
+            goto done;
+        total += parts[i].iov_len;
+    }
+    for (int i = 0; i < count; ++i)
+        if (!outside_context(parts[i].iov_base, parts[i].iov_len)) {
+            result = -EFAULT;
+            goto done;
+        }
+    if (!live() || fd < 0 || fd >= 16) {
+        result = -EBADF;
+        goto done;
+    }
+    result = 0;
+    for (int i = 0; i < count; ++i)
+        if (parts[i].iov_len) {
+            /* A short first prefix is a valid readv result. One existing
+             * context read publishes its confirmed bytes and settles state
+             * before unmask/handler reentry; never retry a second component
+             * after a partial, EOF, error or uncertain completion. */
+            size_t n = parts[i].iov_len < AEFD_READ_MAX ? parts[i].iov_len
+                                                        : AEFD_READ_MAX;
+            result =
+                __aether_io(0, (unsigned long)fd,
+                            (unsigned long)(uintptr_t)parts[i].iov_base, n);
+            break;
+        }
+done:
+    return libc_result(result, saved);
+}
+long aether_zsh_read(int fd, void *out, size_t count)
+{
+    const struct iovec part = {out, count};
+    return aether_zsh_vector_read(fd, &part, 1);
+}
 long aether_zsh_vector_write(int fd, const struct iovec *parts, int count)
 {
     int saved = errno;
