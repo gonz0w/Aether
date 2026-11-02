@@ -100,7 +100,7 @@
     },
     "docs/NATIVE-CONSOLE.md": {
       "status": "experimental-reference",
-      "validation": "Use the pinned console commands for their existing profiles; selected native-tty-mode-probe additionally uses the current query/model/profile controls and separately reviewed fixed native mode experiment in issue122. Match exact artifacts; private qualification inputs are separate. The selected native-tty-signal-probe also requires exact-target preflight/post, safe mask-return delivery and the matched issue125 consumer.",
+      "validation": "Use the pinned console commands for their existing profiles; selected native-tty-mode-probe additionally uses the current query/model/profile controls and separately reviewed fixed native mode experiment in issue122. Match exact artifacts; private qualification inputs are separate. The selected native-tty-signal-probe also requires exact-target preflight/post, safe mask-return delivery and the matched issue125 consumer. Selected canonical policy reuses the existing MODE/SIGINT kernel closure; issue128 owns its Rust/C consumer and exact byte evidence.",
       "gap": "Independent consumer adoption, interrupt service and TTY semantics remain open."
     },
     "docs/NATIVE-BLOCK.md": {
@@ -2635,6 +2635,16 @@
       "gaps": "Fixed admitted recipient is not a POSIX foreground group; no canonical queue/fullZLE/MONITOR/stop-continue/actualZsh or R1 qualification, CPU-bound asynchronous signal claim, SDK rebuild or quota increase.",
       "budget_seconds": 300,
       "owner": "Aether kernel/userland/sys-init; issue125 approved terminal SIGINT prerequisite"
+    },
+    {
+      "id": "UL-NATIVE-TTY-CANONICAL",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "Selected007 fixed canonical S/ZLE Z/admission restore tuples under existing MODE and exact-generation SIGINT grants;64-byte record/3-byte output state, original-byte CRLF mapping, live held write authority for echo, no EOF/hangup conflation or consumed-input replay.",
+      "command": "Use focused actual core/Owner/C canonical editing/echo/EOF/partial-output/mode/handler/deadline controls and compatibility checks for001\u2013006. Fresh changed app+signal-frame+reentrant/Owner fit and exact image/media review precede the fixed nine-phase30-byte native consumer; existing kernel mechanisms and flags are reused.",
+      "oracle": "Canonical short records/erase/kill/echo and buffered+one-shot empty EOF remain live; ZLE mapping does not cascade, source output counts differ from expanded UART bytes, real handler restores S and final reset restores admission mode; strict physical CRLF/raw prefix gates and complete settlement.",
+      "gaps": "Byte-oriented canonical proof is not grapheme editing or actualZsh/group/MONITOR/terminfo/readiness/R1 qualification; default SIGINT effects and TCSAFLUSH remain unsupported. No new kernel operation, service, queue framework or quota.",
+      "budget_seconds": 300,
+      "owner": "Aether userland/sys-init; issue128 reviewed canonical/ZLE mode step"
     }
   ]
 }

@@ -794,3 +794,377 @@ mod signal_review_cases {
         assert_eq!(input.calls, 1, "EOF_NO_BACKEND_REENTRY");
     }
 }
+
+#[cfg(native_tty_canonical_probe)]
+#[test]
+fn canonical_selected_fixed_saved_tuple_is_supported() {
+    let mode = Mode {
+        canonical: true,
+        echo: true,
+        signals: true,
+        icrnl: true,
+        opost: true,
+        ..Mode::IMMEDIATE
+    };
+    assert!(
+        Terminal::admit(
+            41,
+            CALLER,
+            [
+                Rights::READ.union(Rights::MODE),
+                Rights::WRITE,
+                Rights::WRITE
+            ],
+            mode
+        )
+        .is_ok(),
+        "FIXED_CANONICAL_S_IS_REAL"
+    );
+}
+
+#[cfg(native_tty_canonical_probe)]
+mod canonical_cases {
+    use super::*;
+    use std::{collections::VecDeque, vec, vec::Vec};
+    struct Input {
+        bytes: VecDeque<u8>,
+        tx: VecDeque<i64>,
+        physical: Vec<u8>,
+        reads: usize,
+        writes: usize,
+        posts: usize,
+        post: u8,
+        end: bool,
+    }
+    impl Input {
+        fn new(bytes: &[u8]) -> Self {
+            Self {
+                bytes: bytes.to_vec().into(),
+                tx: VecDeque::new(),
+                physical: vec![],
+                reads: 0,
+                writes: 0,
+                posts: 0,
+                post: 1,
+                end: false,
+            }
+        }
+    }
+    impl SignalInput for Input {
+        fn read(&mut self, out: &mut [u8]) -> Completion {
+            assert_eq!(out.len(), 1);
+            self.reads += 1;
+            if let Some(b) = self.bytes.pop_front() {
+                out[0] = b;
+                Completion {
+                    count: 1,
+                    stop: Stop::Complete,
+                }
+            } else {
+                Completion {
+                    count: 0,
+                    stop: if self.end {
+                        Stop::End
+                    } else {
+                        Stop::WouldBlock
+                    },
+                }
+            }
+        }
+        fn post_sigint(&mut self) -> Result<u8, Error> {
+            self.posts += 1;
+            Ok(self.post)
+        }
+        fn write(&mut self, role: Role, bytes: &[u8]) -> Completion {
+            assert!(matches!(role, Role::Stdout | Role::Stderr));
+            self.writes += 1;
+            let count = self.tx.pop_front().unwrap_or(bytes.len() as i64);
+            if count > 0 && count as usize <= bytes.len() {
+                self.physical.extend(&bytes[..count as usize]);
+            }
+            Completion {
+                count: if count > 0 { count as usize } else { 0 },
+                stop: if count == -5000 {
+                    Stop::Unknown
+                } else if count == -11 {
+                    Stop::WouldBlock
+                } else if count < 0 {
+                    Stop::Error(count as i32)
+                } else if count == 0 {
+                    Stop::End
+                } else {
+                    Stop::Complete
+                },
+            }
+        }
+    }
+    fn canonical() -> (Terminal, Bindings) {
+        Terminal::admit(
+            41,
+            CALLER,
+            [
+                Rights::READ.union(Rights::MODE),
+                Rights::WRITE,
+                Rights::WRITE,
+            ],
+            Mode::CANONICAL,
+        )
+        .unwrap()
+    }
+    #[test]
+    fn records_editing_short_suffix_and_live_eof() {
+        let (mut t, b) = canonical();
+        let mut io = Input::new(b"abX\x7fc\rqr\x15d\ref\x04\x04g\r");
+        let mut out = [0xa5; 16];
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out[..2], true, &mut io),
+            Ok(ReadOutcome::Bytes(2))
+        );
+        assert_eq!(&out[..2], b"ab");
+        let before = (io.reads, io.writes);
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Ok(ReadOutcome::Bytes(2))
+        );
+        assert_eq!(&out[..2], b"c\n");
+        assert_eq!(
+            (io.reads, io.writes),
+            before,
+            "SUFFIX_NO_RETRANSLATE_OR_REECHO"
+        );
+        for expected in [b"d\n".as_slice(), b"ef", b"", b"g\n"] {
+            let result = t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io);
+            assert_eq!(
+                result,
+                Ok(if expected.is_empty() {
+                    ReadOutcome::Eof
+                } else {
+                    ReadOutcome::Bytes(expected.len())
+                }),
+                "CANONICAL_RECORD_BOUNDARY_AND_EOF"
+            );
+            assert_eq!(&out[..expected.len()], expected);
+        }
+        assert_eq!(
+            io.physical, b"abX\x08 \x08c\r\nqr\r\nd\r\nefg\r\n",
+            "EXACT_BYTE_ECHO"
+        );
+        assert!(io.bytes.is_empty());
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock),
+            "EMPTY_EOF_DOES_NOT_HANG_UP"
+        );
+    }
+    #[test]
+    fn zero_read_empty_eof_hangup_and_capacity_are_distinct() {
+        let (mut t, b) = canonical();
+        let mut io = Input::new(&[4]);
+        let mut out = [0xa5; 16];
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut [], true, &mut io),
+            Ok(ReadOutcome::EmptyRequest)
+        );
+        assert_eq!(io.reads, 0);
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Ok(ReadOutcome::Eof)
+        );
+        assert_eq!(io.reads, 1);
+        io.bytes.extend(b"xy");
+        io.end = true;
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Ok(ReadOutcome::Bytes(2))
+        );
+        assert_eq!(&out[..2], b"xy");
+        let reads = io.reads;
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Ok(ReadOutcome::Eof)
+        );
+        assert_eq!(io.reads, reads, "PERSISTENT_HANGUP_NO_BACKEND");
+        let (mut t, b) = canonical();
+        let mut io = Input::new(&[b'a'; 63]);
+        io.bytes.extend(b"\x7fb\r");
+        for _ in 0..4 {
+            assert_eq!(
+                t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+                Err(Error::WouldBlock)
+            );
+        }
+        let mut record = vec![];
+        for _ in 0..4 {
+            assert_eq!(
+                t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+                Ok(ReadOutcome::Bytes(16))
+            );
+            record.extend(out);
+        }
+        assert_eq!(record.len(), 64);
+        assert_eq!(&record[..62], &[b'a'; 62]);
+        assert_eq!(&record[62..], b"b\n");
+    }
+    #[test]
+    fn overflow_consumes_once_without_truncated_success() {
+        let (mut t, b) = canonical();
+        let mut io = Input::new(&[b'x'; 64]);
+        let mut out = [0xa5; 16];
+        for _ in 0..3 {
+            assert_eq!(
+                t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+                Err(Error::WouldBlock)
+            );
+        }
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::Backend(-75)),
+            "EXPLICIT_RECORD_OVERFLOW"
+        );
+        assert_eq!(out, [0xa5; 16]);
+        assert_eq!(io.reads, 64);
+        assert_eq!(io.physical.len(), 63);
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::UnknownCompletion)
+        );
+        assert_eq!(io.reads, 64, "OVERFLOW_NO_REPLAY");
+    }
+    #[test]
+    fn partial_echo_and_source_count_preserve_interpreted_suffix() {
+        let (mut t, b) = canonical();
+        let mut io = Input::new(b"a\r");
+        io.tx.extend([-11, 1, 1, -11]);
+        let mut out = [0xa5; 4];
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock)
+        );
+        assert_eq!(io.reads, 1);
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock)
+        );
+        assert_eq!(io.reads, 2);
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Ok(ReadOutcome::Bytes(2))
+        );
+        assert_eq!(&out[..2], b"a\n");
+        assert_eq!(io.physical, b"a\r\n", "NO_PARTIAL_ECHO_REPLAY");
+        io.physical.clear();
+        io.tx.extend([1, -11]);
+        assert_eq!(
+            t.write(CALLER, &b.stdout, b"\nB", |r, p| io.write(r, p)),
+            Ok(1),
+            "SOURCE_BYTES_NOT_UART_BYTES"
+        );
+        assert_eq!(io.physical, b"\r");
+        let mut snapshot = t.snapshot(CALLER, &b.stdin).unwrap();
+        t.apply_now(
+            CALLER,
+            &b.stdin,
+            &mut snapshot,
+            ModeRequest {
+                mode: Mode::IMMEDIATE,
+                action: ApplyWhen::Now,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            t.write(CALLER, &b.stdout, b"B", |r, p| io.write(r, p)),
+            Ok(1)
+        );
+        assert_eq!(io.physical, b"\r\nB", "NOW_RETAINS_PREINTERPRETED_SUFFIX");
+        let (mut t, b) = canonical();
+        let mut io = Input::new(b"");
+        io.tx.extend([1, -5000]);
+        assert_eq!(
+            t.write(CALLER, &b.stdout, b"\n", |r, p| io.write(r, p)),
+            Err(Error::UnknownCompletion)
+        );
+        let writes = io.writes;
+        assert_eq!(
+            t.write(CALLER, &b.stdout, b"\n", |r, p| io.write(r, p)),
+            Err(Error::UnknownCompletion)
+        );
+        assert_eq!(io.writes, writes, "UNKNOWN_TX_NO_REPLAY");
+        assert_eq!(io.physical, b"\r");
+    }
+    #[test]
+    fn zle_swap_retained_prefix_and_snapshot_never_replay_history() {
+        let (mut t, b) = canonical();
+        let mut snapshot = t.snapshot(CALLER, &b.stdin).unwrap();
+        let mut io = Input::new(b"a\r");
+        let mut out = [0; 16];
+        // An incomplete translated prefix survives the attribute change.
+        io.bytes = vec![b'a'].into();
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock)
+        );
+        let reads = io.reads;
+        t.apply_now(
+            CALLER,
+            &b.stdin,
+            &mut snapshot,
+            ModeRequest {
+                mode: Mode::ZLE,
+                action: ApplyWhen::Now,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Ok(ReadOutcome::Bytes(1))
+        );
+        assert_eq!(out[0], b'a');
+        assert_eq!(io.reads, reads);
+        io.bytes.extend(b"\0A\r\n\x7f\x04");
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out[..6], true, &mut io),
+            Ok(ReadOutcome::Bytes(6))
+        );
+        assert_eq!(
+            &out[..6],
+            b"\0A\n\r\x7f\x04",
+            "SWAP_ORIGINAL_BYTE_NO_CASCADE"
+        );
+        assert_eq!(io.physical, b"a", "ZLE_ECHO_OFF");
+        t.restore(CALLER, &b.stdin, &mut snapshot).unwrap();
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::WouldBlock),
+            "SNAPSHOT_HAS_NO_INPUT_HISTORY"
+        );
+    }
+    #[test]
+    fn canonical_signal_flushes_unfinished_record_and_requires_live_echo_output() {
+        for (eligible, outcome) in [(true, 0), (false, 1), (true, 1)] {
+            let (mut t, b) = canonical();
+            let mut io = Input::new(b"ab\x03c\r");
+            io.post = outcome;
+            let mut out = [0xa5; 8];
+            let result = t.read_signalled(CALLER, &b.stdin, &mut out, eligible, &mut io);
+            if eligible && outcome == 1 {
+                assert_eq!(result, Err(Error::Interrupted));
+                assert_eq!(out, [0xa5; 8]);
+                assert_eq!(io.bytes, b"c\r".to_vec());
+            } else {
+                assert_eq!(result, Ok(ReadOutcome::Bytes(2)));
+                assert_eq!(&out[..2], b"c\n");
+            }
+            assert_eq!(io.posts, 1);
+            assert!(io.physical.starts_with(b"ab\x03"), "NO_ECHOCTL_CARET");
+        }
+        let (mut t, b) = canonical();
+        t.close(CALLER, b.stdout).unwrap();
+        let mut io = Input::new(b"a\r");
+        let mut out = [0; 4];
+        assert_eq!(
+            t.read_signalled(CALLER, &b.stdin, &mut out, true, &mut io),
+            Err(Error::Denied)
+        );
+        assert_eq!((io.reads, io.writes), (0, 0), "NO_ECHO_FROM_RETIRED_OUTPUT");
+    }
+}

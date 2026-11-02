@@ -2,6 +2,14 @@
 /* Selected one-app glue. The only mutable libc facade is this stable FD
  * context; Rust keeps the namespace, trap budget and four-endpoint ledger
  * disjoint. */
+#ifdef AMK_NATIVE_TTY_CANONICAL_PROBE
+#ifndef AMK_NATIVE_TTY_SIGNAL_PROBE
+#define AMK_NATIVE_TTY_SIGNAL_PROBE
+#endif
+#ifndef AMK_NATIVE_TTY_MODE_PROBE
+#define AMK_NATIVE_TTY_MODE_PROBE
+#endif
+#endif
 #ifdef AMK_NATIVE_TTY_SIGNAL_PROBE
 #ifndef AMK_NATIVE_TTY_MODE_PROBE
 #define AMK_NATIVE_TTY_MODE_PROBE
