@@ -14,6 +14,7 @@ or filesystem semantics.
 
 | Resource | Selected application profile |
 | --- | --- |
+| Outer application envelope | 13,156,512 bytes, derived from existing engine/app/Owner file caps and headers |
 | Application ELF file | At most 1.5 MiB |
 | Image plus existing main stack | At most 384 backing pages |
 | Total backing per application | 640 pages; five equal application slots |
@@ -148,3 +149,17 @@ For the selected `native-zsh-terminfo` diagnostic only, the kernel omits debug
 sections so the ISO fits the existing16MiB build-file bound. Debug optimization
 and runtime safety checks remain selected; ordinary kernel builds keep debug
 information. Actual emitted kernel mapping and image size are checked before use.
+
+The boot-module gate selects that derived application bound before slicing the
+module or calling native startup. Ordinary3,154,000-byte and old-large8,392,752-byte
+bounds stay unchanged; the input cannot select a profile. Typed envelope, ELF,
+layout and role checks still follow. The public wiring check is:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_envelope_gate.py -v
+```
+
+This command launches no process and checks extraction/source wiring only. The
+same file supplies the actual scalar boot-guard fixture for the private qualified
+compiler run in issue137, including old-profile and one-over/no-start controls.
+Public committed capture tooling does not provide that private execution API.

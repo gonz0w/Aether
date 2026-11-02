@@ -9,6 +9,9 @@ pub const init_magic = "AENFS003";
 pub const owner_data_magic = "AENFS004";
 pub const owner_stack_magic = "AENFS005";
 pub const application_magic = "AENFS006";
+// Outer/header + existing engine + three selected apps + existing ABI31 Owner.
+pub const application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 112 +
+    3 * elf.application_limits.file_bytes + roles.owner_stack_code_limit;
 pub const Error = roles.Error;
 pub const Bundle = struct {
     engine: []const u8,

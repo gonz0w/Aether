@@ -44,10 +44,19 @@ exact source/tool freeze and lead release:
 python3 -B tools/zsh-target-fit.py --filesystem
 python3 -B tools/zsh-owner-fit.py
 python3 -B tools/zsh-screen-probe.py
+python3 -B tools/zsh-witness.py INPUT_DEP MANIFEST_SHA SEAL_SHA FREEZE_JSON FREEZE_SHA
+python3 -B tools/zsh_run.py prepare WITNESS IMAGE_REVIEW_SHA
+python3 -B tools/zsh_run.py run PROPOSAL PROPOSAL_SHA PEER_REVIEW PEER_SHA DECISION
 ```
 
 The first two retain300-second aggregates and180-second children; the host frontend
-probe has30 seconds total. Compact exact inputs/commands/results/failures remain
+probe has30 seconds total. Image and disposable-media preparation launch no guest.
+Only explicit `run` selects one reviewed proposal under the recorded authority:
+120 seconds total,60 seconds including the shared9-second stop,64KiB raw UART and
+one attempt. A changed candidate needs diagnosis, review and fresh media. Screen's
+private control FIFO and live process identity, actual PTY settings and rendering
+are checked before the one34-byte input submission; closed Screen diagnostic pipes
+do not imply server exit. QEMU pipe EOF remains failure. Compact exact inputs/commands/results/failures remain
 private; public source alone lacks the full SDK/recipe environment. Temporary
 executables/maps/objects are retained only through review/checkpoint, then removed.
 Current dependencies stay separately pinned. One interrupted earlier host test
