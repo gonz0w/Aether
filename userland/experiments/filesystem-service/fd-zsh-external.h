@@ -29,5 +29,14 @@ gid_t __wrap_getegid(void);
 int __wrap_access(const char *, int);
 char *__wrap_getcwd(char *, size_t);
 #endif
+#ifdef AEFD_ZSH_DIAGNOSTIC
+#ifndef AEFD_ZSH_FILESYSTEM_BINDINGS
+#error "Zsh diagnostic requires the closed filesystem selection"
+#endif
+/* Diagnostic observation only: real tgetent and actual active TTY input.
+ * Preserve delegated results. Qualify only requested zero exit status. */
+int __wrap_tgetent(char *, const char *);
+int aether_zsh_diagnostic_status(int);
+#endif
 int __wrap_main(int, char **);
 #endif

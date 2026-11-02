@@ -1216,11 +1216,70 @@ impl<K: AppControl> Runtime<K> {
         self.reclaim(self.engine)?;
         self.engine = 0;
         self.bound.check(&mut self.kernel)?;
+        #[cfg(native_zsh_filesystem)]
+        self.write_native_oracle(workspace)?;
         self.close_console()?;
         self.bound.reserve()?;
         self.terminal_attempted = true;
         let _ = self.kernel.ctl(0x2a002, 0xf002, 0);
         Err(-5) // A returning successful halt is a defect, never another attempt.
+    }
+    /// Selected version1 diagnostic, only after checked healthy teardown.
+    /// This reports the actual shared request ledger and cached private MODE
+    /// cleanup result. It grants no authority and is not the final halt witness.
+    #[cfg(native_zsh_filesystem)]
+    #[inline(never)]
+    fn write_native_oracle(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        if !(14..=96).contains(&self.filesystem_requests)
+            || self.app != 0
+            || self.engine != 0
+            || !self.files_live
+            || self.cleanup_started
+            || self.console_attempted
+            || self.terminal_attempted
+            || self.bound.failed != 0
+            || self.namespace_prepaid != [0; 2]
+            || self.mode.as_ref().and_then(tty_mode::State::cleanup_result) != Some(0)
+            || self
+                .observed_terminal
+                .iter()
+                .any(|state| !matches!(state, Some((1, _, 1))))
+            || self
+                .ends
+                .iter()
+                .any(|end| end.owned && (!end.attempted || end.status != 0))
+        {
+            return Err(-5);
+        }
+        // SAFETY: files_live is set only after successful final-slot Client
+        // construction. Healthy disconnect consumed both close obligations.
+        if unsafe { self.files.assume_init_ref() }.cleanup() != Some([0; 2]) {
+            return Err(-5);
+        }
+        const ROW: &[u8; 49] = b"\nAETHER ZSH OWNER v=1 requests=00 mode_cleanup=0\n";
+        workspace[..ROW.len()].copy_from_slice(ROW);
+        workspace[31] = b'0' + (self.filesystem_requests / 10) as u8;
+        workspace[32] = b'0' + (self.filesystem_requests % 10) as u8;
+        let result = (|| {
+            let mut offset = 0;
+            while offset < ROW.len() {
+                let length = (ROW.len() - offset).min(16);
+                self.bound.before(&mut self.kernel)?;
+                let count = self
+                    .kernel
+                    .serial(true, &mut workspace[offset..offset + length]);
+                if count == -11 {
+                    self.yield_now()?;
+                } else if count <= 0 || count as u64 > length as u64 {
+                    return Err(if count < 0 { count } else { -5 });
+                } else {
+                    offset += count as usize;
+                }
+            }
+            Ok(())
+        })();
+        workspace[..ROW.len()].fill(0);
+        result
     }
     fn close_owned(&mut self) -> Result<(), i64> {
         let mut failure = 0;

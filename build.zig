@@ -281,6 +281,8 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("kernel/main.zig"),
             .target = target,
             .optimize = .Debug,
+            // Keep this diagnostic ISO within the existing build-file bound.
+            .strip = native_zsh_terminfo,
             .code_model = .kernel,
             .red_zone = false,
             .stack_check = false,

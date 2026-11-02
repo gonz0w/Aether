@@ -37,12 +37,53 @@ static int live(void)
            startup.context.session.initialized && startup.context.client.live &&
            !startup.context.native.retired;
 }
+#ifdef AEFD_ZSH_DIAGNOSTIC
+extern int __real_tgetent(char *, const char *);
+extern int zleactive;
+/* Lock-free sticky observations also preserve a failure recorded by reentry. */
+static unsigned diagnostic_observations;
+_Static_assert(sizeof(diagnostic_observations) == 4 &&
+                   __atomic_always_lock_free(sizeof(diagnostic_observations),
+                                             0),
+               "diagnostic requires one lock-free four-byte ordinary word");
+int __wrap_tgetent(char *buffer, const char *name)
+{
+    int result = __real_tgetent(buffer, name);
+    __atomic_fetch_or(&diagnostic_observations, result == 1 ? 1U : 2U,
+                      __ATOMIC_RELAXED);
+    return result;
+}
+static int diagnostic_tty(unsigned long fd)
+{
+    if (!live() || fd >= AEFD_BINDINGS_COUNT ||
+        startup.context.map.generation != startup.context.client.generation)
+        return 0;
+    struct aefd_binding slot = startup.context.map.slots[fd];
+    const struct aefd_native_source *source =
+        &startup.context.native.sources[0];
+    return !slot.selector && aefd_binding_valid(slot) &&
+           (slot.kind == AEFD_BIND_TERMINAL ||
+            slot.kind == AEFD_BIND_DUPLEX_TERMINAL) &&
+           source->reference == UINT32_C(0x7a000001) && !source->selector &&
+           source->rights == 1 && source->bound == 16;
+}
+int aether_zsh_diagnostic_status(int status)
+{
+    return status == 0 && __atomic_load_n(&diagnostic_observations,
+                                          __ATOMIC_RELAXED) != 5U
+               ? 144
+               : status;
+}
+#endif
 long __aether_io(unsigned long operation, unsigned long fd,
                  unsigned long pointer, unsigned long count)
 {
     if (!live() || fd >= 16)
         return -EBADF;
     int saved = errno;
+#ifdef AEFD_ZSH_DIAGNOSTIC
+    int zle_read = operation == 0 && zleactive == 1 && diagnostic_tty(fd);
+#endif
     int64_t result;
     if (operation == 32)
         result = pointer || count
@@ -53,6 +94,10 @@ long __aether_io(unsigned long operation, unsigned long fd,
     else
         result = aefd_libc_io(&startup.context, operation, fd,
                               (uintptr_t)pointer, count);
+#ifdef AEFD_ZSH_DIAGNOSTIC
+    if (zle_read && result > 0 && zleactive == 1 && diagnostic_tty(fd))
+        __atomic_fetch_or(&diagnostic_observations, 4U, __ATOMIC_RELAXED);
+#endif
     errno = saved;
     return (long)(result < -4095 ? -EIO : result);
 }

@@ -133,11 +133,18 @@ stays with the Rust Owner; the app receives no namespace auxv record.
 
 The [consumer contract](../userland/docs/ZSH-FILESYSTEM.md) records336-byte
 startup, exact readonly paths and the typed directory port. Current actual
-application fit is313 pages, and Owner code/Runtime/stack fit their original
+application fit is314 pages, and Owner code/Runtime/stack fit their original
 bounds. The mapped stack still provides only48KiB initial downward space.
 One selected source attribute keeps external-command scratch out of builtin
 execution; the separate external helper remains over that stack budget.
 
-Complete selected-workload stack/heap and actual request demand remain an open
-pre-image gate. No native image or trial is selected by these offline source and
-fit observations; hard capacity is not a measured demand claim.
+The [owner's fixed diagnostic evidence decision](policy/execution.md#fixed-diagnostic-evidence-decision-2026-11-02)
+permits scoped workload-fit evidence under unchanged limits after actual route/
+known-defect/structural checks and fresh image/media/consumer review. It replaces
+the complete pre-image peak-proof prerequisite for this builtin experiment;
+hard capacity is still not measured demand, and no successful trial is claimed.
+
+For the selected `native-zsh-terminfo` diagnostic only, the kernel omits debug
+sections so the ISO fits the existing16MiB build-file bound. Debug optimization
+and runtime safety checks remain selected; ordinary kernel builds keep debug
+information. Actual emitted kernel mapping and image size are checked before use.

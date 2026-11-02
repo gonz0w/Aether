@@ -22,6 +22,12 @@ struct State {
     launch_namespace_unread: bool,
     stopped: Vec<u64>,
     reclaimed: Vec<u64>,
+    normal_terminal: Vec<u64>,
+    oracle_serial: bool,
+    serial_results: VecDeque<i64>,
+    serial_output: Vec<u8>,
+    serial_requests: Vec<Vec<u8>>,
+    yields: usize,
 }
 #[derive(Clone, Default)]
 struct Mock(Rc<RefCell<State>>);
@@ -29,6 +35,14 @@ impl Kernel for Mock {
     fn transfer(&mut self, _endpoint: u64, bytes: &mut [u8], writing: bool) -> i64 {
         let mut state = self.0.borrow_mut();
         state.transfers += 1;
+        if writing
+            && state.full
+            && _endpoint == 0xd10a0102
+            && bytes.len() == 1
+            && state.normal_terminal.contains(&0xb0000101)
+        {
+            return -32;
+        }
         if writing && state.full && _endpoint == 0xd1010102 {
             state.startup.extend_from_slice(bytes);
             return bytes.len() as i64;
@@ -78,6 +92,8 @@ impl Control for Mock {
                 0x20001 => {
                     return if state.reclaimed.contains(&cap) {
                         (-9, 0, 0)
+                    } else if state.normal_terminal.contains(&cap) {
+                        (1, 1, 1)
                     } else if state.stopped.contains(&cap) {
                         (126, 0, 3)
                     } else {
@@ -94,6 +110,9 @@ impl Control for Mock {
                 }
                 _ => {}
             }
+        }
+        if op == 0x1fffe {
+            state.yields += 1;
         }
         match op {
             0x2a000 => (0, 4, state.tick),
@@ -121,8 +140,22 @@ impl Control for Mock {
     fn copy(&mut self, _: u64, _: u32, _: u64, _: u64, _: u64) -> i64 {
         -38
     }
-    fn serial(&mut self, _: bool, _: &mut [u8]) -> i64 {
-        -38
+    fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
+        let mut state = self.0.borrow_mut();
+        if !state.oracle_serial || !writing {
+            return -38;
+        }
+        state.serial_requests.push(bytes.to_vec());
+        let count = state
+            .serial_results
+            .pop_front()
+            .unwrap_or(bytes.len() as i64);
+        if count > 0 && count as u64 <= bytes.len() as u64 {
+            state
+                .serial_output
+                .extend_from_slice(&bytes[..count as usize]);
+        }
+        count
     }
     fn exec(&mut self, _: u64, _: u64, _: &[u8; 272]) -> i64 {
         -38
@@ -653,5 +686,145 @@ fn zsh_in_place_runtime_uses_actual_engine_endpoint_epoch_and_same_cleanup() {
     // close obligations and nested Files is intentionally MaybeUninit storage.
     unsafe {
         slot.assume_init_drop();
+    }
+}
+
+// Prepare the real Runtime's healthy source/terminal/reclaim journals through
+// the production Client/transport methods. Native kernel/engine calls remain
+// scripted host boundaries; these fixtures do not claim guest success.
+fn oracle_runtime() -> (Runtime<Mock>, Mock) {
+    let kernel = Mock::default();
+    {
+        let mut s = kernel.0.borrow_mut();
+        s.full = true;
+        s.input = provisioning_replies().into();
+    }
+    let mut runtime = Runtime::new(kernel.clone()).unwrap();
+    runtime.provision(&mut [0; 4096]).unwrap();
+    kernel.0.borrow_mut().normal_terminal = std::vec![0xb0000102, 0xb0000101];
+    runtime.terminal_zero(runtime.app).unwrap();
+    runtime.cleanup_mode().unwrap();
+    let mut ack = [0; 64];
+    ack[..8].copy_from_slice(b"AFSRPC09");
+    ack[16..24].copy_from_slice(&0xd10a0101u64.to_le_bytes());
+    for _ in 0..2 {
+        kernel.0.borrow_mut().input.extend(ack);
+    }
+    let engine = runtime.engine;
+    runtime
+        .with_files(|files| {
+            files
+                .disconnect_checked(|io| io.verify_disconnect(engine))
+                .map(|_| ())
+        })
+        .unwrap();
+    runtime.close_owned().unwrap();
+    runtime.reclaim(runtime.app).unwrap();
+    runtime.app = 0;
+    runtime.terminal_zero(runtime.engine).unwrap();
+    runtime.reclaim(runtime.engine).unwrap();
+    runtime.engine = 0;
+    assert_eq!(runtime.filesystem_requests, 14);
+    kernel.0.borrow_mut().oracle_serial = true;
+    (runtime, kernel)
+}
+#[test]
+fn zsh_native_oracle_formats_actual_bounded_ledger_and_cached_mode_cleanup() {
+    for count in [14u32, 33, 96] {
+        let (mut runtime, kernel) = oracle_runtime();
+        runtime.filesystem_requests = count;
+        let before = runtime.snapshot();
+        let mut workspace = [0x55; 4096];
+        runtime.write_native_oracle(&mut workspace).unwrap();
+        assert_eq!(
+            kernel.0.borrow().serial_output,
+            std::format!("\nAETHER ZSH OWNER v=1 requests={count} mode_cleanup=0\n").as_bytes()
+        );
+        assert_eq!(kernel.0.borrow().serial_requests.len(), 4);
+        assert_eq!(runtime.bound.left, before.left - 8);
+        assert_eq!(runtime.bound.reserved, before.reserved);
+        assert_eq!(&workspace[..49], &[0; 49]);
+        assert!(workspace[49..].iter().all(|byte| *byte == 0x55));
+        assert_eq!(runtime.snapshot().ends, before.ends);
+        assert_eq!(
+            runtime.snapshot().observed_terminal,
+            before.observed_terminal
+        );
+    }
+}
+#[test]
+fn zsh_native_oracle_refuses_invalid_count_or_incomplete_cleanup_without_output() {
+    for defect in 0..7 {
+        let (mut runtime, kernel) = oracle_runtime();
+        match defect {
+            0 => runtime.filesystem_requests = 13,
+            1 => runtime.filesystem_requests = 97,
+            2 => runtime.mode = None,
+            3 => runtime.observed_terminal[0] = None,
+            4 => {
+                runtime
+                    .ends
+                    .iter_mut()
+                    .find(|end| end.owned)
+                    .unwrap()
+                    .status = -9
+            }
+            5 => runtime.console_attempted = true,
+            _ => runtime.app = 0xb0000102,
+        }
+        let before = runtime.bound.left;
+        assert_eq!(runtime.write_native_oracle(&mut [0; 4096]), Err(-5));
+        assert_eq!(runtime.bound.left, before);
+        assert!(kernel.0.borrow().serial_output.is_empty());
+        assert!(kernel.0.borrow().serial_requests.is_empty());
+    }
+}
+#[test]
+fn zsh_native_oracle_short_eagain_preserves_prefix_and_charges_original_bound() {
+    let (mut runtime, kernel) = oracle_runtime();
+    kernel.0.borrow_mut().serial_results = [3, -11, 5, 16, 16, 9].into();
+    let before = runtime.snapshot();
+    runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    let s = kernel.0.borrow();
+    assert_eq!(
+        s.serial_output,
+        b"\nAETHER ZSH OWNER v=1 requests=14 mode_cleanup=0\n"
+    );
+    assert_eq!(s.serial_requests.len(), 6);
+    assert_eq!(s.serial_requests[1], s.serial_requests[2]);
+    assert_eq!(s.yields, 1);
+    assert_eq!(runtime.bound.left, before.left - 14);
+    assert_eq!(runtime.bound.reserved, before.reserved);
+}
+#[test]
+fn zsh_native_oracle_bad_counts_failure_and_exhaustion_never_retry_or_reclose() {
+    for outcomes in [
+        std::vec![0],
+        std::vec![17],
+        std::vec![-5],
+        std::vec![3, -32],
+        std::vec![],
+    ] {
+        let (mut runtime, kernel) = oracle_runtime();
+        kernel.0.borrow_mut().serial_results = outcomes.clone().into();
+        let before = runtime.snapshot();
+        let closes = kernel.0.borrow().closes.clone();
+        if outcomes.is_empty() {
+            runtime.bound.left = 0;
+        }
+        assert!(runtime.write_native_oracle(&mut [0; 4096]).is_err());
+        let calls = kernel.0.borrow().serial_requests.len();
+        assert_eq!(calls, outcomes.len());
+        assert_eq!(
+            kernel.0.borrow().serial_output.len(),
+            if outcomes == [3, -32] { 3 } else { 0 }
+        );
+        runtime.contain().unwrap_err();
+        assert_eq!(kernel.0.borrow().serial_requests.len(), calls);
+        assert_eq!(kernel.0.borrow().closes, closes);
+        assert_eq!(runtime.bound.reserved, before.reserved - 2);
+        let after = runtime.snapshot();
+        runtime.contain().unwrap_err();
+        assert_eq!(runtime.snapshot(), after);
     }
 }

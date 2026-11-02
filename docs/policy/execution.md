@@ -135,6 +135,20 @@ answer establishes no real prompt, job control, login, external command, cold
 persistence, package or R1 acceptance. Further consequential deviations still go
 to Cam; ordinary bounded corrections do not need another permission question.
 
+### Fixed diagnostic evidence decision —2026-11-02
+
+Cam [approved bounded diagnostic evidence](https://github.com/gonz0w/Aether/issues/137#issuecomment-6578169276)
+for the fixed issue137 builtin workload. Completed actual route/known-defect/
+structural checks plus one guarded diagnostic workload may establish scoped fit,
+replacing proposal03's complete pre-image startup/parser/handler stack and peak
+heap proof prerequisite for this experiment. Keep all numerical memory/time/
+request/mutation, authority, no-network/disposable-media, finite-attempt/source-
+binding and known-cleanup limits unchanged. Fresh concrete image/media/consumer
+review still precedes execution. No unchanged or uncertain-effect retry is
+selected; failures are diagnosed before a fresh reviewed candidate. This grants
+no exact/general peak demand, external-command/job-control/login, cold recovery,
+package or R1 qualification. The earlier scoped design approval stays effective.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

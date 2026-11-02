@@ -9,9 +9,9 @@ not evidence that a prompt or runtime qualification has passed.
 ## Current offline evidence
 
 The selected source is implemented and separately reviewed. The fresh Zsh/tinfo
-executable is1,273,720 bytes and fits313 pages including the existing mapped stack;
-its initialized TLS remains4 bytes. The Rust Owner uses43,624/49,152 code bytes,
-3,408/4,096 Runtime bytes, the existing4,096-byte workspace and6,144/8,184 bytes
+executable is1,274,352 bytes and fits314 pages including the existing mapped stack;
+its initialized TLS remains4 bytes. The Rust Owner uses44,376/49,152 code bytes,
+3,408/4,096 Runtime bytes, the existing4,096-byte workspace and6,152/8,184 bytes
 under the unchanged conservative compiled stack inspector. Real producer-bound
 namespace epoch and in-place construction regressions cover the two corrected
 integration defects. These measurements are offline fit, not target execution.
@@ -30,10 +30,12 @@ settings and normal exit with known process cleanup. This does not qualify the
 future QEMU serial PTY or actual Zsh. The fixed proposed command input is34 bytes
 including CR; old terminal-fixture input lengths are not reused as its oracle.
 
-The selected proposal explicitly requires complete new startup/parser/handler
-stack and peak heap assessment before image selection. That prerequisite remains
-open. No kernel image or guest is selected here; the owning issue must resolve
-that boundary before moving demand measurement into an actual diagnostic run.
+Cam's [diagnostic evidence decision](../../docs/policy/execution.md#fixed-diagnostic-evidence-decision-2026-11-02)
+replaces the complete pre-image peak-proof prerequisite for this fixed builtin
+experiment. Completed actual route/known-defect/structural checks plus a guarded
+workload may establish scoped fit under all existing limits. Complete/exact/general
+peak demand remains unclaimed. Fresh image/media/consumer review still precedes
+execution; no image, guest or successful workload is claimed here yet.
 
 The private development workspace provides these bounded recipes after their
 exact source/tool freeze and lead release:
@@ -51,6 +53,31 @@ executables/maps/objects are retained only through review/checkpoint, then remov
 Current dependencies stay separately pinned. One interrupted earlier host test
 has unknown child-cleanup evidence and remains quarantined rather than reused or
 counted as passing; later completed checks retain their distinct identities.
+
+## Fixed diagnostic observation
+
+The selected diagnostic build adds `AEFD_ZSH_DIAGNOSTIC` to the filesystem
+provider only. One four-byte BSS observation requires a real `tgetent` return1,
+no failed `tgetent`, and a positive authenticated terminal read while real Zsh
+`zleactive` is1 before and after the read. An otherwise-zero app exit becomes144
+if that observation is missing; cleanup failure141 retains precedence. This
+observation adds no TLS, allocation, syscall or capability.
+
+After both checked normal exits, namespace disconnect/export, backing reclaim
+and admission-mode restoration, the Rust Owner writes one exact49-byte row:
+
+```text
+
+AETHER ZSH OWNER v=1 requests=NN mode_cleanup=0
+```
+
+`NN` is the actual two-digit whole-session count14..96. The row includes its
+leading and trailing LF, uses the existing workspace and bounded console writes,
+and records confirmed partial prefixes without replay. `mode_cleanup=0` records
+the Owner's checked restoration to admission mode; it does not establish that
+Zsh explicitly requested restoration. The matched expected-six engine normal
+exit and export checks supply mutation completion evidence; this row invents no
+mutation count. Default providers and old machine records remain unchanged.
 
 ## Authority and lifecycle
 
