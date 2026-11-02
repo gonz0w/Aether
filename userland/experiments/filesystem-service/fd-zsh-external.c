@@ -400,6 +400,12 @@ int __wrap_main(int argc, char **argv)
 #endif
         bootstrap() || ready())
         failed();
-    char *arguments[] = {"zsh", "-f", "-i", "+m", NULL};
+    /* Zsh metafies argv in place, including each ASCII trailing NUL. Keep
+     * pointees and vector writable through real main and checked exit. */
+    char program[] = "zsh";
+    char no_rcs[] = "-f";
+    char interactive[] = "-i";
+    char no_monitor[] = "+m";
+    char *arguments[] = {program, no_rcs, interactive, no_monitor, NULL};
     __wrap__exit(__real_main(4, arguments));
 }
