@@ -252,3 +252,47 @@ and workers require direct UART operations to return unsupported(-38). This does
 not extend006's serial contract; a composed serial session still needs explicit
 input/output and grant-lifetime qualification. See the
 [session admission contract](NATIVE-SHELL-STARTUP.md#aenmx007-admission-and-channel-integration--2026-09-24).
+
+
+## Selected terminal mode drain observation —2026-11-01
+
+The default-off boolean `-Dnative-tty-mode-probe=true` adds one scalar query to
+only the current private BSP ABI31 ordinary-app filesystem-owner closure. It
+rejects release, SMP, mktemp-reader, Zsh application and AF09 diagnostic profiles.
+Append only this option to that existing closure; no envelope, quota or grant
+changes. Older profiles retain their exact operation selection, including whether
+`0x26003` handoff is recognized. An unselected `0x26004` returns ENOSYS(-38)
+without hardware access.
+
+For selected int81 `0x26004`, RDI must be F001 and RSI/RDX/R10/R8/R9 must all be
+zero. The existing exact live holder/recipient slot, generation, admission,
+nonterminal and closed-grant rules apply before hardware. Reserved scalars return
+EINVAL(-22), wrong holder/token EACCES(-13), and closed grant EBADF(-9). One COM1
+line-status read returns0 only with valid TEMT(bit0x40); THRE(bit0x20) alone
+returns EAGAIN(-11). All-ones status or TEMT without THRE returns EIO(-5). This
+selected profile enables existing RX-error retention before every LSR poll,
+including earlier byte/diagnostic writes before readiness or a drain query. The
+query also enables retention before its one read, preserves pending errors and
+never reads the receive-data register. Nonselected legacy monitoring stays
+unchanged. The query has no pointer, allocation, queue, UART mutation or kernel
+wait. Rust owns all mode policy and bounded waiting.
+
+The fact observed is preceding UART-accepted bytes leaving the transmitter.
+It does not prove remote receipt, exclusive COM1 use or native busy timing.
+Deterministic tests distinguish THRE from TEMT and retain first-read RX errors;
+actual image fit, native behavior and separate review remain distinct gates.
+
+Focused host checks (Zig0.16.0, no image/guest):
+
+```sh
+zig test kernel/native_sustained.zig
+zig test kernel/native_tty_mode.zig
+python3 -B -m unittest discover -s tests -p test_native_tty_mode.py -v
+python3 -B -m unittest discover -s tests -p test_build_policy.py -v
+```
+
+The Python check compiles the actual console operation body, verifies selected
+build arguments using `zig build --help`, and requires compiling omitted-holder
+and THRE-substitution controls to fail the same semantic assertions. Its host
+aggregate is300 seconds, children at most180 seconds, streams4MiB and compiler
+files16MiB. Owned temporary binaries/caches are removed after known cleanup.

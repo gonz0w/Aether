@@ -179,6 +179,19 @@ struct Observed {
     console: usize,
     terminal: usize,
     halted: usize,
+    mode_live: bool,
+    tx: VecDeque<i64>,
+    tx_default: i64,
+    tx_queries: usize,
+    tx_output_lengths: Vec<usize>,
+    #[cfg(native_tty_mode_probe)]
+    mode_parks: Vec<u64>,
+    #[cfg(native_tty_mode_probe)]
+    mode_park_error: i64,
+    #[cfg(native_tty_mode_probe)]
+    mode_die_on_park: bool,
+    mode_query_tick: Option<u64>,
+    fail_write_code: i64,
 }
 fn fixture() -> NativeBoundary {
     NativeBoundary(Rc::new(RefCell::new(Observed {
@@ -216,6 +229,19 @@ fn fixture() -> NativeBoundary {
         console: 0,
         terminal: 0,
         halted: 0,
+        mode_live: false,
+        tx: VecDeque::new(),
+        tx_default: 0,
+        tx_queries: 0,
+        tx_output_lengths: Vec::new(),
+        #[cfg(native_tty_mode_probe)]
+        mode_parks: Vec::new(),
+        #[cfg(native_tty_mode_probe)]
+        mode_park_error: 0,
+        #[cfg(native_tty_mode_probe)]
+        mode_die_on_park: false,
+        mode_query_tick: None,
+        fail_write_code: -5,
     })))
 }
 fn cap(object: u64, end: u64) -> u64 {
@@ -232,13 +258,16 @@ impl Kernel for NativeBoundary {
         );
         if writing {
             if seen.transmitted.len() >= seen.fail_write_at {
-                return -5;
+                return seen.fail_write_code;
             }
             let count = bytes.len().min(seen.fail_write_at - seen.transmitted.len());
             seen.transmitted.extend_from_slice(&bytes[..count]);
             count as i64
         } else {
             let count = bytes.len().min(seen.received.len());
+            if count == 0 {
+                seen.mode_live = false;
+            }
             for byte in &mut bytes[..count] {
                 *byte = seen.received.pop_front().unwrap();
             }
@@ -264,8 +293,37 @@ impl Control for NativeBoundary {
         seen.tick += seen.tick_step;
         (0, 1, tick)
     }
+    fn transmitter_empty(&mut self) -> i64 {
+        let mut seen = self.0.borrow_mut();
+        seen.calls += 1;
+        seen.tx_queries += 1;
+        let length = seen.output.len();
+        seen.tx_output_lengths.push(length);
+        if let Some(tick) = seen.mode_query_tick {
+            seen.tick = tick;
+        }
+        let default = seen.tx_default;
+        seen.tx.pop_front().unwrap_or(default)
+    }
+    #[cfg(not(native_tty_mode_probe))]
     fn park_events(&mut self, _: u64, _: Option<Deadline>) -> Status {
         panic!("NO_PARKED_DEADLINE_SUBSTITUTE");
+    }
+    #[cfg(native_tty_mode_probe)]
+    fn park_events(&mut self, _: u64, deadline: Option<Deadline>) -> Status {
+        let mut seen = self.0.borrow_mut();
+        seen.calls += 1;
+        let tick = deadline.unwrap().get();
+        seen.mode_parks.push(tick);
+        if seen.mode_die_on_park {
+            seen.mode_live = false;
+            seen.app_final = (2, 0, 1);
+        }
+        if seen.mode_park_error != 0 {
+            return (seen.mode_park_error, u64::MAX, u64::MAX);
+        }
+        seen.tick = tick;
+        (-110, u64::MAX, u64::MAX)
     }
     fn ctl(&mut self, op: u64, handle: u64, _: u64) -> Status {
         let mut seen = self.0.borrow_mut();
@@ -306,6 +364,8 @@ impl Control for NativeBoundary {
                         return (0, 0, 0);
                     }
                     seen.engine_final
+                } else if seen.mode_live {
+                    (0, 0, 0)
                 } else {
                     seen.app_final
                 }
@@ -364,7 +424,7 @@ impl Control for NativeBoundary {
                     || cfg!(any(
                         native_tty_byte_probe,
                         native_tty_descriptor_probe,
-                        native_tty_duplex_probe
+                        any(native_tty_duplex_probe, native_tty_mode_probe)
                     ))),
             "SELECTED_DIRECTION"
         );
@@ -437,7 +497,7 @@ fn workload(boundary: &NativeBoundary) {
     if cfg!(any(
         native_tty_byte_probe,
         native_tty_descriptor_probe,
-        native_tty_duplex_probe
+        any(native_tty_duplex_probe, native_tty_mode_probe)
     )) {
         seen.received.extend(frame(3, 0, b""));
     }
@@ -486,7 +546,7 @@ fn launch_rejection_retains_four_app_ends_and_exact_cleanup_reserve() {
 #[cfg(not(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 )))]
 fn handoff_preserves_both_greetings_and_publishes_exact_startup() {
     let boundary = fixture();
@@ -721,7 +781,7 @@ fn partial_reply_unknown_never_replayed() {
 #[cfg(not(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 )))]
 fn stream_only_rejects_other_families_before_effects() {
     let mut exec = [0; 32];
@@ -818,7 +878,7 @@ fn owner_reserve_covers_post_admission_fault_and_close_errors() {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn selected_startup_admits_exact_three_sources_and_no_mode() {
@@ -828,7 +888,10 @@ fn selected_startup_admits_exact_three_sources_and_no_mode() {
     let seen = boundary.0.borrow();
     assert_eq!(
         &seen.transmitted[112..124],
-        if cfg!(any(native_tty_descriptor_probe, native_tty_duplex_probe)) {
+        if cfg!(any(
+            native_tty_descriptor_probe,
+            any(native_tty_duplex_probe, native_tty_mode_probe)
+        )) {
             &[4, 0, 0, 0, 4, 1, 0, 0, 4, 2, 0, 0]
         } else {
             &[1, 0, 0, 0, 1, 1, 0, 0, 1, 2, 0, 0]
@@ -857,7 +920,7 @@ fn selected_startup_admits_exact_three_sources_and_no_mode() {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
@@ -884,7 +947,7 @@ fn selected_binary_nul_short_read_pending_and_three_closes_settle() {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
@@ -921,7 +984,7 @@ fn selected_direction_zero_and_closed_alias_denials_have_no_serial_effect() {
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() {
@@ -949,7 +1012,7 @@ fn selected_unknown_serial_completion_never_sends_fabricated_reply_or_replays() 
 #[cfg(any(
     native_tty_byte_probe,
     native_tty_descriptor_probe,
-    native_tty_duplex_probe
+    any(native_tty_duplex_probe, native_tty_mode_probe)
 ))]
 #[test]
 fn selected_foreign_stale_and_wrong_family_headers_deny_before_effect() {
@@ -979,7 +1042,7 @@ fn selected_foreign_stale_and_wrong_family_headers_deny_before_effect() {
     );
 }
 
-#[cfg(native_tty_duplex_probe)]
+#[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
 #[test]
 fn selected_duplex_attestation_checks_real_terminal_caller_generation_rights_and_source() {
     use serial_tty::{Caller, Mode, Rights, Terminal};
@@ -987,7 +1050,15 @@ fn selected_duplex_attestation_checks_real_terminal_caller_generation_rights_and
         identity: 77,
         generation: 1,
     };
-    let rights = [Rights::READ, Rights::WRITE, Rights::WRITE];
+    let rights = [
+        if cfg!(native_tty_mode_probe) {
+            Rights::READ.union(Rights::MODE)
+        } else {
+            Rights::READ
+        },
+        Rights::WRITE,
+        Rights::WRITE,
+    ];
     let (mut terminal, refs) = Terminal::admit(41, caller, rights, Mode::IMMEDIATE).unwrap();
     let sources = core::array::from_fn(|i| fd_startup::Source {
         reference: 0x7a000001 | (i as u32) << 16,
@@ -1021,7 +1092,11 @@ fn selected_duplex_attestation_checks_real_terminal_caller_generation_rights_and
         [Rights::WRITE, Rights::WRITE, Rights::WRITE],
         [Rights::READ, Rights::READ, Rights::WRITE],
         [
-            Rights::READ.union(Rights::MODE),
+            if cfg!(native_tty_mode_probe) {
+                Rights::READ
+            } else {
+                Rights::READ.union(Rights::MODE)
+            },
             Rights::WRITE,
             Rights::WRITE,
         ],
@@ -1043,4 +1118,173 @@ fn selected_duplex_attestation_checks_real_terminal_caller_generation_rights_and
     assert!(
         native_app_runtime::validate_terminal_sources(&terminal, &refs, caller, &sources).is_err()
     );
+}
+
+#[cfg(native_tty_mode_probe)]
+fn control_frame(op: u32, revision: u64, bits: u32, action: u32) -> [u8; 32] {
+    let mut raw = [0; 32];
+    raw[..4].copy_from_slice(&op.to_le_bytes());
+    raw[4..8].copy_from_slice(&native_app_runtime::tty_mode::CONTROL.to_le_bytes());
+    raw[8..12].copy_from_slice(&action.to_le_bytes());
+    raw[16..24].copy_from_slice(&revision.to_le_bytes());
+    if op == 0x11 {
+        raw[24..28].copy_from_slice(&bits.to_le_bytes());
+        raw[28] = 1;
+    }
+    raw
+}
+#[cfg(native_tty_mode_probe)]
+fn mode_workload(boundary: &NativeBoundary, requests: &[[u8; 32]]) {
+    let mut seen = boundary.0.borrow_mut();
+    seen.mode_live = true;
+    for request in requests {
+        seen.received.extend(request);
+    }
+}
+#[cfg(native_tty_mode_probe)]
+#[test]
+fn mode_busy_drain_rechecks_parks_serializes_and_restores_actual_cr() {
+    let boundary = fixture();
+    mode_workload(
+        &boundary,
+        &[
+            frame(2, 1, b"before"),
+            control_frame(0x10, 0, 0, 0),
+            control_frame(0x11, 1, 1, 1),
+            frame(2, 1, b"after"),
+            frame(1, 0, &[0; 2]),
+            control_frame(0x11, 2, 0, 1),
+            frame(1, 0, &[0; 2]),
+            frame(3, 0, b""),
+            frame(3, 1, b""),
+            frame(3, 2, b""),
+        ],
+    );
+    {
+        let mut seen = boundary.0.borrow_mut();
+        seen.tx.extend([-11, -11, 0]);
+        seen.input.extend(b"\rX\rY");
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+    let seen = boundary.0.borrow();
+    assert_eq!(seen.mode_parks.len(), 1);
+    assert_eq!(seen.tx_queries, 4);
+    assert_eq!(&seen.tx_output_lengths[..3], &[6, 6, 6]);
+    assert_eq!(seen.output, b"beforeafter");
+    assert_eq!(
+        &seen.transmitted[304 + 4 * 32 + 16..304 + 4 * 32 + 18],
+        b"\nX"
+    );
+    assert_eq!(
+        &seen.transmitted[304 + 6 * 32 + 16..304 + 6 * 32 + 18],
+        b"\rY"
+    );
+    assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+}
+#[cfg(native_tty_mode_probe)]
+#[test]
+fn mode_busy_observe_ready_avoids_park_and_host_interrupt_has_no_commit() {
+    for interrupt in [false, true] {
+        let boundary = fixture();
+        mode_workload(
+            &boundary,
+            &[
+                control_frame(0x10, 0, 0, 0),
+                control_frame(0x11, 1, 1, 1),
+                control_frame(0x10, 0, 0, 0),
+                frame(3, 0, b""),
+                frame(3, 1, b""),
+                frame(3, 2, b""),
+            ],
+        );
+        boundary
+            .0
+            .borrow_mut()
+            .tx
+            .extend(if interrupt { [-4, 0] } else { [-11, 0] });
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(runtime.run(&mut [0; 4096]), Err(-5));
+        let seen = boundary.0.borrow();
+        assert!(seen.mode_parks.is_empty());
+        let status = i32::from_le_bytes(seen.transmitted[336..340].try_into().unwrap());
+        assert_eq!(status, if interrupt { -4 } else { 0 });
+        assert_eq!(seen.transmitted[304 + 2 * 32 + 24], u8::from(!interrupt));
+        assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+    }
+}
+#[cfg(native_tty_mode_probe)]
+#[test]
+fn mode_deadline_equality_busy_expiry_and_peer_death_precede_commit_cleanup_is_local() {
+    for case in 0..3 {
+        let boundary = fixture();
+        mode_workload(&boundary, &[control_frame(0x11, 1, 1, 1)]);
+        {
+            let mut seen = boundary.0.borrow_mut();
+            if case == 0 {
+                seen.mode_query_tick = Some(6000);
+            } else {
+                seen.tx_default = -11;
+            }
+            if case == 2 {
+                seen.mode_die_on_park = true;
+            }
+        }
+        let mut runtime = Runtime::new(boundary.clone()).unwrap();
+        assert_eq!(
+            runtime.run(&mut [0; 4096]),
+            Err(if case == 2 { -125 } else { -110 })
+        );
+        assert_eq!(
+            runtime.snapshot().mode_state,
+            Some((false, 1)),
+            "DRAIN_BEFORE_SINGLE_COMMIT"
+        );
+        assert!(
+            runtime.snapshot().left > 900_000,
+            "ORIGINAL_ABSOLUTE_DEADLINE_NOT_ATTEMPT_EXHAUSTION"
+        );
+        assert!(
+            boundary
+                .0
+                .borrow()
+                .mode_parks
+                .iter()
+                .all(|tick| *tick <= 6000),
+            "ORIGINAL_ABSOLUTE_DEADLINE_NEVER_RENEWS"
+        );
+        let queries = boundary.0.borrow().tx_queries;
+        assert_eq!(runtime.contain(), Err(-5));
+        assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+        assert_eq!(
+            boundary.0.borrow().tx_queries,
+            queries,
+            "NO_CLEANUP_DRAIN_AFTER_STOP"
+        );
+    }
+}
+#[cfg(native_tty_mode_probe)]
+#[test]
+fn mode_commit_with_lost_reply_is_known_server_state_never_a_fabricated_eintr_reply() {
+    let boundary = fixture();
+    mode_workload(
+        &boundary,
+        &[control_frame(0x10, 0, 0, 0), control_frame(0x11, 1, 1, 0)],
+    );
+    {
+        let mut seen = boundary.0.borrow_mut();
+        seen.fail_write_at = 336;
+        seen.fail_write_code = -4;
+    }
+    let mut runtime = Runtime::new(boundary.clone()).unwrap();
+    assert_eq!(runtime.run(&mut [0; 4096]), Err(-4));
+    assert_eq!(
+        runtime.snapshot().mode_state,
+        Some((true, 2)),
+        "COMMIT_RETAINED_AFTER_UNKNOWN_REPLY"
+    );
+    assert_eq!(boundary.0.borrow().transmitted.len(), 336);
+    assert_eq!(runtime.contain(), Err(-5));
+    assert_eq!(runtime.snapshot().mode_cleanup, Some(0));
+    assert_eq!(runtime.snapshot().mode_state, Some((false, 3)));
 }

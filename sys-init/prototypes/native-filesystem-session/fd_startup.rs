@@ -2,14 +2,26 @@
 #![no_std]
 //! Proposed AEFDB001 producer. Labels require actual owner admission/delegation.
 use abi29_dispatch_core::startup::{Identity, greeting};
-#[cfg(all(any(native_tty_descriptor_probe, native_tty_duplex_probe), fs_file16))]
+#[cfg(all(
+    any(
+        native_tty_descriptor_probe,
+        any(native_tty_duplex_probe, native_tty_mode_probe)
+    ),
+    fs_file16
+))]
 compile_error!("terminal bindings cannot select file16 startup");
-pub const DUPLEX_BINDINGS: bool = cfg!(native_tty_duplex_probe);
-pub const TERMINAL_BINDINGS: bool = cfg!(any(native_tty_descriptor_probe, native_tty_duplex_probe));
+pub const MODE_BINDINGS: bool = cfg!(native_tty_mode_probe);
+pub const DUPLEX_BINDINGS: bool = cfg!(any(native_tty_duplex_probe, native_tty_mode_probe));
+pub const TERMINAL_BINDINGS: bool = cfg!(any(
+    native_tty_descriptor_probe,
+    any(native_tty_duplex_probe, native_tty_mode_probe)
+));
 pub const BYTES: usize = 304;
 pub const FILE_SLOTS_16: bool = cfg!(fs_file16);
 pub const FIRST_FILE_FD: u8 = if FILE_SLOTS_16 { 0 } else { 3 };
-pub const MAGIC: &[u8; 8] = if DUPLEX_BINDINGS {
+pub const MAGIC: &[u8; 8] = if MODE_BINDINGS {
+    b"AEFDB005"
+} else if DUPLEX_BINDINGS {
     b"AEFDB004"
 } else if TERMINAL_BINDINGS {
     b"AEFDB003"
@@ -18,7 +30,9 @@ pub const MAGIC: &[u8; 8] = if DUPLEX_BINDINGS {
 } else {
     b"AEFDB001"
 };
-pub const MAP_MAGIC: &[u8; 8] = if DUPLEX_BINDINGS {
+pub const MAP_MAGIC: &[u8; 8] = if MODE_BINDINGS {
+    b"AEFDT005"
+} else if DUPLEX_BINDINGS {
     b"AEFDT004"
 } else if TERMINAL_BINDINGS {
     b"AEFDT003"
@@ -172,6 +186,7 @@ pub fn encode(plan: &Plan, output: &mut [u8; BYTES]) -> Result<(), i32> {
             0
         },
     );
+    put(output, 300, if MODE_BINDINGS { 0x7d000001 } else { 0 });
     Ok(())
 }
 fn put(output: &mut [u8; BYTES], offset: usize, value: u32) {

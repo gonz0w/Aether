@@ -226,6 +226,13 @@ pub fn build(b: *std.Build) void {
         @panic("mktemp reader capture requires its exact private BSP read-only block profile");
     options.addOption(bool, "native_mktemp_reader", native_mktemp_reader);
 
+    const native_tty_mode_probe = b.option(bool, "native-tty-mode-probe", "Private ABI31 ordinary-app console-holder TEMT observation") orelse false;
+    if (native_tty_mode_probe and (release_artifact or smp or native_c_image == null or
+        !native_fs_session or !native_fs_session_init or !native_fs_owner_data or !native_fs_owner_stack or
+        native_fs_application_profile or native_mktemp_reader or af09_diagnostic or service_lifetime))
+        @panic("TTY mode probe requires its private BSP ABI31 ordinary-app filesystem owner closure");
+    options.addOption(bool, "native_tty_mode_probe", native_tty_mode_probe);
+
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));
     options.addOption(bool, "native_exec_token", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-token", "Ignore replacement publication token"));

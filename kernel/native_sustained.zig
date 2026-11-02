@@ -177,6 +177,13 @@ pub const SerialStatus = struct {
         if (self.enabled) self.errors |= status & 0x1e;
         return status;
     }
+    // Source exposes only a line-status read, never the receive-data register.
+    pub fn transmitterEmpty(self: *SerialStatus, source: anytype) i64 {
+        self.enabled = true;
+        const status = self.observe(source.read());
+        if (status == 0xff or (status & 0x40 != 0 and status & 0x20 == 0)) return -5;
+        return if (status & 0x40 != 0) 0 else -11;
+    }
     pub fn ready(self: *SerialStatus, status: u8) bool {
         self.enabled = true;
         _ = self.observe(status);
@@ -207,4 +214,57 @@ test "serial status retains read-cleared errors across readiness and transmit po
     _ = status.observe(0x22); // Error first observed while polling for transmit readiness.
     try std.testing.expect(status.ready(0));
     try std.testing.expect(status.takeError(0));
+}
+
+test "transmitter empty requires TEMT with THRE and observes one status without consuming RX" {
+    const Source = struct {
+        status: u8,
+        reads: usize = 0,
+        receive: [3]u8 = .{ 0, 13, 255 },
+        pub fn read(self: *@This()) u8 {
+            self.reads += 1;
+            return self.status;
+        }
+    };
+    for ([_]u8{ 0, 1, 0x20, 0x21, 0x40, 0x41, 0x60, 0x61, 0xff }) |sample| {
+        var status: SerialStatus = .{};
+        var source: Source = .{ .status = sample };
+        const expected: i64 = switch (sample) {
+            0x40, 0x41, 0xff => -5,
+            0x60, 0x61 => 0,
+            else => -11,
+        };
+        try std.testing.expectEqual(expected, status.transmitterEmpty(&source));
+        try std.testing.expectEqual(@as(usize, 1), source.reads);
+        try std.testing.expectEqualSlices(u8, &.{ 0, 13, 255 }, &source.receive);
+        try std.testing.expect(status.enabled);
+    }
+}
+
+test "first transmitter observation retains RX errors through later polls and reader consumption" {
+    const Source = struct {
+        status: u8,
+        pub fn read(self: *@This()) u8 {
+            return self.status;
+        }
+    };
+    for ([_]u8{ 0x02, 0x04, 0x08, 0x10 }) |error_bit| {
+        var status: SerialStatus = .{};
+        var source: Source = .{ .status = 0x20 | error_bit };
+        try std.testing.expectEqual(@as(i64, -11), status.transmitterEmpty(&source));
+        try std.testing.expectEqual(error_bit, status.errors);
+        source.status = 0x60;
+        try std.testing.expectEqual(@as(i64, 0), status.transmitterEmpty(&source));
+        _ = status.observe(0x60); // Ordinary transmit polling must not erase it.
+        try std.testing.expectEqual(error_bit, status.errors);
+        try std.testing.expect(status.takeError(0));
+        try std.testing.expect(!status.takeError(0));
+        try std.testing.expect(!status.ready(0));
+    }
+    var pending: SerialStatus = .{};
+    try std.testing.expect(pending.ready(0x02));
+    var source: Source = .{ .status = 0x64 };
+    try std.testing.expectEqual(@as(i64, 0), pending.transmitterEmpty(&source));
+    try std.testing.expectEqual(@as(u8, 0x06), pending.errors);
+    try std.testing.expect(pending.takeError(0));
 }

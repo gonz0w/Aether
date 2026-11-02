@@ -467,3 +467,84 @@ fn readonly_access_validates_rights_caller_and_retired_reference() {
     terminal.close(CALLER, refs.stdin).unwrap();
     assert!(terminal.access(CALLER, &refs.stdin).is_err());
 }
+
+#[test]
+fn failed_client_mode_change_rejects_without_mutation() {
+    let (mut terminal, refs) = admitted();
+    let mut saved = terminal.snapshot(CALLER, &refs.stdin).unwrap();
+    assert_eq!(
+        terminal.write(CALLER, &refs.stdout, b"x", |_, _| Completion {
+            count: 0,
+            stop: Stop::Unknown
+        }),
+        Err(Error::UnknownCompletion)
+    );
+    assert_eq!(
+        terminal.apply_now(CALLER, &refs.stdin, &mut saved, request(true)),
+        Err(Error::UnknownCompletion),
+        "FAILED_CLIENT_MODE_GUARD"
+    );
+    assert_eq!(terminal.mode, Mode::IMMEDIATE);
+}
+
+#[test]
+fn trusted_private_restore_survives_unknown_io_and_all_public_closes() {
+    let (mut terminal, refs) = admitted();
+    let private = terminal.duplicate(CALLER, &refs.stdin).unwrap();
+    let mut baseline = terminal.snapshot(CALLER, &refs.stdin).unwrap();
+    terminal
+        .apply_now(CALLER, &refs.stdin, &mut baseline, request(true))
+        .unwrap();
+    terminal
+        .write(CALLER, &refs.stdout, b"x", |_, _| Completion {
+            count: 0,
+            stop: Stop::Unknown,
+        })
+        .unwrap_err();
+    for reference in [refs.stdin, refs.stdout, refs.stderr] {
+        terminal.close(CALLER, reference).unwrap();
+    }
+    assert!(
+        terminal
+            .restore(CALLER, &refs.stdin, &mut baseline)
+            .is_err()
+    );
+    terminal.restore(CALLER, &private, &mut baseline).unwrap();
+    assert_eq!(
+        terminal.mode,
+        Mode::IMMEDIATE,
+        "PRIVATE_LOCAL_BASELINE_RESET"
+    );
+    assert_eq!(terminal.close(CALLER, private), Ok(0));
+}
+
+#[test]
+fn mode_revision_exhaustion_has_no_mutation() {
+    let (mut t, b) = admitted();
+    let mut snapshot = t.snapshot(CALLER, &b.stdin).unwrap();
+    t.revision = u64::MAX;
+    snapshot.expected_revision = u64::MAX;
+    assert_eq!(
+        t.apply_now(CALLER, &b.stdin, &mut snapshot, request(true)),
+        Err(Error::Exhausted)
+    );
+    assert_eq!(t.mode, Mode::IMMEDIATE);
+    assert_eq!(t.revision, u64::MAX);
+}
+
+#[test]
+fn data_reference_cannot_query_or_snapshot_mode() {
+    let (t, b) = Terminal::admit(
+        41,
+        CALLER,
+        [Rights::READ, Rights::WRITE, Rights::WRITE],
+        Mode::IMMEDIATE,
+    )
+    .unwrap();
+    assert_eq!(
+        t.mode_state(CALLER, &b.stdin),
+        Err(Error::Denied),
+        "EXPLICIT_CORE_MODE_GRANT"
+    );
+    assert!(matches!(t.snapshot(CALLER, &b.stdin), Err(Error::Denied)));
+}

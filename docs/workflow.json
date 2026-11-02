@@ -100,7 +100,7 @@
     },
     "docs/NATIVE-CONSOLE.md": {
       "status": "experimental-reference",
-      "validation": "Run console_smoke.py with pinned SDK as documented.",
+      "validation": "Use the pinned console commands for their existing profiles; selected native-tty-mode-probe additionally uses the current query/model/profile controls and separately reviewed fixed native mode experiment in issue122. Match exact artifacts; private qualification inputs are separate.",
       "gap": "Independent consumer adoption, interrupt service and TTY semantics remain open."
     },
     "docs/NATIVE-BLOCK.md": {
@@ -2605,6 +2605,26 @@
       "gaps": "No full ttyname/Zsh, MODE/termios/drain, NONBLOCK, permanent reopen factory or new native grant. Merged UART requires exact qualified C assertions/source and linked libc route; persistence remains separate.",
       "budget_seconds": 300,
       "owner": "Aether-userland/sys-init; issue119 scoped duplex acquisition"
+    },
+    {
+      "id": "AT-CONSOLE-TEMT",
+      "reference": "docs/NATIVE-CONSOLE.md",
+      "invariants": "Approved selected native-tty-mode-probe only; exact existing F001 holder/lifetime/closed checks and zero reserved args before one LSR observation; actual TEMT with RX-error retention, no RX consumption or kernel wait; older dispatch/default profiles unchanged.",
+      "command": "Use the changed pure kernel/SerialStatus and build-policy tests documented in NATIVE-CONSOLE plus existing affected permission/profile checks. The single mode native witness needs accepted source/fit/image/proposal first; hosted models exercise the changed pure modules.",
+      "oracle": "THRE-only is busy, valid TEMT completes, all-ones/impossible status fails, first RX errors survive transmit polls, and denied/unselected requests never touch hardware. Compiling THRE/guard omissions must fail the same assertions.",
+      "gaps": "No UART busy timing or remote receipt claim from native capture; no raw PIO, new kernel queue/wait, physical device qualification or full TTY.",
+      "budget_seconds": 300,
+      "owner": "Aether kernel; issue122 approved scalar transmitter-empty observation"
+    },
+    {
+      "id": "UL-NATIVE-TTY-MODE",
+      "reference": "userland/experiments/serial-tty/README.md",
+      "invariants": "Selected005 MODE control in the sole FD context; original live MODE reference authorizes public requests, private fourth alias only post-terminal cleanup; exact generation/revision, bounded32-byte schema and original6000-tick/1M budget. Factory offset296 preserved; control ref at300.",
+      "command": "Use focused actual core/owner/C/UBSan/no_std/format/Clippy tests and compiling authority/drain/revision/cleanup controls. Fresh actual app/Owner/kernel fit and libc/query routes precede one reviewed closed two-phase32-byte native exchange.",
+      "oracle": "Real tcgetattr/tcsetattr and ICRNL effect after physical drain, saved-mode restoration/rawCR, stale/unsupported/closed and unknown rejection, no replay, deadline/interruption before commit and private cleanup after all public aliases close.",
+      "gaps": "Native cancellation is not EINTR; host interruption coverage remains labelled. No full canonical/echo/ISIG/groups/ZLE/owner-death recovery, general control factory or R1 claim.",
+      "budget_seconds": 300,
+      "owner": "Aether-userland/sys-init; issue122 selected mode/drain/restore experiment"
     }
   ]
 }

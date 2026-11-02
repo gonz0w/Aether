@@ -13,6 +13,10 @@
 #define open64 aefd_test_open64
 #define fcntl aefd_test_fcntl
 #define isatty aefd_test_isatty
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+#define tcgetattr aefd_test_tcgetattr
+#define tcsetattr aefd_test_tcsetattr
+#endif
 #define dup aefd_test_dup
 #define dup2 aefd_test_dup2
 #define pipe aefd_test_pipe
@@ -115,6 +119,19 @@ long __aether_io(unsigned long op, unsigned long fd, unsigned long pointer,
         aefd_libc_io(&shell.context, op, fd, (uintptr_t)pointer, count);
     errno = saved;
     return (long)(result < -4095 ? -EIO : result);
+}
+#endif
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+int tcgetattr(int fd, struct termios *out)
+{
+    int saved = errno;
+    return (int)checked(aefd_libc_tcgetattr(&shell.context, fd, out), saved);
+}
+int tcsetattr(int fd, int action, const struct termios *in)
+{
+    int saved = errno;
+    return (int)checked(aefd_libc_tcsetattr(&shell.context, fd, action, in),
+                        saved);
 }
 #endif
 int isatty(int fd)
