@@ -46,6 +46,17 @@
 #endif
 /* Closed descriptor qualification profile; transport operations stay unchanged.
  */
+#if defined(AMK_NATIVE_TTY_MODE_PROBE) && !defined(AEFD_TERMINAL_MODE_BINDINGS)
+#define AEFD_TERMINAL_MODE_BINDINGS
+#endif
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+#ifndef AEFD_TERMINAL_DUPLEX_BINDINGS
+#define AEFD_TERMINAL_DUPLEX_BINDINGS
+#endif
+#ifndef AEFD_EXTERNAL_STARTUP
+#define AEFD_EXTERNAL_STARTUP
+#endif
+#endif
 #if defined(AMK_NATIVE_TTY_DUPLEX_PROBE) &&                                    \
     !defined(AEFD_TERMINAL_DUPLEX_BINDINGS)
 #define AEFD_TERMINAL_DUPLEX_BINDINGS
@@ -75,6 +86,13 @@
 #undef AEFD_STARTUP_MAGIC
 #define AEFD_MAP_MAGIC "AEFDT004"
 #define AEFD_STARTUP_MAGIC "AEFDB004"
+#endif
+#ifdef AEFD_TERMINAL_MODE_BINDINGS
+#undef AEFD_MAP_MAGIC
+#undef AEFD_STARTUP_MAGIC
+#define AEFD_MAP_MAGIC "AEFDT005"
+#define AEFD_STARTUP_MAGIC "AEFDB005"
+#define AEFD_MODE_CONTROL UINT32_C(0x7d000001)
 #endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U

@@ -27,6 +27,10 @@ fn call(op: u64, args: [u64; 6]) -> Status {
     super::host_trap::call(op, args)
 }
 impl Control for Native {
+    fn transmitter_empty(&mut self) -> i64 {
+        call(0x26004, [0xf001, 0, 0, 0, 0, 0]).0
+    }
+
     fn observe_events(&mut self) -> Status {
         call(0x2a000, [0xe002, 0, 0, 0, 0, 0])
     }

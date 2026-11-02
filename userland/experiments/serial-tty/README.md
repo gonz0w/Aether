@@ -271,3 +271,54 @@ fixture. Focused source checks cover association/rights, exact path/flags, IDs,
 full-map no-effects, dependency orders, lost components, both unknown-close
 positions and compiling semantic omissions. Target fit/native evidence is
 separate; this does not qualify ttyname, modes, drain or full Zsh.
+
+## Selected MODE / physical drain experiment
+
+[Issue122](https://github.com/gonz0w/Aether/issues/122) selects
+`AMK_NATIVE_TTY_MODE_PROBE`, Rust `native_tty_mode_probe` and
+`AEFD_TERMINAL_MODE_BINDINGS` (implying duplex, terminal and external startup).
+`native-mode-probe.c` exports `amk_tty_mode_probe`; host
+`native-mode-tests.c` exports `amk_test_tty_mode_case` and includes the unchanged
+duplex host boundary fixture. The internal Rust `tty_mode.rs` is compiled within
+the owner, with no separate compilation unit.
+
+005 retains304/128-byte layouts. Offset296 remains the pipe factory. Only005
+uses offset300 for control reference0x7d000001; older selections require zero.
+Selected stdin receives READ|MODE, while data Source rights remain1/2/2. The
+original live MODE reference authorizes all public GET/SET/RESTORE requests,
+including controls through a surviving duplex FD. Its retirement rejects public
+controls even if stderr and the private cleanup alias survive.
+
+One baseline Snapshot and the existing fourth alias support trusted local reset
+after confirmed app stop. That alias is never published or used to authorize a
+client request. Unknown byte completion blocks client mode operations while the
+local baseline reset remains available through the private alias. Explicit
+RESTORE consumes the baseline and is the last mutation; POSIX save/restore uses
+SET with the current revision and keeps cleanup active. Cleanup outcomes are
+retained and cached; no fifth alias, takeover or automatic unknown retry exists.
+
+Requests/replies are the closed32-byte122 contract. Errors contain no authoritative
+tuple. Malformed/lost replies poison the whole context, and decreasing GET
+revisions reject before caching or publishing attributes. Strong tcgetattr and
+tcsetattr borrow the one context and use the pinned musl60-byte termios layout:
+immediate115200/8N1, only ICRNL mutable, VMIN1/VTIME0 fixed. Unsupported flags,
+characters and actions reject before wire effects; EFAULT covers NULL checks.
+Host checks compile these adapters against those same pinned headers, rather
+than the host termios layout; SDK source and library bytes remain unchanged.
+
+TCSADRAIN holds the copied request, validates original rights/revision/tuple,
+observes real TEMT through the selected holder-only0x26004 query, rechecks after
+observation and timed-parks to the next delivered tick or the original6000-tick
+deadline. Later application writes remain behind that request. Deadline equality
+wins, then original liveness/revision are checked again before one commit. Native
+cancellation125 enters containment. Explicit host interruption tests establish
+known precommit no-effects semantics; native signals/EINTR remain unavailable.
+
+The fixed consumer saves attributes on FD10, emits DRAIN, applies ICRNL using
+TCSADRAIN and exchanges the first16-byte payload after READY1. OUT1 contains the
+mapped CR. It restores the saved attributes using TCSADRAIN, emits READY2, and
+exchanges a fresh16-byte payload whose OUT2 retains raw CR. ERR/PASS, closes and
+normal app/engine finalization remain separate. Raw read/write/query attempts
+from the ordinary app deny. Native timing cannot establish the THRE/TEMT bit
+distinction; the separate pure kernel semantic control does. Full canonical,
+echo/ISIG/groups/ZLE, ttyname, successor recovery and R1 are outside this slice.

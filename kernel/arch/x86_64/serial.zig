@@ -17,6 +17,8 @@ fn in(port: u16) u8 {
 
 var input_status: @import("../../native_sustained.zig").SerialStatus = .{};
 fn lineStatus() u8 {
+    // Selected writes may poll before the first readiness or drain query.
+    if (@import("build_options").native_tty_mode_probe) input_status.enabled = true;
     return input_status.observe(in(0x3fd));
 }
 
@@ -64,4 +66,14 @@ pub fn writeByte(value: u8) bool {
 // Level observation only: preserve receive bytes and line errors for the grant holder.
 pub fn inputReady() bool {
     return input_status.ready(lineStatus());
+}
+
+// Selected scalar query. Enable error retention before the single read-clearing
+// LSR observation; receive data is never read here. The caller checks authority.
+pub fn transmitterEmpty() i64 {
+    return input_status.transmitterEmpty(struct {
+        pub fn read() u8 {
+            return in(0x3fd);
+        }
+    });
 }
