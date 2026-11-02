@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: BSD-2-Clause
 //! Native engine entry for the bounded service; requires matched provisioning.
 #![no_std]
+#[cfg(any(
+    all(fs_home_terminfo_six, fs_home_probe_three),
+    all(fs_home_terminfo_six, fs_af09_drain)
+))]
+compile_error!("fs_home_terminfo_six is incompatible with old-three or AF09 drain");
 #[cfg(not(test))]
 use core::arch::asm;
 use core::{ffi::c_void, ptr::NonNull};
@@ -16,14 +21,14 @@ use filesystem_service::{
     Stop,
 };
 
-#[cfg(not(fs_home_probe_three))]
+#[cfg(not(any(fs_home_probe_three, fs_home_terminfo_six)))]
 use filesystem_bridge::RuntimeUtc as EntryUtc;
 /// The fixed preparation profile accepts only observations in its recorded
 /// half-open UTC window. This delegates to the real shared provider and keeps
 /// no state, adjustment, reset authority or independent mutation ledger.
-#[cfg(fs_home_probe_three)]
+#[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
 struct EntryUtc;
-#[cfg(fs_home_probe_three)]
+#[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
 impl filesystem_bridge::policy::Clock for EntryUtc {
     fn utc(&mut self) -> Result<filesystem_bridge::policy::Utc, Error> {
         let value = filesystem_bridge::policy::Clock::utc(&mut filesystem_bridge::RuntimeUtc)?;

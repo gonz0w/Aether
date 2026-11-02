@@ -26,8 +26,11 @@ CASES = (
     ('tests::selected_clock_rechecks_second_bootstrap_readiness_and_request_mutation', 'HOME_CLOCK_RECHECK'))
 
 
-def check(record, work, proc, tools, deadline, expect_red=False):
+def check(record, work, proc, tools, deadline, expect_red=False, terminfo_six=False):
     require = home['require']
+    if type(terminfo_six) is not bool:
+        raise ValueError('closed terminfo-six clock selection required')
+    selection = 'fs_home_terminfo_six' if terminfo_six else 'fs_home_probe_three'
     frozen = {str(path): home['sha'](path) for path in EXTRA_SOURCES}
     record['home_probe_clock_sources'] = frozen
     pins = json.loads(home['PINS'].read_text())
@@ -47,7 +50,7 @@ def check(record, work, proc, tools, deadline, expect_red=False):
     folder = work / 'home-probe-clock'
     folder.mkdir()
     flags = [*home['cfg'](True), '--cfg', 'fs_home_wire', '--cfg', 'fs_home_native',
-        '--cfg', 'fs_home_activation', '--cfg', 'fs_home_probe_three']
+        '--cfg', 'fs_home_activation', '--cfg', selection]
     boundary = [arg for arg in home['COMMON'] if arg != '-Funsafe-code']
     crates = [('filesystem_metadata', 'metadata-lib.rs', []),
         ('filesystem_policy', 'owner.rs', ['filesystem_metadata']),
@@ -116,7 +119,7 @@ def check(record, work, proc, tools, deadline, expect_red=False):
                         'named selected clock method')
                     if expect_red:
                         require(marker.encode() in observed.stderr, 'named expected clock semantic red')
-        record['home_probe_clock'] = dict(selection='fs_home_probe_three', utc_min=1791290040,
+        record['home_probe_clock'] = dict(selection=selection, utc_min=1791290040,
             utc_max=1791290100, half_open=True, methods=[case for case, _ in CASES],
             expected_red=expect_red, production_counter=False, native_executed=False)
     finally:

@@ -1,10 +1,12 @@
 # Aether Zsh target-link status
 
-[Issue131](https://github.com/gonz0w/Aether/issues/131) selects the current offline
-build of actual pinned Zsh with the current SDK and terminal providers, following
-[issue130](https://github.com/gonz0w/Aether/issues/130)'s reviewed recommendation.
-The outcome is a real executable, provider-route inspection and structural fit;
-no kernel image or guest is selected by this work.
+[Issue134](https://github.com/gonz0w/Aether/issues/134) owns the current independent
+terminfo/provider preparation, following [issue133](https://github.com/gonz0w/Aether/issues/133).
+[Issue135](https://github.com/gonz0w/Aether/issues/135) restores the necessary
+selected engine inputs. [Issue131](https://github.com/gonz0w/Aether/issues/131)
+and PR132 established the external entry and first current-provider link.
+These are offline executable/input results; native startup and interactive Zsh
+remain separate acceptance.
 
 ## Current external entry
 
@@ -34,6 +36,22 @@ The build preserves the [required source/module closure](ZSH-CONSUMER.md), curre
 headers/CRT/libc, memory provider and scoped stdio adaptation. Host generators
 remain isolated; no target configure execution or SDK rebuild is selected.
 
+The scoped pinned-musl `fopen`, `__stdio_read` and `__stdio_seek` units call the
+entry's real open, vector/scalar read, seek and raw cleanup/status adapters.
+`fopen` open errors use libc errno; its internal close/fcntl calls retain raw
+negative errno without overwriting a failed allocation's errno. On this x86_64
+ABI the open adapter strips only musl's no-op `O_LARGEFILE` bit before existing
+readonly/terminal flag checks. No additional descriptor rights follow.
+
+The two-iovec reader validates both spans and their sum before effects, rejects
+overlap with the descriptor context, then reads one prefix into the first
+nonempty span through the existing guarded context. Each transfer is at most
+4096 bytes; a valid larger aggregate is allowed to return short. Confirmed bytes
+are published before the existing unmask/reentry boundary. There is no second
+4096-byte stack buffer or nested guard. This is a private stdio adapter, not a
+public general `readv` implementation. Path grants and FILE seek success are
+still unqualified.
+
 Inspect each new executable's actual libc-internal stdio, fcntl, memory and
 termination routes. A resolved public symbol does not establish its internal
 callers. Missing provider wiring can be corrected here; a required semantic
@@ -55,43 +73,65 @@ still requires sys-init into actual interactive serial Zsh and persistent OpenZF
 Exact build commands, input identities, failed attempts and results remain in
 compact local evidence; public replay requires the private prerequisites.
 
-## Current offline result
+## Current offline results
 
-The current Zsh/tinfo closure compiles and links with the selected current
-providers. The actual 1,268,656-byte executable passes the current application
-parser, loader layout and backing checks at 312 pages including the 16 stack
-pages. The ordinary profile rejects it. Its four-byte initialized TLS guard is
-inside a writable load segment and fits the existing TLS route. Remaining
-backing capacity does not establish runtime heap or stack sufficiency.
+The fresh Zsh/tinfo closure with the scoped stdio units is 1,270,160 bytes and
+passes the current application parser, loader layout and backing checks at
+313 pages including the 16 stack pages. The ordinary profile rejects it. Its
+four-byte initialized TLS guard fits existing storage. Actual linked readback
+confirms the three stdio routes reach the sole context and preserves the
+nonrecursive exit finalizer. Remaining backing capacity is not measured runtime
+heap or stack sufficiency.
 
-Scalar terminal input/status/modes and scoped buffered output reach the admitted
-context. Actual linked readback confirms that normal libc `exit` finishes its
-fini/stdio work, reaches the existing descriptor finalizer once, and terminates
-through real SDK `_Exit` without a wrapper cycle. Filesystem-backed terminfo
-remains blocked: ncurses reaches libc's
-internal `fopen` and buffered-read routes, which do not yet use admitted file
-Sources. The ordinary Owner's namespace/startup path also needs matching Zsh
-integration. These are concrete runtime work, not errors to hide with successful
-stubs. No kernel image, guest or interactive Zsh qualification follows from this
-build; the combined-profile guard remains in place.
+Pinned ncurses6.6 host `tic` and `infocmp` produced and inspected one 1,268-byte
+VT100 entry. Its twelve-stanza source closure, inherited notices and digest stay
+with one current dependency copy. The producer's hex `76` bucket does not select
+the target's layout: the actual target configuration has `MIXEDCASE_FILENAMES=1`
+and the format `%s/./%c/%s`. With the proposed controlled TERMINFO directory, that
+format gives `/home/.terminfo/./v/vt100`. No actual native lookup has run.
+
+Ncurses's database iterator requires directory metadata before retaining the
+TERMINFO directory, then `access(R_OK)` before opening the entry. Both are real
+remaining gates; unsupported `stat` cannot be treated only as Zsh's optional PWD
+probe. The new stdio routing does not provide namespace/path authority or make
+those queries succeed. Matching Owner startup/custody, truthful identity/cwd,
+frontend and runtime resource behavior also remain unqualified. The existing
+large-app+MODE guard stays intact.
+
+The old sealed engine requires exactly three mutations. The separate
+`fs_home_terminfo_six` frontend preserves all other clean-result checks and the
+original nine-mutation/96-request limits while requiring exactly six. Its fresh
+selected-input build passes current parser/layout/backing checks at 1,332 pages;
+this is offline fit, not executed six-mutation completion. See the
+[frontend contract](../experiments/filesystem-service/README.md#expected-six-terminfo-frontend).
+No kernel image, guest, prompt, login or R1 acceptance follows from these results.
 
 ## Focused checks and reproduction
 
 The [entry harness](../experiments/filesystem-service/fd-zsh-external-tests.c)
-links the actual entry, startup and descriptor core. Its nine host cases cover
+links the actual entry, startup and descriptor core. Its eleven host cases cover
 single initialization, identity/role refusal, startup/bootstrap/readiness errors,
 cleanup, FD10 scalar/vector I/O, partial source counts, errno, finished-state
 rejection and the `_Exit` delegation. A compiling omission of that delegation
 must fail the same cleanup assertion. Auxv, raw kernel calls and signal installation are host doubles;
-these tests do not run Zsh. A strict SDK target compile and named incompatible
-flag rejections check the selected target boundary.
+these tests do not run Zsh. The additional
+[stdio fixture](../experiments/filesystem-service/fd-zsh-stdio-tests.c) compiles
+three actual pinned consumer units. Only its host build omits unused x86 syscall
+declarations after redirecting every relevant call; strict target leaves retain
+the real headers. Named compiling span/errno/prefix omissions must fail the same
+behavior assertions. Host source/kernel/fdopen doubles are explicit, not native
+filesystem proof. A strict SDK target compile and named incompatible flag
+rejections check the selected target boundary.
 
 The private development workspace supplies the frozen `entry-checks.py` recipe
-and `tools/zsh-target-fit.py` coordinator recorded in issue131. The latter builds
+and `tools/zsh-target-fit.py` coordinator recorded in issues131/134. The latter builds
 actual Zsh/tinfo and runs current parser/layout/backing checks. Each uses the
 existing owned-process helper, a 300-second aggregate, 180-second child limits
 and bounded output. Public source alone cannot replay those private-input
-commands. Keep their compact results and failures; remove owned generated
+commands. The scoped data producer is `python3 -B tools/zsh-terminfo.py` after
+its recorded input freeze; its controls are
+`python3 -B -m unittest tools.test_zsh_terminfo -v`. These tools belong to the
+private development workspace. Keep their compact results and failures; remove owned generated
 binaries/maps/configuration after review and checkpoint under root retention.
 
 ## Historical ordinary-profile link

@@ -2461,10 +2461,10 @@
       "reference": "userland/docs/ZSH-TARGET-LINK.md",
       "owner": "Aether-userland",
       "budget_seconds": 300,
-      "command": "Use the focused current external-entry checks in ZSH-TARGET-LINK and the private bounded current-SDK Zsh/tinfo configure/link/parser coordinator selected by issue131. Exact private prerequisites required; no kernel/image/guest.",
+      "command": "Use the focused current external-entry and pinned stdio checks in ZSH-TARGET-LINK and the private bounded current-SDK Zsh/tinfo configure/link/parser coordinator selected by issue134. Exact private prerequisites required; no kernel/image/guest.",
       "invariants": "Authenticated required module/terminal closure, one real external startup context and same-context scalar/scoped stdio providers, isolated host generators, no target execution or success stubs. Preserve incompatible-provider/profile guards and approved resource bounds.",
-      "oracle": "Actual current compiler/link/config/provider-route outcomes and large-profile ELF/layout/backing/TLS checks with ordinary-profile refusal; focused wrong-entry/missing/duplicate-provider controls, truthful unsupported routes and source freeze.",
-      "gaps": "No public replay without private inputs; exact SDK/artifact measurements remain local. Matching runtime startup/namespace/terminfo and actual Zsh stack/heap/signals/stdio/exit must precede a guest. No native Zsh/groups/external-command/persistence or R1 qualification from a link."
+      "oracle": "Actual current compiler/link/config/provider-route outcomes and large-profile ELF/layout/backing/TLS checks with ordinary-profile refusal; focused missing/duplicate/wrong-entry and span/errno/prefix controls, truthful unsupported paths, nonrecursive cleanup and source freeze.",
+      "gaps": "No public replay without private inputs. Directory metadata/access, actual path Sources, namespace custody/startup and Zsh runtime resources remain gates. Target /./ lookup is source-derived, not native qualification; no prompt/groups/external/persistence/R1 claim."
     },
     {
       "id": "AT-ZSH-APPLICATION",
@@ -2645,6 +2645,16 @@
       "gaps": "Byte-oriented canonical proof is not grapheme editing or actualZsh/group/MONITOR/terminfo/readiness/R1 qualification; default SIGINT effects and TCSAFLUSH remain unsupported. No new kernel operation, service, queue framework or quota.",
       "budget_seconds": 300,
       "owner": "Aether userland/sys-init; issue128 reviewed canonical/ZLE mode step"
+    },
+    {
+      "id": "UL-ZSH-TERMINFO-INPUTS",
+      "reference": "userland/docs/ZSH-TARGET-LINK.md",
+      "owner": "Aether-userland; issues134/135 independent preparation",
+      "budget_seconds": 300,
+      "command": "Same-release private tools/zsh-terminfo.py and selected engine input-recovery recipe after frozen lead release; public python3 -B userland/experiments/filesystem-service/home_engine_build_tests.py; actual closed Rust launch/UTC controls in the owning recipe. No native run.",
+      "invariants": "One real compiled VT100 file with source closure/notices, no database-free fallback. Same-context stdio semantics; closed expected-six frontend retains oldthree/drain/default and all clean-result checks, original9/96/resource caps and old seal. Same-pin selected input recovery reuses the SDK.",
+      "oracle": "Actual tic/infocmp/data identities; source/semantic omission controls; old/new/mixed frontend validation and actual new Zsh/engine origin, ELF/layout/backing/TLS results with known cleanup. Raw/libc errno, partial prefix, EOF and unmask behavior remain truthful.",
+      "gaps": "Offline data is not persisted materialization; no activated custody/FILE/metadata/kernel composition, runtime heap/recursive stack/worker peak, native six-mutation completion, terminfo lookup or Zsh/R1 acceptance."
     }
   ]
 }

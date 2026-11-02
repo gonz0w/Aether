@@ -1310,3 +1310,43 @@ limits stayed fixed. Successful runs verified frozen inputs, known child stops
 and owned-output disposal. [Issue #88](https://github.com/gonz0w/Aether/issues/88)
 links exact receipts and failures and owns live quality, separate review and
 protected integration status.
+
+
+## Expected-six terminfo frontend
+
+[Issue134](https://github.com/gonz0w/Aether/issues/134) adds the closed Rust cfg
+`fs_home_terminfo_six`; [issue135](https://github.com/gonz0w/Aether/issues/135)
+restores its selected producer inputs. It is mutually exclusive with
+`fs_home_probe_three` and `fs_af09_drain`. The old default/three/drain paths and
+sealed engine remain unchanged. Exactly six mutations are necessary but not
+sufficient: existing finished-phase, readiness, disconnect, progress, status,
+close and nine-mutation/96-request checks still apply. The selected UTC
+expectation is identical to the old three-mutation fixture.
+
+The existing Python APIs `home_engine_build.build(..., terminfo_six=True)` and
+`home_probe_clock_checks.check(..., terminfo_six=True)` select the exact closed
+flag tuple; no arbitrary count parameter is accepted. The builder tests run
+from the component root:
+
+```sh
+python3 -B experiments/filesystem-service/home_engine_build_tests.py
+```
+
+Actual launch tests compile the production source under default, three, six and
+drain profiles. Mixed selections and omitted exact-count/UTC checks must fail
+their named oracles. The owning bounded recipe records the full Rust flags,
+Clippy/no_std checks and private prerequisites; public-only source does not
+supply a complete engine SDK/build environment.
+
+Generated selected C/library objects were unavailable after historical disposal.
+The new engine was built through the recorded same-pin recipe with the retained
+SDK/runtime, restoring only its selected object closure. Its actual 5,214,152-byte
+ELF passes current parser/layout/backing checks at 1,332 pages; checked Home C
+local frames from four `.su` sets are within 8,192 bytes. These are structural/local-frame results,
+not complete recursive/worker runtime peaks or native six-mutation completion.
+The new candidate does not replace the old sealed three-mutation dependency.
+
+No new namespace custody, FILE authority, kernel profile or guest is enabled by
+this frontend. The [Zsh target status](../../docs/ZSH-TARGET-LINK.md) separates
+actual stdio/data preparation from the remaining metadata, path, startup,
+resource and native gates.

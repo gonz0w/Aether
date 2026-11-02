@@ -8,7 +8,7 @@ const WRITER: u64 = 0x20002;
 unsafe extern "C" {
     fn home_reset(mode: u32);
     fn home_count(index: u32) -> u32;
-    #[cfg(fs_home_probe_three)]
+    #[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
     fn home_clock(seconds: u64, nanos: u64, after: u32);
     fn home_validate(result: *const HomeResult, protocol: *mut i32) -> i32;
 }
@@ -25,7 +25,7 @@ struct State {
     close_errors: [i64; 2],
     published: usize,
     publish_error: i64,
-    #[cfg(fs_home_probe_three)]
+    #[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
     advance_clock_on_ready: bool,
     fail_after: Option<usize>,
 }
@@ -46,7 +46,7 @@ pub unsafe fn trap(op: u64, endpoint: u64, pointer: u64, length: u64) -> i64 {
                 s.diagnostic_return.unwrap_or(8)
             }
             0x20004 => {
-                #[cfg(fs_home_probe_three)]
+                #[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
                 if s.advance_clock_on_ready {
                     // SAFETY: host-only UTC fixture setter, no live context mutation.
                     unsafe { home_clock(1791290100, 0, 0) };
@@ -586,7 +586,7 @@ fn rust_and_c_enforce_service_progress_states_without_erasing_committed_txg_zero
     }
 }
 
-#[cfg(fs_home_probe_three)]
+#[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
 #[test]
 fn selected_clock_accepts_only_the_half_open_window_before_first_effect() {
     for (seconds, allowed) in [
@@ -621,7 +621,7 @@ fn selected_clock_accepts_only_the_half_open_window_before_first_effect() {
         }
     }
 }
-#[cfg(fs_home_probe_three)]
+#[cfg(any(fs_home_probe_three, fs_home_terminfo_six))]
 #[test]
 fn selected_clock_rechecks_second_bootstrap_readiness_and_request_mutation() {
     for (after, phase, attempts) in [(1, 6, 1), (2, 0, 2)] {

@@ -2,6 +2,11 @@
 //! Separate AF09 executable owner; initialization policy, not a new service protocol.
 #![no_std]
 use core::ffi::c_void;
+#[cfg(any(
+    all(fs_home_terminfo_six, fs_home_probe_three),
+    all(fs_home_terminfo_six, fs_af09_drain)
+))]
+compile_error!("fs_home_terminfo_six is incompatible with old-three or AF09 drain");
 #[cfg(all(fs_af09_drain, fs_home_probe_three))]
 compile_error!("AF09 drain is incompatible with fs_home_probe_three");
 #[cfg(all(
@@ -130,6 +135,7 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         || !home.valid()
         || home.phase != 0
         || cfg!(fs_home_probe_three) && home.mutation_attempts != 3
+        || cfg!(fs_home_terminfo_six) && home.mutation_attempts != 6
         || cfg!(fs_af09_drain) && (home.mutation_attempts != 2 || service.requests != 3)
         || home.flags != CALLBACK | ENTRY | ACCEPTED | CLOSE_ATTEMPTED | ORDERED | ACTIVATION
         || service.ready != 1

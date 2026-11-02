@@ -17,6 +17,10 @@ static unsigned mode, starts, ready_calls, main_calls, ignored, rpc_closes[2];
 static unsigned source_closes[3], operations, bits;
 static size_t input_at, sent, received, written;
 static uint64_t revision = 1;
+#ifdef AEFD_ZSH_STDIO_TEST
+void aefd_test_stdio_unmask(struct aefd_startup *);
+void aefd_test_zsh_stdio(struct aefd_startup *, int);
+#endif
 static void put(unsigned char *raw, unsigned at, uint32_t value)
 {
     memcpy(raw + at, &value, 4);
@@ -39,6 +43,10 @@ static int64_t call(void *owner, uint64_t op, uint64_t cap, uint64_t a,
             *(uint64_t *)(uintptr_t)b = 0;
         } else
             assert(cap == 2 && a && !b && !*(uint64_t *)(uintptr_t)a);
+#ifdef AEFD_ZSH_STDIO_TEST
+        if (cap == 2 && (mode == 9 || mode == 10))
+            aefd_test_stdio_unmask(admitted);
+#endif
         return 0;
     }
     assert(!c);
@@ -149,24 +157,27 @@ _Noreturn void __wrap__Exit(int);
 _Noreturn void __real__exit(int value)
 {
     assert(starts == 1 && rpc_closes[0] == 1 && rpc_closes[1] == 1);
-    assert(value == (mode == 0 || mode == 1 || mode == 8 ? 19
-                     : mode == 4                         ? 141
-                                                         : 143));
-    assert(main_calls ==
-           (mode == 0 || mode == 1 || mode == 7 || mode == 8 ? 1U : 0U));
-    assert(ready_calls ==
-           (mode == 0 || mode == 1 || mode == 4 || mode == 7 || mode == 8
-                ? 1U
-                : 0U));
+    assert(value == (mode == 0 || mode == 1 || mode == 8 || mode == 9 ? 19
+                     : mode == 4 || mode == 10                        ? 141
+                                                                      : 143));
+    assert(main_calls == (mode == 0 || mode == 1 || mode == 7 || mode == 8 ||
+                                  mode == 9 || mode == 10
+                              ? 1U
+                              : 0U));
+    assert(ready_calls == (mode == 0 || mode == 1 || mode == 4 || mode == 7 ||
+                                   mode == 8 || mode == 9 || mode == 10
+                               ? 1U
+                               : 0U));
     unsigned before = operations;
     assert(__aether_io(1, 1, 0, 0) == -EBADF && operations == before);
     if (mode != 3)
         for (unsigned i = 0; i < 3; ++i)
-            assert(source_closes[i] == (mode == 4 ? 0U : 1U));
-    char marker[] = "ZSH_EXTERNAL_ENTRY_PASS 0\n";
-    marker[sizeof(marker) - 3] = (char)('0' + mode);
-    assert(write(1, marker, sizeof(marker) - 1) ==
-           (ssize_t)(sizeof(marker) - 1));
+            assert(source_closes[i] == (mode == 4 || mode == 10 ? 0U : 1U));
+    char marker[40];
+    int length =
+        snprintf(marker, sizeof(marker), "ZSH_EXTERNAL_ENTRY_PASS %u\n", mode);
+    assert(length > 0 && (size_t)length < sizeof(marker));
+    assert(write(1, marker, (size_t)length) == length);
     _Exit(0);
 }
 int __real_main(int argc, char **argv)
@@ -178,6 +189,12 @@ int __real_main(int argc, char **argv)
     assert(admitted == aefd_shell_external_startup() &&
            admitted->context.client.workspace == admitted->context.workspace &&
            admitted->context.session.map == &admitted->context.map);
+#ifdef AEFD_ZSH_STDIO_TEST
+    if (mode == 9 || mode == 10) {
+        aefd_test_zsh_stdio(admitted, mode == 10);
+        return 19;
+    }
+#endif
     if (mode == 7)
         return __wrap_main(0, NULL);
     int opened = (int)aefd_libc_open(&admitted->context, "/dev/tty", O_RDWR);
