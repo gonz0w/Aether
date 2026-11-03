@@ -11,7 +11,7 @@ class StackLimit(ValueError):
 
 
 def inspect(disassembly, elf=None, *, stack_bytes=4096):
-    if type(stack_bytes) is not int or stack_bytes not in (4096, 8192):
+    if type(stack_bytes) is not int or stack_bytes not in (4096, 8192, 12288):
         raise ValueError('unknown owner stack profile')
     usable = stack_bytes - 8
     spans = None

@@ -1,12 +1,18 @@
 # Selected Zsh filesystem integration
 
-[Issue137](https://github.com/gonz0w/Aether/issues/137) owns implementation and
-qualification. Cam approved this scoped design on2026-11-02; the canonical
+[Issue137](https://github.com/gonz0w/Aether/issues/137) completed the first real
+Zsh prompt, one builtin and normal exit/export/cleanup through
+[PR138](https://github.com/gonz0w/Aether/pull/138). Its scoped fit and delivery
+decisions remain specific to that checkpoint.
+[Issue143](https://github.com/gonz0w/Aether/issues/143) owns the selected
+parent/helper extension below; its native acceptance remains open. The canonical
 [execution policy](../../docs/policy/execution.md#selected-real-zsh-filesystem-composition-2026-11-02)
-records the answer. The contracts below are selected implementation requirements,
-not evidence that a prompt or runtime qualification has passed.
+records the approvals and limits.
 
-## Current offline evidence
+## Retained pre-trial offline evidence for issue137
+
+The following measurements and preparation limits describe that earlier
+builtin-only candidate. They do not qualify the new external-command composition.
 
 The selected source is implemented and separately reviewed. The fresh Zsh/tinfo
 executable is1,274,352 bytes and fits314 pages including the existing mapped stack;
@@ -205,3 +211,188 @@ then normal exit, mode restoration and clean export on disposable no-network
 media. The selected VT100 frontend needs real PTY/input/termination checks;
 serial byte capture alone does not qualify an emulator. No current result here
 claims a prompt, login, external command, cold persistence, package or R1 gate.
+
+## Selected parent/helper extension
+
+The [owner-approved issue142 design](https://github.com/gonz0w/Aether/issues/142#issuecomment-6589424662)
+selects the separate issue143 implementation. `native-zsh-external`,
+`AEFD_ZSH_PROCESS_BINDINGS` and `native_zsh_process` name its closed kernel,
+consumer and Owner selections. They extend the real terminfo/MODE parent only
+for one child at a time. Existing selections keep their original bounds.
+
+The [issue143 capacity decision](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304)
+allows only this external selection to use73,728 Owner RX bytes and three mapped
+stack pages (12,288 bytes,12,280 usable). The stack is `[0x7ff000,0x802000)`
+RW/NX, zeroed, with absent guards at0x7fe000/0x802000. ABI31 and
+RSP0x802000-8 stay unchanged. Runtime/workspace remain4,096 bytes each; maximum
+Owner mappings are18 RX+3 stack+2 data=23 of128 pages. Total backing stays11,520
+pages. The unchanged AENFS006/AENMX011 magic cannot choose this allowance;
+explicit kernel selection uses `parseExternalApplication`, while old
+`parseApplication` retains49,152 bytes and the two-page stack. The app's limits,
+channels and execution/capture bounds are unchanged. A fresh matched Owner fit
+and separate review remain required. The scoped workload-fit and delivery
+conditions are recorded in the execution policy linked above.
+
+Pure controls run from the repository root with
+`python3 -B -m unittest discover -s tests -p test_zsh_owner_capacity.py -v`.
+The test also supplies actual kernel-body fixtures; their bounded compiled
+results are separate from pure checks and native qualification.
+
+The fixed target is the existing `/inputs/helper status` test executable,
+owned image C003, with real exit7. At the actual +m prompt,
+`(exec -c /inputs/helper status)` forks once through Zsh's real synchronization
+pipe, executes with two arguments and a non-null empty environment, and returns
+to the parent. A subsequent `print -r -- $?` must report7 and a real prompt.
+The image selector is not an installed OpenZFS path or general utility claim.
+
+The Rust Owner retains the sole AF09 Client/epoch, HOME15/root3 and terminfo/FILE
+custody. One stable mutable context exists per process. Use a new closed selected
+fork/exec frame containing the full336-byte context and checked parent/child
+identity; never compress it into the older304-byte snapshot or reuse its magic.
+Retain shared descriptions, positions, pipe endpoints and CLOEXEC flags through
+checked admission/rebind. Rebind all child-local pointers and endpoints under
+the existing saved-mask guard; child pending signals start empty. An exec refusal
+preserves the old child image/descriptors; close CLOEXEC only after known commit.
+
+Only the admitted selected parent can create the one child. Construct its native
+admission/clock identity from its actual slot/generation, with namespace fields
+remaining kernel custody provenance rather than exported endpoints. Preserve
+exact Owner/A001/unadmitted launch guards and selected AENAP-startup suppression.
+Exec preserves native process generation and the child-local lifetime binding.
+Child `tty_signal_owner_generation` is null, not numeric0. No new syscall or
+capability kind and no global mutable owner/table is introduced.
+
+The terminal core keeps its existing four aliases. The authenticated Owner proxies
+child READ/WRITE through retained descriptions, without inventing a child Caller
+for the single-caller terminal core. Parent MODE/control/private restore and the
+existing SIGINT target remain parent-only. An explicit Parent/Child/Contained
+read lease excludes competing consumers. This helper performs no input; child
+canonical/ISIG reads reject EOPNOTSUPP before consumption. This is not general
+POSIX terminal inheritance or child VINTR/job-control support.
+
+Use the pinned target's existing waitpid branch (HAVE_WAIT3 absent, HAVE_WAITPID
+present) and its actual Owner route. Parent-scoped child selectors and only
+WNOHANG1, WUNTRACED2, WCONTINUED8 are admitted; no stop/continue events exist in
+this closed profile. Report real encoded exit status, truthful ECHILD/no-change
+and untouched status output when no status is returned. No fake rusage: existing
+getrusage remains ENOSYS without buffer writes and supplies no usage evidence.
+Actual generation-checked SIGCHLD/sigsuspend supply notification and waiting.
+
+After a real child terminal, reserve/cache status, deliver the reply, mark known
+collection, reconcile transport/descriptors/native reclaim, then restore Parent
+read lease. A prompt READ arriving during reconciliation remains pending until
+that lease returns. Do not require reclaim before status delivery, return false
+WNOHANG0 for cleanup delay, lose notification or expose another reader. Unknown
+delivery/copy/exec/cleanup contains the session without replay. Final parent exit
+still restores mode and closes/exports/reclaims the actual session.
+
+Before any image, correct and measure the known external execute frame beyond
+48KiB without increasing stack or reducing PATH_MAX. Fresh parent/helper/Owner
+code/runtime/workspace/stack/heap/backing/TLS/request fits and affected semantic
+checks remain required. Only exact reviewed artifacts/media and known-cleanup
+selection may enter a later bounded guest. Issue137's fit and full-host delivery
+exceptions do not transfer; issue141's coverage/UNKNOWN history stays separate.
+
+### Parent/helper selected startup and frame serialization
+
+The process selection uses full336-byte `AEFDB009`/`AEFDT009` snapshots. It retains
+all four bytes of every binding, including kind5's nonzero duplex-description tag
+in byte3. Do not convert that tag into the old three-field Rust Binding type.
+Terminal labels remain0x7a000001/0x7a010001/0x7a020001; a child receives proxy
+labels on its authenticated process connection, never another terminal-core Caller.
+The seven-source/two-pipe histories and existing tagged pipe references remain.
+A freshly admitted child/helper FILE client begins at sequence1 on its new
+checked map/channel generation; the parent retains its existing next sequence.
+The first copied child retains process counter1 and sends exec sequence2.
+Only parent slot1 or child slot2 is valid in this selected representation.
+
+Snapshot offsets0..295 retain the complete identity/map/source/history layout.
+At296 the parent has pipe factory0x76050001, and at300 parent MODE control is
+0x7d000001. Both fields are0 for the child. Credential bytes304..335 retain four
+u32 values1000, source-kind1 and zero flags/reserved bytes. The whole startup,
+including exact identity, role, authenticated channel generation, all bindings,
+sources and padding, validates before publication. Native process generation
+and map/channel generation remain separate checked identities.
+
+| Frame | Exact extent and layout |
+| --- | --- |
+| Fork `AEZFK001` |368 bytes:32-byte operation header, then the complete336-byte parent snapshot |
+| Exec `AEZEX001` |672 bytes:32-byte operation header, complete336-byte child snapshot,32-byte padded path,272-byte argv/env representation |
+| Parent disposition `AEZFR001` |32 bytes:magic, sequence, actual slot2 PID or bounded negative known refusal, zero reserved word |
+| Child ready `AEZFC001` |32 bytes:magic, sequence, actual slot2 PID, zero reserved word |
+| Exec refusal `AEZER001` |32 bytes:magic, sequence, bounded negative refusal, zero reserved word |
+
+The operation header contains8-byte magic, u32 version1, u32 total extent, u64
+sequence and u64 reserved0. Sequence0 and u64 maximum reject; counter reservation
+and exhaustion never reset or replay. Snapshot begins at32; exec path is368..399
+and arguments400..671. The existing272-byte arguments format retains u64 argc
+1..4, u64 envc0..4 and eight32-byte string slots; each used string has a terminator
+within31 bytes and zero tail, and every unused slot is zero. This is bounded
+representation, not permission for arbitrary paths, environments or executables;
+the selected workload and Owner admission still require their exact contract.
+
+The selected C `fd-zsh-process` and Rust `zsh_process_frames` codecs are inert
+validators/serializers. Rust uses a borrowed full snapshot view so no alias tag or
+advisory field is lost. Invalid decode publishes no view or sequence; encode
+validates before output effects. Child correspondence preserves exact binding,
+source, pipe-history and credential bytes while requiring its actual child
+identity, distinct map generation, no MODE/factory authority and distinct native
+endpoint observations. Complete runtime fork/exec/controller/lease wiring and its
+native qualification are separate acceptance; codec tests do not establish it.
+Existing008 and older304-byte formats and their control paths remain unchanged.
+
+The selected C provider now stores one `aefd_fork` aggregate in
+`fd-zsh-external.c`; both the external-startup getter and the fork getter borrow
+that same `boot`. The consumed initialized entry guard remains the sole4-byte
+TLS object. `fd-fork-stage.c` captures a complete snapshot while holding the
+existing mask, sends368 bytes, authenticates the correlated parent disposition,
+and rebuilds child-local pointers only after the actual new-grant rebind.
+`fd-exec.c` sends672 bytes and accepts only an exact known negative refusal after
+raw thaw-11; an unknown result retires the context. These C paths do not implement
+the Rust Owner's copy/commit, shared-description or terminal lease policy.
+
+The parent keeps its mutable `zsh -f -i +m` argument storage. A helper provider
+selects `AEFD_ZSH_HELPER_ENTRY` with `AEFD_ZSH_PROCESS_BINDINGS` and external
+startup, omits the parent diagnostic, and adds `fd-zsh-helper-entry.c`. That entry
+consumes its actual336-byte startup, requires role2, publishes native READY, and
+passes the CRT's actual argc/argv to real main before the existing checked exit.
+It supplies no replacement argument or environment record. Both providers add
+`fd-zsh-process`, `fd-fork-stage`, `fd-fork-native`, `fd-exec` and `fd-exec-native`
+to the filesystem provider set; neither links the legacy `fd-fork-frame` codec.
+The strong `waitpid` definition in `fd-libc-bindings.c` uses the actual Owner68
+route; its raw helper preserves caller errno, copies status only for a fully valid positive
+reply and rejects other flag bits, child slots and malformed reply bytes.
+
+`fd-zsh-runtime-tests.c` is a focused controller fixture against the actual C
+providers. It covers short transfers, fresh helper refusal paths, pipe creation,
+CLOEXEC and duplex-tag inheritance, child-local pointer rebind, stale receipts,
+exec argument/environment serialization and refusal containment, wait flags and
+status-output preservation, masked reentry, and real checked helper finalization.
+Its injected native observations are host qualification, not native execution.
+The independently linkable codec fixture remains `fd-zsh-process-tests.c`.
+Matched Rust controller tests, actual linked resource fits, separate review and
+a later approved native trial are still required.
+
+### Selected parent/helper completion observation
+
+Only the external profile uses this exact row, with leading and trailing LF:
+
+```text
+AETHER ZSH OWNER v=2 requests=NN child_status=1792 exec_ready=1 child_reclaimed=1 parent_lease=1 mode_cleanup=0
+```
+
+NN is the actual14..96 service request count. Child status1792 is the actual
+encoded normal exit7 reserved and delivered through the wait reply; it must
+agree with the real child terminal. `exec_ready` requires the matched C003
+receipt, publication and fresh helper readiness. Reclaim, parent read lease and
+mode cleanup report completed phases. Missing or unknown facts contain the
+session instead of emitting this success observation. No capability or pointer
+is printed; the older v1 profile retains its exact row.
+
+The fixed external trial submits `(exec -c /inputs/helper status)`, observes the
+child terminal and reclaim followed by a parent prompt, then submits
+`print -r -- $?` and requires standalone7 plus another prompt before `exit 0`.
+Each input submission is once-only; unknown submission or cleanup stops without
+replay. Supplied UART controls are synthetic and cannot establish execution,
+image association, actual frontend/input or known process cleanup. Fresh linked
+fits and separately reviewed image/media still precede any guest.

@@ -167,6 +167,57 @@ No extra guest, unknown-effect retry or cleanup authority follows. External
 commands, login, persistent write/reboot/readback, packages and R1 retain their
 own gates. The earlier design and fixed diagnostic-fit decisions remain effective.
 
+## Selected Zsh parent/helper composition —2026-11-02
+
+Cam directly approved
+[the scoped parent/helper design](https://github.com/gonz0w/Aether/issues/142#issuecomment-6589424662):
+“Approve scoped parent/helper design (Recommended)”. Reviewed proposal03 in
+issue142 selects one real Zsh parent and one immutable helper child with the
+actual internal pipe, existing copy/exec/SIGCHLD, one context per process and
+Rust Owner namespace custody. [Issue143](https://github.com/gonz0w/Aether/issues/143)
+owns implementation; the [local consumer contract](../../userland/docs/ZSH-FILESYSTEM.md#selected-parenthelper-extension)
+records the selected ownership and compatibility requirements.
+
+Child bindings are local to its real native slot/generation. MODE/private restore
+and SIGINT stay parent-only; child SIGINT ownership is explicitly null. Only
+READ/WRITE proxy descriptions are delegated, with an exclusive read lease and
+truthful unsupported canonical/ISIG child input. Use complete336-byte selected
+snapshots, preserve old304-byte profiles, and retain actual wait status through
+known delivery/collection, reclaim and parent read-lease restoration. Unknown
+effects contain without replay. No namespace grant, new syscall/capability kind,
+global process table or numeric limit increase is selected.
+
+This approves scoped implementation under the standing milestone direction.
+Correct and measure the known oversized external frame before any image; fresh
+actual integrated fits and applicable verification/artifact/media/cleanup gates
+remain. No image/run result, general utility or filesystem-exec installation,
+child job control/input, login, persistence, package or R1 acceptance is claimed.
+Issue137's diagnostic-fit/full-host exceptions remain issue-only; issue141 retains
+its failed coverage and unverified cleanup.
+
+## Selected issue143 capacity and verification decision —2026-11-02
+
+Owner direction,2026-11-02: Cam directly approved the
+[scoped issue143 plan](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304), including the reviewed proposal in comment6591273627.
+Only native-zsh-external/native_zsh_process may use73,728 bytes of Owner RX
+code and a12,288-byte mapped stack (12,280 usable), within unchanged128-page
+Owner backing. Preserve ABI31/RSP0x802000-8, Runtime/workspace4,096 each,
+RW/NX stack, absent guards and old-profile code/stack/parser/boot limits.
+Fresh matched selected fit, boundary/guard tests and separate artifact/media
+review precede an image/trial. The one fixed helper/status7/parent-prompt/clean
+exit trial may establish remaining scoped workload fit despite unknown complete
+parser/handler/heap/copied-peak proof. No general peak qualification follows.
+Focused contract checks, separate review, required protected CI and successful
+exact trial may qualify this issue143 checkpoint while issue141's full-root
+integration gate stays open. This is an explicit issue143 policy exception,
+not a full-host pass or transfer of issue137's exceptions. Preserve unknown
+history/quarantines. Other app/time/request/mutation/capture/no-network,
+disposable-media, finite-attempt and known-cleanup limits remain binding.
+Login, persistence/reboot, packages, assembled-system and R1 gates remain separate.
+Routine implementation, builds, reviewed bounded tests and delivery proceed
+under standing approval; this decision grants no new syscall/capability kind,
+arbitrary executable authority or unknown-effect retry.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

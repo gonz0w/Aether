@@ -421,3 +421,90 @@ fn zsh_bad_body_padding_retires_before_lookup() {
     assert!(h.files().prepare(binding(), &raw, 64, &mut w).is_err());
     assert_eq!(h.requests(), before);
 }
+
+#[cfg(native_zsh_process)]
+#[test]
+fn selected_child_binding_has_its_actual_native_and_session_identity() {
+    let child = Binding { slot: 2, epoch: 1, handle: 0xb0000103, generation: 47 };
+    assert!(child.valid(), "SELECTED_CHILD_BINDING");
+    assert!(!Binding { handle: binding().handle, ..child }.valid());
+    assert!(!Binding { generation: 0, ..child }.valid());
+}
+
+#[cfg(native_zsh_process)]
+fn child_binding() -> Binding {
+    Binding { slot: 2, epoch: 1, handle: 0xb0000103, generation: 47 }
+}
+#[cfg(native_zsh_process)]
+fn rpc_as(h: &mut Harness, binding: Binding, op: u64, args: [u64; 4]) -> ([u8; 64], Vec<u8>) {
+    let files = h.files();
+    let view = files.view(binding).unwrap();
+    let mut raw = [0; 64]; raw[..8].copy_from_slice(MAGIC);
+    put(&mut raw, 1, op); put(&mut raw, 2, binding.generation); put(&mut raw, 3, files.sequence(view));
+    for (i, value) in args.iter().enumerate() { put(&mut raw, 4+i, *value); }
+    let mut workspace = [0; 4096];
+    let mut reply = files.prepare(binding, &raw, 0, &mut workspace).unwrap();
+    let header = *reply.header(); let body = reply.body_mut().to_vec(); reply.delivered();
+    (header, body)
+}
+#[cfg(native_zsh_process)]
+#[test]
+fn selected_two_views_share_real_offsets_closes_and_commit_only_cloexec() {
+    let mut h = Harness::new();
+    let (r, _) = h.rpc(1, [0, ENTRY.len() as u64, 0, 0], ENTRY); let first = word(&r, 4);
+    let (r, _) = h.rpc(1, [1, ALIAS.len() as u64, 0, 0], ALIAS); let second = word(&r, 4);
+    let before = h.requests(); let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap(); assert_eq!(h.requests(), before);
+    assert_eq!(h.files().file_view(child).unwrap(), ((1<<first)|(1<<second), 1<<second));
+    assert!(h.files().disconnect_checked(|_| Ok(())).is_err()); // A live child view cannot be silently dropped.
+    let (_, body) = h.rpc(2, [first, 2, 0, 0], &[]); assert_eq!(&body[..2], &DATA[..2]);
+    let (r, body) = rpc_as(&mut h, child, 2, [first, 2, 0, 0]);
+    assert_eq!((word(&r, 2), word(&r, 3)), (47, 1)); assert_eq!(&body[..2], &DATA[2..4]);
+    let before = h.requests(); h.rpc(5, [first, 0, 0, 0], &[]); assert_eq!(h.requests(), before);
+    let (_, body) = rpc_as(&mut h, child, 2, [first, 2, 0, 0]); assert_eq!(&body[..2], &DATA[4..6]);
+    // Merely validating a refused replacement leaves both CLOEXEC views intact.
+    assert!(h.files().exec_child(child, 49).is_err());
+    assert_eq!(h.files().file_view(child).unwrap().1, 1<<second);
+    let next = h.files().exec_child(child, 48).unwrap();
+    assert!(h.files().file_view(child).is_err());
+    assert_eq!(h.files().file_view(next).unwrap(), (1<<first, 0));
+    assert_eq!(h.files().file_view(binding()).unwrap(), (1<<second, 1<<second));
+    let (r, body) = rpc_as(&mut h, next, 2, [first, 2, 0, 0]);
+    assert_eq!((word(&r, 2), word(&r, 3)), (48, 1)); assert_eq!(&body[..2], &DATA[6..8]);
+    h.files().settle_child(next).unwrap(); assert!(h.files().file_view(next).is_err());
+    h.rpc(5, [second, 0, 0, 0], &[]);
+    h.files().disconnect_checked(|_| Ok(())).unwrap();
+    let report = h.worker.take().unwrap().join().unwrap();
+    assert_eq!(report.stop, filesystem_service::Stop::Disconnected);
+    assert_eq!(report.requests, h.requests()); assert!(report.requests <= 96);
+}
+#[cfg(native_zsh_process)]
+#[test]
+fn selected_stale_or_mixed_view_admission_has_no_parent_or_source_effect() {
+    let mut h = Harness::new(); let parent = binding(); let child = child_binding();
+    for wrong in [Binding { slot: 1, ..child }, Binding { epoch: 2, handle: 0xb0000203, ..child }, Binding { generation: parent.generation, ..child }] {
+        assert!(h.files().inherit_child(parent, wrong).is_err());
+        assert_eq!(h.files().file_view(parent).unwrap(), (0, 0));
+    }
+    h.files().inherit_child(parent, child).unwrap();
+    assert!(h.files().inherit_child(parent, child).is_err());
+    assert!(h.files().settle_child(Binding { generation: 48, ..child }).is_err());
+    h.files().settle_child(child).unwrap();
+    assert!(h.files().inherit_child(parent, child).is_err());
+    let next = Binding { epoch: 2, handle: 0xb0000203, generation: 49, ..child };
+    h.files().inherit_child(parent, next).unwrap(); h.files().settle_child(next).unwrap();
+    assert_eq!(h.requests(), 12);
+    h.files().disconnect_checked(|_| Ok(())).unwrap();
+}
+#[cfg(native_zsh_process)]
+#[test]
+fn selected_unknown_child_reply_retires_the_single_namespace_once() {
+    let mut h = Harness::new(); let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    let mut raw = [0; 64]; raw[..8].copy_from_slice(MAGIC); put(&mut raw, 1, 9); put(&mut raw, 2, child.generation); put(&mut raw, 3, 1);
+    let mut workspace = [0; 4096];
+    { let _unknown = h.files().prepare(child, &raw, 0, &mut workspace).unwrap(); }
+    assert_eq!(workspace, [0; 4096]); assert_eq!(h.files().cleanup(), Some([0; 2]));
+    assert!(h.files().file_view(binding()).is_err()); assert!(h.files().file_view(child).is_err());
+    assert_eq!(h.files().abort(), [0; 2]); assert_eq!(h.seen.lock().unwrap().closes, 1);
+}

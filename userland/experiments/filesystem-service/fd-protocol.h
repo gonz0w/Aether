@@ -5,11 +5,23 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#ifndef AEFD_FORK_BINDINGS
+#define AEFD_FORK_BINDINGS
+#endif
+#ifndef AEFD_EXEC_BINDINGS
+#define AEFD_EXEC_BINDINGS
+#endif
+#ifndef AEFD_ZSH_FILESYSTEM_BINDINGS
+#define AEFD_ZSH_FILESYSTEM_BINDINGS
+#endif
+#endif
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
 #if defined(AEFD_PATH_WIRE) || defined(AEFD_DUP2_WIRE) ||                      \
     defined(AEFD_CWD_WIRE) || defined(AEFD_WRITE_WIRE) ||                      \
-    defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_BINDINGS) ||              \
-    defined(AEFD_EXEC_WIRE)
+    defined(AEFD_EXEC_WIRE) ||                                                 \
+    (!defined(AEFD_ZSH_PROCESS_BINDINGS) &&                                    \
+     (defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_BINDINGS)))
 #error "Zsh filesystem selection excludes historical authority profiles"
 #endif
 #ifndef AEFD_TERMINAL_CANONICAL_BINDINGS
@@ -95,7 +107,8 @@
 #ifndef AEFD_TERMINAL_BINDINGS
 #define AEFD_TERMINAL_BINDINGS
 #endif
-#if defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_WIRE)
+#if !defined(AEFD_ZSH_PROCESS_BINDINGS) &&                                     \
+    (defined(AEFD_FORK_BINDINGS) || defined(AEFD_EXEC_WIRE))
 #error "duplex qualification excludes fork and exec"
 #endif
 #endif
@@ -152,6 +165,12 @@
 #define AEFD_MAGIC "AEFP0004"
 #define AEFD_MAP_MAGIC "AEFDT008"
 #define AEFD_STARTUP_MAGIC "AEFDB008"
+#endif
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#undef AEFD_MAP_MAGIC
+#undef AEFD_STARTUP_MAGIC
+#define AEFD_MAP_MAGIC "AEFDT009"
+#define AEFD_STARTUP_MAGIC "AEFDB009"
 #endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U

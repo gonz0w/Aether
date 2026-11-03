@@ -70,7 +70,7 @@ export fn _start() callconv(.c) noreturn {
     if (@import("build_options").native_c_test) {
         if (modules.count != 5) @panic("native C requires explicit fifth module");
         const native = (modules.modules orelse @panic("missing modules"))[4];
-        if (native.size > (if (@import("build_options").native_fs_application_profile) @import("native_fs_session.zig").application_envelope_limit else if (@import("build_options").native_image_large) @as(u64, 8 * 1024 * 1024 + 4096 + 48) else 3 * 1024 * 1024 + 8192 + 80)) @panic("native envelope oversized");
+        if (native.size > (if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) @import("native_fs_session.zig").external_application_envelope_limit else if (@import("build_options").native_fs_application_profile) @import("native_fs_session.zig").application_envelope_limit else if (@import("build_options").native_image_large) @as(u64, 8 * 1024 * 1024 + 4096 + 48) else 3 * 1024 * 1024 + 8192 + 80)) @panic("native envelope oversized");
         const content = native.address orelse @panic("missing native envelope");
         @import("arch/x86_64/native_c.zig").start(address.physical_base, address.virtual_base, content[0..@intCast(native.size)], hhdm.offset, memory);
     }

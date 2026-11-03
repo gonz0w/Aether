@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #define _POSIX_C_SOURCE 200809L
 #include "fd-exec.h"
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#include "fd-zsh-process.h"
+#endif
+#ifndef AEFD_ZSH_PROCESS_BINDINGS
 static void put32(unsigned char *raw, unsigned at, uint32_t value)
 {
     for (unsigned i = 0; i < 4; ++i)
         raw[at + i] = (unsigned char)(value >> (i * 8));
 }
+#endif
 static int move(struct aefd_io io, unsigned char *raw, size_t length,
                 int writing, unsigned *budget)
 {
@@ -83,8 +88,47 @@ int64_t aefd_exec(struct aefd_fork *f, struct aefd_startup_auxv observed,
     if (b->context.native.active || b->context.native.busy)
         return -16;
     if ((f->phase != AEFD_FORK_READY && f->phase != AEFD_FORK_IDLE) ||
-        f->counter == UINT64_MAX)
+        f->counter == UINT64_MAX
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+        || f->counter == UINT64_MAX - 1
+#endif
+    )
         return -75;
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+    unsigned char raw[AEFD_ZSH_EXEC_BYTES] = {0};
+    if (b->identity.slot != 2 || !arguments(raw + 400, argv, envp))
+        return -7;
+    int64_t result = aefd_native_enter(&b->context.native);
+    if (result)
+        return failed(f);
+    int64_t pid =
+        b->context.native.call(b->context.native.context, 0x10027, 0, 0, 0, 0);
+    int64_t parent =
+        b->context.native.call(b->context.native.context, 0x1006e, 0, 0, 0, 0);
+    result = aefd_zsh_capture(b, observed, (long)pid, (long)parent, raw + 32);
+    if (result ||
+        !aefd_zsh_exec_encode(raw, sizeof(raw), raw + 32, observed, (long)pid,
+                              (long)parent, f->counter + 1, path, raw + 400)) {
+        if (!b->context.client.live || b->context.native.retired)
+            return failed(f);
+        aefd_native_leave(&b->context.native);
+        return result ? result : -22;
+    }
+    uint64_t sequence = ++f->counter;
+    unsigned budget = AEFD_IO_BUDGET;
+    struct aefd_io io = aefd_native_io(&b->context.native);
+    if (!move(io, raw, sizeof(raw), 1, &budget))
+        return failed(f);
+    result =
+        b->context.native.call(b->context.native.context, 0x23003, 0, 0, 0, 0);
+    int64_t error;
+    if (result != -11 || !move(io, raw, 32, 0, &budget) ||
+        !aefd_zsh_receipt_decode(raw, "AEZER001", sequence, &error))
+        return failed(f);
+    memset(raw, 0, sizeof(raw));
+    aefd_native_leave(&b->context.native);
+    return error;
+#else
     unsigned char raw[608] = {0};
     size_t len = strnlen(path, 32);
     if (!len || len == 32)
@@ -149,4 +193,5 @@ int64_t aefd_exec(struct aefd_fork *f, struct aefd_startup_auxv observed,
     memset(raw, 0, sizeof raw);
     aefd_native_leave(&b->context.native);
     return error;
+#endif
 }

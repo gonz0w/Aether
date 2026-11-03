@@ -242,6 +242,30 @@ and compact hashes are in [results](evidence/af07-owner-native-2026-10-23/README
 No new VM before fresh one-sequence disposition. A successful diagnostic without
 recurrence does not resolve the panic or authorize resumed affected acceptance.
 
+## Selected external-Zsh Owner capacity
+
+The [issue143 owner decision](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304)
+selects73,728 Owner RX bytes and a12,288-byte mapped stack (12,280 usable)
+only with the existing `native-zsh-external` closure. AENFS006/AENMX011 bytes do
+not select this allowance: the kernel boot gate and loader explicitly choose
+`parseExternalApplication`; old `parseApplication`, owner-stack and other
+profiles retain their original code, stack and envelope limits.
+
+The selected stack grows downward to `[0x7ff000,0x802000)`, with three zeroed
+RW/NX pages and absent guards at0x7fe000 and0x802000. ABI31, initial
+RSP0x802000-8 and the8KiB data region at0x900000 stay exact. Runtime and
+workspace remain4,096 bytes each. Maximum mapping is18 RX+3 stack+2 data pages,
+23 of the existing128 Owner pages; total application backing stays11,520 pages.
+This adds no allocator, syscall, namespace grant or peer mapping authority.
+
+`scripts/owner_stack.py` accepts an explicit `stack_bytes=12288` for this fit;
+its4KiB default,8KiB selection and dynamic/recursive/unknown-edge rejection
+remain. Run the pure inspector and fixture-source controls with
+`python3 -B -m unittest discover -s tests -p test_zsh_owner_capacity.py -v`.
+The same test file supplies actual parser/boot/mapping body fixtures for bounded
+Zig execution recorded separately. These host checks do not execute page tables
+or qualify a guest. Fresh matched fit and separate review still precede an image.
+
 ## Guarded complete-owner candidate — AENFS005 / ABI31
 
 The maintainer approved a separate8KiB guarded stack and measurement-led code
@@ -4577,3 +4601,47 @@ The syscall scaffold executes the actual write, query and reset bodies over host
 storage. It does not establish hardware protection, linked static growth or a
 native reader result. Those remain matched kernel/artifact gates. Routine reviewed
 checks follow the [standing execution direction](policy/execution.md#current-milestone-execution-direction-2026-11-01).
+
+
+## Selected Zsh parent/helper kernel composition
+
+Issue143 adds default-off `-Dnative-zsh-external=true`, requiring the existing
+terminfo, copy/exec, copied signal actions, public actions, suspension and parent
+identity selections. The exact Owner/A001 launch admits only parent1/C002.
+Cooperative freeze accepts that live bound parent or its exact child2; only the
+Owner may copy parent1 into unadmitted child2. The child receives a fresh native
+generation and clock binding with retained namespace provenance only, process
+endpoints and explicitly null TTY signal ownership. Owner generation0 remains
+valid for the parent. Existing selected startup omits namespace/AENAP export.
+
+Only child2 can replace its image with the Owner-held C003 helper. Its current
+parent relationship, child clock and namespace provenance must still match;
+exec preserves native generation/binding and the existing receipt/publication
+transaction. Parent exec and other copy targets remain denied. Existing
+SIGCHLD17 validates the real parent generation. Ordinary profiles retain their
+limits; this external profile uses only the
+[approved Owner capacity](#selected-external-zsh-owner-capacity). See the selected
+[parent/helper contract](../userland/docs/ZSH-FILESYSTEM.md#selected-parenthelper-extension).
+
+The fixed issue143 target trial passed in34.169s: actual Zsh launched the held
+helper, collected status7, printed7 and returned to its prompt before normal
+parent/engine exit and export. The Owner completed33/96 requests with mode
+cleanup0; all21 cleanup phases and three reclamations completed, with halt
+at2884/6000ticks. Screen/PTY and once-only staged input were observed; all
+original host holders and clients were reaped with absent groups and output EOF.
+[PR144](https://github.com/gonz0w/Aether/pull/144) records the source delivery.
+This is the approved fixed-workload checkpoint, with full-host coverage still
+open in [issue141](https://github.com/gonz0w/Aether/issues/141). General resource
+peaks, arbitrary filesystem execution, child input/job control, login, persistent
+shell writes/reboot readback, packages and R1 remain separate gates.
+
+Run focused public source checks from the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_zsh_external.py -v
+```
+
+The actual-body fixture uses real Binding/Pending and copy/exec/freeze/notification
+bodies over host storage; MMU/device/scheduler installation is substituted. Its
+private qualified compiler entry and cleanup records remain separate from these
+stdlib-only public checks. No private runner API is required by the public test.

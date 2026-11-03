@@ -1,0 +1,1063 @@
+// SPDX-License-Identifier: BSD-2-Clause
+//! Focused actual Runtime fixtures with a mocked native boundary and real AF09
+//! Client/service, descriptor cores, pipes and child ledger. No native execution.
+//! Compile native_app_runtime.rs with rustc --test and its existing selected
+//! dependency rlibs; the qualified private invocation is retained in #143 evidence.
+use super::*;
+use af07_transport::Kernel;
+use filesystem_policy as p;
+use filesystem_service::Channel;
+use std::{
+    boxed::Box,
+    cell::RefCell,
+    collections::{BTreeMap, VecDeque},
+    rc::Rc,
+    sync::mpsc,
+    thread,
+    time::Duration,
+    vec::Vec,
+};
+const NSR: u64 = 0xd1000101;
+const NSW: u64 = 0xd1000102;
+const PR: u64 = 0xd1010101;
+const PW: u64 = 0xd1010102;
+const PARENT: u64 = 0xb0000102;
+const CHILD: u64 = 0xb0000103;
+#[derive(Default)]
+struct Storage {
+    made: [bool; 3],
+    data: Vec<u8>,
+    mutations: u64,
+}
+fn node(id: u64, size: usize) -> p::Node {
+    p::Node::new(
+        id,
+        1,
+        size as u64,
+        if id == 5 {
+            p::Kind::File
+        } else {
+            p::Kind::Directory
+        },
+    )
+}
+impl p::Backend for Storage {
+    fn root(&mut self) -> Result<p::Node, p::Error> {
+        Ok(node(1, 0))
+    }
+    fn directory(&mut self, n: p::Node) -> Result<p::Node, p::Error> {
+        Ok(n)
+    }
+    fn lookup(&mut self, n: p::Node, s: &[u8]) -> Result<p::Node, p::Error> {
+        let id = match (n.identity().0, s) {
+            (1, b"home") => 2,
+            (2, b".terminfo") if self.made[0] => 3,
+            (3, b"v") if self.made[1] => 4,
+            (4, b"vt100") if self.made[2] => 5,
+            _ => return Err(p::Error::Backend(2)),
+        };
+        Ok(node(id, if id == 5 { self.data.len() } else { 0 }))
+    }
+    fn read(&mut self, _: p::Node, at: u64, out: &mut [u8]) -> Result<usize, p::Error> {
+        let at = (at as usize).min(self.data.len());
+        let n = out.len().min(self.data.len() - at);
+        out[..n].copy_from_slice(&self.data[at..at + n]);
+        Ok(n)
+    }
+    fn write(
+        &mut self,
+        n: p::Node,
+        at: u64,
+        bytes: &[u8],
+        _: p::Utc,
+    ) -> Result<p::Completion, p::Lost> {
+        assert_eq!((n.identity().0, at), (5, 0));
+        self.data = bytes.to_vec();
+        self.mutations += 1;
+        Ok(p::Completion {
+            error: 0,
+            txg: self.mutations,
+            bytes_staged: bytes.len() as u64,
+            state: 2,
+        })
+    }
+    fn mutate(
+        &mut self,
+        n: p::Node,
+        op: p::Namespace<'_>,
+        _: p::Utc,
+    ) -> Result<p::Completion, p::Lost> {
+        let i = match (n.identity().0, op) {
+            (
+                2,
+                p::Namespace::MakeDirectory {
+                    name: b".terminfo", ..
+                },
+            ) => 0,
+            (3, p::Namespace::MakeDirectory { name: b"v", .. }) => 1,
+            (4, p::Namespace::Create { name: b"vt100", .. }) => 2,
+            _ => panic!("UNAUTHORIZED_MUTATION"),
+        };
+        assert!(!self.made[i]);
+        self.made[i] = true;
+        self.mutations += 1;
+        Ok(p::Completion {
+            error: 0,
+            txg: self.mutations,
+            bytes_staged: 0,
+            state: 2,
+        })
+    }
+}
+struct Time;
+impl p::Clock for Time {
+    fn utc(&mut self) -> Result<p::Utc, p::Error> {
+        Ok(p::Utc {
+            seconds: 1,
+            nanoseconds: 0,
+        })
+    }
+}
+struct ServicePipe {
+    tx: mpsc::Sender<[u8; 64]>,
+    rx: mpsc::Receiver<[u8; 64]>,
+}
+impl Channel for ServicePipe {
+    fn send(&mut self, b: &[u8; 64]) -> Result<(), i64> {
+        self.tx.send(*b).map_err(|_| -32)
+    }
+    fn receive(&mut self, b: &mut [u8; 64]) -> Result<(), i64> {
+        *b = self
+            .rx
+            .recv_timeout(Duration::from_secs(2))
+            .map_err(|_| -32)?;
+        Ok(())
+    }
+    fn close(&mut self) -> [i64; 2] {
+        [0; 2]
+    }
+}
+struct Host {
+    tx: Option<mpsc::Sender<[u8; 64]>>,
+    rx: mpsc::Receiver<[u8; 64]>,
+    send: [u8; 64],
+    send_at: usize,
+    receive: [u8; 64],
+    receive_at: usize,
+    input: BTreeMap<u64, VecDeque<u8>>,
+    output: BTreeMap<u64, Vec<u8>>,
+    calls: Vec<(u64, u64, u64)>,
+    closed: Vec<u64>,
+    pair: u64,
+    copy_result: i64,
+    exec_result: i64,
+    receipt: Status,
+    ready: bool,
+    terminal: Option<Status>,
+    gone: bool,
+    parent_terminal: bool,
+    parent_gone: bool,
+    stop_result: Status,
+    stop_observation: Status,
+    serial_reads: usize,
+    fail_write: Option<(u64, usize)>,
+    written: usize,
+}
+#[derive(Clone)]
+struct Mock(Rc<RefCell<Host>>);
+impl Kernel for Mock {
+    fn transfer(&mut self, cap: u64, bytes: &mut [u8], writing: bool) -> i64 {
+        let mut h = self.0.borrow_mut();
+        if cap == NSW && writing {
+            let at = h.send_at;
+            h.send[at..at + bytes.len()].copy_from_slice(bytes);
+            h.send_at += bytes.len();
+            if h.send_at == 64 {
+                h.tx.as_ref().unwrap().send(h.send).unwrap();
+                h.send_at = 0;
+            }
+            return bytes.len() as i64;
+        }
+        if cap == NSR && !writing {
+            if h.receive_at == 64 {
+                h.receive = h.rx.recv_timeout(Duration::from_secs(2)).unwrap();
+                h.receive_at = 0;
+            }
+            let at = h.receive_at;
+            bytes.copy_from_slice(&h.receive[at..at + bytes.len()]);
+            h.receive_at += bytes.len();
+            return bytes.len() as i64;
+        }
+        if writing {
+            if let Some((target, limit)) = h.fail_write {
+                if cap == target && h.written >= limit {
+                    return -5;
+                }
+            }
+            h.output.entry(cap).or_default().extend_from_slice(bytes);
+            h.written += bytes.len();
+            return bytes.len() as i64;
+        }
+        let q = h.input.entry(cap).or_default();
+        if q.is_empty() {
+            return -11;
+        }
+        let n = bytes.len().min(q.len());
+        for b in &mut bytes[..n] {
+            *b = q.pop_front().unwrap();
+        }
+        n as i64
+    }
+    fn wait(&mut self, _: u64) -> i64 {
+        0
+    }
+    fn close(&mut self, cap: u64) -> i64 {
+        let mut h = self.0.borrow_mut();
+        assert!(!h.closed.contains(&cap), "NO_CLOSE_REPLAY");
+        h.closed.push(cap);
+        if cap == NSW {
+            h.tx = None;
+        }
+        0
+    }
+}
+impl Control for Mock {
+    fn observe_events(&mut self) -> Status {
+        (0, 1, 1)
+    }
+    fn park_events(&mut self, _: u64, _: Option<Deadline>) -> Status {
+        (0, 1, 1)
+    }
+    fn ctl(&mut self, op: u64, cap: u64, arg: u64) -> Status {
+        let mut h = self.0.borrow_mut();
+        h.calls.push((op, cap, arg));
+        match op {
+            0x24000 => {
+                let id = h.pair;
+                h.pair += 1;
+                ((0xd1000101 | id << 16) as i64, 0xd1000102 | id << 16, 0)
+            }
+            0x23004 => (101, 0, 0),
+            0x23005 | 0x1fffe => (0, 0, 0),
+            0x20001 if cap == PARENT => {
+                if h.parent_gone {
+                    (-9, 0, 0)
+                } else if h.parent_terminal {
+                    (144, 0, 3)
+                } else {
+                    (0, 1, 0)
+                }
+            }
+            0x20007 if cap == PARENT => {
+                h.parent_terminal = true;
+                (0, 0, 0)
+            }
+            0x20002 if cap == PARENT => {
+                assert!(h.parent_terminal);
+                h.parent_gone = true;
+                (0, 0, 0)
+            }
+            0x20007 if cap == CHILD => {
+                if h.stop_result.0 == 0 && h.terminal.is_none() {
+                    h.terminal = Some(h.stop_observation);
+                }
+                h.stop_result
+            }
+            0x26002 if cap == 0xf001 => (0, 0, 0),
+            0x100e7 if cap == 125 => (0, 0, 0),
+            0x20001 if cap == CHILD => {
+                if h.gone {
+                    (-9, 0, 0)
+                } else {
+                    h.terminal.unwrap_or((0, u64::from(h.ready), 0))
+                }
+            }
+            0x20002 if cap == CHILD => {
+                h.gone = true;
+                (0, 0, 0)
+            }
+            _ => panic!("UNEXPECTED_NATIVE_CONTROL {op:x} {cap:x} {arg:x}"),
+        }
+    }
+    fn engine(&mut self, _: u64, _: u64) -> i64 {
+        panic!("NO_ENGINE_LAUNCH")
+    }
+    fn delegate(&mut self, _: u64, _: &[u64; 3]) -> i64 {
+        panic!("NO_DELEGATION")
+    }
+    fn launch(&mut self, _: &[u8; 272], _: u64, _: u64) -> i64 {
+        panic!("NO_LEGACY_LAUNCH")
+    }
+    fn copy(&mut self, parent: u64, slot: u32, token: u64, reader: u64, writer: u64) -> i64 {
+        let mut h = self.0.borrow_mut();
+        assert_eq!((parent, slot, token), (PARENT, 2, 101));
+        h.calls.push((0x23006, reader, writer));
+        h.copy_result
+    }
+    fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
+        let mut h = self.0.borrow_mut();
+        if writing {
+            bytes.len() as i64
+        } else {
+            h.serial_reads += 1;
+            -11
+        }
+    }
+    fn exec(&mut self, process: u64, token: u64, args: &[u8; 272]) -> i64 {
+        assert_eq!((process, token), (CHILD, 101));
+        let mut h = self.0.borrow_mut();
+        h.calls.push((0x23007, process, token));
+        assert_eq!(u64::from_le_bytes(args[..8].try_into().unwrap()), 2);
+        if h.exec_result == 0 {
+            h.receipt = (101, 0xc003, 1);
+            h.ready = false;
+        }
+        h.exec_result
+    }
+    fn receipt(&mut self, process: u64) -> Status {
+        assert_eq!(process, CHILD);
+        self.0.borrow().receipt
+    }
+    fn publish(&mut self, process: u64, token: u64) -> i64 {
+        assert_eq!((process, token), (CHILD, 101));
+        self.0.borrow_mut().calls.push((0x23009, process, token));
+        0
+    }
+}
+impl AppControl for Mock {
+    fn launch_app(&mut self, _: &[u8; 320], _: u64, _: u64) -> i64 {
+        panic!("NO_NEW_APP")
+    }
+}
+struct Fixture {
+    runtime: Box<Runtime<Mock>>,
+    host: Mock,
+    worker: Option<thread::JoinHandle<filesystem_service::Report>>,
+}
+impl Fixture {
+    fn new() -> Self {
+        let (a, b) = mpsc::channel();
+        let (c, d) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            let mut owner = p::Owner::new(Storage::default(), Time, 91)
+                .unwrap()
+                .with_namespace_identity(p::Identity::new(1000, 1000).unwrap());
+            let attached = owner.attach(7, p::Rights::new(15).unwrap()).unwrap();
+            let home = owner
+                .lookup(
+                    7,
+                    attached.session,
+                    attached.root.handle,
+                    b"home",
+                    p::Rights::new(15).unwrap(),
+                )
+                .unwrap();
+            filesystem_service::run_home(
+                owner,
+                ServicePipe { tx: c, rx: b },
+                7,
+                attached.session,
+                home.handle,
+                8,
+                91,
+            )
+        });
+        let host = Mock(Rc::new(RefCell::new(Host {
+            tx: Some(a),
+            rx: d,
+            send: [0; 64],
+            send_at: 0,
+            receive: [0; 64],
+            receive_at: 64,
+            input: BTreeMap::new(),
+            output: BTreeMap::new(),
+            calls: Vec::new(),
+            closed: Vec::new(),
+            pair: 2,
+            copy_result: CHILD as i64,
+            exec_result: 0,
+            receipt: (0, 0, 0),
+            ready: false,
+            terminal: None,
+            gone: false,
+            parent_terminal: false,
+            parent_gone: false,
+            stop_result: (0, 0, 0),
+            stop_observation: (144, 0, 3),
+            serial_reads: 0,
+            fail_write: None,
+            written: 0,
+        })));
+        let mut runtime = Box::new(Runtime::new(host.clone()).unwrap());
+        runtime.app = PARENT;
+        runtime.identity = Some(Identity::admitted(1, 1, PARENT).unwrap());
+        runtime.endpoints = Some(ManuallyDrop::new(
+            Endpoints::new(host.clone(), PR, PW).ok().unwrap(),
+        ));
+        let caller = serial_tty::Caller {
+            identity: PARENT,
+            generation: 1,
+        };
+        let (mut tty, refs) = Terminal::admit(
+            PARENT,
+            caller,
+            [
+                Rights::READ.union(Rights::MODE),
+                Rights::WRITE,
+                Rights::WRITE,
+            ],
+            Mode::IMMEDIATE,
+        )
+        .unwrap();
+        runtime.mode = Some(tty_mode::State::admit(&mut tty, &refs, caller).unwrap());
+        runtime.tty = Some((tty, refs, caller));
+        for (end, cap) in runtime.ends[..2].iter_mut().zip([NSR, NSW]) {
+            *end = End {
+                cap,
+                owned: true,
+                ..End::default()
+            };
+        }
+        // These are the two Owner-held Parent process endpoints. Child cleanup
+        // must not borrow their existing global close/reclaim reserve.
+        for (end, cap) in runtime.ends[2..4].iter_mut().zip([PR, PW]) {
+            *end = End {
+                cap,
+                owned: true,
+                ..End::default()
+            };
+        }
+        runtime.namespace_prepaid = [NSR, NSW];
+        let binding = filesystem_readonly::Binding {
+            slot: 1,
+            epoch: 1,
+            handle: PARENT,
+            generation: PR,
+        };
+        let mut channel = Namespace::new(host.clone(), NSR, NSW);
+        // SAFETY: disjoint loans remain fixed through synchronous final-slot connect.
+        unsafe {
+            channel
+                .arm(
+                    &mut runtime.bound,
+                    &mut runtime.ends,
+                    &mut runtime.filesystem_requests,
+                    &mut runtime.namespace_prepaid,
+                )
+                .unwrap();
+        }
+        filesystem_readonly::Files::connect_in_place(&mut runtime.files, channel, 91, binding)
+            .unwrap()
+            .configure(|io| {
+                io.disarm();
+                Ok(())
+            })
+            .unwrap();
+        runtime.files_live = true;
+        runtime.file_binding = Some(binding);
+        runtime
+            .with_files(|files| files.provision(TERMINFO, &mut [0; 4096]))
+            .unwrap();
+        Self {
+            runtime,
+            host,
+            worker: Some(worker),
+        }
+    }
+    fn feed(&self, cap: u64, bytes: &[u8]) {
+        self.host
+            .0
+            .borrow_mut()
+            .input
+            .entry(cap)
+            .or_default()
+            .extend(bytes);
+    }
+    fn output(&self, cap: u64) -> Vec<u8> {
+        self.host
+            .0
+            .borrow()
+            .output
+            .get(&cap)
+            .cloned()
+            .unwrap_or_default()
+    }
+    fn clear(&self) {
+        self.host.0.borrow_mut().output.clear();
+        self.host.0.borrow_mut().written = 0;
+    }
+    fn snapshot(&self, pipe: bool) -> [u8; 336] {
+        let r = &self.runtime;
+        let id = r.identity.unwrap();
+        let mut p = Plan {
+            identity: id,
+            shell: 1,
+            parent: 7,
+            generation: PR,
+            bindings: [Binding::default(); 16],
+            sources: [Source::default(); 7],
+            history: [0; 2],
+        };
+        for i in 0..3 {
+            p.bindings[i] = Binding {
+                kind: 4,
+                selector: i as u8,
+                cloexec: 0,
+            };
+            p.sources[i] = console(i as u32);
+        }
+        if pipe {
+            p.history[0] = 1;
+            for i in 3..5 {
+                p.bindings[i] = Binding {
+                    kind: 2,
+                    selector: i as u8,
+                    cloexec: 1,
+                };
+                p.sources[i] = Source {
+                    reference: 0x79000101 + (i as u32 - 3),
+                    selector: i as u32,
+                    rights: if i == 3 { 1 } else { 2 },
+                    bound: 16,
+                };
+            }
+        }
+        let mut out = [0; 336];
+        fd_startup::encode(&p, &mut out).unwrap();
+        out
+    }
+    fn fork(&mut self, pipe: bool) -> [u8; 336] {
+        if pipe {
+            let q = frame(82, 0x76050001, 1, 0);
+            assert!(self.runtime.zsh_stream(false, &q).unwrap());
+            self.clear();
+        }
+        let raw = self.snapshot(pipe);
+        let mut request = [0; 368];
+        zsh_process_frames::encode_fork(
+            &raw,
+            self.runtime.zsh_expected(false).unwrap(),
+            1,
+            &mut request,
+        )
+        .unwrap();
+        let mut work = [0; 4096];
+        work[..368].copy_from_slice(&request);
+        self.runtime.zsh_fork(&mut work).unwrap();
+        let child_writer = self.runtime.process.ends[3].cap;
+        let child: [u8; 336] = self.output(child_writer).try_into().unwrap();
+        self.clear();
+        let ready = zsh_process_frames::receipt(b"AEZFC001", 1, 10).unwrap();
+        self.runtime.zsh_child_ready(&ready).unwrap();
+        assert_eq!(
+            zsh_process_frames::decode_receipt(&self.output(PW), b"AEZFR001", 1).unwrap(),
+            10
+        );
+        self.clear();
+        child
+    }
+    fn exec_request(&self, raw: &[u8; 336]) -> [u8; 4096] {
+        let mut work = [0; 4096];
+        work[..8].copy_from_slice(b"AEZEX001");
+        put(&mut work, 8, 1);
+        put(&mut work, 12, 672);
+        work[16..24].copy_from_slice(&2u64.to_le_bytes());
+        work[32..368].copy_from_slice(raw);
+        work[368..382].copy_from_slice(b"/inputs/helper");
+        work[400..408].copy_from_slice(&2u64.to_le_bytes());
+        work[416..430].copy_from_slice(b"/inputs/helper");
+        work[448..454].copy_from_slice(b"status");
+        work
+    }
+}
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        let _ = self.runtime.with_files(|files| {
+            assert_eq!(files.abort(), [0; 2]);
+            Ok(())
+        });
+        self.host.0.borrow_mut().tx = None;
+        self.worker.take().unwrap().join().unwrap();
+    }
+}
+fn put(raw: &mut [u8], at: usize, n: u32) {
+    raw[at..at + 4].copy_from_slice(&n.to_le_bytes());
+}
+fn frame(op: u32, reference: u32, selector: u32, n: u32) -> [u8; 32] {
+    let mut q = [0; 32];
+    for (at, v) in [(0, op), (4, reference), (8, selector), (12, n)] {
+        put(&mut q, at, v);
+    }
+    q
+}
+fn result(raw: &[u8]) -> i32 {
+    i32::from_le_bytes(raw[..4].try_into().unwrap())
+}
+#[test]
+fn unknown_header_is_fatal_before_tail_consumption() {
+    let mut h = Fixture::new();
+    let mut q = [0xa5; 32];
+    q[..16].fill(0);
+    put(&mut q, 0, 0x9911);
+    h.feed(PR, &q);
+    assert_eq!(
+        h.runtime.zsh_poll(false, &mut [0; 4096]),
+        Err(-22),
+        "UNKNOWN_HEADER_MUST_NOT_RESYNC"
+    );
+    assert_eq!(h.host.0.borrow().input[&PR].len(), 16);
+    assert!(h.output(PW).is_empty());
+}
+#[test]
+fn exact_helper_arguments_are_known_refusal_before_exec() {
+    for changed in [0, 1, 2, 3] {
+        let mut h = Fixture::new();
+        let raw = h.fork(false);
+        let mut work = h.exec_request(&raw);
+        match changed {
+            0 => work[448] = b'x',
+            1 => {
+                work[408..416].copy_from_slice(&1u64.to_le_bytes());
+                work[544..548].copy_from_slice(b"X=1\0");
+            }
+            2 => work[416] = b'x',
+            _ => {
+                work[400..408].copy_from_slice(&1u64.to_le_bytes());
+                work[448..480].fill(0);
+            }
+        }
+        h.runtime.zsh_exec(&mut work).unwrap();
+        assert!(
+            !h.host.0.borrow().calls.iter().any(|x| x.0 == 0x23007),
+            "EXACT_HELPER_VECTOR_BEFORE_NATIVE_EXEC"
+        );
+        let writer = h.runtime.process.ends[3].cap;
+        assert_eq!(
+            zsh_process_frames::decode_receipt(&h.output(writer), b"AEZER001", 2).unwrap(),
+            -13
+        );
+        assert!(!h.runtime.process.committed);
+        assert_eq!(
+            h.runtime.process.binding.unwrap().generation,
+            h.runtime.process.ends[0].cap
+        );
+        assert!(h.host.0.borrow().calls.contains(&(0x23005, CHILD, 101)));
+    }
+}
+#[test]
+fn real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease() {
+    let mut h = Fixture::new();
+    let raw = h.fork(true);
+    let pipe_read = frame(1, 0x79000101, 3, 1);
+    let mut pipe_write = frame(2, 0x79000102, 4, 1);
+    pipe_write[16] = b'!';
+    assert!(!h.runtime.zsh_stream(false, &pipe_read).unwrap());
+    assert!(h.runtime.zsh_stream(true, &pipe_write).unwrap());
+    assert!(h.runtime.zsh_stream(false, &pipe_read).unwrap());
+    assert_eq!(&h.output(PW)[16..17], b"!");
+    h.clear();
+    let input = frame(1, 0x7a000001, 0, 1);
+    assert!(!h.runtime.zsh_stream(false, &input).unwrap());
+    assert_eq!(h.host.0.borrow().serial_reads, 0);
+    let mut work = h.exec_request(&raw);
+    h.runtime.zsh_exec(&mut work).unwrap();
+    assert!(!h.runtime.process.exec_ready);
+    let writer = h.runtime.process.ends[3].cap;
+    let fresh: [u8; 336] = h.output(writer).try_into().unwrap();
+    assert_eq!(&fresh[112 + 3 * 4..112 + 5 * 4], &[0; 8]);
+    assert_eq!(h.runtime.process.identity().unwrap().handle, CHILD);
+    assert_eq!(
+        u64::from_le_bytes(fresh[56..64].try_into().unwrap()),
+        h.runtime.process.ends[0].cap + 1
+    );
+    h.runtime.zsh_terminal().unwrap();
+    assert!(!h.runtime.process.exec_ready);
+    h.host.0.borrow_mut().ready = true;
+    h.runtime.zsh_terminal().unwrap();
+    assert!(h.runtime.process.exec_ready);
+    h.host.0.borrow_mut().terminal = Some((8, 1, 1));
+    h.runtime.zsh_terminal().unwrap();
+    assert_eq!(
+        h.runtime.process.lease,
+        ReadLease::Child(h.runtime.process.child().unwrap())
+    );
+    h.clear();
+    let wait = frame(68, u32::MAX, 0, 0);
+    assert!(h.runtime.zsh_stream(false, &wait).unwrap());
+    let reply = h.output(PW);
+    assert_eq!((result(&reply), result(&reply[4..])), (10, 1792));
+    assert_eq!(&reply[8..], &[0; 24]);
+    assert_eq!(h.runtime.process.wait_status, Some(1792));
+    assert_eq!(h.runtime.process.lease, ReadLease::Parent);
+    assert!(h.runtime.process.reclaimed);
+    assert!(h.host.0.borrow().gone);
+    assert!(h.runtime.process.binding.is_none());
+    assert_eq!(h.runtime.bound.reserved, RESERVED);
+    h.clear();
+    assert!(h.runtime.zsh_stream(false, &wait).unwrap());
+    assert_eq!(result(&h.output(PW)), -10);
+}
+#[test]
+fn child_canonical_read_and_mode_are_rejected_without_input() {
+    let mut h = Fixture::new();
+    h.fork(false);
+    let (tty, refs, caller) = h.runtime.tty.as_mut().unwrap();
+    let mut saved = tty.snapshot(*caller, &refs.stdin).unwrap();
+    tty.apply_now(
+        *caller,
+        &refs.stdin,
+        &mut saved,
+        serial_tty::ModeRequest {
+            mode: Mode::CANONICAL,
+            action: serial_tty::ApplyWhen::Now,
+        },
+    )
+    .unwrap();
+    let reader = frame(1, 0x7a000001, 0, 1);
+    assert!(h.runtime.zsh_stream(true, &reader).unwrap());
+    let writer = h.runtime.process.ends[3].cap;
+    assert_eq!(result(&h.output(writer)), -95);
+    assert_eq!(h.host.0.borrow().serial_reads, 0);
+    h.clear();
+    let mode = frame(0x10, tty_mode::CONTROL, 0, 0);
+    assert!(h.runtime.zsh_stream(true, &mode).unwrap());
+    assert_eq!(result(&h.output(writer)), -95);
+}
+#[test]
+fn known_exec_refusal_preserves_old_context_and_unknown_exec_never_publishes() {
+    for error in [-2, 1] {
+        let mut h = Fixture::new();
+        let raw = h.fork(true);
+        h.host.0.borrow_mut().exec_result = error;
+        let old = h.runtime.process.binding;
+        let mut work = h.exec_request(&raw);
+        let observed = h.runtime.zsh_exec(&mut work);
+        if error < 0 {
+            assert_eq!(observed, Ok(()));
+            let writer = h.runtime.process.ends[3].cap;
+            assert_eq!(
+                zsh_process_frames::decode_receipt(&h.output(writer), b"AEZER001", 2).unwrap(),
+                -2
+            );
+            assert!(
+                h.runtime
+                    .zsh_stream(true, &frame(2, 0x79000102, 4, 0))
+                    .unwrap()
+            );
+        } else {
+            assert_eq!(observed, Err(-5));
+            assert!(!h.host.0.borrow().calls.contains(&(0x23005, CHILD, 101)));
+        }
+        assert_eq!(h.runtime.process.binding, old);
+        assert!(!h.runtime.process.committed);
+        assert!(!h.host.0.borrow().calls.iter().any(|r| r.0 == 0x23009));
+    }
+}
+#[test]
+fn failed_wait_delivery_keeps_reserved_status_child_lease_and_no_reclaim() {
+    let mut h = Fixture::new();
+    let raw = h.fork(false);
+    let mut work = h.exec_request(&raw);
+    h.runtime.zsh_exec(&mut work).unwrap();
+    h.host.0.borrow_mut().ready = true;
+    h.runtime.zsh_terminal().unwrap();
+    h.host.0.borrow_mut().terminal = Some((8, 1, 1));
+    h.runtime.zsh_terminal().unwrap();
+    h.clear();
+    h.host.0.borrow_mut().fail_write = Some((PW, 16));
+    let wait = frame(68, u32::MAX, 1, 0);
+    assert_eq!(h.runtime.zsh_stream(false, &wait), Err(-5));
+    assert_eq!(h.output(PW).len(), 16);
+    assert_eq!(h.runtime.process.wait_status, None);
+    assert!(!h.host.0.borrow().gone);
+    assert!(!h.runtime.process.reclaimed);
+    assert_ne!(h.runtime.process.lease, ReadLease::Parent);
+    assert_eq!(h.runtime.process.children.wait(-1, true), Err(-16));
+}
+#[test]
+fn stale_malformed_copy_unknown_and_reserve_exhaustion_have_no_fabricated_commit() {
+    for mode in 0..4 {
+        let mut h = Fixture::new();
+        let raw = h.snapshot(false);
+        let expected = h.runtime.zsh_expected(false).unwrap();
+        let mut fork = [0; 368];
+        zsh_process_frames::encode_fork(&raw, expected, 1, &mut fork).unwrap();
+        match mode {
+            0 => fork[32 + 56] ^= 1,
+            1 => fork[24] = 1,
+            2 => h.runtime.bound.left = 5,
+            _ => h.host.0.borrow_mut().copy_result = 1,
+        }
+        let mut work = [0; 4096];
+        work[..368].copy_from_slice(&fork);
+        assert!(h.runtime.zsh_fork(&mut work).is_err());
+        assert_eq!(h.runtime.bound.reserved, RESERVED);
+        if mode < 3 {
+            assert!(!h.host.0.borrow().calls.iter().any(|v| v.0 == 0x23006));
+        } else {
+            assert_eq!(h.runtime.process.ends.iter().filter(|e| e.owned).count(), 2);
+            assert!(h.host.0.borrow().closed.is_empty());
+        }
+    }
+}
+#[test]
+fn full_duplex_snapshot_keeps_byte3_and_aggregate_cloexec_projection() {
+    let h = Fixture::new();
+    let mut raw = h.snapshot(false);
+    raw[112..116].copy_from_slice(&[5, 0, 1, 16]);
+    raw[116..120].fill(0);
+    let expected = h.runtime.zsh_expected(false).unwrap();
+    let plan = zsh_stream_plan(&raw, expected).unwrap();
+    assert_eq!(plan.bindings[0].kind, 1);
+    assert_eq!(plan.bindings[1].kind, 1);
+    assert_eq!(raw[115], 16);
+    let id = Identity::admitted(2, 1, CHILD).unwrap();
+    zsh_rebind_snapshot(&mut raw, id, 9, 700).unwrap();
+    assert_eq!(raw[115], 16);
+    zsh_exec_snapshot(&mut raw).unwrap();
+    assert_eq!(&raw[112..120], &[0; 8]);
+}
+
+#[test]
+fn fixed_catalog_missing_and_all_other_nonhelper_paths_preserve_old_image() {
+    for (path, code) in [
+        (b"/inputs/missing".as_slice(), -2),
+        (b"/inputs/denied".as_slice(), -13),
+        (b"/inputs/other".as_slice(), -13),
+    ] {
+        let mut h = Fixture::new();
+        let raw = h.fork(false);
+        let mut work = h.exec_request(&raw);
+        work[368..400].fill(0);
+        work[368..368 + path.len()].copy_from_slice(path);
+        h.runtime.zsh_exec(&mut work).unwrap();
+        assert!(!h.host.0.borrow().calls.iter().any(|x| x.0 == 0x23007));
+        let writer = h.runtime.process.ends[3].cap;
+        assert_eq!(
+            zsh_process_frames::decode_receipt(&h.output(writer), b"AEZER001", 2).unwrap(),
+            code
+        );
+        assert!(!h.runtime.process.committed);
+    }
+}
+#[test]
+fn known_copy_refusal_closes_only_owner_ends_thaws_and_preserves_parent_lease() {
+    let mut h = Fixture::new();
+    h.host.0.borrow_mut().copy_result = -11;
+    let raw = h.snapshot(false);
+    let mut fork = [0; 368];
+    zsh_process_frames::encode_fork(&raw, h.runtime.zsh_expected(false).unwrap(), 1, &mut fork)
+        .unwrap();
+    let mut work = [0; 4096];
+    work[..368].copy_from_slice(&fork);
+    h.runtime.zsh_fork(&mut work).unwrap();
+    assert_eq!(
+        zsh_process_frames::decode_receipt(&h.output(PW), b"AEZFR001", 1).unwrap(),
+        -11
+    );
+    assert_eq!(h.host.0.borrow().closed.len(), 4);
+    assert!(
+        h.runtime
+            .process
+            .ends
+            .iter()
+            .all(|e| e.attempted && e.status == 0)
+    );
+    assert_eq!(h.runtime.process.lease, ReadLease::Parent);
+    assert!(h.runtime.process.binding.is_none());
+    assert_eq!(h.runtime.bound.reserved, RESERVED);
+    assert!(h.host.0.borrow().calls.contains(&(0x23005, PARENT, 101)));
+}
+#[test]
+fn selected_header_shapes_and_partial_poll_preserve_frame_boundaries() {
+    for q in [
+        frame(1, 0x7a000001, 0, 16),
+        frame(2, 0x79000102, 4, 1),
+        frame(3, 0x79000101, 3, 0),
+        frame(82, 0x76050001, 1, 0),
+        frame(68, u32::MAX, 11, 0),
+        frame(0x10, tty_mode::CONTROL, 0, 0),
+    ] {
+        assert!(zsh_small_header(&q, false));
+    }
+    for q in [
+        frame(4, 0x7a000001, 0, 0),
+        frame(1, 0x79000001, 3, 1),
+        frame(1, 0x79000a01, 3, 1),
+        frame(1, 0x7a000001, 0, 17),
+        frame(3, 0x7a000001, 0, 1),
+        frame(82, 0x76050001, 0, 0),
+        frame(68, 9, 0, 0),
+        frame(68, 10, 4, 0),
+        frame(0x13, tty_mode::CONTROL, 0, 0),
+    ] {
+        assert!(!zsh_small_header(&q, false));
+    }
+    assert!(!zsh_small_header(&frame(68, 10, 0, 0), true));
+    assert!(!zsh_small_header(&frame(82, 0x76050001, 1, 0), true));
+    let mut h = Fixture::new();
+    let q = frame(2, 0x7a010001, 1, 0);
+    h.feed(PR, &q[..8]);
+    assert_eq!(h.runtime.zsh_poll(false, &mut [0; 4096]), Ok(Some(true)));
+    assert_eq!(h.runtime.process.parent_at, 8);
+    assert_eq!(h.runtime.zsh_poll(false, &mut [0; 4096]), Ok(None));
+    h.feed(PR, &q[8..]);
+    assert_eq!(h.runtime.zsh_poll(false, &mut [0; 4096]), Ok(Some(true)));
+    assert_eq!(h.runtime.process.parent_at, 0);
+    assert_eq!(h.output(PW), [0; 32]);
+}
+
+// Full fatal path: each branch uses the real Runtime body and the same child
+// credits debited before copy. Mocked ctl outputs are explicit observations;
+// an unknown query is deliberately not converted to a terminal/reclaim proof.
+#[test]
+fn contain_live_and_unknown_copy_settle_known_child_once_without_replay() {
+    for unknown_copy in [false, true] {
+        let mut h = Fixture::new();
+        if unknown_copy {
+            h.host.0.borrow_mut().copy_result = 1;
+            let raw = h.snapshot(false);
+            let mut request = [0; 368];
+            zsh_process_frames::encode_fork(
+                &raw,
+                h.runtime.zsh_expected(false).unwrap(),
+                1,
+                &mut request,
+            )
+            .unwrap();
+            let mut work = [0; 4096];
+            work[..368].copy_from_slice(&request);
+            assert_eq!(h.runtime.zsh_fork(&mut work), Err(-5));
+            assert!(h.runtime.process.endpoints.is_none());
+        } else {
+            h.fork(false);
+        }
+        let child_ends = h.runtime.process.ends.map(|end| end.cap);
+        assert_eq!(h.runtime.process.prepaid, 6);
+        assert_eq!(h.runtime.bound.reserved, RESERVED);
+        h.runtime.bound.left = 0;
+        h.runtime.bound.failed = -110;
+        let calls_before = h.host.0.borrow().calls.len();
+        assert_eq!(h.runtime.contain(), Err(-5));
+        let host = h.host.0.borrow();
+        let child_calls: Vec<_> = host.calls[calls_before..]
+            .iter()
+            .copied()
+            .filter(|(_, cap, _)| *cap == CHILD)
+            .collect();
+        assert_eq!(
+            child_calls,
+            [
+                (0x20007, CHILD, 0),
+                (0x20001, CHILD, 0),
+                (0x20002, CHILD, 0),
+                (0x20001, CHILD, 0)
+            ]
+        );
+        assert!(host.gone);
+        assert!(host.parent_gone);
+        assert_eq!(
+            host.closed,
+            [child_ends[0], child_ends[3], NSR, NSW, PR, PW]
+        );
+        assert!(
+            !host.closed.contains(&child_ends[1]) && !host.closed.contains(&child_ends[2]),
+            "TRANSFERRED_ENDS_ARE_NOT_OWNER_CLOSES"
+        );
+        assert_eq!(
+            host.calls.iter().filter(|call| call.0 == 0x23006).count(),
+            1
+        );
+        assert!(
+            !host
+                .calls
+                .iter()
+                .any(|call| matches!(call.0, 0x23007 | 0x23009))
+        );
+        assert_eq!(
+            host.calls
+                .iter()
+                .filter(|call| call.0 == 0x20007 && call.1 == CHILD)
+                .count(),
+            1
+        );
+        let calls = host.calls.clone();
+        let closes = host.closed.clone();
+        drop(host);
+        assert_eq!(h.runtime.process.prepaid, 0);
+        assert_eq!(h.runtime.process.cleanup_attempted, 15);
+        assert_eq!(h.runtime.process.cleanup_last, (-9, 0, 0));
+        assert_eq!(h.runtime.process.lease, ReadLease::Contained);
+        assert_eq!(h.runtime.process.wait_status, None);
+        assert!(!h.runtime.process.exec_ready && !h.runtime.process.reclaimed);
+        assert_eq!(h.runtime.bound.left, 0);
+        // Four original Parent lifecycle calls + its two physical-end closes +
+        // console close + terminal failure leaf use8. Child's6 use no reserve.
+        assert_eq!(h.runtime.bound.reserved, RESERVED - 8);
+        assert_eq!(h.runtime.cleanup_attempted[0], [true; 4]);
+        assert_eq!(h.runtime.cleanup_attempted[1], [false; 4]);
+        assert_eq!(h.runtime.contain(), Err(-5));
+        assert_eq!(h.host.0.borrow().calls, calls);
+        assert_eq!(h.host.0.borrow().closed, closes);
+    }
+}
+#[test]
+fn contain_unknown_copy_unknown_terminal_never_reclaims_or_restores_parent_lease() {
+    let mut h = Fixture::new();
+    h.host.0.borrow_mut().copy_result = 1;
+    let raw = h.snapshot(false);
+    let mut request = [0; 368];
+    zsh_process_frames::encode_fork(
+        &raw,
+        h.runtime.zsh_expected(false).unwrap(),
+        1,
+        &mut request,
+    )
+    .unwrap();
+    let mut work = [0; 4096];
+    work[..368].copy_from_slice(&request);
+    assert_eq!(h.runtime.zsh_fork(&mut work), Err(-5));
+    h.host.0.borrow_mut().stop_observation = (-5, 0, 0);
+    let child_ends = h.runtime.process.ends.map(|end| end.cap);
+    let before = h.host.0.borrow().calls.len();
+    assert_eq!(h.runtime.contain(), Err(-5));
+    let host = h.host.0.borrow();
+    let child_calls: Vec<_> = host.calls[before..]
+        .iter()
+        .copied()
+        .filter(|(_, cap, _)| *cap == CHILD)
+        .collect();
+    assert_eq!(child_calls, [(0x20007, CHILD, 0), (0x20001, CHILD, 0)]);
+    assert!(!host.gone, "UNKNOWN_TERMINAL_MUST_NOT_RECLAIM");
+    assert_eq!(
+        host.closed,
+        [child_ends[0], child_ends[3], NSR, NSW, PR, PW]
+    );
+    assert_eq!(
+        host.calls.iter().filter(|call| call.0 == 0x23006).count(),
+        1
+    );
+    assert!(
+        !host
+            .calls
+            .iter()
+            .any(|call| matches!(call.0, 0x23007 | 0x23009))
+    );
+    let calls = host.calls.clone();
+    let closes = host.closed.clone();
+    drop(host);
+    assert_eq!(h.runtime.process.cleanup_attempted, 3);
+    assert_eq!(h.runtime.process.cleanup_last, (-5, 0, 0));
+    assert_eq!(
+        h.runtime.process.prepaid, 2,
+        "UNUSED_PREPAID_IS_NOT_REFUNDED_OR_RENEWED"
+    );
+    assert_eq!(h.runtime.bound.reserved, RESERVED - 8);
+    assert_eq!(h.runtime.process.lease, ReadLease::Contained);
+    assert_eq!(h.runtime.process.wait_status, None);
+    assert!(h.runtime.process.binding.is_some());
+    assert!(!h.runtime.process.reclaimed);
+    assert_eq!(h.runtime.contain(), Err(-5));
+    assert_eq!(h.host.0.borrow().calls, calls);
+    assert_eq!(h.host.0.borrow().closed, closes);
+}

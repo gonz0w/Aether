@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #ifndef AETHER_FD_ZSH_EXTERNAL_H
 #define AETHER_FD_ZSH_EXTERNAL_H
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+#include "fd-protocol.h"
+#endif
 #include <sys/types.h>
 #include <sys/uio.h>
 /* Private current-Zsh entry/scoped stdio adapter. At most two readable iovecs;
@@ -37,6 +40,11 @@ char *__wrap_getcwd(char *, size_t);
  * Preserve delegated results. Qualify only requested zero exit status. */
 int __wrap_tgetent(char *, const char *);
 int aether_zsh_diagnostic_status(int);
+#endif
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+/* Single selected aggregate supplies parent, copied child and fresh helper. */
+int64_t aefd_zsh_admit(void);
+int aefd_zsh_tls_valid(void);
 #endif
 int __wrap_main(int, char **);
 #endif

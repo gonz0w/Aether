@@ -33,6 +33,13 @@ typedef int (*aefd_fork_rebind)(void *, struct aefd_startup_auxv parent,
 /* Parent: mask whole snapshot/send; leave guard held on success. The caller
  * must perform exactly one actual native park next. FAILED requires direct
  * fail-stop; never return it as a known no-child errno or call libc finish. */
+#ifdef AEFD_ZSH_PROCESS_BINDINGS
+/* Caller holds the whole context mask; no guard, transport or admission here.
+ * Validation failure clears the local snapshot; precondition failure leaves it
+ * untouched. Storage may be the boot scratch body. */
+int64_t aefd_zsh_capture(struct aefd_startup *, struct aefd_startup_auxv, long,
+                         long, unsigned char[336]);
+#endif
 int64_t aefd_fork_arm(struct aefd_fork *, struct aefd_startup_auxv);
 /* Actual positive native child result or raw thaw-11; consumes one correlated
  * owner disposition. IDLE result may return upstream; FAILED must fail-stop. */
