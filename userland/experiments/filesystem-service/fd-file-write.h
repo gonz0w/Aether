@@ -2,8 +2,8 @@
 #ifndef AETHER_FD_FILE_WRITE_H
 #define AETHER_FD_FILE_WRITE_H
 #include "fd-client.h"
-#ifndef AEFD_WRITE_WIRE
-#error "file write receipt requires explicit AEFD_WRITE_WIRE"
+#if !defined(AEFD_WRITE_WIRE) && !defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
+#error "file write receipt requires explicit selected write wire"
 #endif
 /* Local observations never masquerade as fully decoded remote receipts. */
 #define AEFD_WRITE_NOT_SENT 0

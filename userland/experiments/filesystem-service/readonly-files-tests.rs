@@ -13,6 +13,10 @@ const DATA: &[u8] = b"actual terminfo bytes";
 struct StorageState {
     made: [bool; 3],
     data: Vec<u8>,
+    #[cfg(native_zsh_home_write)]
+    probe: Vec<u8>,
+    #[cfg(native_zsh_home_write)]
+    probe_failure: u8,
     mutations: usize,
     lookups: usize,
     reads: usize,
@@ -24,7 +28,7 @@ fn node(id: u64, size: usize) -> p::Node {
         id,
         1,
         size as u64,
-        if id == 5 {
+        if id == 5 || (cfg!(native_zsh_home_write) && id == 6) {
             p::Kind::File
         } else {
             p::Kind::Directory
@@ -46,8 +50,14 @@ impl p::Backend for Storage {
             (2, b".terminfo") if s.made[0] => 3,
             (3, b"v") if s.made[1] => 4,
             (4, b"vt100") if s.made[2] => 5,
+            #[cfg(native_zsh_home_write)]
+            (2, b"probe") => 6,
             _ => return Err(p::Error::Backend(2)),
         };
+        #[cfg(native_zsh_home_write)]
+        if id == 6 {
+            return Ok(node(id, s.probe.len()));
+        }
         Ok(node(id, if id == 5 { s.data.len() } else { 0 }))
     }
     fn read(&mut self, _: p::Node, offset: u64, out: &mut [u8]) -> Result<usize, p::Error> {
@@ -65,6 +75,28 @@ impl p::Backend for Storage {
         data: &[u8],
         _: p::Utc,
     ) -> Result<p::Completion, p::Lost> {
+        #[cfg(native_zsh_home_write)]
+        if n.identity().0 == 6 {
+            assert_eq!(offset, 0);
+            let mut s = self.0.lock().unwrap();
+            s.mutations += 1;
+            s.probe = data.to_vec();
+            return match s.probe_failure {
+                1 => Err(p::Lost),
+                2 => Ok(p::Completion {
+                    error: 5,
+                    txg: 99,
+                    bytes_staged: data.len() as u64,
+                    state: 1,
+                }),
+                _ => Ok(p::Completion {
+                    error: 0,
+                    txg: s.mutations as u64,
+                    bytes_staged: data.len() as u64,
+                    state: 2,
+                }),
+            };
+        }
         assert_eq!((n.identity().0, offset), (5, 0));
         let mut s = self.0.lock().unwrap();
         s.mutations += 1;
@@ -425,86 +457,401 @@ fn zsh_bad_body_padding_retires_before_lookup() {
 #[cfg(native_zsh_process)]
 #[test]
 fn selected_child_binding_has_its_actual_native_and_session_identity() {
-    let child = Binding { slot: 2, epoch: 1, handle: 0xb0000103, generation: 47 };
+    let child = Binding {
+        slot: 2,
+        epoch: 1,
+        handle: 0xb0000103,
+        generation: 47,
+    };
     assert!(child.valid(), "SELECTED_CHILD_BINDING");
-    assert!(!Binding { handle: binding().handle, ..child }.valid());
-    assert!(!Binding { generation: 0, ..child }.valid());
+    assert!(
+        !Binding {
+            handle: binding().handle,
+            ..child
+        }
+        .valid()
+    );
+    assert!(
+        !Binding {
+            generation: 0,
+            ..child
+        }
+        .valid()
+    );
 }
 
 #[cfg(native_zsh_process)]
 fn child_binding() -> Binding {
-    Binding { slot: 2, epoch: 1, handle: 0xb0000103, generation: 47 }
+    Binding {
+        slot: 2,
+        epoch: 1,
+        handle: 0xb0000103,
+        generation: 47,
+    }
 }
 #[cfg(native_zsh_process)]
 fn rpc_as(h: &mut Harness, binding: Binding, op: u64, args: [u64; 4]) -> ([u8; 64], Vec<u8>) {
     let files = h.files();
     let view = files.view(binding).unwrap();
-    let mut raw = [0; 64]; raw[..8].copy_from_slice(MAGIC);
-    put(&mut raw, 1, op); put(&mut raw, 2, binding.generation); put(&mut raw, 3, files.sequence(view));
-    for (i, value) in args.iter().enumerate() { put(&mut raw, 4+i, *value); }
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    put(&mut raw, 1, op);
+    put(&mut raw, 2, binding.generation);
+    put(&mut raw, 3, files.sequence(view));
+    for (i, value) in args.iter().enumerate() {
+        put(&mut raw, 4 + i, *value);
+    }
     let mut workspace = [0; 4096];
     let mut reply = files.prepare(binding, &raw, 0, &mut workspace).unwrap();
-    let header = *reply.header(); let body = reply.body_mut().to_vec(); reply.delivered();
+    let header = *reply.header();
+    let body = reply.body_mut().to_vec();
+    reply.delivered();
     (header, body)
 }
 #[cfg(native_zsh_process)]
 #[test]
 fn selected_two_views_share_real_offsets_closes_and_commit_only_cloexec() {
     let mut h = Harness::new();
-    let (r, _) = h.rpc(1, [0, ENTRY.len() as u64, 0, 0], ENTRY); let first = word(&r, 4);
-    let (r, _) = h.rpc(1, [1, ALIAS.len() as u64, 0, 0], ALIAS); let second = word(&r, 4);
-    let before = h.requests(); let child = child_binding();
-    h.files().inherit_child(binding(), child).unwrap(); assert_eq!(h.requests(), before);
-    assert_eq!(h.files().file_view(child).unwrap(), ((1<<first)|(1<<second), 1<<second));
+    let (r, _) = h.rpc(1, [0, ENTRY.len() as u64, 0, 0], ENTRY);
+    let first = word(&r, 4);
+    let (r, _) = h.rpc(1, [1, ALIAS.len() as u64, 0, 0], ALIAS);
+    let second = word(&r, 4);
+    let before = h.requests();
+    let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    assert_eq!(h.requests(), before);
+    assert_eq!(
+        h.files().file_view(child).unwrap(),
+        ((1 << first) | (1 << second), 1 << second)
+    );
     assert!(h.files().disconnect_checked(|_| Ok(())).is_err()); // A live child view cannot be silently dropped.
-    let (_, body) = h.rpc(2, [first, 2, 0, 0], &[]); assert_eq!(&body[..2], &DATA[..2]);
+    let (_, body) = h.rpc(2, [first, 2, 0, 0], &[]);
+    assert_eq!(&body[..2], &DATA[..2]);
     let (r, body) = rpc_as(&mut h, child, 2, [first, 2, 0, 0]);
-    assert_eq!((word(&r, 2), word(&r, 3)), (47, 1)); assert_eq!(&body[..2], &DATA[2..4]);
-    let before = h.requests(); h.rpc(5, [first, 0, 0, 0], &[]); assert_eq!(h.requests(), before);
-    let (_, body) = rpc_as(&mut h, child, 2, [first, 2, 0, 0]); assert_eq!(&body[..2], &DATA[4..6]);
+    assert_eq!((word(&r, 2), word(&r, 3)), (47, 1));
+    assert_eq!(&body[..2], &DATA[2..4]);
+    let before = h.requests();
+    h.rpc(5, [first, 0, 0, 0], &[]);
+    assert_eq!(h.requests(), before);
+    let (_, body) = rpc_as(&mut h, child, 2, [first, 2, 0, 0]);
+    assert_eq!(&body[..2], &DATA[4..6]);
     // Merely validating a refused replacement leaves both CLOEXEC views intact.
     assert!(h.files().exec_child(child, 49).is_err());
-    assert_eq!(h.files().file_view(child).unwrap().1, 1<<second);
+    assert_eq!(h.files().file_view(child).unwrap().1, 1 << second);
     let next = h.files().exec_child(child, 48).unwrap();
     assert!(h.files().file_view(child).is_err());
-    assert_eq!(h.files().file_view(next).unwrap(), (1<<first, 0));
-    assert_eq!(h.files().file_view(binding()).unwrap(), (1<<second, 1<<second));
+    assert_eq!(h.files().file_view(next).unwrap(), (1 << first, 0));
+    assert_eq!(
+        h.files().file_view(binding()).unwrap(),
+        (1 << second, 1 << second)
+    );
     let (r, body) = rpc_as(&mut h, next, 2, [first, 2, 0, 0]);
-    assert_eq!((word(&r, 2), word(&r, 3)), (48, 1)); assert_eq!(&body[..2], &DATA[6..8]);
-    h.files().settle_child(next).unwrap(); assert!(h.files().file_view(next).is_err());
+    assert_eq!((word(&r, 2), word(&r, 3)), (48, 1));
+    assert_eq!(&body[..2], &DATA[6..8]);
+    h.files().settle_child(next).unwrap();
+    assert!(h.files().file_view(next).is_err());
     h.rpc(5, [second, 0, 0, 0], &[]);
     h.files().disconnect_checked(|_| Ok(())).unwrap();
     let report = h.worker.take().unwrap().join().unwrap();
     assert_eq!(report.stop, filesystem_service::Stop::Disconnected);
-    assert_eq!(report.requests, h.requests()); assert!(report.requests <= 96);
+    assert_eq!(report.requests, h.requests());
+    assert!(report.requests <= 96);
 }
 #[cfg(native_zsh_process)]
 #[test]
 fn selected_stale_or_mixed_view_admission_has_no_parent_or_source_effect() {
-    let mut h = Harness::new(); let parent = binding(); let child = child_binding();
-    for wrong in [Binding { slot: 1, ..child }, Binding { epoch: 2, handle: 0xb0000203, ..child }, Binding { generation: parent.generation, ..child }] {
+    let mut h = Harness::new();
+    let parent = binding();
+    let child = child_binding();
+    for wrong in [
+        Binding { slot: 1, ..child },
+        Binding {
+            epoch: 2,
+            handle: 0xb0000203,
+            ..child
+        },
+        Binding {
+            generation: parent.generation,
+            ..child
+        },
+    ] {
         assert!(h.files().inherit_child(parent, wrong).is_err());
         assert_eq!(h.files().file_view(parent).unwrap(), (0, 0));
     }
     h.files().inherit_child(parent, child).unwrap();
     assert!(h.files().inherit_child(parent, child).is_err());
-    assert!(h.files().settle_child(Binding { generation: 48, ..child }).is_err());
+    assert!(
+        h.files()
+            .settle_child(Binding {
+                generation: 48,
+                ..child
+            })
+            .is_err()
+    );
     h.files().settle_child(child).unwrap();
     assert!(h.files().inherit_child(parent, child).is_err());
-    let next = Binding { epoch: 2, handle: 0xb0000203, generation: 49, ..child };
-    h.files().inherit_child(parent, next).unwrap(); h.files().settle_child(next).unwrap();
+    let next = Binding {
+        epoch: 2,
+        handle: 0xb0000203,
+        generation: 49,
+        ..child
+    };
+    h.files().inherit_child(parent, next).unwrap();
+    h.files().settle_child(next).unwrap();
     assert_eq!(h.requests(), 12);
     h.files().disconnect_checked(|_| Ok(())).unwrap();
 }
 #[cfg(native_zsh_process)]
 #[test]
 fn selected_unknown_child_reply_retires_the_single_namespace_once() {
-    let mut h = Harness::new(); let child = child_binding();
+    let mut h = Harness::new();
+    let child = child_binding();
     h.files().inherit_child(binding(), child).unwrap();
-    let mut raw = [0; 64]; raw[..8].copy_from_slice(MAGIC); put(&mut raw, 1, 9); put(&mut raw, 2, child.generation); put(&mut raw, 3, 1);
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    put(&mut raw, 1, 9);
+    put(&mut raw, 2, child.generation);
+    put(&mut raw, 3, 1);
     let mut workspace = [0; 4096];
-    { let _unknown = h.files().prepare(child, &raw, 0, &mut workspace).unwrap(); }
-    assert_eq!(workspace, [0; 4096]); assert_eq!(h.files().cleanup(), Some([0; 2]));
-    assert!(h.files().file_view(binding()).is_err()); assert!(h.files().file_view(child).is_err());
-    assert_eq!(h.files().abort(), [0; 2]); assert_eq!(h.seen.lock().unwrap().closes, 1);
+    {
+        let _unknown = h.files().prepare(child, &raw, 0, &mut workspace).unwrap();
+    }
+    assert_eq!(workspace, [0; 4096]);
+    assert_eq!(h.files().cleanup(), Some([0; 2]));
+    assert!(h.files().file_view(binding()).is_err());
+    assert!(h.files().file_view(child).is_err());
+    assert_eq!(h.files().abort(), [0; 2]);
+    assert_eq!(h.seen.lock().unwrap().closes, 1);
+}
+
+#[cfg(native_zsh_home_write)]
+fn home_rpc(
+    h: &mut Harness,
+    binding: Binding,
+    op: u64,
+    args: [u64; 4],
+    body: &[u8],
+    deliver: bool,
+) -> ([u8; 64], Vec<u8>) {
+    let files = h.files();
+    let view = files.view(binding).unwrap();
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    put(&mut raw, 1, op);
+    put(&mut raw, 2, binding.generation);
+    put(&mut raw, 3, files.sequence(view));
+    for (i, v) in args.into_iter().enumerate() {
+        put(&mut raw, 4 + i, v);
+    }
+    let mut workspace = [0; 4096];
+    workspace[..body.len()].copy_from_slice(body);
+    let n = files.body_length(binding, &raw).unwrap();
+    let mut reply = files.prepare(binding, &raw, n, &mut workspace).unwrap();
+    let header = *reply.header();
+    let body = reply.body_mut().to_vec();
+    if deliver {
+        reply.delivered();
+    }
+    (header, body)
+}
+#[cfg(native_zsh_home_write)]
+fn admitted_home(h: &mut Harness) -> Binding {
+    let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    assert!(h.files().admit_home_write(child).is_err()); // No native exec commit yet.
+    let child = h.files().exec_child(child, child.generation + 1).unwrap();
+    h.files().admit_home_write(child).unwrap();
+    child
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_actual_completion_close_delivery_and_healthy_teardown() {
+    let mut h = Harness::new();
+    let child = admitted_home(&mut h);
+    let (r, _) = home_rpc(&mut h, child, 12, [0, 11, 0, 0], b"/home/probe", true);
+    assert_eq!(word(&r, 1), 0);
+    let fd = word(&r, 4);
+    let (r, body) = home_rpc(
+        &mut h,
+        child,
+        11,
+        [fd, 16, 0, 0],
+        b"AETHER-ZSH-HOME\n",
+        true,
+    );
+    assert_eq!((word(&r, 1), word(&r, 4), word(&r, 5)), (0, 16, 64));
+    assert_eq!(
+        (
+            word(body[..64].try_into().unwrap(), 0),
+            word(body[..64].try_into().unwrap(), 1)
+        ),
+        (14, 0)
+    );
+    assert!(!h.files().home_write_complete());
+    assert_eq!(h.state.lock().unwrap().probe, b"AETHER-ZSH-HOME\n");
+    assert_eq!(h.state.lock().unwrap().mutations, 5);
+    let (r, _) = home_rpc(&mut h, child, 5, [fd, 0, 0, 0], &[], true);
+    assert_eq!(word(&r, 1), 0);
+    assert!(h.files().home_write_complete());
+    h.files().settle_child(child).unwrap();
+    assert!(h.files().home_write_complete());
+    h.files().disconnect_checked(|_| Ok(())).unwrap();
+    assert!(h.files().home_write_complete());
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_parent_preexec_stale_paths_and_modes_have_no_effect() {
+    let mut h = Harness::new();
+    let before = h.requests();
+    assert!(h.files().admit_home_write(binding()).is_err());
+    let (r, _) = home_rpc(&mut h, binding(), 12, [0, 11, 0, 0], b"/home/probe", true);
+    assert_eq!(word(&r, 1) as i64, -9);
+    let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    let (r, _) = home_rpc(&mut h, child, 12, [0, 11, 0, 0], b"/home/probe", true);
+    assert_eq!(word(&r, 1) as i64, -9);
+    assert!(h.files().admit_home_write(child).is_err());
+    let next = h.files().exec_child(child, 48).unwrap();
+    assert!(h.files().admit_home_write(child).is_err());
+    h.files().admit_home_write(next).unwrap();
+    let (r, _) = home_rpc(&mut h, next, 12, [0, ENTRY.len() as u64, 0, 0], ENTRY, true);
+    assert_eq!(word(&r, 1) as i64, -2);
+    assert_eq!(h.requests(), before);
+    assert_eq!(h.state.lock().unwrap().mutations, 4);
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_only_fixed_bytes_and_descriptor_can_mutate_once() {
+    let mut h = Harness::new();
+    let child = admitted_home(&mut h);
+    let (r, _) = home_rpc(&mut h, child, 12, [0, 11, 0, 0], b"/home/probe", true);
+    let fd = word(&r, 4);
+    let before = h.requests();
+    let (r, _) = home_rpc(&mut h, child, 11, [fd, 15, 0, 0], b"AETHER-ZSH-HOME", true);
+    assert_eq!(word(&r, 1) as i64, -22);
+    let (r, _) = home_rpc(&mut h, child, 11, [fd, 16, 0, 0], b"AETHER-ZSH-HOME!", true);
+    assert_eq!(word(&r, 1) as i64, -22);
+    let (r, _) = home_rpc(
+        &mut h,
+        child,
+        11,
+        [fd + 1, 16, 0, 0],
+        b"AETHER-ZSH-HOME\n",
+        true,
+    );
+    assert_eq!(word(&r, 1) as i64, -9);
+    let (r, _) = home_rpc(&mut h, child, 2, [fd, 16, 0, 0], &[], true);
+    assert_eq!(word(&r, 1) as i64, -9);
+    let (r, _) = home_rpc(&mut h, child, 4, [fd, 3, 0, 0], &[], true);
+    assert_eq!(word(&r, 1) as i64, -22);
+    assert_eq!(h.requests(), before);
+    assert_eq!(h.state.lock().unwrap().mutations, 4);
+    home_rpc(
+        &mut h,
+        child,
+        11,
+        [fd, 16, 0, 0],
+        b"AETHER-ZSH-HOME\n",
+        true,
+    );
+    let after = h.requests();
+    let (r, _) = home_rpc(
+        &mut h,
+        child,
+        11,
+        [fd, 16, 0, 0],
+        b"AETHER-ZSH-HOME\n",
+        true,
+    );
+    assert_eq!(word(&r, 1) as i64, -9);
+    assert_eq!(h.requests(), after);
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_reply_loss_preserves_effect_without_replay_or_completion() {
+    let mut h = Harness::new();
+    let child = admitted_home(&mut h);
+    let (r, _) = home_rpc(&mut h, child, 12, [0, 11, 0, 0], b"/home/probe", true);
+    let fd = word(&r, 4);
+    let (r, _) = home_rpc(
+        &mut h,
+        child,
+        11,
+        [fd, 16, 0, 0],
+        b"AETHER-ZSH-HOME\n",
+        false,
+    );
+    assert_eq!(word(&r, 4), 16);
+    assert!(!h.files().home_write_complete());
+    assert_eq!(h.files().home_write.receipt[0], 14);
+    assert_eq!(h.files().home_write.sequence, 2);
+    assert_eq!(h.files().cleanup(), Some([0; 2]));
+    assert_eq!(h.state.lock().unwrap().probe, b"AETHER-ZSH-HOME\n");
+    assert_eq!(h.state.lock().unwrap().mutations, 5);
+    assert_eq!(h.files().abort(), [0; 2]);
+    assert_eq!(h.seen.lock().unwrap().closes, 1);
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_unknown_and_committed_failures_keep_typed_receipts_and_retire() {
+    for failure in [1, 2] {
+        let mut h = Harness::new();
+        let child = admitted_home(&mut h);
+        let (r, _) = home_rpc(&mut h, child, 12, [0, 11, 0, 0], b"/home/probe", true);
+        let fd = word(&r, 4);
+        h.state.lock().unwrap().probe_failure = failure;
+        let (r, body) = home_rpc(
+            &mut h,
+            child,
+            11,
+            [fd, 16, 0, 0],
+            b"AETHER-ZSH-HOME\n",
+            true,
+        );
+        assert_eq!(word(&r, 1) as i64, -5);
+        assert_eq!(word(&r, 4), 0);
+        assert_eq!(word(&r, 5), 64);
+        assert_eq!(
+            word(body[..64].try_into().unwrap(), 0) & 7,
+            if failure == 1 { 4 } else { 2 }
+        );
+        assert!(!h.files().home_write_complete());
+        assert!(h.files().cleanup().is_some());
+        assert!(h.files().mutation_failure().is_some());
+    }
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_close_reply_loss_never_qualifies_cleanup() {
+    let mut h = Harness::new();
+    let child = admitted_home(&mut h);
+    let (r, _) = home_rpc(&mut h, child, 12, [0, 11, 0, 0], b"/home/probe", true);
+    let fd = word(&r, 4);
+    home_rpc(
+        &mut h,
+        child,
+        11,
+        [fd, 16, 0, 0],
+        b"AETHER-ZSH-HOME\n",
+        true,
+    );
+    home_rpc(&mut h, child, 5, [fd, 0, 0, 0], &[], false);
+    assert!(!h.files().home_write_complete());
+    assert_eq!(h.files().home_write.phase, 4);
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn home_write_second_exec_denies_before_generation_or_cloexec_effects() {
+    let mut h = Harness::new();
+    let child = admitted_home(&mut h);
+    home_rpc(&mut h, child, 12, [1, 11, 0, 0], b"/home/probe", true);
+    let before = h.files().file_view(child).unwrap();
+    let requests = h.requests();
+    assert!(h.files().exec_child(child, child.generation + 1).is_err());
+    assert_eq!(
+        h.files().file_view(child),
+        Ok(before),
+        "SECOND_EXEC_CHANGED_VIEW"
+    );
+    assert_eq!(h.requests(), requests, "SECOND_EXEC_CLOSED_FILE");
 }

@@ -32,4 +32,13 @@ int aether_home_readback(spa_t *, int expectation, uint64_t utc_min,
  */
 int aether_home_mktemp_readback(spa_t *, int recovered, uint64_t utc_min,
                                 uint64_t utc_max, unsigned char result40[40]);
+/* Separate fixed Zsh-home oracle. Same exclusive readonly SPA/UTC/lifecycle
+ * obligations above. recovered is exactly0/1; result40 is zero on failure.
+ * Success returns preserved original metadata digest32 and role/version tag8
+ * ZSHPR001 (original home absent) or ZSHWR001 (probe exact16-byte payload plus
+ * complete terminfo tree/asset). No writer code or predicted allocated IDs.
+ * Importing caller withholds all bytes until clean readonly shutdown/health.
+ */
+int aether_home_zsh_readback(spa_t *, int recovered, uint64_t utc_min,
+                            uint64_t utc_max, unsigned char result40[40]);
 #endif

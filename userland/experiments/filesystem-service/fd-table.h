@@ -13,6 +13,10 @@
 int64_t aefd_table_open_duplex(struct aefd_bindings *, struct aefd_client *,
                                int);
 #endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+int64_t aefd_table_open_home_write(struct aefd_bindings *, struct aefd_client *,
+                                   const unsigned char *, size_t, int);
+#endif
 int64_t aefd_table_open(struct aefd_bindings *, struct aefd_client *,
                         const unsigned char *name, size_t length, int cloexec);
 int64_t aefd_table_dup(struct aefd_bindings *, struct aefd_client *, int fd,

@@ -63,6 +63,13 @@ static int shape(uint64_t opcode, const uint64_t args[4], size_t name_length)
 {
     if (args[3])
         return 0;
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    if (opcode == 11)
+        return 0; /* Typed entry retains the actual mutation receipt. */
+    if (opcode == 12)
+        return args[0] <= 1 && args[1] == name_length && name_length == 11 &&
+               !args[2];
+#endif
 #ifdef AEFD_WRITE_WIRE
     if (opcode == 11)
         return 0; /* The typed entry must retain its mutation receipt. */
@@ -116,6 +123,17 @@ static int shape(uint64_t opcode, const uint64_t args[4], size_t name_length)
 static int stage_name(unsigned char out[256], uint64_t opcode,
                       const unsigned char *name, size_t length)
 {
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    if (opcode == 12) {
+        if (!name || length != 11 || memcmp(name, "/home/probe", 11)) {
+            memset(out, 0, 256);
+            return 0;
+        }
+        memcpy(out, name, length);
+        memset(out + length, 0, 256 - length);
+        return 1;
+    }
+#endif
 #ifdef AEFD_WRITE_WIRE
     if (opcode == 10)
         return aefd_home_name(out, name, length);
@@ -136,6 +154,9 @@ int aefd_client_exchange(struct aefd_client *client, uint64_t opcode,
         return -1;
     }
     int path_call = opcode == 1;
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    path_call = path_call || opcode == 12;
+#endif
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
     path_call = path_call || opcode == 8 || opcode == 10;
 #endif
@@ -214,7 +235,7 @@ retired:
     return -1;
 }
 
-#ifdef AEFD_WRITE_WIRE
+#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
 int aefd_client_write(struct aefd_client *client, int fd,
                       const unsigned char *bytes, size_t count,
                       struct aefd_write_result *out)
@@ -241,7 +262,11 @@ int aefd_client_write(struct aefd_client *client, int fd,
     }
     memset(client->workspace, 0, AEFD_READ_MAX);
     if (!aefd_file_selector((uint64_t)fd) || !bytes || !count ||
-        count > AEFD_READ_MAX) {
+        count > AEFD_READ_MAX
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+        || count != 16 || memcmp(bytes, "AETHER-ZSH-HOME\n", 16)
+#endif
+    ) {
         *out = result;
         return 0;
     }

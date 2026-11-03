@@ -27,6 +27,8 @@ const CHILD: u64 = 0xb0000103;
 struct Storage {
     made: [bool; 3],
     data: Vec<u8>,
+    probe: Vec<u8>,
+    probe_failure: u8,
     mutations: u64,
 }
 fn node(id: u64, size: usize) -> p::Node {
@@ -34,7 +36,7 @@ fn node(id: u64, size: usize) -> p::Node {
         id,
         1,
         size as u64,
-        if id == 5 {
+        if matches!(id, 5 | 6) {
             p::Kind::File
         } else {
             p::Kind::Directory
@@ -52,11 +54,19 @@ impl p::Backend for Storage {
         let id = match (n.identity().0, s) {
             (1, b"home") => 2,
             (2, b".terminfo") if self.made[0] => 3,
+            (2, b"probe") => 6,
             (3, b"v") if self.made[1] => 4,
             (4, b"vt100") if self.made[2] => 5,
             _ => return Err(p::Error::Backend(2)),
         };
-        Ok(node(id, if id == 5 { self.data.len() } else { 0 }))
+        Ok(node(
+            id,
+            match id {
+                5 => self.data.len(),
+                6 => self.probe.len(),
+                _ => 0,
+            },
+        ))
     }
     fn read(&mut self, _: p::Node, at: u64, out: &mut [u8]) -> Result<usize, p::Error> {
         let at = (at as usize).min(self.data.len());
@@ -71,9 +81,27 @@ impl p::Backend for Storage {
         bytes: &[u8],
         _: p::Utc,
     ) -> Result<p::Completion, p::Lost> {
-        assert_eq!((n.identity().0, at), (5, 0));
-        self.data = bytes.to_vec();
+        assert_eq!(at, 0);
         self.mutations += 1;
+        match n.identity().0 {
+            5 => self.data = bytes.to_vec(),
+            6 => {
+                assert_eq!(bytes, b"AETHER-ZSH-HOME\n", "EXACT_HOME_WRITE");
+                if self.probe_failure == 2 {
+                    return Err(p::Lost);
+                }
+                if self.probe_failure == 1 {
+                    return Ok(p::Completion {
+                        error: 5,
+                        txg: self.mutations,
+                        bytes_staged: 0,
+                        state: 2,
+                    });
+                }
+                self.probe = bytes.to_vec();
+            }
+            _ => panic!("NO_OTHER_WRITE_OBJECT"),
+        }
         Ok(p::Completion {
             error: 0,
             txg: self.mutations,
@@ -160,6 +188,7 @@ struct Host {
     stop_result: Status,
     stop_observation: Status,
     serial_reads: usize,
+    serial_output: Vec<u8>,
     fail_write: Option<(u64, usize)>,
     written: usize,
 }
@@ -297,6 +326,7 @@ impl Control for Mock {
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
         let mut h = self.0.borrow_mut();
         if writing {
+            h.serial_output.extend_from_slice(bytes);
             bytes.len() as i64
         } else {
             h.serial_reads += 1;
@@ -336,12 +366,22 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
+        Self::with_probe_failure(0)
+    }
+    fn with_probe_failure(probe_failure: u8) -> Self {
         let (a, b) = mpsc::channel();
         let (c, d) = mpsc::channel();
         let worker = thread::spawn(move || {
-            let mut owner = p::Owner::new(Storage::default(), Time, 91)
-                .unwrap()
-                .with_namespace_identity(p::Identity::new(1000, 1000).unwrap());
+            let mut owner = p::Owner::new(
+                Storage {
+                    probe_failure,
+                    ..Storage::default()
+                },
+                Time,
+                91,
+            )
+            .unwrap()
+            .with_namespace_identity(p::Identity::new(1000, 1000).unwrap());
             let attached = owner.attach(7, p::Rights::new(15).unwrap()).unwrap();
             let home = owner
                 .lookup(
@@ -385,6 +425,7 @@ impl Fixture {
             stop_result: (0, 0, 0),
             stop_observation: (144, 0, 3),
             serial_reads: 0,
+            serial_output: Vec::new(),
             fail_write: None,
             written: 0,
         })));
@@ -556,6 +597,111 @@ impl Fixture {
         self.clear();
         child
     }
+    #[cfg(native_zsh_home_write)]
+    fn home_file_request(
+        &mut self,
+        op: u64,
+        sequence: u64,
+        a: u64,
+        body: &[u8],
+    ) -> Result<Vec<u8>, i64> {
+        let binding = self.runtime.process.binding.unwrap();
+        let mut header = [0; 64];
+        header[..8].copy_from_slice(filesystem_readonly::MAGIC);
+        for (index, value) in [op, binding.generation, sequence, a, body.len() as u64, 0, 0]
+            .into_iter()
+            .enumerate()
+        {
+            header[(index + 1) * 8..(index + 2) * 8].copy_from_slice(&value.to_le_bytes());
+        }
+        self.runtime.file_header = header;
+        let cap = self.runtime.process.ends[0].cap;
+        let mut padded = [0; 64];
+        padded[..body.len()].copy_from_slice(body);
+        if !body.is_empty() {
+            self.feed(cap, &padded);
+        }
+        self.clear();
+        let writer = self.runtime.process.ends[3].cap;
+        self.runtime.file_request(&mut [0; 4096], true)?;
+        Ok(self.output(writer))
+    }
+    #[cfg(native_zsh_home_write)]
+    fn open_home_write(&mut self, sequence: u64) -> i32 {
+        let reply = self
+            .home_file_request(12, sequence, 0, b"/home/probe")
+            .unwrap();
+        assert_eq!(
+            i64::from_le_bytes(reply[8..16].try_into().unwrap()),
+            0,
+            "HOME_WRITE_OPEN_STATUS"
+        );
+        let fd = u64::from_le_bytes(reply[32..40].try_into().unwrap());
+        assert!((3..16).contains(&fd), "HOME_WRITE_OPEN");
+        fd as i32
+    }
+    #[cfg(native_zsh_home_write)]
+    fn complete_home_write(&mut self, sequence: u64) {
+        let fd = self.open_home_write(sequence);
+        let reply = self
+            .home_file_request(11, sequence + 1, fd as u64, b"AETHER-ZSH-HOME\n")
+            .unwrap();
+        assert_eq!(i64::from_le_bytes(reply[8..16].try_into().unwrap()), 0);
+        assert_eq!(u64::from_le_bytes(reply[32..40].try_into().unwrap()), 16);
+        assert_eq!(reply.len(), 128);
+        assert!(
+            !self
+                .runtime
+                .with_files(|f| Ok(f.home_write_complete()))
+                .unwrap()
+        );
+        let reply = self
+            .home_file_request(5, sequence + 2, fd as u64, b"")
+            .unwrap();
+        assert_eq!(i64::from_le_bytes(reply[8..16].try_into().unwrap()), 0);
+        assert!(
+            self.runtime
+                .with_files(|f| Ok(f.home_write_complete()))
+                .unwrap()
+        );
+    }
+    #[cfg(native_zsh_home_write)]
+    fn helper_ready(&mut self) {
+        let raw = self.fork(false);
+        let mut request = self.exec_request(&raw);
+        self.runtime.zsh_exec(&mut request).unwrap();
+        self.host.0.borrow_mut().ready = true;
+        self.runtime.zsh_terminal().unwrap();
+        assert!(self.runtime.process.exec_ready);
+    }
+    #[cfg(native_zsh_home_write)]
+    fn collect_helper_zero(&mut self) {
+        self.host.0.borrow_mut().terminal = Some((1, 1, 1));
+        self.runtime.zsh_terminal().unwrap();
+        self.clear();
+        assert!(
+            self.runtime
+                .zsh_stream(false, &frame(68, u32::MAX, 0, 0))
+                .unwrap()
+        );
+        assert_eq!(
+            (result(&self.output(PW)), result(&self.output(PW)[4..])),
+            (10, 0)
+        );
+    }
+    #[cfg(native_zsh_home_write)]
+    fn prepare_healthy_oracle(&mut self) {
+        self.runtime.cleanup_mode().unwrap();
+        self.runtime
+            .with_files(|files| files.disconnect_checked(|_| Ok(())).map(|_| ()))
+            .unwrap();
+        self.runtime.close_owned().unwrap();
+        // Synthetic terminal observations isolate the final machine-row guard;
+        // real target terminal/export proof remains a separate native gate.
+        self.runtime.observed_terminal = [Some((1, 1, 1)); 2];
+        self.runtime.app = 0;
+        self.runtime.engine = 0;
+    }
     fn exec_request(&self, raw: &[u8; 336]) -> [u8; 4096] {
         let mut work = [0; 4096];
         work[..8].copy_from_slice(b"AEZEX001");
@@ -566,7 +712,12 @@ impl Fixture {
         work[368..382].copy_from_slice(b"/inputs/helper");
         work[400..408].copy_from_slice(&2u64.to_le_bytes());
         work[416..430].copy_from_slice(b"/inputs/helper");
-        work[448..454].copy_from_slice(b"status");
+        let argument = if cfg!(native_zsh_home_write) {
+            b"home-write".as_slice()
+        } else {
+            b"status".as_slice()
+        };
+        work[448..448 + argument.len()].copy_from_slice(argument);
         work
     }
 }
@@ -675,7 +826,9 @@ fn real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease() {
     h.host.0.borrow_mut().ready = true;
     h.runtime.zsh_terminal().unwrap();
     assert!(h.runtime.process.exec_ready);
-    h.host.0.borrow_mut().terminal = Some((8, 1, 1));
+    #[cfg(native_zsh_home_write)]
+    h.complete_home_write(1);
+    h.host.0.borrow_mut().terminal = Some((if cfg!(native_zsh_home_write) { 1 } else { 8 }, 1, 1));
     h.runtime.zsh_terminal().unwrap();
     assert_eq!(
         h.runtime.process.lease,
@@ -685,9 +838,10 @@ fn real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease() {
     let wait = frame(68, u32::MAX, 0, 0);
     assert!(h.runtime.zsh_stream(false, &wait).unwrap());
     let reply = h.output(PW);
-    assert_eq!((result(&reply), result(&reply[4..])), (10, 1792));
+    let expected = if cfg!(native_zsh_home_write) { 0 } else { 1792 };
+    assert_eq!((result(&reply), result(&reply[4..])), (10, expected));
     assert_eq!(&reply[8..], &[0; 24]);
-    assert_eq!(h.runtime.process.wait_status, Some(1792));
+    assert_eq!(h.runtime.process.wait_status, Some(expected));
     assert_eq!(h.runtime.process.lease, ReadLease::Parent);
     assert!(h.runtime.process.reclaimed);
     assert!(h.host.0.borrow().gone);
@@ -1060,4 +1214,127 @@ fn contain_unknown_copy_unknown_terminal_never_reclaims_or_restores_parent_lease
     assert_eq!(h.runtime.contain(), Err(-5));
     assert_eq!(h.host.0.borrow().calls, calls);
     assert_eq!(h.host.0.borrow().closed, closes);
+}
+
+#[test]
+fn fixed_helper_arguments_follow_selected_workload() {
+    let mut raw = [0; 272];
+    raw[..8].copy_from_slice(&2u64.to_le_bytes());
+    raw[16..30].copy_from_slice(b"/inputs/helper");
+    for argument in [
+        b"status".as_slice(),
+        b"home-write",
+        b"home-writ",
+        b"home-write-extra",
+    ] {
+        raw[48..].fill(0);
+        raw[48..48 + argument.len()].copy_from_slice(argument);
+        assert_eq!(
+            zsh_helper_arguments(&raw),
+            argument
+                == if cfg!(native_zsh_home_write) {
+                    b"home-write".as_slice()
+                } else {
+                    b"status".as_slice()
+                },
+            "SELECTED_HELPER_ARGUMENT"
+        );
+    }
+    raw[48..].fill(0);
+    let selected = if cfg!(native_zsh_home_write) {
+        b"home-write".as_slice()
+    } else {
+        b"status".as_slice()
+    };
+    raw[48..48 + selected.len()].copy_from_slice(selected);
+    for byte in [8, 30, 80, 271] {
+        raw[byte] = 1;
+        assert!(!zsh_helper_arguments(&raw), "SELECTED_HELPER_PADDING");
+        raw[byte] = 0;
+    }
+}
+
+#[cfg(native_zsh_home_write)]
+#[test]
+fn actual_ready_arms_only_executed_helper_and_completed_write_close_gates_v3() {
+    let mut h = Fixture::new();
+    let raw = h.fork(false);
+    let binding = h.runtime.process.binding.unwrap();
+    assert!(
+        h.runtime
+            .with_files(|f| f.admit_home_write(binding))
+            .is_err(),
+        "NO_PREEXEC_WRITE_ADMISSION"
+    );
+    let mut request = h.exec_request(&raw);
+    h.runtime.zsh_exec(&mut request).unwrap();
+    h.runtime.zsh_terminal().unwrap();
+    assert!(!h.runtime.process.exec_ready);
+    let denied = h.home_file_request(12, 1, 0, b"/home/probe").unwrap();
+    assert!(
+        i64::from_le_bytes(denied[8..16].try_into().unwrap()) < 0,
+        "NO_WRITE_BEFORE_NATIVE_READY"
+    );
+    h.host.0.borrow_mut().ready = true;
+    h.runtime.zsh_terminal().unwrap();
+    // The denied pre-READY request consumed FILE sequence1 without a namespace effect.
+    h.complete_home_write(2);
+    h.collect_helper_zero();
+    h.prepare_healthy_oracle();
+    // SAFETY: fixture owns the successfully initialized Runtime final slot.
+    assert!(unsafe { h.runtime.files.assume_init_ref() }.home_write_complete());
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    let bytes = &h.host.0.borrow().serial_output;
+    assert!(
+        bytes
+            .windows(b"child_status=0".len())
+            .any(|s| s == b"child_status=0")
+    );
+    assert!(
+        bytes
+            .windows(b"write_bytes=16 write_closed=1".len())
+            .any(|s| s == b"write_bytes=16 write_closed=1")
+    );
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn no_write_completion_cannot_emit_v3_after_other_healthy_cleanup() {
+    let mut h = Fixture::new();
+    h.helper_ready();
+    h.collect_helper_zero();
+    h.prepare_healthy_oracle();
+    assert_eq!(
+        h.runtime.write_native_oracle(&mut [0; 4096]),
+        Err(-5),
+        "HOME_WRITE_FACTS_BEFORE_ORACLE"
+    );
+    assert!(h.host.0.borrow().serial_output.is_empty());
+}
+#[cfg(native_zsh_home_write)]
+#[test]
+fn retired_write_source_delivers_one_retained_error_then_contains_without_replay() {
+    for failure in [1, 2] {
+        let mut h = Fixture::with_probe_failure(failure);
+        h.helper_ready();
+        let fd = h.open_home_write(1);
+        assert_eq!(
+            h.home_file_request(11, 2, fd as u64, b"AETHER-ZSH-HOME\n"),
+            Err(-5),
+            "NO_RESUME_AFTER_SOURCE_CLOSE"
+        );
+        let out = h.output(h.runtime.process.ends[3].cap);
+        assert_eq!(out.len(), 128, "RETAINED_ERROR_RECEIPT_DELIVERED");
+        assert_eq!(i64::from_le_bytes(out[8..16].try_into().unwrap()), -5);
+        assert_eq!(u64::from_le_bytes(out[40..48].try_into().unwrap()), 64);
+        // SAFETY: fixture still owns the initialized slot after source close.
+        assert!(!unsafe { h.runtime.files.assume_init_ref() }.home_write_complete());
+        // SAFETY: same initialized final slot; only retained cleanup is read.
+        assert!(
+            unsafe { h.runtime.files.assume_init_ref() }
+                .cleanup()
+                .is_some()
+        );
+        assert!(h.host.0.borrow().serial_output.is_empty());
+        assert!(!h.runtime.process.reclaimed);
+    }
 }

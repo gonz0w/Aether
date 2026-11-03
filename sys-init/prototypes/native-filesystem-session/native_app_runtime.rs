@@ -150,6 +150,8 @@ use abi29_dispatch_core::children::{Children, Identity as ChildIdentity, ReadLea
 use fd_startup::ForkStreams;
 #[cfg(all(native_zsh_process, not(native_zsh_filesystem)))]
 compile_error!("Zsh process controller requires retained filesystem custody");
+#[cfg(all(native_zsh_home_write, not(native_zsh_process)))]
+compile_error!("Zsh home write requires the matched process controller");
 
 #[cfg(native_zsh_process)]
 struct ZshProcess<K: AppControl> {
@@ -1224,14 +1226,20 @@ impl<K: AppControl> Runtime<K> {
                 .prepare(binding, &header, length, workspace)
                 .map_err(fs_errno)?;
             let mut bytes = *reply.header();
+            #[cfg(native_zsh_home_write)]
+            let source_closed = reply.source_closed();
+            #[cfg(not(native_zsh_home_write))]
+            let source_closed = false;
             // End the namespace loan before process I/O reborrows Bound. A lost
             // reply rearms only the close journal before Reply's abort/drop.
-            reply
-                .configure(|io| {
-                    io.disarm();
-                    Ok(())
-                })
-                .map_err(fs_errno)?;
+            if !source_closed {
+                reply
+                    .configure(|io| {
+                        io.disarm();
+                        Ok(())
+                    })
+                    .map_err(fs_errno)?;
+            }
             #[cfg(native_zsh_process)]
             let endpoint = if child {
                 self.process.endpoints.as_mut()
@@ -1252,23 +1260,28 @@ impl<K: AppControl> Runtime<K> {
             } else {
                 Err(-9)
             };
-            reply
-                .configure(|io| {
-                    // SAFETY: process Steps loan ended above; these four disjoint
-                    // fields are exclusively reloaned through settlement/drop.
-                    unsafe {
-                        io.arm(
-                            &mut self.bound,
-                            &mut self.ends,
-                            &mut self.filesystem_requests,
-                            &mut self.namespace_prepaid,
-                        )
-                    }
-                })
-                .map_err(fs_errno)?;
+            if !source_closed {
+                reply
+                    .configure(|io| {
+                        // SAFETY: process Steps loan ended above; these four disjoint
+                        // fields are exclusively reloaned through settlement/drop.
+                        unsafe {
+                            io.arm(
+                                &mut self.bound,
+                                &mut self.ends,
+                                &mut self.filesystem_requests,
+                                &mut self.namespace_prepaid,
+                            )
+                        }
+                    })
+                    .map_err(fs_errno)?;
+            }
             delivery?;
             reply.delivered();
-            Ok(())
+            // Namespace::close already recorded physical closes and disarmed
+            // all loans. A retained typed failure may be delivered once, but
+            // a closed source cannot resume service or become write success.
+            if source_closed { Err(-5) } else { Ok(()) }
         })();
         if files.cleanup().is_none() {
             files
@@ -1648,6 +1661,13 @@ impl<K: AppControl> Runtime<K> {
             return Err(state.0);
         }
         if self.process.committed && state.1 == 1 {
+            #[cfg(native_zsh_home_write)]
+            if !self.process.exec_ready && state.0 == 0 {
+                // Matched C003 receipt and publication preceded this actual
+                // live native READY; labels alone never arm FILE mutation.
+                let binding = self.process.binding.ok_or(-9)?;
+                self.with_files(|files| files.admit_home_write(binding))?;
+            }
             self.process.exec_ready = true;
         }
         if state.0 == 0 {
@@ -2117,8 +2137,8 @@ impl<K: AppControl> Runtime<K> {
             return Err(-5);
         }
         #[cfg(native_zsh_process)]
-        if self.process.wait_status != Some(1792)
-            || self.process.terminal != Some(1792)
+        if self.process.wait_status != Some(if cfg!(native_zsh_home_write) { 0 } else { 1792 })
+            || self.process.terminal != Some(if cfg!(native_zsh_home_write) { 0 } else { 1792 })
             || !self.process.committed
             || !self.process.exec_ready
             || !self.process.reclaimed
@@ -2132,7 +2152,15 @@ impl<K: AppControl> Runtime<K> {
         {
             return Err(-5);
         }
-        #[cfg(native_zsh_process)]
+        // SAFETY: the same checked files_live final-slot lifetime above remains
+        // live after healthy disconnect; this reads retained completion facts.
+        #[cfg(native_zsh_home_write)]
+        if !unsafe { self.files.assume_init_ref() }.home_write_complete() {
+            return Err(-5);
+        }
+        #[cfg(native_zsh_home_write)]
+        const ROW: &[u8] = b"\nAETHER ZSH OWNER v=3 requests=00 child_status=0 exec_ready=1 child_reclaimed=1 parent_lease=1 write_bytes=16 write_closed=1 mode_cleanup=0\n";
+        #[cfg(all(native_zsh_process, not(native_zsh_home_write)))]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=2 requests=00 child_status=1792 exec_ready=1 child_reclaimed=1 parent_lease=1 mode_cleanup=0\n";
         #[cfg(not(native_zsh_process))]
         const ROW: &[u8; 49] = b"\nAETHER ZSH OWNER v=1 requests=00 mode_cleanup=0\n";
@@ -2519,7 +2547,7 @@ impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
     }
 }
 // Closed selected workload policy, after the wire codec checked canonical slots.
-#[cfg(native_zsh_process)]
+#[cfg(all(native_zsh_process, not(native_zsh_home_write)))]
 fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
     u64::from_le_bytes(raw[..8].try_into().unwrap()) == 2
         && raw[8..16] == [0; 8]
@@ -2527,6 +2555,15 @@ fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
         && raw[30..48] == [0; 18]
         && raw[48..54] == *b"status"
         && raw[54..] == [0; 218]
+}
+#[cfg(native_zsh_home_write)]
+fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
+    u64::from_le_bytes(raw[..8].try_into().unwrap()) == 2
+        && raw[8..16] == [0; 8]
+        && raw[16..30] == *b"/inputs/helper"
+        && raw[30..48] == [0; 18]
+        && raw[48..58] == *b"home-write"
+        && raw[58..] == [0; 214]
 }
 #[cfg(native_zsh_process)]
 fn zsh_small_header(raw: &[u8; 32], child: bool) -> bool {

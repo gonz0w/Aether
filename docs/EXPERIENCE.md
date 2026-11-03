@@ -32,3 +32,13 @@ return values and scheduling remain unchanged. Nonzero channel completions,
 emergency/lifecycle/final markers and application bytes remain exact; other
 profiles retain their traces. This is a scoped diagnostic-presentation change,
 not readiness, renderer conformance or a resource exception.
+
+
+Issue145 adds the exact ASCII v3 Owner row documented in the
+[fixed home-write contract](../userland/docs/ZSH-FILESYSTEM.md#selected-fixed-home-write).
+It is an internal machine observation with leading/trailing LF, actual request
+count, completed write/close facts and checked cleanup. Old v1/v2 rows, emergency
+markers, upstream Zsh presentation and the fixed prompt remain unchanged. Private
+`--home-write` selections preserve existing plain ASCII/JSON and exit contracts;
+pure rendering and image preparation do not launch a guest or claim persistence.
+This scoped machine-record exception adds no renderer/theme conformance claim.

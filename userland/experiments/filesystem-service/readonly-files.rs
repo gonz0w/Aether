@@ -12,7 +12,16 @@ mod descriptions;
 pub use descriptions::{Failure, Seek};
 const _: () = assert!(!cfg!(fs_file16) && !cfg!(fs_replace) && !cfg!(fs_process_views));
 const _: () = assert!(matches!(filesystem_service::MAGIC, b"AFSRPC09"));
-pub const MAGIC: &[u8; 8] = b"AEFP0004";
+#[cfg(all(native_zsh_home_write, not(native_zsh_process)))]
+compile_error!("home write requires the selected Zsh process view");
+#[cfg(native_zsh_home_write)]
+#[path = "zsh-home-write.rs"]
+mod home_write;
+pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_write) {
+    b"AEFP0005"
+} else {
+    b"AEFP0004"
+};
 pub const DIRECTORY: &[u8] = b"/home/.terminfo";
 pub const ENTRY: &[u8] = b"/home/.terminfo/v/vt100";
 const ALIAS: &[u8] = b"/home/.terminfo/./v/vt100";
@@ -92,6 +101,8 @@ pub struct Files<T: Channel> {
     pending: bool,
     retired: bool,
     mutation_failure: Option<filesystem_client::MutationFailure>,
+    #[cfg(native_zsh_home_write)]
+    home_write: home_write::HomeWrite,
 }
 impl<T: Channel> Files<T> {
     /// Initialize the Client in final storage; failure consumes both close obligations.
@@ -126,6 +137,8 @@ impl<T: Channel> Files<T> {
             core::ptr::addr_of_mut!((*pointer).pending).write(false);
             core::ptr::addr_of_mut!((*pointer).retired).write(false);
             core::ptr::addr_of_mut!((*pointer).mutation_failure).write(None);
+            #[cfg(native_zsh_home_write)]
+            core::ptr::addr_of_mut!((*pointer).home_write).write(home_write::HomeWrite::new());
             let desc = &mut *core::ptr::addr_of_mut!((*pointer).descriptions)
                 .cast::<MaybeUninit<descriptions::Descriptions<Remote<T>, VIEWS>>>();
             let source = descriptions::Descriptions::prepare_in_place(desc).as_mut_ptr();
@@ -147,9 +160,16 @@ impl<T: Channel> Files<T> {
         self.descriptions.source.client.cleanup()
     }
     pub fn abort(&mut self) -> [i64; 2] {
+        #[cfg(native_zsh_home_write)]
+        {
+            self.home_write.poisoned = true;
+        }
         self.retired = true;
         self.pending = false;
-        #[cfg(native_zsh_process)] { self.child_pending = false; }
+        #[cfg(native_zsh_process)]
+        {
+            self.child_pending = false;
+        }
         self.descriptions.retire();
         self.cleanup().unwrap_or([-5; 2])
     }
@@ -230,63 +250,112 @@ impl<T: Channel> Files<T> {
         result
     }
     fn view(&self, binding: Binding) -> Option<usize> {
-        if self.binding == binding { return Some(0); }
+        if self.binding == binding {
+            return Some(0);
+        }
         #[cfg(native_zsh_process)]
-        if self.child == Some(binding) { return Some(1); }
+        if self.child == Some(binding) {
+            return Some(1);
+        }
         None
     }
     fn sequence(&self, view: usize) -> u64 {
         #[cfg(native_zsh_process)]
-        if view == 1 { return self.child_next; }
+        if view == 1 {
+            return self.child_next;
+        }
         let _ = view;
         self.next
     }
     fn pending_in(&self, view: usize) -> bool {
         #[cfg(native_zsh_process)]
-        if view == 1 { return self.child_pending; }
+        if view == 1 {
+            return self.child_pending;
+        }
         let _ = view;
         self.pending
     }
     fn live(&self, binding: Binding) -> bool {
-        !self.retired && self.view(binding).is_some_and(|view| !self.pending_in(view))
-            && self.cleanup().is_none() && self.descriptions.source.held.is_some()
+        !self.retired
+            && self
+                .view(binding)
+                .is_some_and(|view| !self.pending_in(view))
+            && self.cleanup().is_none()
+            && self.descriptions.source.held.is_some()
     }
     /// Owner-authenticated snapshot check; no namespace operation or new handle.
     #[cfg(native_zsh_process)]
     pub fn file_view(&self, binding: Binding) -> Result<(u16, u16), Error> {
-        if !self.live(binding) { return Err(Error::Protocol); }
-        self.descriptions.file_view_in(self.view(binding).unwrap()).map_err(|_| Error::Protocol)
+        if !self.live(binding) {
+            return Err(Error::Protocol);
+        }
+        self.descriptions
+            .file_view_in(self.view(binding).unwrap())
+            .map_err(|_| Error::Protocol)
     }
     /// Only after exact native copy admission. Parent remains frozen/awaiting
     /// its correlated reply; real descriptions/positions, not handles, are shared.
     #[cfg(native_zsh_process)]
     pub fn inherit_child(&mut self, parent: Binding, child: Binding) -> Result<(), Error> {
-        if !self.live(parent) || parent != self.binding || self.child.is_some()
-            || !child.valid() || child.slot != 2 || child.epoch != self.child_epoch + 1
-            || child.generation == parent.generation { return Err(Error::Protocol); }
-        self.descriptions.inherit_view(0, 1).map_err(|_| Error::Protocol)?;
-        self.child = Some(child); self.child_epoch = child.epoch;
-        self.child_next = 1; self.child_pending = false;
+        if !self.live(parent)
+            || parent != self.binding
+            || self.child.is_some()
+            || !child.valid()
+            || child.slot != 2
+            || child.epoch != self.child_epoch + 1
+            || child.generation == parent.generation
+        {
+            return Err(Error::Protocol);
+        }
+        self.descriptions
+            .inherit_view(0, 1)
+            .map_err(|_| Error::Protocol)?;
+        self.child = Some(child);
+        self.child_epoch = child.epoch;
+        self.child_next = 1;
+        self.child_pending = false;
         Ok(())
     }
     /// Native C003 receipt must already prove commit. Refusals never call this.
     #[cfg(native_zsh_process)]
     pub fn exec_child(&mut self, child: Binding, generation: u64) -> Result<Binding, Error> {
-        if self.child != Some(child) || !self.live(child)
-            || child.generation.checked_add(1) != Some(generation) || generation == u64::MAX {
+        if self.child != Some(child)
+            || !self.live(child)
+            || child.generation.checked_add(1) != Some(generation)
+            || generation == u64::MAX
+        {
             return Err(Error::Protocol);
         }
-        self.descriptions.commit_exec_close_in(1).map_err(|_| Error::Closed)?;
-        let next = Binding { generation, ..child };
-        self.child = Some(next); self.child_next = 1;
+        #[cfg(native_zsh_home_write)]
+        if self.home_write.phase != 0 || self.home_write.poisoned {
+            return Err(Error::Protocol);
+        }
+        self.descriptions
+            .commit_exec_close_in(1)
+            .map_err(|_| Error::Closed)?;
+        let next = Binding {
+            generation,
+            ..child
+        };
+        self.child = Some(next);
+        self.child_next = 1;
+        #[cfg(native_zsh_home_write)]
+        {
+            self.home_write.binding = next;
+        }
         Ok(next)
     }
     /// Caller proved native terminal and known wait delivery before settlement.
     #[cfg(native_zsh_process)]
     pub fn settle_child(&mut self, child: Binding) -> Result<(), Error> {
-        if self.child != Some(child) || !self.live(child) { return Err(Error::Protocol); }
-        self.descriptions.settle_view(1).map_err(|_| Error::Closed)?;
-        self.child = None; self.child_next = 0;
+        if self.child != Some(child) || !self.live(child) {
+            return Err(Error::Protocol);
+        }
+        self.descriptions
+            .settle_view(1)
+            .map_err(|_| Error::Closed)?;
+        self.child = None;
+        self.child_next = 0;
         Ok(())
     }
     /// Validate complete fixed header before body assembly or source effects.
@@ -310,17 +379,25 @@ impl<T: Channel> Files<T> {
                 8 => matches!(a, 0 | 4) && (1..=255).contains(&b) && c == 0 && d == 0,
                 9 => a == 0 && b == 0 && c == 0 && d == 0,
                 10 => a == 0 && (1..=255).contains(&b) && c == 0 && d == 0,
+                #[cfg(native_zsh_home_write)]
+                11 => fd(a) && (1..=PAYLOAD as u64).contains(&b) && c == 0 && d == 0,
+                #[cfg(native_zsh_home_write)]
+                12 => a <= 1 && (1..=255).contains(&b) && c == 0 && d == 0,
                 _ => false,
             };
         if !valid {
             self.abort();
             return Err(Error::Protocol);
         }
-        Ok(if matches!(word(raw, 1), 1 | 8 | 10) {
-            (b as usize).div_ceil(FRAME) * FRAME
-        } else {
-            0
-        })
+        Ok(
+            if matches!(word(raw, 1), 1 | 8 | 10)
+                || (cfg!(native_zsh_home_write) && matches!(word(raw, 1), 11 | 12))
+            {
+                (b as usize).div_ceil(FRAME) * FRAME
+            } else {
+                0
+            },
+        )
     }
     /// Own the effect until the complete reply/header/body has been delivered.
     pub fn prepare<'a>(
@@ -338,6 +415,10 @@ impl<T: Channel> Files<T> {
             return Err(Error::Protocol);
         }
         let view = self.view(binding).ok_or(Error::Protocol)?;
+        #[cfg(native_zsh_home_write)]
+        if word(raw, 1) == 11 {
+            return self.prepare_home_write(binding, raw, workspace);
+        }
         let (result, body) = self.execute(view, raw, workspace);
         if self.cleanup().is_some() {
             workspace.fill(0);
@@ -361,9 +442,15 @@ impl<T: Channel> Files<T> {
             }
         };
         #[cfg(native_zsh_process)]
-        if view == 1 { self.child_pending = true; } else { self.pending = true; }
+        if view == 1 {
+            self.child_pending = true;
+        } else {
+            self.pending = true;
+        }
         #[cfg(not(native_zsh_process))]
-        { self.pending = true; }
+        {
+            self.pending = true;
+        }
         Ok(Reply {
             #[cfg(native_zsh_process)]
             view,
@@ -385,6 +472,12 @@ impl<T: Channel> Files<T> {
         let c = word(raw, 6);
         let mut body = 0;
         let result = match word(raw, 1) {
+            #[cfg(native_zsh_home_write)]
+            12 => {
+                let result = self.open_home_write(view, &workspace[..b as usize], a != 0);
+                workspace.fill(0);
+                result.map(|fd| fd as u64)
+            }
             1 => {
                 let value = self
                     .descriptions
@@ -393,13 +486,19 @@ impl<T: Channel> Files<T> {
                 workspace.fill(0);
                 value
             }
-            2 => self
-                .descriptions
-                .read_in(view, a as i32, b as usize, workspace)
-                .map(|count| {
-                    body = count;
-                    count as u64
-                }),
+            2 => {
+                #[cfg(native_zsh_home_write)]
+                if self.is_home_file(view, a as i32) {
+                    workspace.fill(0);
+                    return (Err(Failure::BadFd), 0);
+                }
+                self.descriptions
+                    .read_in(view, a as i32, b as usize, workspace)
+            }
+            .map(|count| {
+                body = count;
+                count as u64
+            }),
             8 => {
                 let source = &mut self.descriptions.source;
                 let result = descriptions::Store::open_read(source, &workspace[..b as usize])
@@ -446,9 +545,14 @@ impl<T: Channel> Files<T> {
             }
             opcode => {
                 workspace.fill(0);
+                #[cfg(native_zsh_home_write)]
+                if self.is_home_file(view, a as i32) && opcode != 5 {
+                    return (Err(Failure::Invalid), 0);
+                }
                 match opcode {
                     3 => self.descriptions.seek_in(
-                        view, a as i32,
+                        view,
+                        a as i32,
                         match c {
                             0 => Seek::Set(b as i64),
                             1 => Seek::Current(b as i64),
@@ -459,7 +563,21 @@ impl<T: Channel> Files<T> {
                         .descriptions
                         .duplicate_in(view, a as i32, b as i32, c != 0)
                         .map(|fd| fd as u64),
-                    5 => self.descriptions.close_in(view, a as i32).map(|()| 0),
+                    5 => {
+                        #[cfg(native_zsh_home_write)]
+                        let closing_home = self.is_home_file(view, a as i32);
+                        let result = self.descriptions.close_in(view, a as i32).map(|()| 0);
+                        #[cfg(native_zsh_home_write)]
+                        if closing_home {
+                            self.home_write.close_sequence = word(raw, 3);
+                            if result.is_ok() && self.home_write.phase == 3 {
+                                self.home_write.phase = 4;
+                            } else {
+                                self.home_write.poisoned = true;
+                            }
+                        }
+                        result
+                    }
                     6 => self
                         .descriptions
                         .set_close_on_exec_in(view, a as i32, b != 0)
@@ -476,7 +594,9 @@ impl<T: Channel> Files<T> {
         verify: impl FnOnce(&mut T) -> Result<(), Error>,
     ) -> Result<[i64; 2], Error> {
         #[cfg(native_zsh_process)]
-        if self.child.is_some() || self.child_pending { return Err(Error::Closed); }
+        if self.child.is_some() || self.child_pending {
+            return Err(Error::Closed);
+        }
         if self.retired || self.pending || self.cleanup().is_some() {
             return Err(Error::Closed);
         }
@@ -512,6 +632,11 @@ impl<T: Channel> Reply<'_, T> {
     ) -> Result<(), Error> {
         self.files.configure(configure)
     }
+    /// Real namespace close receipt; process reply delivery may still finish once.
+    #[cfg(native_zsh_home_write)]
+    pub fn source_closed(&self) -> bool {
+        self.files.cleanup().is_some()
+    }
     pub fn header(&self) -> &[u8; FRAME] {
         &self.header
     }
@@ -519,11 +644,26 @@ impl<T: Channel> Reply<'_, T> {
         &mut self.workspace[..self.body.div_ceil(FRAME) * FRAME]
     }
     pub fn delivered(mut self) {
+        #[cfg(native_zsh_home_write)]
+        if self.view == 1
+            && self.files.home_write.phase == 4
+            && self.files.home_write.close_sequence == word(&self.header, 3)
+        {
+            self.files.home_write.phase = 5;
+        }
         #[cfg(native_zsh_process)]
-        if self.view == 1 { self.files.child_next += 1; self.files.child_pending = false; }
-        else { self.files.next += 1; self.files.pending = false; }
+        if self.view == 1 {
+            self.files.child_next += 1;
+            self.files.child_pending = false;
+        } else {
+            self.files.next += 1;
+            self.files.pending = false;
+        }
         #[cfg(not(native_zsh_process))]
-        { self.files.next += 1; self.files.pending = false; }
+        {
+            self.files.next += 1;
+            self.files.pending = false;
+        }
         self.workspace.fill(0);
         self.delivered = true;
     }

@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+#ifndef AEFD_ZSH_PROCESS_BINDINGS
+#define AEFD_ZSH_PROCESS_BINDINGS
+#endif
+#endif
 #ifdef AEFD_ZSH_PROCESS_BINDINGS
 #ifndef AEFD_FORK_BINDINGS
 #define AEFD_FORK_BINDINGS
@@ -172,6 +177,10 @@
 #define AEFD_MAP_MAGIC "AEFDT009"
 #define AEFD_STARTUP_MAGIC "AEFDB009"
 #endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+#undef AEFD_MAGIC
+#define AEFD_MAGIC "AEFP0005"
+#endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U
 
@@ -294,6 +303,9 @@ static inline int aefd_decode(const unsigned char *frame, size_t length,
     } else {
         switch (opcode) {
         case 1:
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+        case 12:
+#endif
 #ifdef AEFD_WRITE_WIRE
         case 10:
 #endif

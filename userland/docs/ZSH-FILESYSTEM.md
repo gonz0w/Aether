@@ -7,7 +7,9 @@ decisions remain specific to that checkpoint.
 [Issue143](https://github.com/gonz0w/Aether/issues/143) completed the fixed
 parent/helper checkpoint through [PR144](https://github.com/gonz0w/Aether/pull/144):
 real helper exit7, parent prompt return, checked final exit/export and three
-reclamations. General filesystem execution and persistent shell writes remain open. The canonical
+reclamations. [Issue145](https://github.com/gonz0w/Aether/issues/145) adds the fixed
+helper write with independent cold readback described below. General filesystem
+execution and redirection remain open. The canonical
 [execution policy](../../docs/policy/execution.md#selected-real-zsh-filesystem-composition-2026-11-02)
 records the approvals and limits.
 
@@ -412,3 +414,87 @@ This is the [explicitly approved fixed-workload scope](https://github.com/gonz0w
 [Issue141](https://github.com/gonz0w/Aether/issues/141) retains full-host coverage;
 general peaks, arbitrary exec, child job control, login, persistent shell writes/
 reboot readback, packages and R1 retain separate gates.
+
+## Selected fixed home write
+
+[Issue145](https://github.com/gonz0w/Aether/issues/145) extends the held helper
+with the [approved scoped design and gates](https://github.com/gonz0w/Aether/issues/145#issuecomment-6594800206).
+At the real prompt, the fixed input is `(exec -c /inputs/helper home-write)`,
+then `print -r -- $?`, then `exit 0`. Each line ends in CR; the staged input
+is58 bytes in total and is submitted once at the corresponding prompt boundary.
+The new helper opens existing empty `/home/probe` with O_WRONLY, writes exactly
+16 bytes `AETHER-ZSH-HOME\n` once and closes once. It returns0 only after a full
+write and a known successful close. It does not create, truncate, append or retry.
+The old `status` helper and its exit7/v2 observation remain separate.
+
+`AEFD_ZSH_HOME_WRITE_BINDINGS` and `native_zsh_home_write` select AEFP0005 on
+the existing process profile. Rust keeps sole namespace custody. Admission
+requires the exact committed helper generation and actual READY publication;
+parent, pre-exec, stale, wrong-path and wrong-mode requests reject before effects.
+Existing allowed FILE operations retain their fields, DIRECTORY remains10 and
+reserved7 remains denied. The selected additions are:
+
+| Opcode | Arguments | Successful result/body |
+| --- | --- | --- |
+|12 fixed home open | `[cloexec, 11, 0, 0]`, exact padded `/home/probe` | checked WRITE-only FILE selector after actual empty-file lookup |
+|11 checked write | `[fd, 16, 0, 0]`, exact padded fixed payload | count16 and the existing64-byte correlated mutation receipt |
+
+Do not enable historical AEFW0001 OPEN_HOME10 on this dialect. Retain completed,
+short, failed and unknown write/close outcomes across reply loss and cleanup;
+only known success advances position. A known successful close clears the local
+write-fd marker before that number can be reused readonly. A failed selected
+close retires the client after retaining its status, so finalization cannot replay
+it. Unknown effects contain; neither retained commit nor local staging is success.
+
+After real helper0, checked wait/collection, child reclaim, restored parent lease,
+normal parent/engine exit, export and mode restoration, the selected Owner emits
+this exact row with leading and trailing LF:
+
+```text
+
+AETHER ZSH OWNER v=3 requests=NN child_status=0 exec_ready=1 child_reclaimed=1 parent_lease=1 write_bytes=16 write_closed=1 mode_cleanup=0
+```
+
+`NN` remains the actual whole-session count14..96. The new engine requires exactly
+seven completed mutations within the unchanged9-mutation limit. Other profiles
+keep their old counts/rows. The existing external kernel composition and all
+Owner/application/engine, time, request, capture and no-network limits remain.
+Fresh affected parent/helper/Owner/engine fits and separate review precede a guest.
+
+Independent pristine and recovery readers use fresh readonly original OpenZFS
+imports. Recovery checks the actual file bytes and EOF, the full terminfo tree,
+the real1268-byte VT100 hash, metadata/ACL/link/time rules and complete allocated
+object inventory. Both preserve the original file/data/metadata checks. Only clean
+readonly shutdown and runtime health permit publication of40 bytes: the original
+metadata digest32 plus `ZSHPR001` or `ZSHWR001`. Compare every digest byte across
+roles. Eight-byte scalar framing occupies the existing selected320-byte capture;
+other slots/defaults remain256. Reader code never exports the pool.
+
+Public pure reader checks run from the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_home_zsh_reader.py -v
+```
+
+Private bounded recipes use `tools/zsh-target-fit.py --home-write`,
+`tools/zsh-owner-fit.py --home-write` and the closed `--home-write` witness/run
+selection. Pure checks and offline fits do not qualify persistence.
+
+The fixed issue145 native checkpoint passed: real Zsh launched the helper, it
+completed16 bytes and close, Zsh printed0 and returned to its prompt, then the
+parent and exact-seven engine exited/exported normally. The35.657-second writer
+used36/96 requests, restored admission mode and completed21 cleanup phases and
+three reclamations. All host holders and finite clients stopped cleanly.
+
+The31.319-second independent cold-reader cohort also passed. Both fresh original
+providers completed all three reader generations and cleanup; the recovery role
+verified the exact payload/EOF, terminfo asset/tree and metadata/inventory. The
+full preserved original-metadata digests matched, and each disk remained byte
+identical before/after its reader with intact outside-region canaries. These are
+fixed-workload results, not general resource peaks or assembled-system acceptance.
+Fresh parent/helper fits are318/28 pages; Owner RX71,632, Runtime4,056 and
+conservative stack9,712 remain within the approved limits. The linked reader
+capture-profile growth is0 bytes, within16KiB. The explicit issue145 checkpoint
+exception leaves full-root coverage in issue141; login, arbitrary redirection/
+exec, packages and R1 retain their own gates. Delivery and exact source identity
+are recorded in issue145.

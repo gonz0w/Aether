@@ -98,6 +98,23 @@ int64_t aefd_table_open_duplex(struct aefd_bindings *map,
     return target;
 }
 #endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+int64_t aefd_table_open_home_write(struct aefd_bindings *map,
+                                   struct aefd_client *client,
+                                   const unsigned char *name, size_t length,
+                                   int cloexec)
+{
+    if (cloexec < 0 || cloexec > 1)
+        return -22;
+    if (!ready(map, client))
+        return -5;
+    int logical = free_slot(map, 0);
+    if (logical < 0)
+        return -24;
+    int64_t selector = aefd_file_open_home_write(client, name, length, cloexec);
+    return install(map, client, logical, selector, cloexec);
+}
+#endif
 int64_t aefd_table_open(struct aefd_bindings *map, struct aefd_client *client,
                         const unsigned char *name, size_t length, int cloexec)
 {

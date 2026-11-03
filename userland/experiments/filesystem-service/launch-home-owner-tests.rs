@@ -50,7 +50,9 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.mutation_attempts = STATE.with(|s| {
         s.borrow()
             .attempts
-            .unwrap_or(if cfg!(fs_home_terminfo_six) {
+            .unwrap_or(if cfg!(fs_home_terminfo_seven) {
+                7
+            } else if cfg!(fs_home_terminfo_six) {
                 6
             } else if cfg!(fs_home_probe_three) {
                 3
@@ -77,7 +79,7 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.service.requests = STATE.with(|s| {
         s.borrow()
             .requests
-            .unwrap_or(if cfg!(fs_home_terminfo_six) {
+            .unwrap_or(if cfg!(any(fs_home_terminfo_six, fs_home_terminfo_seven)) {
                 13
             } else if cfg!(fs_af09_drain) {
                 3
@@ -229,7 +231,7 @@ fn malformed_launch_prefix_cannot_enter_callback() {
     }
 }
 
-#[cfg(not(fs_home_terminfo_six))]
+#[cfg(not(any(fs_home_terminfo_six, fs_home_terminfo_seven)))]
 #[test]
 fn fixed_home_probe_requires_three_attempts_only_when_selected() {
     for attempts in [2, 3, 4, 6] {
@@ -300,14 +302,15 @@ fn terminfo_six_requires_exact_count_and_complete_clean_result() {
     }
 }
 
-#[cfg(fs_home_terminfo_six)]
+#[cfg(any(fs_home_terminfo_six, fs_home_terminfo_seven))]
 #[test]
 fn terminfo_six_keeps_all_clean_result_and_resource_checks() {
+    let attempts = if cfg!(fs_home_terminfo_seven) { 7 } else { 6 };
     for corrupt in 1..=20 {
         STATE.with(|s| {
             *s.borrow_mut() = State {
                 mode: 4,
-                attempts: Some(6),
+                attempts: Some(attempts),
                 requests: Some(13),
                 corrupt,
                 ..State::default()
@@ -325,7 +328,7 @@ fn terminfo_six_keeps_all_clean_result_and_resource_checks() {
         STATE.with(|s| {
             *s.borrow_mut() = State {
                 mode: 4,
-                attempts: Some(6),
+                attempts: Some(attempts),
                 requests: Some(requests),
                 ..State::default()
             }
@@ -333,5 +336,23 @@ fn terminfo_six_keeps_all_clean_result_and_resource_checks() {
         let mut selected = state();
         selected.phases = 0;
         assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_REQUEST_CAP");
+    }
+}
+
+#[cfg(fs_home_terminfo_seven)]
+#[test]
+fn terminfo_seven_requires_exact_count_and_complete_clean_result() {
+    for (attempts, expected) in [(3, 5), (5, 5), (6, 5), (7, 0), (8, 5), (9, 5)] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                attempts: Some(attempts),
+                requests: Some(18),
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_SEVEN");
     }
 }

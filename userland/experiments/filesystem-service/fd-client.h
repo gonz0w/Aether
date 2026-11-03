@@ -43,7 +43,7 @@ void aefd_client_abort(struct aefd_client *);
 int aefd_client_exchange(struct aefd_client *, uint64_t opcode,
                          const uint64_t args[4], const unsigned char *name,
                          size_t name_length, struct aefd_reply *);
-#ifdef AEFD_WRITE_WIRE
+#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
 #include "fd-file-write.h"
 #endif
 #endif

@@ -77,6 +77,9 @@ int64_t aefd_context_init(struct aefd_context *c, aefd_native_call call,
         c->state = 2;
         return -5;
     }
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    c->home_write_fd = -1;
+#endif
     c->state = 1;
     return 0;
 }
@@ -119,6 +122,24 @@ int64_t aefd_context_open_duplex(struct aefd_context *c, int cloexec)
                       : -6);
 }
 #endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+int64_t aefd_context_open_home_write(struct aefd_context *c,
+                                     const unsigned char *name, size_t length,
+                                     int cloexec)
+{
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    if (c->home_write_fd >= 0 || c->home_write_attempted ||
+        c->home_close_attempted)
+        return end(c, -16);
+    result =
+        aefd_table_open_home_write(&c->map, &c->client, name, length, cloexec);
+    if (result >= 0)
+        c->home_write_fd = (int)result;
+    return end(c, result);
+}
+#endif
 int64_t aefd_context_open(struct aefd_context *c, const unsigned char *name,
                           size_t length, int flag)
 {
@@ -141,6 +162,20 @@ int64_t aefd_context_write(struct aefd_context *c, int fd,
     int64_t result = begin(c);
     if (result)
         return result;
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    if (fd == c->home_write_fd) {
+        if (c->home_write_attempted || c->home_close_attempted)
+            return end(c, -16);
+        struct aefd_binding binding;
+        result = aefd_session_binding(&c->session, fd, &binding);
+        if (result || binding.kind != AEFD_BIND_FILE)
+            return end(c, result ? result : -9);
+        c->home_write_attempted = 1;
+        result = aefd_file_write(&c->client, binding.selector, in, length,
+                                 &c->home_write);
+        return end(c, result);
+    }
+#endif
     return end(c, aefd_session_write(&c->session, fd, in, length));
 }
 int64_t aefd_context_dup(struct aefd_context *c, int fd, int minimum, int flag)
@@ -187,6 +222,23 @@ int64_t aefd_context_close(struct aefd_context *c, int fd)
             return end(c, -5);
         }
 #endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    if (fd == c->home_write_fd) {
+        if (c->home_close_attempted)
+            return end(c, -16);
+        c->home_close_attempted = 1;
+        c->home_close_generation = c->client.generation;
+        c->home_close_sequence = c->client.sequence;
+        c->home_close_status = aefd_session_close(&c->session, fd);
+        if (!c->home_close_status)
+            c->home_write_fd = -1;
+        else
+            /* Preserve the failed close receipt and contain this context.
+             * Finalization must never replay the selected close. */
+            aefd_client_abort(&c->client);
+        return end(c, c->home_close_status);
+    }
+#endif
     return end(c, aefd_session_close(&c->session, fd));
 }
 int64_t aefd_context_describe(struct aefd_context *c, int fd,
@@ -221,6 +273,10 @@ int64_t aefd_context_describe(struct aefd_context *c, int fd,
             actual = source->rights;
         }
     }
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    if (!result && binding.kind == AEFD_BIND_FILE && fd == c->home_write_fd)
+        actual = 2;
+#endif
     result = end(c, result);
     if (!result) {
         *out = binding;
