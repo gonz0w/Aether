@@ -205,7 +205,7 @@ fn pte(s:*State,address:usize)u64{for(s.pt_index[0..s.pt_count],0..)|n,i|if(n==a
 '''
 
 
-def mapping_source(*, external, owner_stack=True, omission=None):
+def mapping_source(*, external, owner_stack=True, omission=None, code_bytes=None):
     native = (ROOT/'kernel/arch/x86_64/native_c.zig').read_text()
     bodies = '\n'.join(block(native, name) for name in (
         'fn addPage(', 'fn byte(', 'fn mapOwnerStack(', 'fn mapOwnerData(', 'fn ownerDataStartup(', 'fn auditOwnerStack('))
@@ -216,6 +216,8 @@ def mapping_source(*, external, owner_stack=True, omission=None):
         bodies = bodies.replace(before, after, 1)
     rx = next(line.strip() for line in native.splitlines() if line.strip().startswith('for (0..(supervisor_code.len + 4095) / 4096)'))
     pages = 18 if external else 12 if owner_stack else 2
+    actual_bytes = pages*4096 if code_bytes is None else code_bytes
+    pages = (actual_bytes+4095)//4096
     count = 3 if external else 2 if owner_stack else 1
     base = 0x7ff000 if external else 0x800000
     cases = r'''
@@ -240,12 +242,44 @@ pub fn main()void{
 }
 fn try_pages()usize{return FsRoles.applicationPages(6) catch unreachable;}
 '''
-    values = dict(CODE_BYTES=pages*4096, CODE_PAGES=pages, STACK_PAGES=count,
+    values = dict(CODE_BYTES=actual_bytes, CODE_PAGES=pages, STACK_PAGES=count,
                   STACK_BASE=hex(base), STACK_TOP=hex(base+count*4096), STACK_BYTE=0 if owner_stack else 0xa5, ABI=31 if owner_stack else 30)
     cases = cases.replace('RX_LOOP', rx)
     for key in sorted(values, key=len, reverse=True):
         cases = re.sub(r'\b'+key+r'\b', str(values[key]), cases)
     return MAPPING+bodies+cases
+
+
+def activation_audit_source(*, external=True, code_bytes=None, wrong_stack=False):
+    """Compose actual mapper, initial audit, alias loop and later activation audit.
+
+    Alias leaf storage is synthetic host backing, not an executed MMU. The actual
+    production loops/guards consume it. No kernel/VM or device setup runs here.
+    """
+    native = (ROOT/'kernel/arch/x86_64/native_c.zig').read_text()
+    source = mapping_source(external=external, code_bytes=code_bytes)
+    copy_body = block(native, 'fn copy(')
+    start = block(native, 'fn startSupervised(')
+    anchor = '    if (init_large or connections_large or @import("build_options").native_service_activation)'
+    alias_loop = start[start.index('    for (&states) |*mapping| for (s.pages[0..s.count]'):start.index(anchor)]
+    audit = block(start, anchor)
+    source = source.replace('fn require(ok:bool)void{check(ok,"PRODUCTION_INVARIANT");}',
+        'var late_audit=false;fn require(ok:bool)void{if(late_audit)check(ok,"LATE_ACTIVATION_AUDIT_REJECT")else check(ok,"PRODUCTION_INVARIANT");}')
+    leaves = r'''
+const init_large=false;const connections_large=true;const external_backing=true;
+var alias_entries:[128]u64=@splat(0);
+fn setBackingAlias(_: *State,owner:*State,i:usize,writable:bool)void{alias_entries[i]=backingFrame(owner,i)|(if(writable)@as(u64,3)else 1)|nx;}
+fn backingAliasEntry(_: *const State,_:*const State,i:usize)u64{return alias_entries[i];}
+'''
+    needle = 'pub fn main()void{'
+    source = source.replace(needle, leaves+copy_body+'\n'+needle, 1)
+    setup = 'mapOwnerStack(s);mapOwnerData(s);ownerDataStartup(&s.context().frame);'
+    pages = ((code_bytes or (73728 if external else 49152))+4095)//4096
+    source = source.replace(setup, setup+'\n for(0..'+str(pages)+')|i|@memset(&s.backing[i],0);copy(s,0x400000,&supervisor_code);', 1)
+    insertion = 'auditOwnerStack(s,'+str(pages)+');'
+    require_tail = ('s.pages['+str(pages)+'].address='+('0x800000' if external else '0x7ff000')+';') if wrong_stack else ''
+    source = source.replace(insertion, insertion+'\n'+alias_loop+'\n'+require_tail+'late_audit=true;\n'+audit, 1)
+    return source
 
 
 def inspector():
@@ -278,6 +312,15 @@ class OwnerCapacity(unittest.TestCase):
         for instruction in ('sub rsp, rax', 'xchg rsp, rax', 'call 400000 <_start>', 'call rax'):
             with self.subTest(instruction=instruction), self.assertRaises(ValueError):
                 s.inspect('0000000000400000 <_start>:\n400000: '+instruction+'\n', stack_bytes=12288)
+
+    def test_actual_activation_audit_is_composed_after_the_mapper(self):
+        source = activation_audit_source(external=True, code_bytes=67704)
+        native = (ROOT/'kernel/arch/x86_64/native_c.zig').read_text()
+        late = block(native, '    if (init_large or connections_large or @import("build_options").native_service_activation)')
+        self.assertIn(late, source)
+        self.assertLess(source.index('auditOwnerStack(s,17);'), source.index(late))
+        self.assertIn('const supervisor_code=[_]u8{0}**67704;', source)
+        self.assertIn('s.pages[17].address=0x800000;', activation_audit_source(external=True, code_bytes=67704, wrong_stack=True))
 
     def test_actual_start_prefix_has_a_compiling_effect_boundary_control(self):
         source = start_preflight_source()

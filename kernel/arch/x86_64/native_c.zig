@@ -2314,7 +2314,8 @@ fn startSupervised(envelope: []const u8) noreturn {
             require(page.address == 0x400000 + i * 4096 and page.flags == 5);
             for (&states) |*mapping| require(backingAliasEntry(mapping, s, i) == backingFrame(s, i) | 1 | nx);
         }
-        require(s.pages[code_pages].address == 0x800000 and s.pages[code_pages].flags == 7 | nx);
+        const stack_base: usize = if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsRoles.zsh_external_owner_stack_base else 0x800000;
+        require(s.pages[code_pages].address == stack_base and s.pages[code_pages].flags == 7 | nx);
         for (supervisor_code.len..code_pages * 4096) |i| if (s.backing[i / 4096][i % 4096] != 0) {
             @panic("native init code tail not zeroed");
         };
