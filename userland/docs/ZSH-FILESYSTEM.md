@@ -4,8 +4,10 @@
 Zsh prompt, one builtin and normal exit/export/cleanup through
 [PR138](https://github.com/gonz0w/Aether/pull/138). Its scoped fit and delivery
 decisions remain specific to that checkpoint.
-[Issue143](https://github.com/gonz0w/Aether/issues/143) owns the selected
-parent/helper extension below; its native acceptance remains open. The canonical
+[Issue143](https://github.com/gonz0w/Aether/issues/143) completed the fixed
+parent/helper checkpoint through [PR144](https://github.com/gonz0w/Aether/pull/144):
+real helper exit7, parent prompt return, checked final exit/export and three
+reclamations. General filesystem execution and persistent shell writes remain open. The canonical
 [execution policy](../../docs/policy/execution.md#selected-real-zsh-filesystem-composition-2026-11-02)
 records the approvals and limits.
 
@@ -370,8 +372,9 @@ exec argument/environment serialization and refusal containment, wait flags and
 status-output preservation, masked reentry, and real checked helper finalization.
 Its injected native observations are host qualification, not native execution.
 The independently linkable codec fixture remains `fd-zsh-process-tests.c`.
-Matched Rust controller tests, actual linked resource fits, separate review and
-a later approved native trial are still required.
+The matched Rust controller tests, actual linked resource fits, separate review
+and approved fixed native trial are recorded in issue143 and PR144. Fresh
+candidates still require matching fits and reviewed image/media before execution.
 
 ### Selected parent/helper completion observation
 
@@ -396,3 +399,16 @@ Each input submission is once-only; unknown submission or cleanup stops without
 replay. Supplied UART controls are synthetic and cannot establish execution,
 image association, actual frontend/input or known process cleanup. Fresh linked
 fits and separately reviewed image/media still precede any guest.
+
+### Qualified fixed helper checkpoint
+
+The actual issue143 trial passed in34.169s with33/96 Owner requests. Zsh
+collected normal helper status7, printed7 and returned to its prompt, then
+completed parent/engine normal0 exit and export. All21 cleanup records and three
+reclamations completed; mode cleanup was0 and halt2884/6000ticks. Actual
+Screen/PTY/input and known host cleanup were separately reviewed.
+
+This is the [explicitly approved fixed-workload scope](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304).
+[Issue141](https://github.com/gonz0w/Aether/issues/141) retains full-host coverage;
+general peaks, arbitrary exec, child job control, login, persistent shell writes/
+reboot readback, packages and R1 retain separate gates.
