@@ -2193,13 +2193,19 @@ fn supervisedEnvelopeValid(envelope: []const u8) bool {
     return len > 0 and len <= service_bytes.len and supervisor_len > 0 and supervisor_len <= limit and envelope.len == 48 + @as(usize, len) + supervisor_len;
 }
 fn mapOwnerStack(s: *State) void {
-    const pages: usize = if (combined_owner_stack) 2 else 1;
+    const external = @hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external;
+    if (external) require(combined_application_profile and combined_owner_stack);
+    const pages: usize = if (external) FsRoles.zsh_external_owner_stack_pages else if (combined_owner_stack) 2 else 1;
     for (0..pages) |i| {
         if (combined_owner_stack) {
             require(combined_owner_data and s == &states[supervisorSlot()] and s.count < s.backing.len);
             @memset(&s.backing[s.count], 0);
         }
-        addPage(s, 0x800000 + i * 4096, 7 | nx);
+        if (external) {
+            addPage(s, FsRoles.zsh_external_owner_stack_base + i * 4096, 7 | nx);
+        } else {
+            addPage(s, 0x800000 + i * 4096, 7 | nx);
+        }
     }
 }
 fn mapOwnerData(s: *State) void {
@@ -2220,21 +2226,24 @@ fn ownerDataStartup(frame: *Frame) void {
 }
 fn auditOwnerStack(s: *State, code_pages: usize) void {
     if (!combined_owner_stack) return;
-    require(s == &states[supervisorSlot()] and s.count == code_pages + 4);
-    for (0..2) |i| {
+    const external = @hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external;
+    const pages: usize = if (external) FsRoles.zsh_external_owner_stack_pages else 2;
+    const base: usize = if (external) FsRoles.zsh_external_owner_stack_base else 0x800000;
+    require(s == &states[supervisorSlot()] and s.count == code_pages + pages + 2);
+    for (0..pages) |i| {
         const page = s.pages[code_pages + i];
-        require(page.address == 0x800000 + i * 4096 and page.flags == 7 | nx);
+        require(page.address == base + i * 4096 and page.flags == 7 | nx);
         for (s.backing[code_pages + i]) |value| require(value == 0);
     }
     // byte() checks actual mapping membership; no extra authority or mapping.
-    require(byte(s, 0x7ff000, false) == null and byte(s, 0x802000, false) == null);
+    require(byte(s, base - 4096, false) == null and byte(s, 0x802000, false) == null);
     require(s.context().frame.rdi == 31 and s.context().frame.rsp == 0x802000 - 8);
 }
 fn startSupervised(envelope: []const u8) noreturn {
     require(envelope.len >= 48);
     var supervisor_code: []const u8 = undefined;
     if (combined_profile) {
-        const bundle = (if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
+        const bundle = (if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
         engine_len = bundle.engine.len;
         @memcpy(engine_bytes[0..engine_len], bundle.engine);
         engine_image = parseStartup(engine_bytes[0..engine_len]) catch @panic("invalid filesystem engine ELF");

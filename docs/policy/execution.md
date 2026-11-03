@@ -195,6 +195,29 @@ child job control/input, login, persistence, package or R1 acceptance is claimed
 Issue137's diagnostic-fit/full-host exceptions remain issue-only; issue141 retains
 its failed coverage and unverified cleanup.
 
+## Selected issue143 capacity and verification decision —2026-11-02
+
+Owner direction,2026-11-02: Cam directly approved the
+[scoped issue143 plan](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304), including the reviewed proposal in comment6591273627.
+Only native-zsh-external/native_zsh_process may use73,728 bytes of Owner RX
+code and a12,288-byte mapped stack (12,280 usable), within unchanged128-page
+Owner backing. Preserve ABI31/RSP0x802000-8, Runtime/workspace4,096 each,
+RW/NX stack, absent guards and old-profile code/stack/parser/boot limits.
+Fresh matched selected fit, boundary/guard tests and separate artifact/media
+review precede an image/trial. The one fixed helper/status7/parent-prompt/clean
+exit trial may establish remaining scoped workload fit despite unknown complete
+parser/handler/heap/copied-peak proof. No general peak qualification follows.
+Focused contract checks, separate review, required protected CI and successful
+exact trial may qualify this issue143 checkpoint while issue141's full-root
+integration gate stays open. This is an explicit issue143 policy exception,
+not a full-host pass or transfer of issue137's exceptions. Preserve unknown
+history/quarantines. Other app/time/request/mutation/capture/no-network,
+disposable-media, finite-attempt and known-cleanup limits remain binding.
+Login, persistence/reboot, packages, assembled-system and R1 gates remain separate.
+Routine implementation, builds, reviewed bounded tests and delivery proceed
+under standing approval; this decision grants no new syscall/capability kind,
+arbitrary executable authority or unknown-effect retry.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

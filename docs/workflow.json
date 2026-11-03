@@ -2669,10 +2669,10 @@
     {
       "id": "zsh-external-parent-helper",
       "reference": "userland/docs/ZSH-FILESYSTEM.md",
-      "invariants": "Selected one-parent/one-helper copy/exec/wait with full descriptor snapshots, Owner namespace custody, child-local binding, parent-only MODE/SIGINT, shared FILE lifetime, known status delivery before reclaim/read-lease restoration, and unchanged resource/default profiles.",
-      "command": "python3 -B -m unittest discover -s tests -p test_native_zsh_external.py -v; focused C process/provider and Rust startup/controller/shared-FILE controls in the owning private recipes; lead-frozen zsh-target-fit.py --external and zsh-owner-fit.py --external, then separately reviewed matching image and fixed native workload.",
+      "invariants": "Selected one-parent/one-helper copy/exec/wait with full descriptor snapshots, Owner namespace custody, child-local binding, parent-only MODE/SIGINT, shared FILE lifetime, known wait delivery before reclaim/read-lease restoration. External Owner RX73728/stack12288 within128 backing; old profiles and other execution bounds stay exact.",
+      "command": "python3 -B -m unittest discover -s tests -p test_native_zsh_external.py -v; python3 -B -m unittest discover -s tests -p test_zsh_owner_capacity.py -v; actual changed parser/boot/mapping bodies and C/Rust controls in the owning qualified private recipes; lead-frozen selected target/Owner fit, reviewed image/media and fixed native helper/status/prompt workload.",
       "oracle": "Real helper ELF executes and exits7; Zsh observes actual status7 and returns to its prompt; normal final app/engine exit, mode restoration, export and three known reclamations. Malformed/stale/unknown effects contain without replay.",
-      "gaps": "Issue143 acceptance remains open until actual linked fits, native workload and integration gates pass. Private toolchain recipes are not a standalone public distribution. No child input/job control, arbitrary filesystem execution, login, persistence, packages or R1 qualification; issue137 exceptions do not transfer.",
+      "gaps": "Issue143 actual fits/trial/CI/delivery remain open until qualified. Approved comment6591806304 selects external Owner capacities, guarded fixed workload evidence and scoped checkpoint delivery while141 full-root stays open. No full-host/general peak, child input/job control, arbitrary filesystem exec, login, persistence, packages or R1 qualification. Private recipes are not a standalone distribution.",
       "owner": "Aether kernel, userland and sys-init",
       "budget_seconds": 300
     }

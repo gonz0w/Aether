@@ -218,7 +218,25 @@ The [owner-approved issue142 design](https://github.com/gonz0w/Aether/issues/142
 selects the separate issue143 implementation. `native-zsh-external`,
 `AEFD_ZSH_PROCESS_BINDINGS` and `native_zsh_process` name its closed kernel,
 consumer and Owner selections. They extend the real terminfo/MODE parent only
-for one child at a time. Existing selections and all numeric limits remain.
+for one child at a time. Existing selections keep their original bounds.
+
+The [issue143 capacity decision](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304)
+allows only this external selection to use73,728 Owner RX bytes and three mapped
+stack pages (12,288 bytes,12,280 usable). The stack is `[0x7ff000,0x802000)`
+RW/NX, zeroed, with absent guards at0x7fe000/0x802000. ABI31 and
+RSP0x802000-8 stay unchanged. Runtime/workspace remain4,096 bytes each; maximum
+Owner mappings are18 RX+3 stack+2 data=23 of128 pages. Total backing stays11,520
+pages. The unchanged AENFS006/AENMX011 magic cannot choose this allowance;
+explicit kernel selection uses `parseExternalApplication`, while old
+`parseApplication` retains49,152 bytes and the two-page stack. The app's limits,
+channels and execution/capture bounds are unchanged. A fresh matched Owner fit
+and separate review remain required. The scoped workload-fit and delivery
+conditions are recorded in the execution policy linked above.
+
+Pure controls run from the repository root with
+`python3 -B -m unittest discover -s tests -p test_zsh_owner_capacity.py -v`.
+The test also supplies actual kernel-body fixtures; their bounded compiled
+results are separate from pure checks and native qualification.
 
 The fixed target is the existing `/inputs/helper status` test executable,
 owned image C003, with real exit7. At the actual +m prompt,

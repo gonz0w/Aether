@@ -242,6 +242,30 @@ and compact hashes are in [results](evidence/af07-owner-native-2026-10-23/README
 No new VM before fresh one-sequence disposition. A successful diagnostic without
 recurrence does not resolve the panic or authorize resumed affected acceptance.
 
+## Selected external-Zsh Owner capacity
+
+The [issue143 owner decision](https://github.com/gonz0w/Aether/issues/143#issuecomment-6591806304)
+selects73,728 Owner RX bytes and a12,288-byte mapped stack (12,280 usable)
+only with the existing `native-zsh-external` closure. AENFS006/AENMX011 bytes do
+not select this allowance: the kernel boot gate and loader explicitly choose
+`parseExternalApplication`; old `parseApplication`, owner-stack and other
+profiles retain their original code, stack and envelope limits.
+
+The selected stack grows downward to `[0x7ff000,0x802000)`, with three zeroed
+RW/NX pages and absent guards at0x7fe000 and0x802000. ABI31, initial
+RSP0x802000-8 and the8KiB data region at0x900000 stay exact. Runtime and
+workspace remain4,096 bytes each. Maximum mapping is18 RX+3 stack+2 data pages,
+23 of the existing128 Owner pages; total application backing stays11,520 pages.
+This adds no allocator, syscall, namespace grant or peer mapping authority.
+
+`scripts/owner_stack.py` accepts an explicit `stack_bytes=12288` for this fit;
+its4KiB default,8KiB selection and dynamic/recursive/unknown-edge rejection
+remain. Run the pure inspector and fixture-source controls with
+`python3 -B -m unittest discover -s tests -p test_zsh_owner_capacity.py -v`.
+The same test file supplies actual parser/boot/mapping body fixtures for bounded
+Zig execution recorded separately. These host checks do not execute page tables
+or qualify a guest. Fresh matched fit and separate review still precede an image.
+
 ## Guarded complete-owner candidate — AENFS005 / ABI31
 
 The maintainer approved a separate8KiB guarded stack and measurement-led code

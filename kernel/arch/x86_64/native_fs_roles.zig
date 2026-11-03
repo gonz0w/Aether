@@ -15,6 +15,10 @@ pub const owner_data_bytes = 8192;
 // Complete ABI31 owner measured at39,376 bytes; twelve RX pages give about25% headroom.
 // Old profile limits remain in their exact selectors.
 pub const owner_stack_code_limit = 49152;
+// Closed native-zsh-external capacity; old selectors above stay exact.
+pub const zsh_external_owner_code_limit = 73728;
+pub const zsh_external_owner_stack_pages = 3;
+pub const zsh_external_owner_stack_base = 0x7ff000;
 pub const Error = error{InvalidComposition};
 
 pub fn process(slot: usize) bool {
