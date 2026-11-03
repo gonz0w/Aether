@@ -98,6 +98,69 @@ def parser_inputs():
     return inputs
 
 
+def start_preflight_source(*, omit=False):
+    """Execute start's actual first preflight, stopping before all later setup.
+
+    Only the panic boundary becomes a false return in this host fixture. The
+    sentinel after the extracted prefix records reaching the effect boundary;
+    no reservation, device setup, native start or page table is executed here.
+    """
+    if type(omit) is not bool:
+        raise ValueError('closed preflight omission control')
+    native = (ROOT/'kernel/arch/x86_64/native_c.zig').read_text()
+    start = block(native, 'pub fn start(')
+    prefix = start[start.index('{')+1:start.index('    require(envelope.len > 40);')]
+    if omit:
+        guard = block(prefix, '    if (combined_application_profile)')
+        prefix = prefix.replace(guard, '', 1)
+        prefix += '    _ = combined_application_profile; _ = envelope;\n'
+    prefix = prefix.replace('@import("build_options")', 'O')
+    prefix = prefix.replace('@panic("invalid filesystem application envelope")', 'return false')
+    return r'''const std=@import("std");const FsSession=@import("session");
+var effects:usize=0;
+fn check(ok:bool,comptime label:[]const u8)void{if(!ok){std.debug.print("{s}\n",.{label});std.process.exit(91);}}
+fn early(comptime O:type,envelope:[]const u8)bool{
+    const combined_application_profile=O.application;
+''' + prefix + r'''
+    effects+=1;return true;
+}
+fn expect(comptime O:type,raw:[]const u8,allowed:bool,comptime label:[]const u8)void{
+ const before=effects;const accepted=early(O,raw);check(accepted==allowed,label);
+ check(effects==before+@intFromBool(accepted),"EARLY_START_EFFECT_BOUNDARY");
+}
+pub fn main()void{
+ const External=struct{pub const application=true;pub const native_zsh_external=true;};
+ const Default=struct{pub const application=true;};
+ const ExplicitFalse=struct{pub const application=true;pub const native_zsh_external=false;};
+ const Legacy=struct{pub const application=false;};
+ expect(External,@embedFile("67704.bin"),true,"EARLY_START_SELECTED_67704");
+ expect(External,@embedFile("73728.bin"),true,"EARLY_START_SELECTED_MAX");
+ expect(External,@embedFile("73729.bin"),false,"EARLY_START_SELECTED_ONE_OVER");
+ expect(External,@embedFile("49152.bin"),true,"EARLY_START_SELECTED_SMALL");
+ expect(External,@embedFile("49153.bin"),true,"EARLY_START_SELECTED_ABOVE_OLD");
+ inline for(.{Default,ExplicitFalse})|O|{
+  expect(O,@embedFile("49152.bin"),true,"EARLY_START_DEFAULT_49152");
+  expect(O,@embedFile("49153.bin"),false,"EARLY_START_DEFAULT_49153");
+  expect(O,@embedFile("67704.bin"),false,"EARLY_START_DEFAULT_67704");
+ }
+ for([_] []const u8{@embedFile("badmagic.bin"),@embedFile("reserved.bin"),@embedFile("truncated.bin"),@embedFile("tail.bin"),@embedFile("old-49152.bin")})|raw|{
+  expect(External,raw,false,"EARLY_START_MALFORMED_EXTERNAL");
+  expect(Default,raw,false,"EARLY_START_MALFORMED_DEFAULT");
+ }
+ const sizes=[_]usize{49152,49153,67704};
+ const legacy=[_] []const u8{@embedFile("old-49152.bin"),@embedFile("old-49153.bin"),@embedFile("old-67704.bin")};
+ for(legacy,sizes)|raw,size|{
+  // Non-application profiles still skip this application-only prefix. Their
+  // actual old typed parser, rather than this prefix, enforces the old cap.
+  expect(Legacy,raw,true,"EARLY_START_LEGACY_GUARD_UNCHANGED");
+  if(FsSession.parseOwnerStack(raw))|good|{check(size<=49152 and good.session.supervisor.len==size,"EARLY_START_LEGACY_TYPED_CAP");}
+  else |_|{check(size>49152,"EARLY_START_LEGACY_TYPED_CAP");}
+ }
+ std.debug.print("EARLY_START_PREFLIGHT_PASS\n",.{});
+}
+'''
+
+
 def boot_source():
     source = (ROOT/'kernel/main.zig').read_text()
     gate = next(line.strip() for line in source.splitlines() if '@panic("native envelope oversized")' in line)
@@ -215,6 +278,16 @@ class OwnerCapacity(unittest.TestCase):
         for instruction in ('sub rsp, rax', 'xchg rsp, rax', 'call 400000 <_start>', 'call rax'):
             with self.subTest(instruction=instruction), self.assertRaises(ValueError):
                 s.inspect('0000000000400000 <_start>:\n400000: '+instruction+'\n', stack_bytes=12288)
+
+    def test_actual_start_prefix_has_a_compiling_effect_boundary_control(self):
+        source = start_preflight_source()
+        self.assertIn('EARLY_START_SELECTED_67704', source)
+        self.assertIn('EARLY_START_SELECTED_ONE_OVER', source)
+        self.assertIn('FsSession.parseApplication(envelope)', source)
+        self.assertNotIn('prepareBacking(', source)
+        omitted = start_preflight_source(omit=True)
+        self.assertNotIn('FsSession.parseApplication(envelope)', omitted)
+        self.assertIn('effects+=1;return true;', omitted)
 
     def test_fixtures_use_actual_sources_and_closed_extents(self):
         raw = envelope(73728)

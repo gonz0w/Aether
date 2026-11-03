@@ -942,7 +942,7 @@ fn select() *const Frame {
 pub fn start(pbase: u64, vbase: u64, envelope: []const u8, hhdm: u64, map: *const @import("../../limine.zig").MemoryResponse) noreturn {
     // Reject the selected complete composition before reservation or device setup.
     if (combined_application_profile) {
-        _ = FsSession.parseApplication(envelope) catch @panic("invalid filesystem application envelope");
+        _ = (if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else FsSession.parseApplication(envelope)) catch @panic("invalid filesystem application envelope");
     }
     require(envelope.len > 40);
     if (mktemp_reader) require(std.mem.eql(u8, envelope[0..8], "AENBD002"));
