@@ -4645,3 +4645,22 @@ The actual-body fixture uses real Binding/Pending and copy/exec/freeze/notificat
 bodies over host storage; MMU/device/scheduler installation is substituted. Its
 private qualified compiler entry and cleanup records remain separate from these
 stdlib-only public checks. No private runner API is required by the public test.
+
+
+## Selected fixed Zsh home writer and readonly readers
+
+Issue145 reuses the existing external-Zsh kernel composition and its exact
+Owner/application/engine limits. The new AEFP0005 WRITE authority lives in the
+Rust Owner and admitted post-exec helper; no kernel syscall or capability kind
+is added. See the [fixed home-write contract](../userland/docs/ZSH-FILESYSTEM.md#selected-fixed-home-write)
+for the protocol, once-only workload, v3 observation, focused checks and independent
+original-provider readback. The selected readers reuse the existing320-byte
+engine-slot0 capture; other slots and defaults remain256. Offline fits and host
+fixtures do not establish native write completion or cold persistence.
+
+The fixed issue145 writer and independent pristine/recovery cohort passed. Real
+Zsh helper0/status0/prompt return, completed16-byte write/close, normal exit/export,
+three reclaimed domains and known host cleanup precede the fresh readonly proof.
+The recovery provider checked the exact file and complete terminfo namespace;
+original metadata matched and both reader disks stayed unchanged. This qualifies
+that bounded checkpoint only; see issue145 for delivery and retained results.

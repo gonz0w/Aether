@@ -79,6 +79,17 @@ int64_t aefd_file_open_home(struct aefd_client *client,
     const uint64_t args[4] = {(uint64_t)cloexec, length, (uint64_t)access, 0};
     return invoke(client, 10, args, name, length);
 }
+#endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+int64_t aefd_file_open_home_write(struct aefd_client *client,
+                                  const unsigned char *name, size_t length,
+                                  int cloexec)
+{
+    const uint64_t args[4] = {(uint64_t)cloexec, length, 0, 0};
+    return invoke(client, 12, args, name, length);
+}
+#endif
+#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
 int64_t aefd_file_write(struct aefd_client *client, int fd,
                         const unsigned char *bytes, size_t count,
                         struct aefd_write_result *out)

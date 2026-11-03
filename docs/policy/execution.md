@@ -218,6 +218,39 @@ Routine implementation, builds, reviewed bounded tests and delivery proceed
 under standing approval; this decision grants no new syscall/capability kind,
 arbitrary executable authority or unknown-effect retry.
 
+## Selected issue145 home write and verification decision —2026-11-02
+
+Owner direction,2026-11-02: Cam directly approved the
+[scoped issue145 design and gates](https://github.com/gonz0w/Aether/issues/145#issuecomment-6594800206):
+“Approve scoped #145 design and gates”. Reviewed plan02 selects only the exact
+admitted post-exec helper writing16 fixed bytes to existing empty `/home/probe`
+through Rust Owner custody and opt-in AEFP0005. Preserve old FILE dialects,
+opcode10 DIRECTORY, reserved7 denial and issue143 status7/v2 behavior. Only this
+helper may use fixed-home-open12/write11; parent/pre-exec/stale/other paths/modes
+reject before mutation. Retain checked completed write/close outcomes, success-only
+position changes and no replay of unknown/short effects. No namespace grant,
+second filesystem broker, new syscall or kernel capability kind is selected.
+
+The scoped exact-seven engine stays within9 mutations/96 requests. Fresh matching
+parent/helper/Owner/engine fits must use the same selected ceilings: Owner
+73,728 RX,12,288 mapped stack/12,280 usable, Runtime/workspace4,096 each and128
+backing pages, plus existing application/engine/task/channel/capture bounds.
+No numeric increase follows. Guarded fixed writer and original-provider pristine/
+recovery readers may establish remaining scoped workload fit despite unknown
+general stack/heap/copied peaks. Writer60s/120s/6000ticks, readers30s/3000ticks
+within120s cohort, no network, disposable media, exact source/artifact/media review,
+once-only inputs, finite attempts and known cleanup stay binding. Reader slot0
+must fit its existing320-byte selection; defaults/other slots remain256.
+
+For issue145 only, focused affected checks, separate review, required protected
+CI, actual helper0/status0/prompt/export/reclaim writer and exact independent
+cold readback may qualify checkpoint delivery while issue141's full-root gap
+stays open. This is an explicit decision, not a full-host pass or transfer of
+issue143's exception. Preserve failed history and quarantines. General redirection,
+arbitrary exec, child job control/input, login, packages, assembled-system and
+R1 gates remain separate. Routine builds, reviewed bounded tests and GitHub
+delivery proceed under standing approval; new limit/authority choices still stop.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

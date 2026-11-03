@@ -197,9 +197,11 @@ static int home_original_file(aether_zpl_view *view, aether_zpl_node file,
     return error;
 }
 static int home_inventory(aether_zpl_view *view, const uint64_t original[9],
-                          const uint64_t extra[3], unsigned extra_count)
+                          const uint64_t extra[5], unsigned extra_count)
 {
-    uint64_t ids[12];
+    if (extra_count > 5)
+        return EINVAL;
+    uint64_t ids[14];
     memcpy(ids, original, 9 * sizeof(*ids));
     memcpy(ids + 9, extra, extra_count * sizeof(*ids));
     unsigned count = 9 + extra_count;
@@ -376,6 +378,124 @@ static int home_mktemp_namespace(aether_zpl_view *view, aether_zpl_node home,
     return error;
 }
 
+/* Exact source-independent home/probe plus real terminfo tree. Every identity
+ * comes from readonly upstream lookups; directory cardinalities and the final
+ * whole-object inventory reject aliases and extra namespace/allocation state.
+ */
+static int home_zsh_namespace(aether_zpl_view *view, aether_zpl_node home,
+                              const uint64_t root_time[2], uint64_t minimum,
+                              uint64_t maximum, aether_zpl_node *probe,
+                              uint64_t extra[5], struct home_workspace *w)
+{
+    if (home.mode != (S_IFDIR | 0700U) || home.size != 4)
+        return EIO;
+    int error = home_count(view, home.object, 2);
+    if (!error)
+        error = home_new_metadata(view, home, view->root.object, 3, minimum,
+                                  maximum, &w->metadata);
+    if (!error && memcmp(w->metadata.birthtime, root_time, 16))
+        error = EIO;
+    uint64_t home_time[2] = {0}, probe_time[2] = {0}, write_time[2] = {0},
+             next_time[2] = {0};
+    if (!error)
+        memcpy(home_time, w->metadata.mtime, 16);
+    if (!error)
+        error = aether_zpl_lookup(view, home.object, home.generation,
+                                  (const unsigned char *)"probe", 5, probe);
+    if (!error && (probe->mode != (S_IFREG | 0600U) || probe->size != 16))
+        error = EIO;
+    if (!error)
+        error = home_new_metadata(view, *probe, home.object, 1, minimum,
+                                  maximum, &w->metadata);
+    if (!error && !home_time_before(root_time, w->metadata.birthtime))
+        error = EIO;
+    if (!error) {
+        memcpy(probe_time, w->metadata.birthtime, 16);
+        memcpy(write_time, w->metadata.mtime, 16);
+    }
+    static const unsigned char payload[] = "AETHER-ZSH-HOME\n";
+    size_t count = 0;
+    if (!error)
+        error = aether_zpl_read(view, probe->object, probe->generation, 0,
+                                w->buffer, sizeof(payload) - 1, &count);
+    if (!error && (count != sizeof(payload) - 1 ||
+                   memcmp(w->buffer, payload, sizeof(payload) - 1)))
+        error = EIO;
+    if (!error)
+        error = home_eof(view, *probe, sizeof(payload) - 1, w->buffer);
+    aether_zpl_node terminfo = {0}, directory = {0}, asset = {0};
+    if (!error)
+        error =
+            aether_zpl_lookup(view, home.object, home.generation,
+                              (const unsigned char *)".terminfo", 9, &terminfo);
+    if (!error && (terminfo.mode != (S_IFDIR | 0700U) || terminfo.size != 3))
+        error = EIO;
+    if (!error)
+        error = home_count(view, terminfo.object, 1);
+    if (!error)
+        error = home_new_metadata(view, terminfo, home.object, 3, minimum,
+                                  maximum, &w->metadata);
+    if (!error && (memcmp(w->metadata.birthtime, home_time, 16) ||
+                   !home_time_before(probe_time, w->metadata.birthtime)))
+        error = EIO;
+    if (!error)
+        memcpy(next_time, w->metadata.mtime, 16);
+    if (!error)
+        error = aether_zpl_lookup(view, terminfo.object, terminfo.generation,
+                                  (const unsigned char *)"v", 1, &directory);
+    if (!error && (directory.mode != (S_IFDIR | 0700U) || directory.size != 3))
+        error = EIO;
+    if (!error)
+        error = home_count(view, directory.object, 1);
+    if (!error)
+        error = home_new_metadata(view, directory, terminfo.object, 2, minimum,
+                                  maximum, &w->metadata);
+    if (!error && memcmp(w->metadata.birthtime, next_time, 16))
+        error = EIO;
+    if (!error)
+        memcpy(next_time, w->metadata.mtime, 16);
+    if (!error)
+        error = aether_zpl_lookup(view, directory.object, directory.generation,
+                                  (const unsigned char *)"vt100", 5, &asset);
+    if (!error && (asset.mode != (S_IFREG | 0600U) || asset.size != 1268))
+        error = EIO;
+    if (!error)
+        error = home_new_metadata(view, asset, directory.object, 1, minimum,
+                                  maximum, &w->metadata);
+    if (!error && (memcmp(w->metadata.birthtime, next_time, 16) ||
+                   !home_time_before(w->metadata.mtime, write_time)))
+        error = EIO;
+    count = 0;
+    if (!error)
+        error = aether_zpl_read(view, asset.object, asset.generation, 0,
+                                w->buffer, 1268, &count);
+    if (!error && count != 1268)
+        error = EIO;
+    if (!error) {
+        static const unsigned char expected[32] = {
+            0x51, 0x29, 0x24, 0xdc, 0x4f, 0x0c, 0x9d, 0x70, 0xe6, 0x62, 0x8d,
+            0x63, 0x61, 0x58, 0x84, 0xaa, 0x93, 0xfa, 0xd7, 0xd7, 0xfc, 0x7a,
+            0x9f, 0x62, 0xba, 0x35, 0x36, 0xdb, 0x24, 0x70, 0x2d, 0xc1};
+        unsigned char digest[32];
+        SHA2_CTX hash;
+        SHA2Init(SHA256, &hash);
+        SHA2Update(&hash, w->buffer, count);
+        SHA2Final(digest, &hash);
+        if (memcmp(digest, expected, sizeof(digest)))
+            error = EIO;
+    }
+    if (!error)
+        error = home_eof(view, asset, 1268, w->buffer);
+    if (!error) {
+        extra[0] = home.object;
+        extra[1] = probe->object;
+        extra[2] = terminfo.object;
+        extra[3] = directory.object;
+        extra[4] = asset.object;
+    }
+    return error;
+}
+
 static int home_readback(spa_t *spa, int expectation, uint64_t minimum,
                          uint64_t maximum, unsigned char digest32[32],
                          int mktemp, unsigned char leaf8[8])
@@ -515,7 +635,7 @@ static int home_readback(spa_t *spa, int expectation, uint64_t minimum,
         else
             error = found;
     }
-    if (!error && recovered && mktemp)
+    if (!error && recovered && mktemp == 1)
         error = home_mktemp_namespace(view, home, root_time, minimum, maximum,
                                       &probe, &generated, leaf, w);
     if (!error && recovered && !mktemp) {
@@ -561,14 +681,17 @@ static int home_readback(spa_t *spa, int expectation, uint64_t minimum,
             /* A nonzero request must observe EOF even for an empty object. */
             error = home_eof(view, probe, 0, w->buffer);
     }
-    uint64_t extra[3] = {home.object, probe.object, generated.object};
+    uint64_t extra[5] = {home.object, probe.object, generated.object, 0, 0};
+    if (!error && recovered && mktemp == 2)
+        error = home_zsh_namespace(view, home, root_time, minimum, maximum,
+                                   &probe, extra, w);
     if (!error)
         error = home_inventory(view, original, extra,
-                               recovered ? (mktemp ? 3 : 2) : 0);
+                               recovered ? (mktemp == 2 ? 5 : mktemp ? 3 : 2) : 0);
     if (!error) {
         SHA2Final(w->buffer, &w->preserved);
         memcpy(digest32, w->buffer, 32);
-        if (mktemp)
+        if (mktemp == 1)
             memcpy(leaf8, leaf, sizeof(leaf));
     }
     aether_zpl_close(&view);
@@ -593,4 +716,19 @@ int aether_home_mktemp_readback(spa_t *spa, int recovered, uint64_t minimum,
         return EINVAL;
     return home_readback(spa, recovered, minimum, maximum, result40, 1,
                          result40 + 32);
+}
+
+int aether_home_zsh_readback(spa_t *spa, int recovered, uint64_t minimum,
+                             uint64_t maximum, unsigned char result40[40])
+{
+    if (!result40)
+        return EINVAL;
+    memset(result40, 0, 40);
+    if (recovered != 0 && recovered != 1)
+        return EINVAL;
+    int error =
+        home_readback(spa, recovered, minimum, maximum, result40, 2, NULL);
+    if (!error)
+        memcpy(result40 + 32, recovered ? "ZSHWR001" : "ZSHPR001", 8);
+    return error;
 }

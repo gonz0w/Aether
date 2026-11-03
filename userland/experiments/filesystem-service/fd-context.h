@@ -16,6 +16,13 @@ struct aefd_context {
     struct aefd_session session;
     unsigned char workspace[AEFD_READ_MAX];
     int state;
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+    /* Local correlated observations survive finish; they grant no authority. */
+    struct aefd_write_result home_write;
+    uint64_t home_close_generation, home_close_sequence;
+    int64_t home_close_status;
+    int home_write_fd, home_write_attempted, home_close_attempted;
+#endif
 #ifdef AEFD_TERMINAL_MODE_BINDINGS
     uint32_t mode_control;
     uint64_t mode_revision;
@@ -52,6 +59,10 @@ int64_t aefd_context_access(struct aefd_context *, const unsigned char *,
 int64_t aefd_context_root(struct aefd_context *, unsigned char[2]);
 int64_t aefd_context_directory(struct aefd_context *, const unsigned char *,
                                size_t, struct aether_tinfo_directory_view *);
+#endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+int64_t aefd_context_open_home_write(struct aefd_context *,
+                                     const unsigned char *, size_t, int);
 #endif
 int64_t aefd_context_open(struct aefd_context *, const unsigned char *, size_t,
                           int);

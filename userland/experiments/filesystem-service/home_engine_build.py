@@ -13,6 +13,7 @@ PROFILE = tuple('fs_' + name for name in ('namespace', 'lifetimes', 'mixed', 'wa
     'home', 'home_wire', 'home_native', 'home_activation', 'home_probe_three'))
 DRAIN_PROFILE = (*PROFILE[:-1], 'fs_af09_drain')
 TERMINFO_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_six')
+TERMINFO_SEVEN_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_seven')
 DRAIN_CASES = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
                'partial_ack', 'exit_deadline', 'pending_fragment')
 CRATES = (
@@ -41,11 +42,14 @@ def drain_selection(drain_case):
     return 0 if drain_case == 'none' else DRAIN_CASES.index(drain_case) + 1
 
 
-def validate_profile(profile, *, drain_case='none', terminfo_six=False):
+def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo_seven=False):
     case_id = drain_selection(drain_case)
     if type(terminfo_six) is not bool or terminfo_six and case_id:
         raise ValueError('AF09 terminfo-six requires its closed non-drain selection')
-    selected = TERMINFO_PROFILE if terminfo_six else DRAIN_PROFILE if case_id else PROFILE
+    if type(terminfo_seven) is not bool or terminfo_seven and (terminfo_six or case_id):
+        raise ValueError('AF09 terminfo-seven requires its closed non-drain selection')
+    selected = (TERMINFO_SEVEN_PROFILE if terminfo_seven else TERMINFO_PROFILE if terminfo_six
+                else DRAIN_PROFILE if case_id else PROFILE)
     if tuple(profile) != selected:
         raise ValueError('AF09 profile must match every explicit selected flag')
     return selected
@@ -65,7 +69,7 @@ def validate_symbols(service, launch):
         raise ValueError('AF09 old service/launch symbol')
 
 
-def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False):
+def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False):
     """Return service/launch object Paths; caller owns work and cleanup.
 
     This follows the existing five-crate native metadata-service object recipe.
@@ -74,8 +78,10 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
     alternate native-service entry and does not reuse an older service object.
     """
     case_id = drain_selection(drain_case)
-    selected = TERMINFO_PROFILE if terminfo_six else DRAIN_PROFILE if case_id else PROFILE
-    profile = validate_profile(selected, drain_case=drain_case, terminfo_six=terminfo_six)
+    selected = (TERMINFO_SEVEN_PROFILE if terminfo_seven else TERMINFO_PROFILE if terminfo_six
+                else DRAIN_PROFILE if case_id else PROFILE)
+    profile = validate_profile(selected, drain_case=drain_case, terminfo_six=terminfo_six,
+                               terminfo_seven=terminfo_seven)
     folder = work / 'home-engine-rust'
     folder.mkdir()
     pins_path = R / 'docs/evidence/filesystem-transport-2026-10-19/inputs.json'
@@ -118,6 +124,8 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
         inputs_manifest=dict(path=str(pins_path), sha256=sha(pins_path)))
     if terminfo_six:
         record['home_engine_rust']['terminfo_six'] = True
+    if terminfo_seven:
+        record['home_engine_rust']['terminfo_seven'] = True
     if case_id:
         record['home_engine_rust'].update(drain_case=drain_case, drain_case_id=case_id)
     env = proc.clean_env(work)
@@ -187,6 +195,8 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
             profile=list(profile), dependencies=dict(libraries), artifacts=artifact_rows)
         if terminfo_six:
             result['terminfo_six'] = True
+        if terminfo_seven:
+            result['terminfo_seven'] = True
         if case_id:
             result.update(drain_case=drain_case, drain_case_id=case_id)
         return result

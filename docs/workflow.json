@@ -2675,6 +2675,16 @@
       "gaps": "Approved comment6591806304 limits acceptance to the fixed helper/status/prompt workload and selected Owner capacity. Full-root141 stays open. No full-host/general peak, child input/job control, arbitrary filesystem exec, login, persistent shell write/reboot readback, packages or R1 qualification. Private recipes are not a standalone distribution.",
       "owner": "Aether kernel, userland and sys-init",
       "budget_seconds": 300
+    },
+    {
+      "id": "zsh-fixed-home-write",
+      "reference": "userland/docs/ZSH-FILESYSTEM.md",
+      "invariants": "Only exact committed/READY helper may use AEFP0005 fixed-home-open12/write11. Rust sole namespace custody; DIRECTORY10/reserved7 and old profiles unchanged. Completed16-byte write plus known close, no replay; exact-seven engine within9 mutations/96 requests and existing resource/time/capture bounds.",
+      "command": "python3 -B -m unittest discover -s tests -p test_home_zsh_reader.py -v; focused actual selected/old C and Rust provider/Owner/helper checks and semantic omissions in qualified private recipes; fresh zsh-target-fit.py --home-write and zsh-owner-fit.py --home-write; separately reviewed exact image/media, explicit fixed writer then pristine/recovery readonly cold readers.",
+      "oracle": "Actual helper0/status0/prompt, retained completed16-byte write/close, seven mutations, clean export/reclaim. Original OpenZFS exact payload/EOF, terminfo hash/tree, metadata/ACL/link/full inventory and full preserved original digest comparison after clean readonly shutdown. Qualified fixed native writer:35.657s/36requests/normal0/status0/prompt/21cleanup/3reclaims; independent two-reader cohort31.319s, exact payload/terminfo/metadata/inventory, full original digest match and both media unchanged.",
+      "gaps": "Host fixtures/offline fits are not native persistence. Full-root141, general peaks, arbitrary exec/redirection, child job control, login, packages and R1 remain separate. Private recipes require retained development inputs.",
+      "owner": "Aether userland/sys-init/kernel; issue145",
+      "budget_seconds": 300
     }
   ]
 }

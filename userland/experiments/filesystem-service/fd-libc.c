@@ -28,6 +28,15 @@ int64_t aefd_libc_open(struct aefd_context *c, const char *path, int flags)
         return aefd_context_open_duplex(c, !!(flags & O_CLOEXEC));
     }
 #endif
+#if defined(AEFD_ZSH_HOME_WRITE_BINDINGS) && defined(AEFD_ZSH_HELPER_ENTRY)
+    if (!strcmp(path, "/home/probe")) {
+        if ((flags & ~(O_WRONLY | O_CLOEXEC)) ||
+            (flags & O_ACCMODE) != O_WRONLY)
+            return -EOPNOTSUPP;
+        return aefd_context_open_home_write(c, (const unsigned char *)path, 11,
+                                            !!(flags & O_CLOEXEC));
+    }
+#endif
     if (flags & ~O_CLOEXEC)
         return -EOPNOTSUPP;
     size_t length = 0;

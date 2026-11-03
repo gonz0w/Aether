@@ -143,7 +143,11 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
         return (int)libc_result(-EFAULT, saved);
     if (length == 256)
         return (int)libc_result(-ENAMETOOLONG, saved);
-    if (strcmp(path, "/dev/tty") && !entry_path(path))
+    if (strcmp(path, "/dev/tty") && !entry_path(path)
+#if defined(AEFD_ZSH_HOME_WRITE_BINDINGS) && defined(AEFD_ZSH_HELPER_ENTRY)
+        && strcmp(path, "/home/probe")
+#endif
+    )
         return (int)libc_result(-ENOENT, saved);
 #endif
     int64_t result =

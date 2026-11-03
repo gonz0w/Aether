@@ -18,9 +18,15 @@ int64_t aefd_file_set_cloexec(struct aefd_client *, int fd, int cloexec);
 #ifdef AEFD_DUP2_WIRE
 int64_t aefd_file_replace(struct aefd_client *, int source, int target);
 #endif
+#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+int64_t aefd_file_open_home_write(struct aefd_client *, const unsigned char *,
+                                  size_t, int);
+#endif
 #ifdef AEFD_WRITE_WIRE
 int64_t aefd_file_open_home(struct aefd_client *, const unsigned char *, size_t,
                             int access, int cloexec);
+#endif
+#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
 int64_t aefd_file_write(struct aefd_client *, int fd, const unsigned char *,
                         size_t, struct aefd_write_result *);
 #endif

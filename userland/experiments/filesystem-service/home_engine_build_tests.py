@@ -67,6 +67,35 @@ class NativeBuildContract(unittest.TestCase):
                 process.clean_env.assert_not_called()
                 process.run.assert_not_called()
 
+    def test_terminfo_seven_is_one_closed_replacement_and_never_mixed(self):
+        expected = (*PROFILE[:-1], 'fs_home_terminfo_seven')
+        self.assertEqual(builder['TERMINFO_SEVEN_PROFILE'], expected)
+        self.assertEqual(builder['validate_profile'](expected, terminfo_seven=True), expected)
+        for profile in (PROFILE, builder['DRAIN_PROFILE'], builder['TERMINFO_PROFILE'],
+                        (*expected, 'fs_home_probe_three'), (*expected, 'fs_af09_drain'),
+                        (*expected, 'fs_home_terminfo_six'), (*expected, expected[-1]), expected[:-1]):
+            with self.subTest(profile=profile), self.assertRaisesRegex(ValueError, 'AF09 profile'):
+                builder['validate_profile'](profile, terminfo_seven=True)
+        for option in (None, 0, 1, 'seven', [], True):
+            kwargs = dict(terminfo_seven=option)
+            if option is True:
+                kwargs['drain_case'] = 'stream'
+            with self.subTest(option=option), tempfile.TemporaryDirectory() as directory:
+                process = mock.Mock()
+                with self.assertRaisesRegex(ValueError, 'closed non-drain'):
+                    builder['build'](Path(directory), process, {}, 0, {}, **kwargs)
+                self.assertEqual(list(Path(directory).iterdir()), [])
+                process.clean_env.assert_not_called()
+                process.run.assert_not_called()
+        with tempfile.TemporaryDirectory() as directory:
+            process = mock.Mock()
+            with self.assertRaisesRegex(ValueError, 'closed non-drain'):
+                builder['build'](Path(directory), process, {}, 0, {},
+                                 terminfo_six=True, terminfo_seven=True)
+            self.assertEqual(list(Path(directory).iterdir()), [])
+            process.clean_env.assert_not_called()
+            process.run.assert_not_called()
+
     def test_exact_profile_and_object_exports(self):
         self.assertEqual(builder['validate_profile'](PROFILE), PROFILE)
         builder['validate_symbols'](SERVICE, LAUNCH)
