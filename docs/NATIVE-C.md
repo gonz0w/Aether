@@ -4618,10 +4618,22 @@ Only child2 can replace its image with the Owner-held C003 helper. Its current
 parent relationship, child clock and namespace provenance must still match;
 exec preserves native generation/binding and the existing receipt/publication
 transaction. Parent exec and other copy targets remain denied. Existing
-SIGCHLD17 validates the real parent generation. Ordinary profiles and every
-numeric limit remain unchanged. This is host-model coverage, not helper target
-execution or complete resource qualification. See the selected
+SIGCHLD17 validates the real parent generation. Ordinary profiles retain their
+limits; this external profile uses only the
+[approved Owner capacity](#selected-external-zsh-owner-capacity). See the selected
 [parent/helper contract](../userland/docs/ZSH-FILESYSTEM.md#selected-parenthelper-extension).
+
+The fixed issue143 target trial passed in34.169s: actual Zsh launched the held
+helper, collected status7, printed7 and returned to its prompt before normal
+parent/engine exit and export. The Owner completed33/96 requests with mode
+cleanup0; all21 cleanup phases and three reclamations completed, with halt
+at2884/6000ticks. Screen/PTY and once-only staged input were observed; all
+original host holders and clients were reaped with absent groups and output EOF.
+[PR144](https://github.com/gonz0w/Aether/pull/144) records the source delivery.
+This is the approved fixed-workload checkpoint, with full-host coverage still
+open in [issue141](https://github.com/gonz0w/Aether/issues/141). General resource
+peaks, arbitrary filesystem execution, child input/job control, login, persistent
+shell writes/reboot readback, packages and R1 remain separate gates.
 
 Run focused public source checks from the repository root:
 
