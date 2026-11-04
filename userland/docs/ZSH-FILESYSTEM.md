@@ -498,3 +498,36 @@ capture-profile growth is0 bytes, within16KiB. The explicit issue145 checkpoint
 exception leaves full-root coverage in issue141; login, arbitrary redirection/
 exec, packages and R1 retain their own gates. Delivery and exact source identity
 are recorded in issue145.
+
+
+## Selected filesystem ELF experiment — issue148
+
+The [approved design](https://github.com/gonz0w/Aether/issues/12#issuecomment-6635124495)
+and [owner decision](https://github.com/gonz0w/Aether/issues/12#issuecomment-6635185907)
+select one default-off `native-zsh-file-exec` experiment, tracked in
+[issue148](https://github.com/gonz0w/Aether/issues/148). The existing Rust Owner
+provisions and seals the actual `/home/probe` object, retains its READ reference,
+and acquires one complete ELF of at most4096 bytes before checked close. Names,
+READ, modes and hashes do not grant execution authority. Only that admitted Owner
+lifetime may snapshot/install it through0x2300B into the exact frozen helper.
+Existing eager mapping and descriptor publication retain their failure boundaries;
+C004 is a source receipt, and all three old boot-image routes reject in this profile.
+The saved672-byte request stays separate from the4096-byte file workspace.
+
+The tiny Rust witness consumes and validates the336-byte startup and actual native
+identity before READY and exit23. The fixed44-byte Zsh trial must execute
+`(exec -c /home/probe)`, print23, return to its prompt, then exit0 with normal
+exact-seven engine export, mode restoration, three reclamations and known cleanup.
+Existing ceilings remain binding. The qualified fixed native trial passed in
+38.678 seconds: helper23/status23/prompt, actual READY/C004,3548 acquired bytes and
+known close,42/96 requests, normal parent/engine exit/export, mode restoration and
+three reclamations at halt3225/6000 ticks. Both host holders and five Screen
+clients have known cleanup. This does not qualify general executable loading,
+login, packages, cold boot-to-program or R1. Full-root coverage remains open in
+issue141 under the explicit scoped checkpoint decision.
+
+The maintained witness entry point is
+`userland/experiments/filesystem-service/build-zsh-file-exec-witness.py`; invoke
+its closed offline recipe as documented there, with the fixed private evidence
+inputs available. Root `docs/workflow.json` selects the affected focused checks.
+No release or shared-standard conformance follows from this experimental profile.

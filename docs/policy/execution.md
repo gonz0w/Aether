@@ -251,6 +251,51 @@ arbitrary exec, child job control/input, login, packages, assembled-system and
 R1 gates remain separate. Routine builds, reviewed bounded tests and GitHub
 delivery proceed under standing approval; new limit/authority choices still stop.
 
+## Selected filesystem ELF exec and checkpoint decision —2026-11-04
+
+Cam directly approved the [reviewed issue12 design](https://github.com/gonz0w/Aether/issues/12#issuecomment-6635124495)
+and its gates: “Approve scoped #12 design and gates (Recommended)”. The
+[decision record](https://github.com/gonz0w/Aether/issues/12#issuecomment-6635185907)
+authorizes implementation in [issue148](https://github.com/gonz0w/Aether/issues/148).
+Only default-off native-zsh-file-exec is selected: the actual admitted Rust Owner
+lifetime may snapshot/install one sealed1..4096-byte filesystem ELF into its exact
+frozen helper through int81 0x2300B. Keep existing eager loader checks and atomic
+replacement; copy complete bytes/arguments into private kernel scratch, preserve
+that copy through RELRO, clear scratch on every return and retain no user pointer
+or new global image metadata. C004 is only a source receipt tag for existing
+query/publication. Known rejection preserves old child/FD/freeze/receipt; uncertain
+postcommit outcomes contain. Deny all three boot-cache fallback routes under this
+selector, including generic launch; old profiles remain exact.
+
+The sole Rust Owner provisions existing /home/probe with one exact completed ELF
+write/close, binds eligibility to the retained object/epoch and seals it against
+all further mutation/WRITE aliases. Namespace authority stays with the Owner;
+READ, names, metadata and hashes never create execute rights. Save the672-byte
+exec frame separately; acquire with EOF-first/exact full read/post-stat/checked
+close into existing4096 workspace, restore before FD rebind/publication. Failed
+or unknown acquisition/close never executes or replays. Preserve actual0600
+metadata; this is explicit native authority, not POSIX executable-mode policy.
+
+Keep7/9 mutations,96 requests, Owner73728 RX,12288 mapped/12280 usable stack,
+4096 Runtime/workspace each,128 backing pages and all existing application/engine/
+task/channel/worker/capture bounds. No numeric increase follows. Fresh actual
+complete Rust ELF<=4096,336-byte startup/native-identity/READY obligations and
+whole affected code/data/stack/backing/disjointness fits precede any image.
+Embedded provisioning bytes count toward Owner RX; fit failure stops for replan.
+
+For issue148 only, the reviewed guarded44-byte real-Zsh helper23/status23/prompt
+trial may establish remaining fixed-workload fit despite unknown general peaks.
+Keep60s writer/120s total/6000ticks, no network, disposable media, exact source/
+artifact/media binding, finite attempts, once-only inputs, no automatic retry and
+known cleanup. Focused affected checks, separate review, required protected CI
+and actual READY/C004/helper23/status23/prompt/normal parent+exact-seven engine
+export/mode restore/three reclaims/known host cleanup qualify checkpoint delivery
+while issue141's full-root gap stays open. This explicit exception does not claim
+a full-root pass, general VM/PATH runner, login, cold boot-to-program, packages or
+R1. Preserve failures, quarantines and compact retention. Routine accepted work
+and GitHub delivery retain standing approval; new authority/resource/design
+choices and hard blockers still stop.
+
 ## Ordinary-app namespace and clock contract —2026-10-28
 
 The owner approved the separately reviewed [issue98 proposal02](https://github.com/gonz0w/Aether/issues/98#issuecomment-6477628920)

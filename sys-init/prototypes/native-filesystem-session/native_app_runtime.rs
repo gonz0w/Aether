@@ -13,6 +13,10 @@ mod zsh_namespace;
 use zsh_namespace::Namespace;
 #[cfg(native_zsh_filesystem)]
 const TERMINFO: &[u8] = include_bytes!(env!("AETHER_ZSH_TERMINFO"));
+#[cfg(native_zsh_file_exec)]
+const FILE_EXEC_ELF: &[u8] = include_bytes!(env!("AETHER_ZSH_FILE_EXEC_ELF"));
+#[cfg(native_zsh_file_exec)]
+const _: () = assert!(!FILE_EXEC_ELF.is_empty() && FILE_EXEC_ELF.len() <= 4096);
 #[cfg(all(
     native_zsh_filesystem,
     not(all(
@@ -152,6 +156,10 @@ use fd_startup::ForkStreams;
 compile_error!("Zsh process controller requires retained filesystem custody");
 #[cfg(all(native_zsh_home_write, not(native_zsh_process)))]
 compile_error!("Zsh home write requires the matched process controller");
+#[cfg(all(native_zsh_file_exec, not(native_zsh_process)))]
+compile_error!("Zsh file exec requires the matched process controller");
+#[cfg(all(native_zsh_file_exec, native_zsh_home_write))]
+compile_error!("Zsh file exec and home write are separate closed profiles");
 
 #[cfg(native_zsh_process)]
 struct ZshProcess<K: AppControl> {
@@ -623,6 +631,8 @@ impl<K: AppControl> Runtime<K> {
                 Err(error) => return Err(fs_errno(error.error)),
             }
             self.with_files(|files| files.provision(TERMINFO, workspace))?;
+            #[cfg(native_zsh_file_exec)]
+            self.with_files(|files| files.provision_file_exec(FILE_EXEC_ELF))?;
         }
         let mut bindings = [Binding::default(); 16];
         bindings[1] = Binding {
@@ -1569,8 +1579,16 @@ impl<K: AppControl> Runtime<K> {
     #[inline(never)]
     fn zsh_exec(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
         let expected = self.zsh_expected(true)?;
+        // The file read clears the whole workspace. Keep the complete exec
+        // request, snapshot and arguments in one disjoint owned stack value.
+        #[cfg(native_zsh_file_exec)]
+        let saved: [u8; 672] = workspace[..672].try_into().unwrap();
+        #[cfg(native_zsh_file_exec)]
+        let request = &saved;
+        #[cfg(not(native_zsh_file_exec))]
+        let request: &[u8; 672] = (&workspace[..672]).try_into().unwrap();
         let (snapshot, sequence) =
-            zsh_process_frames::exec_request(&workspace[..672], expected).map_err(i64::from)?;
+            zsh_process_frames::exec_request(request, expected).map_err(i64::from)?;
         if !self.process.fork_ready
             || self.process.terminal.is_some()
             || sequence != self.process.sequence.checked_add(1).ok_or(-28)?
@@ -1582,14 +1600,23 @@ impl<K: AppControl> Runtime<K> {
             .validate_context(self.process.caller()?, &plan)
             .map_err(i64::from)?;
         self.zsh_validate_files(true, snapshot.raw())?;
-        let path = &workspace[368..400];
+        let path = &request[368..400];
+        #[cfg(native_zsh_file_exec)]
+        let rejection = if !path.starts_with(b"/home/probe\0")
+            || !zsh_helper_arguments((&request[400..672]).try_into().unwrap())
+        {
+            -13
+        } else {
+            0
+        };
+        #[cfg(not(native_zsh_file_exec))]
         let rejection = if path.starts_with(b"/inputs/missing\0") {
             -2
         } else if path.starts_with(b"/inputs/denied\0") {
             -13
         } else if !path.starts_with(b"/inputs/helper\0") {
             -13
-        } else if !zsh_helper_arguments((&workspace[400..672]).try_into().unwrap()) {
+        } else if !zsh_helper_arguments((&request[400..672]).try_into().unwrap()) {
             -13
         } else {
             0
@@ -1601,14 +1628,29 @@ impl<K: AppControl> Runtime<K> {
         if before.0 < 0 || before.2 != 0 {
             return Err(-5);
         }
-        let arguments: &[u8; 272] = (&workspace[400..672]).try_into().unwrap();
+        let arguments: &[u8; 272] = (&request[400..672]).try_into().unwrap();
         self.bound.before(&mut self.kernel)?;
         let committed = if rejection != 0 {
             rejection
         } else {
+            #[cfg(native_zsh_file_exec)]
+            {
+                let binding = self.process.binding.ok_or(-9)?;
+                let size = self.with_files(|files| files.acquire_file_exec(binding, workspace))?;
+                self.bound.before(&mut self.kernel)?;
+                self.kernel.exec_file(
+                    expected.identity.handle,
+                    freeze,
+                    arguments,
+                    &workspace[..size],
+                )
+            }
+            #[cfg(not(native_zsh_file_exec))]
             self.kernel
                 .exec(expected.identity.handle, freeze, arguments)
         };
+        #[cfg(native_zsh_file_exec)]
+        workspace[..672].copy_from_slice(&saved);
         if committed != 0 {
             if !(-4095..=-1).contains(&committed) {
                 return Err(-5);
@@ -1625,7 +1667,17 @@ impl<K: AppControl> Runtime<K> {
             return Ok(());
         }
         self.bound.before(&mut self.kernel)?;
-        if self.kernel.receipt(expected.identity.handle) != (freeze as i64, 0xc003, 1) {
+        if self.kernel.receipt(expected.identity.handle)
+            != (
+                freeze as i64,
+                if cfg!(native_zsh_file_exec) {
+                    0xc004
+                } else {
+                    0xc003
+                },
+                1,
+            )
+        {
             return Err(-5);
         }
         self.streams
@@ -2137,8 +2189,22 @@ impl<K: AppControl> Runtime<K> {
             return Err(-5);
         }
         #[cfg(native_zsh_process)]
-        if self.process.wait_status != Some(if cfg!(native_zsh_home_write) { 0 } else { 1792 })
-            || self.process.terminal != Some(if cfg!(native_zsh_home_write) { 0 } else { 1792 })
+        if self.process.wait_status
+            != Some(if cfg!(native_zsh_file_exec) {
+                5888
+            } else if cfg!(native_zsh_home_write) {
+                0
+            } else {
+                1792
+            })
+            || self.process.terminal
+                != Some(if cfg!(native_zsh_file_exec) {
+                    5888
+                } else if cfg!(native_zsh_home_write) {
+                    0
+                } else {
+                    1792
+                })
             || !self.process.committed
             || !self.process.exec_ready
             || !self.process.reclaimed
@@ -2160,13 +2226,29 @@ impl<K: AppControl> Runtime<K> {
         }
         #[cfg(native_zsh_home_write)]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=3 requests=00 child_status=0 exec_ready=1 child_reclaimed=1 parent_lease=1 write_bytes=16 write_closed=1 mode_cleanup=0\n";
-        #[cfg(all(native_zsh_process, not(native_zsh_home_write)))]
+        #[cfg(native_zsh_file_exec)]
+        let file_exec_size = unsafe { self.files.assume_init_ref() }
+            .file_exec_size()
+            .ok_or(-5)?;
+        #[cfg(native_zsh_file_exec)]
+        const ROW: &[u8] = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=0000 file_exec_closed=1 image_receipt=49156 mode_cleanup=0\n";
+        #[cfg(all(
+            native_zsh_process,
+            not(any(native_zsh_home_write, native_zsh_file_exec))
+        ))]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=2 requests=00 child_status=1792 exec_ready=1 child_reclaimed=1 parent_lease=1 mode_cleanup=0\n";
         #[cfg(not(native_zsh_process))]
         const ROW: &[u8; 49] = b"\nAETHER ZSH OWNER v=1 requests=00 mode_cleanup=0\n";
         workspace[..ROW.len()].copy_from_slice(ROW);
         workspace[31] = b'0' + (self.filesystem_requests / 10) as u8;
         workspace[32] = b'0' + (self.filesystem_requests % 10) as u8;
+        #[cfg(native_zsh_file_exec)]
+        {
+            const AT: usize = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=".len();
+            for (index, divisor) in [1000, 100, 10, 1].into_iter().enumerate() {
+                workspace[AT + index] = b'0' + ((file_exec_size / divisor) % 10) as u8;
+            }
+        }
         let result = (|| {
             let mut offset = 0;
             while offset < ROW.len() {
@@ -2547,7 +2629,10 @@ impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
     }
 }
 // Closed selected workload policy, after the wire codec checked canonical slots.
-#[cfg(all(native_zsh_process, not(native_zsh_home_write)))]
+#[cfg(all(
+    native_zsh_process,
+    not(any(native_zsh_home_write, native_zsh_file_exec))
+))]
 fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
     u64::from_le_bytes(raw[..8].try_into().unwrap()) == 2
         && raw[8..16] == [0; 8]
@@ -2555,6 +2640,13 @@ fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
         && raw[30..48] == [0; 18]
         && raw[48..54] == *b"status"
         && raw[54..] == [0; 218]
+}
+#[cfg(native_zsh_file_exec)]
+fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
+    u64::from_le_bytes(raw[..8].try_into().unwrap()) == 1
+        && raw[8..16] == [0; 8]
+        && raw[16..27] == *b"/home/probe"
+        && raw[27..] == [0; 245]
 }
 #[cfg(native_zsh_home_write)]
 fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {

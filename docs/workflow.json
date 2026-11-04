@@ -2685,6 +2685,16 @@
       "gaps": "Host fixtures/offline fits are not native persistence. Full-root141, general peaks, arbitrary exec/redirection, child job control, login, packages and R1 remain separate. Private recipes require retained development inputs.",
       "owner": "Aether userland/sys-init/kernel; issue145",
       "budget_seconds": 300
+    },
+    {
+      "id": "zsh-filesystem-elf-exec",
+      "reference": "userland/docs/ZSH-FILESYSTEM.md",
+      "owner": "Aether kernel/userland/sys-init; issue148",
+      "budget_seconds": 300,
+      "command": "Focused tests/test_native_zsh_file_exec.py actual-body and old C003 controls; selected/old Rust Files/Runtime/native-wrapper checks; userland/experiments/filesystem-service/build-zsh-file-exec-witness.py under its closed bounded recipe; fresh private zsh-target-fit.py --external and AETHER_ZSH_FILE_EXEC_ELF=/actual/helper.elf zsh-owner-fit.py --file-exec; reviewed kernel/loader fits then image/media and explicit zsh_run.py --file-exec fixed trial.",
+      "invariants": "Only actual Rust Owner0x2300B may snapshot sealed1..4096-byte held filesystem object into exact frozen child. Existing eager preflight/W^X/zeroing; immutable scratch through RELRO and clear on all exits. All3C003fallbacks denied, C004 observation-only receipt, no-prior-commit, saved672 request and disjoint4096workspace, checked full read/close, no unknown replay. Existing7/9mutations,96requests and resource/time bounds; old profiles exact.",
+      "oracle": "Actual full336/native identity/READY helper exits23; real Zsh prints23 and returns to prompt; normal parent/exact-seven engine export, MODE restoration, three reclaims and known host cleanup. Offline fits/fixtures alone are not native execution. Qualified fixed native trial:38.678s,helper23/status23/prompt/READY/C004,3548known-closed bytes,42/96requests,21cleanup/3reclaims,halt3225/6000ticks,known original-holder/client cleanup.",
+      "gaps": "Approved12decision6635185907 qualifies this fixed checkpoint while full-root141 remains open. General peaks/IRQ/panic, VM/PATH runner, login, packages, cold boot-to-program and R1 remain separate. No cold-reader or arbitrary executable claim follows."
     }
   ]
 }
