@@ -70,6 +70,17 @@ pub trait Control: Kernel + Clone {
     fn copy(&mut self, parent: u64, slot: u32, token: u64, reader: u64, writer: u64) -> i64;
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64;
     fn exec(&mut self, process: u64, token: u64, arguments: &[u8; 272]) -> i64;
+    /// Synchronous complete snapshot borrow; the selected kernel checks actual
+    /// Owner/child authority. Default does not provide the new mechanism.
+    fn exec_file(
+        &mut self,
+        _process: u64,
+        _token: u64,
+        _arguments: &[u8; 272],
+        _image: &[u8],
+    ) -> i64 {
+        -38
+    }
     fn receipt(&mut self, process: u64) -> Status;
     fn publish(&mut self, process: u64, token: u64) -> i64;
 }
@@ -157,6 +168,34 @@ mod host_trap {
         });
         native.observe_events();
         LAST.with(|cell| assert_eq!(*cell.borrow(), Some((0x2a000, [0xe002, 0, 0, 0, 0, 0]))));
+    }
+    #[test]
+    fn actual_native_file_exec_copies_complete_typed_snapshot_arguments() {
+        let mut native = Native;
+        let args = [0u8; 272];
+        let image = [0xa5u8; 4096];
+        assert_eq!(native.exec_file(0xb0000103, 101, &args, &image), 0);
+        LAST.with(|last| {
+            assert_eq!(
+                *last.borrow(),
+                Some((
+                    0x2300b,
+                    [
+                        0xa001,
+                        0xb0000103,
+                        image.as_ptr() as u64,
+                        101,
+                        args.as_ptr() as u64,
+                        4096
+                    ]
+                ))
+            )
+        });
+        for bad in [&image[..0], &[0u8; 4097][..]] {
+            LAST.with(|last| *last.borrow_mut() = None);
+            assert_eq!(native.exec_file(0xb0000103, 101, &args, bad), -22);
+            LAST.with(|last| assert_eq!(*last.borrow(), None, "NO_INVALID_SNAPSHOT_TRAP"));
+        }
     }
     #[test]
     fn actual_native_app_launch_uses_exact_record_and_four_endpoint_seam() {

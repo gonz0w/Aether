@@ -13,10 +13,12 @@ const DATA: &[u8] = b"actual terminfo bytes";
 struct StorageState {
     made: [bool; 3],
     data: Vec<u8>,
-    #[cfg(native_zsh_home_write)]
+    #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
     probe: Vec<u8>,
-    #[cfg(native_zsh_home_write)]
+    #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
     probe_failure: u8,
+    #[cfg(native_zsh_file_exec)]
+    probe_read_failure: u8,
     mutations: usize,
     lookups: usize,
     reads: usize,
@@ -28,7 +30,7 @@ fn node(id: u64, size: usize) -> p::Node {
         id,
         1,
         size as u64,
-        if id == 5 || (cfg!(native_zsh_home_write) && id == 6) {
+        if id == 5 || (cfg!(any(native_zsh_home_write, native_zsh_file_exec)) && id == 6) {
             p::Kind::File
         } else {
             p::Kind::Directory
@@ -50,22 +52,44 @@ impl p::Backend for Storage {
             (2, b".terminfo") if s.made[0] => 3,
             (3, b"v") if s.made[1] => 4,
             (4, b"vt100") if s.made[2] => 5,
-            #[cfg(native_zsh_home_write)]
+            #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
             (2, b"probe") => 6,
             _ => return Err(p::Error::Backend(2)),
         };
-        #[cfg(native_zsh_home_write)]
+        #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
         if id == 6 {
             return Ok(node(id, s.probe.len()));
         }
         Ok(node(id, if id == 5 { s.data.len() } else { 0 }))
     }
-    fn read(&mut self, _: p::Node, offset: u64, out: &mut [u8]) -> Result<usize, p::Error> {
+    fn read(&mut self, at: p::Node, offset: u64, out: &mut [u8]) -> Result<usize, p::Error> {
         let mut s = self.0.lock().unwrap();
         s.reads += 1;
-        let start = (offset as usize).min(s.data.len());
-        let count = out.len().min(s.data.len() - start);
-        out[..count].copy_from_slice(&s.data[start..start + count]);
+        #[cfg(native_zsh_file_exec)]
+        if at.identity().0 == 6 {
+            match s.probe_read_failure {
+                1 if offset == 0 => return Ok(out.len().saturating_sub(1)),
+                2 => return Err(p::Error::Backend(5)),
+                3 if offset > 0 => {
+                    out[0] = 1;
+                    return Ok(1);
+                }
+                _ => (),
+            }
+        }
+        #[cfg(not(any(native_zsh_home_write, native_zsh_file_exec)))]
+        let _ = at;
+        #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
+        let data = if at.identity().0 == 6 {
+            &s.probe
+        } else {
+            &s.data
+        };
+        #[cfg(not(any(native_zsh_home_write, native_zsh_file_exec)))]
+        let data = &s.data;
+        let start = (offset as usize).min(data.len());
+        let count = out.len().min(data.len() - start);
+        out[..count].copy_from_slice(&data[start..start + count]);
         Ok(count)
     }
     fn write(
@@ -75,7 +99,7 @@ impl p::Backend for Storage {
         data: &[u8],
         _: p::Utc,
     ) -> Result<p::Completion, p::Lost> {
-        #[cfg(native_zsh_home_write)]
+        #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
         if n.identity().0 == 6 {
             assert_eq!(offset, 0);
             let mut s = self.0.lock().unwrap();
@@ -854,4 +878,133 @@ fn home_write_second_exec_denies_before_generation_or_cloexec_effects() {
         "SECOND_EXEC_CHANGED_VIEW"
     );
     assert_eq!(h.requests(), requests, "SECOND_EXEC_CLOSED_FILE");
+}
+
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_sealed_handle_delivers_exact_bytes_and_closes_once() {
+    for size in [1, 4096] {
+        let mut h = Harness::new();
+        let image = std::vec![0xa5; size];
+        h.files().provision_file_exec(&image).unwrap();
+        let child = child_binding();
+        h.files().inherit_child(binding(), child).unwrap();
+        let before = h.requests();
+        let mut work = [0x55; 4096];
+        assert_eq!(
+            h.files().acquire_file_exec(child, &mut work),
+            Ok(size),
+            "SEALED_FILE_EXEC_BYTES"
+        );
+        assert_eq!(&work[..size], &image);
+        assert!(work[size..].iter().all(|byte| *byte == 0));
+        assert_eq!(
+            h.requests() - before,
+            5,
+            "EOF_FULL_STAT_CLOSE_EXACT_REQUESTS"
+        );
+        assert!(h.files().file_exec_consumed());
+        let before = h.requests();
+        assert_eq!(
+            h.files().acquire_file_exec(child, &mut work),
+            Err(Error::Invalid)
+        );
+        assert_eq!(h.files().provision_file_exec(&image), Err(Error::Invalid));
+        assert_eq!(h.requests(), before, "NO_FILE_EXEC_REPLAY");
+        assert_eq!(h.state.lock().unwrap().mutations, 5);
+        h.files().settle_child(child).unwrap();
+        h.files().disconnect_checked(|_| Ok(())).unwrap();
+    }
+}
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_rejects_unsealed_wrong_actor_and_bad_size_before_source_effect() {
+    let mut h = Harness::new();
+    let before = h.requests();
+    assert_eq!(
+        h.files().acquire_file_exec(binding(), &mut [0; 4096]),
+        Err(Error::Invalid)
+    );
+    assert_eq!(h.files().provision_file_exec(&[]), Err(Error::Invalid));
+    assert_eq!(
+        h.files().provision_file_exec(&[0; 4097]),
+        Err(Error::Invalid)
+    );
+    assert_eq!(h.requests(), before);
+    h.files().provision_file_exec(b"actual held bytes").unwrap();
+    let before = h.requests();
+    let mut wrong = binding();
+    wrong.generation += 1;
+    assert_eq!(
+        h.files().acquire_file_exec(wrong, &mut [0; 4096]),
+        Err(Error::Invalid)
+    );
+    assert_eq!(h.requests(), before, "AUTHORITY_BEFORE_ACQUISITION");
+    assert_eq!(h.state.lock().unwrap().mutations, 5);
+}
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_seal_exposes_no_write_or_namespace_alias_to_parent() {
+    for op in [7, 11, 12] {
+        let mut h = Harness::new();
+        h.files().provision_file_exec(b"sealed bytes").unwrap();
+        let before = h.requests();
+        let (header, _) = h.rpc(1, [0, 11, 0, 0], b"/home/probe");
+        assert_ne!(word(&header, 1), 0, "NO_PROBE_FILE_PROXY");
+        let mut raw = [0; 64];
+        raw[..8].copy_from_slice(MAGIC);
+        put(&mut raw, 1, op);
+        put(&mut raw, 2, 31);
+        put(&mut raw, 3, 2);
+        assert!(
+            h.files().body_length(binding(), &raw).is_err(),
+            "NO_MUTATION_ALIAS"
+        );
+        assert_eq!(h.requests(), before, "NO_UNTRUSTED_SOURCE_EFFECT");
+        assert_eq!(h.state.lock().unwrap().probe, b"sealed bytes");
+    }
+}
+
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_short_bad_eof_and_source_failure_poison_without_replay() {
+    for failure in [1, 2, 3] {
+        let mut h = Harness::new();
+        h.files().provision_file_exec(b"sealed source").unwrap();
+        let child = child_binding();
+        h.files().inherit_child(binding(), child).unwrap();
+        h.state.lock().unwrap().probe_read_failure = failure;
+        let mut workspace = [0xa5; 4096];
+        assert!(
+            h.files().acquire_file_exec(child, &mut workspace).is_err(),
+            "EXACT_READ_EOF_BEFORE_EXEC"
+        );
+        assert_eq!(workspace, [0; 4096]);
+        assert!(!h.files().file_exec_consumed());
+        let requests = h.requests();
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        assert_eq!(
+            h.files().acquire_file_exec(child, &mut workspace),
+            Err(Error::Invalid)
+        );
+        assert_eq!(h.requests(), requests, "NO_FAILED_ACQUISITION_REPLAY");
+    }
+}
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_failed_provision_never_seals_or_replays_mutation() {
+    for failure in [1, 2] {
+        let mut h = Harness::new();
+        h.state.lock().unwrap().probe_failure = failure;
+        assert!(h.files().provision_file_exec(b"source").is_err());
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        assert!(!h.files().file_exec_consumed());
+        let requests = h.requests();
+        assert_eq!(
+            h.files().provision_file_exec(b"source"),
+            Err(Error::Invalid)
+        );
+        assert_eq!(h.requests(), requests);
+        assert_eq!(h.state.lock().unwrap().mutations, 5, "NO_PROVISION_REPLAY");
+    }
 }

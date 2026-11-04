@@ -23,6 +23,10 @@ const PR: u64 = 0xd1010101;
 const PW: u64 = 0xd1010102;
 const PARENT: u64 = 0xb0000102;
 const CHILD: u64 = 0xb0000103;
+#[cfg(native_zsh_file_exec)]
+const FILE_EXEC_TEST_IMAGE: &[u8] = FILE_EXEC_ELF;
+#[cfg(not(native_zsh_file_exec))]
+const FILE_EXEC_TEST_IMAGE: &[u8] = &[];
 #[derive(Default)]
 struct Storage {
     made: [bool; 3],
@@ -68,10 +72,15 @@ impl p::Backend for Storage {
             },
         ))
     }
-    fn read(&mut self, _: p::Node, at: u64, out: &mut [u8]) -> Result<usize, p::Error> {
-        let at = (at as usize).min(self.data.len());
-        let n = out.len().min(self.data.len() - at);
-        out[..n].copy_from_slice(&self.data[at..at + n]);
+    fn read(&mut self, node: p::Node, at: u64, out: &mut [u8]) -> Result<usize, p::Error> {
+        let data = if node.identity().0 == 6 {
+            &self.probe
+        } else {
+            &self.data
+        };
+        let at = (at as usize).min(data.len());
+        let n = out.len().min(data.len() - at);
+        out[..n].copy_from_slice(&data[at..at + n]);
         Ok(n)
     }
     fn write(
@@ -86,7 +95,15 @@ impl p::Backend for Storage {
         match n.identity().0 {
             5 => self.data = bytes.to_vec(),
             6 => {
-                assert_eq!(bytes, b"AETHER-ZSH-HOME\n", "EXACT_HOME_WRITE");
+                assert_eq!(
+                    bytes,
+                    if cfg!(native_zsh_file_exec) {
+                        FILE_EXEC_TEST_IMAGE
+                    } else {
+                        b"AETHER-ZSH-HOME\n"
+                    },
+                    "EXACT_SELECTED_PROBE_PROVISION"
+                );
                 if self.probe_failure == 2 {
                     return Err(p::Lost);
                 }
@@ -191,6 +208,12 @@ struct Host {
     serial_output: Vec<u8>,
     fail_write: Option<(u64, usize)>,
     written: usize,
+    #[cfg(native_zsh_file_exec)]
+    fail_namespace_opcode: Option<u64>,
+    #[cfg(native_zsh_file_exec)]
+    file_receipt_tag: u64,
+    #[cfg(native_zsh_file_exec)]
+    last_namespace_opcode: u64,
 }
 #[derive(Clone)]
 struct Mock(Rc<RefCell<Host>>);
@@ -202,6 +225,10 @@ impl Kernel for Mock {
             h.send[at..at + bytes.len()].copy_from_slice(bytes);
             h.send_at += bytes.len();
             if h.send_at == 64 {
+                #[cfg(native_zsh_file_exec)]
+                if h.send[..8] == *b"AFSRPC09" {
+                    h.last_namespace_opcode = u64::from_le_bytes(h.send[8..16].try_into().unwrap());
+                }
                 h.tx.as_ref().unwrap().send(h.send).unwrap();
                 h.send_at = 0;
             }
@@ -211,6 +238,11 @@ impl Kernel for Mock {
             if h.receive_at == 64 {
                 h.receive = h.rx.recv_timeout(Duration::from_secs(2)).unwrap();
                 h.receive_at = 0;
+            }
+            #[cfg(native_zsh_file_exec)]
+            if h.fail_namespace_opcode == Some(h.last_namespace_opcode) {
+                h.fail_namespace_opcode = None;
+                return -5;
             }
             let at = h.receive_at;
             bytes.copy_from_slice(&h.receive[at..at + bytes.len()]);
@@ -334,12 +366,32 @@ impl Control for Mock {
         }
     }
     fn exec(&mut self, process: u64, token: u64, args: &[u8; 272]) -> i64 {
+        assert!(!cfg!(native_zsh_file_exec), "NO_BOOT_HELPER_FALLBACK");
         assert_eq!((process, token), (CHILD, 101));
         let mut h = self.0.borrow_mut();
         h.calls.push((0x23007, process, token));
         assert_eq!(u64::from_le_bytes(args[..8].try_into().unwrap()), 2);
         if h.exec_result == 0 {
             h.receipt = (101, 0xc003, 1);
+            h.ready = false;
+        }
+        h.exec_result
+    }
+    #[cfg(native_zsh_file_exec)]
+    fn exec_file(&mut self, process: u64, token: u64, args: &[u8; 272], image: &[u8]) -> i64 {
+        assert_eq!((process, token), (CHILD, 101));
+        assert_eq!(
+            args[..8],
+            1u64.to_le_bytes(),
+            "SAVED_ARGUMENTS_SURVIVE_FILE_READ"
+        );
+        assert_eq!(&args[16..27], b"/home/probe");
+        assert!(args[27..].iter().all(|byte| *byte == 0));
+        assert_eq!(image, FILE_EXEC_ELF, "ACTUAL_ACQUIRED_FILE_SNAPSHOT");
+        let mut h = self.0.borrow_mut();
+        h.calls.push((0x2300b, process, token));
+        if h.exec_result == 0 {
+            h.receipt = (101, h.file_receipt_tag, 1);
             h.ready = false;
         }
         h.exec_result
@@ -428,6 +480,12 @@ impl Fixture {
             serial_output: Vec::new(),
             fail_write: None,
             written: 0,
+            #[cfg(native_zsh_file_exec)]
+            fail_namespace_opcode: None,
+            #[cfg(native_zsh_file_exec)]
+            file_receipt_tag: 0xc004,
+            #[cfg(native_zsh_file_exec)]
+            last_namespace_opcode: 0,
         })));
         let mut runtime = Box::new(Runtime::new(host.clone()).unwrap());
         runtime.app = PARENT;
@@ -498,6 +556,10 @@ impl Fixture {
         runtime.file_binding = Some(binding);
         runtime
             .with_files(|files| files.provision(TERMINFO, &mut [0; 4096]))
+            .unwrap();
+        #[cfg(native_zsh_file_exec)]
+        runtime
+            .with_files(|files| files.provision_file_exec(FILE_EXEC_ELF))
             .unwrap();
         Self {
             runtime,
@@ -665,7 +727,7 @@ impl Fixture {
                 .unwrap()
         );
     }
-    #[cfg(native_zsh_home_write)]
+    #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
     fn helper_ready(&mut self) {
         let raw = self.fork(false);
         let mut request = self.exec_request(&raw);
@@ -689,7 +751,7 @@ impl Fixture {
             (10, 0)
         );
     }
-    #[cfg(native_zsh_home_write)]
+    #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
     fn prepare_healthy_oracle(&mut self) {
         self.runtime.cleanup_mode().unwrap();
         self.runtime
@@ -709,15 +771,21 @@ impl Fixture {
         put(&mut work, 12, 672);
         work[16..24].copy_from_slice(&2u64.to_le_bytes());
         work[32..368].copy_from_slice(raw);
-        work[368..382].copy_from_slice(b"/inputs/helper");
-        work[400..408].copy_from_slice(&2u64.to_le_bytes());
-        work[416..430].copy_from_slice(b"/inputs/helper");
-        let argument = if cfg!(native_zsh_home_write) {
-            b"home-write".as_slice()
+        if cfg!(native_zsh_file_exec) {
+            work[368..379].copy_from_slice(b"/home/probe");
+            work[400..408].copy_from_slice(&1u64.to_le_bytes());
+            work[416..427].copy_from_slice(b"/home/probe");
         } else {
-            b"status".as_slice()
-        };
-        work[448..448 + argument.len()].copy_from_slice(argument);
+            work[368..382].copy_from_slice(b"/inputs/helper");
+            work[400..408].copy_from_slice(&2u64.to_le_bytes());
+            work[416..430].copy_from_slice(b"/inputs/helper");
+            let argument = if cfg!(native_zsh_home_write) {
+                b"home-write".as_slice()
+            } else {
+                b"status".as_slice()
+            };
+            work[448..448 + argument.len()].copy_from_slice(argument);
+        }
         work
     }
 }
@@ -766,20 +834,42 @@ fn exact_helper_arguments_are_known_refusal_before_exec() {
         let raw = h.fork(false);
         let mut work = h.exec_request(&raw);
         match changed {
-            0 => work[448] = b'x',
+            0 => {
+                if cfg!(native_zsh_file_exec) {
+                    work[416..448].fill(0);
+                    work[416..430].copy_from_slice(b"/inputs/helper");
+                } else {
+                    work[448] = b'x';
+                }
+            }
             1 => {
                 work[408..416].copy_from_slice(&1u64.to_le_bytes());
                 work[544..548].copy_from_slice(b"X=1\0");
             }
             2 => work[416] = b'x',
             _ => {
-                work[400..408].copy_from_slice(&1u64.to_le_bytes());
+                work[400..408].copy_from_slice(
+                    &(if cfg!(native_zsh_file_exec) {
+                        2u64
+                    } else {
+                        1u64
+                    })
+                    .to_le_bytes(),
+                );
                 work[448..480].fill(0);
+                if cfg!(native_zsh_file_exec) {
+                    work[448..454].copy_from_slice(b"status");
+                }
             }
         }
         h.runtime.zsh_exec(&mut work).unwrap();
         assert!(
-            !h.host.0.borrow().calls.iter().any(|x| x.0 == 0x23007),
+            !h.host
+                .0
+                .borrow()
+                .calls
+                .iter()
+                .any(|x| matches!(x.0, 0x23007 | 0x2300b)),
             "EXACT_HELPER_VECTOR_BEFORE_NATIVE_EXEC"
         );
         let writer = h.runtime.process.ends[3].cap;
@@ -828,7 +918,17 @@ fn real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease() {
     assert!(h.runtime.process.exec_ready);
     #[cfg(native_zsh_home_write)]
     h.complete_home_write(1);
-    h.host.0.borrow_mut().terminal = Some((if cfg!(native_zsh_home_write) { 1 } else { 8 }, 1, 1));
+    h.host.0.borrow_mut().terminal = Some((
+        if cfg!(native_zsh_file_exec) {
+            24
+        } else if cfg!(native_zsh_home_write) {
+            1
+        } else {
+            8
+        },
+        1,
+        1,
+    ));
     h.runtime.zsh_terminal().unwrap();
     assert_eq!(
         h.runtime.process.lease,
@@ -838,7 +938,13 @@ fn real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease() {
     let wait = frame(68, u32::MAX, 0, 0);
     assert!(h.runtime.zsh_stream(false, &wait).unwrap());
     let reply = h.output(PW);
-    let expected = if cfg!(native_zsh_home_write) { 0 } else { 1792 };
+    let expected = if cfg!(native_zsh_file_exec) {
+        5888
+    } else if cfg!(native_zsh_home_write) {
+        0
+    } else {
+        1792
+    };
     assert_eq!((result(&reply), result(&reply[4..])), (10, expected));
     assert_eq!(&reply[8..], &[0; 24]);
     assert_eq!(h.runtime.process.wait_status, Some(expected));
@@ -985,11 +1091,22 @@ fn fixed_catalog_missing_and_all_other_nonhelper_paths_preserve_old_image() {
         work[368..400].fill(0);
         work[368..368 + path.len()].copy_from_slice(path);
         h.runtime.zsh_exec(&mut work).unwrap();
-        assert!(!h.host.0.borrow().calls.iter().any(|x| x.0 == 0x23007));
+        assert!(
+            !h.host
+                .0
+                .borrow()
+                .calls
+                .iter()
+                .any(|x| matches!(x.0, 0x23007 | 0x2300b))
+        );
         let writer = h.runtime.process.ends[3].cap;
         assert_eq!(
             zsh_process_frames::decode_receipt(&h.output(writer), b"AEZER001", 2).unwrap(),
-            code
+            if cfg!(native_zsh_file_exec) {
+                -13
+            } else {
+                code
+            }
         );
         assert!(!h.runtime.process.committed);
     }
@@ -1126,7 +1243,7 @@ fn contain_live_and_unknown_copy_settle_known_child_once_without_replay() {
             !host
                 .calls
                 .iter()
-                .any(|call| matches!(call.0, 0x23007 | 0x23009))
+                .any(|call| matches!(call.0, 0x23007 | 0x2300b | 0x23009))
         );
         assert_eq!(
             host.calls
@@ -1195,7 +1312,7 @@ fn contain_unknown_copy_unknown_terminal_never_reclaims_or_restores_parent_lease
         !host
             .calls
             .iter()
-            .any(|call| matches!(call.0, 0x23007 | 0x23009))
+            .any(|call| matches!(call.0, 0x23007 | 0x2300b | 0x23009))
     );
     let calls = host.calls.clone();
     let closes = host.closed.clone();
@@ -1216,6 +1333,7 @@ fn contain_unknown_copy_unknown_terminal_never_reclaims_or_restores_parent_lease
     assert_eq!(h.host.0.borrow().closed, closes);
 }
 
+#[cfg(not(native_zsh_file_exec))]
 #[test]
 fn fixed_helper_arguments_follow_selected_workload() {
     let mut raw = [0; 272];
@@ -1337,4 +1455,116 @@ fn retired_write_source_delivers_one_retained_error_then_contains_without_replay
         assert!(h.host.0.borrow().serial_output.is_empty());
         assert!(!h.runtime.process.reclaimed);
     }
+}
+
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_requires_exact_single_argument_and_no_environment_or_padding() {
+    let mut args = [0; 272];
+    args[..8].copy_from_slice(&1u64.to_le_bytes());
+    args[16..27].copy_from_slice(b"/home/probe");
+    assert!(zsh_helper_arguments(&args), "SINGLE_FILE_EXEC_ARGUMENT");
+    for at in [0, 8, 16, 27, 48, 144, 271] {
+        args[at] ^= 1;
+        assert!(!zsh_helper_arguments(&args), "CLOSED_FILE_EXEC_VECTOR");
+        args[at] ^= 1;
+    }
+}
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_acquisition_failure_never_calls_kernel_or_replays_close() {
+    for opcode in [2, 3] {
+        let mut h = Fixture::new();
+        let raw = h.fork(false);
+        let old = h.runtime.process.binding;
+        h.host.0.borrow_mut().fail_namespace_opcode = Some(opcode);
+        let mut work = h.exec_request(&raw);
+        assert_eq!(
+            h.runtime.zsh_exec(&mut work),
+            Err(-5),
+            "NO_EXEC_AFTER_UNKNOWN_ACQUISITION"
+        );
+        assert_eq!(h.runtime.process.binding, old);
+        assert!(!h.runtime.process.committed);
+        assert!(work.iter().all(|byte| *byte == 0));
+        assert!(
+            !h.host
+                .0
+                .borrow()
+                .calls
+                .iter()
+                .any(|call| matches!(call.0, 0x23007 | 0x2300b | 0x23009)),
+            "NO_FILE_EXEC_AFTER_FAILED_CLOSE"
+        );
+        let calls = h.host.0.borrow().calls.clone();
+        let closes = h.host.0.borrow().closed.clone();
+        assert_eq!(
+            h.runtime
+                .with_files(|files| files.acquire_file_exec(old.unwrap(), &mut work)),
+            Err(-5)
+        );
+        assert_eq!(h.host.0.borrow().calls, calls);
+        assert_eq!(
+            h.host.0.borrow().closed,
+            closes,
+            "NO_ACQUISITION_CLOSE_REPLAY"
+        );
+    }
+}
+
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_wrong_source_receipt_never_rebinds_or_publishes() {
+    let mut h = Fixture::new();
+    let raw = h.fork(false);
+    let old = h.runtime.process.binding;
+    h.host.0.borrow_mut().file_receipt_tag = 0xc003;
+    let mut work = h.exec_request(&raw);
+    assert_eq!(
+        h.runtime.zsh_exec(&mut work),
+        Err(-5),
+        "FILESYSTEM_SOURCE_RECEIPT_REQUIRED"
+    );
+    assert_eq!(h.runtime.process.binding, old);
+    assert!(!h.runtime.process.committed);
+    assert!(!h.host.0.borrow().calls.iter().any(|call| call.0 == 0x23009));
+}
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn file_exec_v4_requires_actual_ready_and_exact_closed_acquisition() {
+    let mut h = Fixture::new();
+    h.helper_ready();
+    h.host.0.borrow_mut().terminal = Some((24, 1, 1));
+    h.runtime.zsh_terminal().unwrap();
+    h.clear();
+    assert!(
+        h.runtime
+            .zsh_stream(false, &frame(68, u32::MAX, 0, 0))
+            .unwrap()
+    );
+    assert_eq!(result(&h.output(PW)[4..]), 5888);
+    h.prepare_healthy_oracle();
+    h.runtime.process.exec_ready = false;
+    assert_eq!(
+        h.runtime.write_native_oracle(&mut [0; 4096]),
+        Err(-5),
+        "ACTUAL_READY_BEFORE_FILE_EXEC_ORACLE"
+    );
+    assert!(h.host.0.borrow().serial_output.is_empty());
+    h.runtime.process.exec_ready = true;
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    let row = h.host.0.borrow().serial_output.clone();
+    let expected = std::format!(
+        "file_exec_bytes={:04} file_exec_closed=1 image_receipt=49156",
+        FILE_EXEC_ELF.len()
+    );
+    assert!(
+        row.windows(expected.len())
+            .any(|bytes| bytes == expected.as_bytes()),
+        "ACTUAL_CLOSED_ACQUISITION_FACTS"
+    );
+    assert!(
+        row.windows(b"child_status=5888".len())
+            .any(|bytes| bytes == b"child_status=5888")
+    );
 }

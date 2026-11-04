@@ -58,6 +58,25 @@ impl Control for Native {
         )
         .0
     }
+    fn exec_file(&mut self, process: u64, token: u64, arguments: &[u8; 272], image: &[u8]) -> i64 {
+        if image.is_empty() || image.len() > 4096 {
+            return -22;
+        }
+        // Both disjoint immutable borrows remain live synchronously until the
+        // kernel copies them. No user pointer survives this returning call.
+        call(
+            0x2300b,
+            [
+                0xa001,
+                process,
+                image.as_ptr() as u64,
+                token,
+                arguments.as_ptr() as u64,
+                image.len() as u64,
+            ],
+        )
+        .0
+    }
     fn receipt(&mut self, process: u64) -> Status {
         call(0x23008, [0xa001, process, 0, 0, 0, 0])
     }

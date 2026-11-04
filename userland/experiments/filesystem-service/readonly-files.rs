@@ -17,6 +17,13 @@ compile_error!("home write requires the selected Zsh process view");
 #[cfg(native_zsh_home_write)]
 #[path = "zsh-home-write.rs"]
 mod home_write;
+#[cfg(all(native_zsh_file_exec, not(native_zsh_process)))]
+compile_error!("file exec requires the selected Zsh process view");
+#[cfg(all(native_zsh_file_exec, native_zsh_home_write))]
+compile_error!("file exec and home write are separate closed profiles");
+#[cfg(native_zsh_file_exec)]
+#[path = "zsh-file-exec.rs"]
+mod file_exec;
 pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_write) {
     b"AEFP0005"
 } else {
@@ -103,6 +110,8 @@ pub struct Files<T: Channel> {
     mutation_failure: Option<filesystem_client::MutationFailure>,
     #[cfg(native_zsh_home_write)]
     home_write: home_write::HomeWrite,
+    #[cfg(native_zsh_file_exec)]
+    file_exec: file_exec::FileExec,
 }
 impl<T: Channel> Files<T> {
     /// Initialize the Client in final storage; failure consumes both close obligations.
@@ -139,6 +148,8 @@ impl<T: Channel> Files<T> {
             core::ptr::addr_of_mut!((*pointer).mutation_failure).write(None);
             #[cfg(native_zsh_home_write)]
             core::ptr::addr_of_mut!((*pointer).home_write).write(home_write::HomeWrite::new());
+            #[cfg(native_zsh_file_exec)]
+            core::ptr::addr_of_mut!((*pointer).file_exec).write(file_exec::FileExec::new());
             let desc = &mut *core::ptr::addr_of_mut!((*pointer).descriptions)
                 .cast::<MaybeUninit<descriptions::Descriptions<Remote<T>, VIEWS>>>();
             let source = descriptions::Descriptions::prepare_in_place(desc).as_mut_ptr();
@@ -160,6 +171,8 @@ impl<T: Channel> Files<T> {
         self.descriptions.source.client.cleanup()
     }
     pub fn abort(&mut self) -> [i64; 2] {
+        #[cfg(native_zsh_file_exec)]
+        self.file_exec.poison();
         #[cfg(native_zsh_home_write)]
         {
             self.home_write.poisoned = true;
@@ -316,7 +329,7 @@ impl<T: Channel> Files<T> {
         self.child_pending = false;
         Ok(())
     }
-    /// Native C003 receipt must already prove commit. Refusals never call this.
+    /// Native selected-image receipt must already prove commit. Refusals never call this.
     #[cfg(native_zsh_process)]
     pub fn exec_child(&mut self, child: Binding, generation: u64) -> Result<Binding, Error> {
         if self.child != Some(child)
@@ -606,6 +619,8 @@ impl<T: Channel> Files<T> {
                 self.descriptions.close(fd).map_err(|_| Error::Closed)?;
             }
         }
+        #[cfg(native_zsh_file_exec)]
+        self.release_file_exec()?;
         let held = self.descriptions.source.held.take().ok_or(Error::Closed)?;
         self.descriptions.source.client.close(held)?;
         let result = self.descriptions.source.client.disconnect_checked(verify)?;

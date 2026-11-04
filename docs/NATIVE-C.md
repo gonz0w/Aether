@@ -4664,3 +4664,75 @@ three reclaimed domains and known host cleanup precede the fresh readonly proof.
 The recovery provider checked the exact file and complete terminfo namespace;
 original metadata matched and both reader disks stayed unchanged. This qualifies
 that bounded checkpoint only; see issue145 for delivery and retained results.
+
+## Selected filesystem snapshot exec
+
+The [approved issue12 design](https://github.com/gonz0w/Aether/issues/12#issuecomment-6635124495)
+selects default-off `-Dnative-zsh-file-exec=true`, requiring the entire existing
+external-Zsh closure. [Issue148](https://github.com/gonz0w/Aether/issues/148) owns
+implementation and qualification. The sole Rust filesystem Owner provisions and
+seals one actual file; the kernel trusts that policy rather than interpreting
+paths, mode bits, hashes or opaque filesystem labels as execute authority.
+
+| Operation | Registers | Result |
+| --- | --- | --- |
+| int81 `0x2300B` | rdi=A001, rsi=exact frozen helper handle, rdx=complete file bytes, r10=freeze token, r8=272-byte Arguments, r9=file length1..4096 | 0 after eager replacement with C004 pending receipt |
+
+Only the actual admitted nonterminal Owner lifetime may install into child2 of
+its still-live parent1. The kernel checks real caller/factory, parent/child
+bindings and generations, parent relationship, null child TTY signal Owner, live
+engine and namespace epoch, and actual retained channel counterparts/directions/
+closure. The helper must be frozen with the exact nonzero token, no pending
+publication and no previous successful image commit in this generation. The
+persistent receipt sequence prevents another commit after publication clears
+pending. Known failure preserves old child backing/execution/FD binding/freeze/
+receipt; no source pointer survives.
+
+The existing syscall IF=0 boundary spans source copying, validation and commit.
+Complete arguments and file bytes are copied before any destructive effect.
+At most4096 bytes of the existing supervisor-only RW/NX third-image cache are
+private temporary scratch. A local parsed Image and its exact copied slice remain
+valid through loader RELRO processing; scratch is cleared on every selected call
+return. New global third-image metadata is never published, and cache pages are
+never mapped into the child. Existing ELF/application-window/W^X/backing/table
+preflight, backing zeroing, eager load, alias restoration and CR3 invalidation
+remain the enforcement path. No recoverable operation follows destruction.
+
+Existing `0x23008` query and `0x23009` publication observe the exact freeze token,
+C004 and pending1 before descriptor commit/publication. C004 is a source receipt
+tag, not an invocable grant. Errors are -38 for unselected profiles, -13 for
+wrong authority/relationship/namespace, -9 for stale handle/token, -16 for a
+busy or previously committed child, -22 for size/arguments, -14 for unreadable
+or overflowing ranges, -8 for rejected ELF and -12 for backing/table preflight.
+Unknown postcommit outcomes require receipt resolution or containment.
+
+This selector denies old `0x23007` boot-image exec, C003 ordinary app admission
+and the entire unused `0x23000/01/02` generic launch family. These denials apply
+before and after malformed snapshot input. The required valid boot placeholder
+remains unreachable. Old selectors retain C003 and their original semantics.
+All existing resource limits remain fixed; actual tiny ELF and coupled fits,
+source/artifact review and the approved real-Zsh READY/C004/helper23/status23/
+prompt/export/reclaim trial still precede checkpoint acceptance.
+
+Run the focused public checks from the repository root:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_native_zsh_file_exec.py -v
+python3 -B -m unittest discover -s tests -p test_native_zsh_external.py -v
+```
+
+The new actual-body fixture uses the real ELF parser, loader preflight, binding
+and channel contracts over host-owned storage. Selected/absent/false profiles,
+precommit failures, exact receipts/publication, one-shot lifetime and seven
+semantic omissions are checked in a separate bounded compiler cohort. Load/MMU/
+scheduler installation is substituted; host results do not claim native execution.
+
+
+Qualified issue148 fixed trial: real Zsh executed the3548-byte filesystem ELF
+using17 application backing pages, collected/printed23 and returned to its prompt.
+Actual READY/C004, known source close, normal parent/exact-seven engine exit and
+export, mode restoration,21 cleanup phases and three reclamations passed in
+38.678 seconds (42/96 requests, halt3225/6000 ticks). Both original host holders
+and five Screen clients have known cleanup. This qualifies the approved fixed
+profile only; general execution, cold boot-to-program, login, packages and R1
+remain separate. Full-root coverage remains open in issue141.

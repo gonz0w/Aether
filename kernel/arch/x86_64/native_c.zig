@@ -1103,6 +1103,7 @@ pub fn exception(frame: *const Frame) *const Frame {
     if (@import("build_options").native_process_copy and connections_profile and frame.rax == 0x23006) return copyOperation(frame);
     if (@import("build_options").native_process_freeze and connections_profile and frame.rax >= 0x23003 and frame.rax <= 0x23005) return freezeOperation(frame);
     if (frame.rax == 0x2300a) return appLaunchOperation(frame);
+    if (frame.rax == 0x2300b) return fileExecOperation(frame);
     if (frame.rax == 0x28012) return appClockOperation(frame);
     if (launch_profile and (frame.rax == 0x23000 or (channel_profile and frame.rax == 0x23001) or (file_profile and frame.rax == 0x23002))) return launchOperation(frame);
     if (frame.rax >= 0x22000 and frame.rax <= 0x22003 and @import("build_options").native_memory) return memoryOperation(frame);
@@ -3227,6 +3228,12 @@ fn copyOperation(f: *const Frame) *const Frame {
 // this operation never interprets Unix FD flags or creates executable authority.
 fn execOperation(f: *const Frame) *const Frame {
     const caller = &states[active];
+    // This selector uses the third cache only as private snapshot scratch.
+    // Query/publication remain available; the boot-held image route does not.
+    if (@hasDecl(@import("build_options"), "native_zsh_file_exec") and @import("build_options").native_zsh_file_exec and f.rax == 0x23007) {
+        result(caller, -13);
+        return select();
+    }
     if (active != supervisorSlot() or f.rdi != 0xa001) {
         result(caller, -13);
         return select();
@@ -3352,6 +3359,131 @@ fn execOperation(f: *const Frame) *const Frame {
     return select();
 }
 
+// One actual Rust Owner lifetime may install one complete filesystem snapshot
+// into its exact frozen helper. IF=0 pins every source/counterpart borrow until
+// the copied image has passed preflight and finished eager load/RELRO.
+fn fileExecOperation(f: *const Frame) *const Frame {
+    const caller = &states[active];
+    if (!(@hasDecl(@import("build_options"), "native_zsh_file_exec") and @import("build_options").native_zsh_file_exec)) {
+        result(caller, -38);
+        return select();
+    }
+    // All boot-cache consumers are denied under this selector. This scratch is
+    // never published or mapped into a user domain, including on rejection.
+    const scratch = third_bytes[0..4096];
+    @memset(scratch, 0);
+    defer @memset(scratch, 0);
+    if (active != supervisorSlot() or !caller.admitted or caller.terminal or f.rdi != 0xa001) {
+        result(caller, -13);
+        return select();
+    }
+    const slot = lookup(f.rsi) orelse {
+        result(caller, -9);
+        return select();
+    };
+    const s = &states[slot];
+    const parent = &states[1];
+    const engine = &states[0];
+    if (slot != 2 or !processSlot(slot) or parent.tty_signal_owner_generation != caller.generation or
+        !parent.app_binding.valid(1, parent.generation, parent.admitted, parent.terminal, parent.app_binding.clock) or
+        s.parent_pid != parent.generation * states.len + 2 or s.tty_signal_owner_generation != null or
+        !s.app_binding.valid(slot, s.generation, s.admitted, s.terminal, s.app_binding.clock) or
+        s.app_binding.reader != parent.app_binding.reader or s.app_binding.writer != parent.app_binding.writer or
+        s.app_binding.epoch != parent.app_binding.epoch or !engine.admitted or engine.terminal or
+        engine.channel_cap != parent.app_binding.epoch)
+    {
+        result(caller, -13);
+        return select();
+    }
+    const reader = ownedChannel(active, parent.app_binding.reader) orelse {
+        result(caller, -13);
+        return select();
+    };
+    const writer = ownedChannel(active, parent.app_binding.writer) orelse {
+        result(caller, -13);
+        return select();
+    };
+    if (reader == writer or reader.lookup(active, parent.app_binding.reader) != 0 or
+        writer.lookup(active, parent.app_binding.writer) != 1 or
+        reader.lookup(0, engine.channel_reply_cap) != 1 or writer.lookup(0, engine.channel_cap) != 0 or
+        reader.stream.reader_closed or reader.stream.sealed or writer.stream.reader_closed or writer.stream.sealed)
+    {
+        result(caller, -13);
+        return select();
+    }
+    if (!s.frozen or s.image_commit.pending or s.image_commit.sequence != 0) {
+        result(caller, -16);
+        return select();
+    }
+    if (f.r10 == 0 or f.r10 != s.freeze_sequence) {
+        result(caller, -9);
+        return select();
+    }
+    if (f.r9 == 0 or f.r9 > scratch.len) {
+        result(caller, -22);
+        return select();
+    }
+    const length: usize = @intCast(f.r9);
+    var raw: [launch.record_size]u8 = undefined;
+    if (f.r8 > std.math.maxInt(usize) - (raw.len - 1) or f.rdx > std.math.maxInt(usize) - (length - 1)) {
+        result(caller, -14);
+        return select();
+    }
+    for (&raw, 0..) |*value, i| {
+        const source = byte(caller, @intCast(f.r8 + i), false) orelse {
+            result(caller, -14);
+            return select();
+        };
+        value.* = source.*;
+    }
+    const args = launch.arguments(&raw) catch {
+        result(caller, -22);
+        return select();
+    };
+    const bytes = scratch[0..length];
+    for (bytes, 0..) |*value, i| {
+        const source = byte(caller, @intCast(f.rdx + i), false) orelse {
+            result(caller, -14);
+            return select();
+        };
+        value.* = source.*;
+    }
+    const image = elf.parseApplication(bytes) catch {
+        result(caller, -8);
+        return select();
+    };
+    if (!imagePreflight(s, &image)) {
+        result(caller, -12);
+        return select();
+    }
+    // Same fixed-pool eager replacement as boot-held exec. All source bytes,
+    // arguments and resource plans are now kernel-owned and validated. No
+    // recoverable operation follows destruction; the snapshot lives through load.
+    const next = s.execution.forImage(image.entry, 0x0800c000);
+    aliases(s, true);
+    @memset(std.mem.asBytes(&s.root), 0);
+    @memset(std.mem.asBytes(&s.pdpt), 0);
+    @memset(std.mem.asBytes(&s.pd), 0);
+    @memset(std.mem.asBytes(&s.pts), 0);
+    @memset(std.mem.asBytes(&s.pt_index), 0);
+    @memset(s.payloadBytes(), 0);
+    @memset(s.recordBytes(), 0);
+    s.count = 0;
+    s.pt_count = 0;
+    s.execution = .{};
+    if (@import("build_options").native_signal_actions) s.signal_actions = s.signal_actions.forImage();
+    load(s, bytes, &image, &bootstrap, slot);
+    s.execution = next;
+    launchStack(s, &args, &image);
+    s.ready = false;
+    s.image_commit = .{ .sequence = f.r10, .image = 0xc004, .pending = true };
+    s.frozen = true;
+    for (&states) |*owner| aliases(owner, false);
+    if (af09_enabled and af09.engine_bound) af09Fail(slot, -6);
+    result(caller, 0);
+    return select();
+}
+
 fn ordinaryAppEnabled() bool {
     const terminfo = @hasDecl(@import("build_options"), "native_zsh_terminfo") and @import("build_options").native_zsh_terminfo;
     return combined_profile and combined_init and combined_owner_stack and !combined_application_profile and
@@ -3365,6 +3497,10 @@ fn ordinaryAppEnabled() bool {
 // plans and fixed-pool commit. No channel/user pointer survives this call.
 fn appLaunchOperation(f: *const Frame) *const Frame {
     const caller = &states[active];
+    if (@hasDecl(@import("build_options"), "native_zsh_file_exec") and @import("build_options").native_zsh_file_exec and f.rsi == 0xc003) {
+        result(caller, -13);
+        return select();
+    }
     if (!ordinaryAppEnabled()) {
         result(caller, -38);
         return select();
@@ -3532,6 +3668,10 @@ fn appClockOperation(f: *const Frame) *const Frame {
 // Complete user record copy and validation precede any slot/generation mutation.
 fn launchOperation(f: *const Frame) *const Frame {
     const caller = &states[active];
+    if (@hasDecl(@import("build_options"), "native_zsh_file_exec") and @import("build_options").native_zsh_file_exec) {
+        result(caller, -13);
+        return select();
+    }
     var failure: i64 = 0;
     const paired = f.rax == 0x23002;
     const transferring = f.rax == 0x23001 or paired;
