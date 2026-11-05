@@ -531,3 +531,77 @@ The maintained witness entry point is
 its closed offline recipe as documented there, with the fixed private evidence
 inputs available. Root `docs/workflow.json` selects the affected focused checks.
 No release or shared-standard conformance follows from this experimental profile.
+
+## Selected cold reopen
+
+[Issue150](https://github.com/gonz0w/Aether/issues/150) owns the approved next
+checkpoint after148. Its [owner decision](https://github.com/gonz0w/Aether/issues/150#issuecomment-6648639850)
+selects one cold boot from an actually stopped, cleanly exported provisioning
+writer disk. The corrected fixed pair passed: writer37.856s/42 requests, then
+cold25.628s/38 requests. Real Zsh consumed persisted terminfo and the3548-byte
+helper, observed READY/C004/helper23, printed23 and returned to its prompt.
+Both sessions exported normally, restored MODE and reclaimed all three processes
+with21 cleanup phases and known host-holder/client cleanup. Integration is tracked
+in the owning issue; this is the fixed cold checkpoint, not a sustained login.
+
+The existing genuine sys-init ABI31 Owner and kernel file-exec profile remain.
+Default-off `native_zsh_cold_reopen` replaces per-boot provisioning with lookup
+and complete validation of the existing1268-byte terminfo and3548-byte helper.
+The engine selects `fs_home_cold_reopen`, with matching
+`AETHER_FS_HOME_COLD_REOPEN` in its C result consumers. Canonical zero creation
+receipts apply to success and actual cold lookup/type/size/close failure phases;
+the original writer's seven-mutation result is not reinterpreted. The cold
+completion predicate requires zero client/bootstrap mutations.
+A fully known clean cold final result has no selected mutation transaction, so
+it omits `ORDERED`. This requires canonical zero receipts, mutation/TXG/staged/
+state fields, phase0/no errors, ready1,1–96 requests, normal disconnect, both
+closes0 and every required lifecycle fact. Other active or unknown results keep
+the conservative transaction-ordering path. The original SPA close, eviction
+wait, export, namespace-empty check and engine cleanup remain mandatory.
+
+The sole Rust Owner retains namespace custody and the actual terminfo directory.
+It checks complete bytes, type, size, exact EOF and post-stat without repair
+writes. Temporary references must close successfully before startup publication.
+The helper's actual current-epoch READ reference remains held through its seal;
+the existing fresh acquisition checks and closes it before0x2300B. No closed
+label is reconstructed as authority. Full expected-byte equality restricts the
+Owner's explicit selected execution authority; paths, hashes, metadata, modes
+and readable file labels do not grant execution. Existing C004/READY/frozen-child
+checks, private kernel snapshot, ELF/RELRO/W^X and boot-fallback denials remain.
+Failed/short/unknown reads, stats or closes contain without repair or replay.
+
+Keep the original writable/accounted OpenZFS importer/exporter and scoped
+READ|WRITE|FLUSH block grant. Zero client mutations does not mean zero disk
+writes or bitwise unchanged media. No raw creation-receipt/count diagnostic is
+added: focused tests exercise the actual C/Rust predicates, and reviewed exact
+engine identity binds those predicates to observed native completion.
+
+Acceptance is one fresh writer followed by one fresh cold VM on that exact
+stopped disk, with the existing44-byte helper/status/exit input. Each run keeps
+60s workload/120s total/6000ticks and all existing memory/request/capture limits.
+Both require helper23/status23/prompt, normal parent/engine export, MODE restore,
+three reclaims and known host cleanup. No automatic restart or retry follows.
+The approved scoped fit/delivery gate leaves141 open; sustained manual login,
+authentication, arbitrary executables, packages and R1 remain separate.
+
+The first cold attempt reached helper23/status23/prompt, then engine exited5.
+Source analysis found a positive-TXG witness that required a completed mutation
+even though the cold service performed none. The exact first failing check and
+completed export in that original attempt remain unproven; the failure stays
+recorded. Focused actual-checker/producer/C/Rust/importer tests and a fresh engine
+fit preceded the corrected pair on entirely fresh media; the failed disk was
+never retried. Only a complete known-clean zero result omits that transaction
+witness. Unknown/dirty cases still fail conservatively and the original exporter
+and lifecycle remain mandatory.
+
+The focused host checker needs the retained private inputs and SDK/tool closure.
+It performs no image preparation or guest execution. For the ordering regression
+subset, run from the repository root with the actual retained manifest path:
+
+```sh
+python3 -B userland/experiments/filesystem-service/check-home-cold-reopen.py --inputs /path/to/retained/inputs.json --ordering-only
+```
+
+Omit `--ordering-only` for the selected bootstrap/result/closed-profile host checks.
+Manifest-loading failures return2; later tool/setup/check failures return1. Host
+success alone is not native evidence.

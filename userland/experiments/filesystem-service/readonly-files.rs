@@ -2,7 +2,9 @@
 #![no_std]
 //! Closed readonly real-terminfo view. Names and equality keys confer no authority.
 use core::mem::MaybeUninit;
-use filesystem_client::{Client, Handle, Kind, NamespaceMutation};
+#[cfg(not(native_zsh_cold_reopen))]
+use filesystem_client::NamespaceMutation;
+use filesystem_client::{Client, Handle, Kind};
 pub use filesystem_client::{ConnectFailure, Error};
 use filesystem_service::Channel;
 // Shared table also contains exec/disconnect constructors unused by this closed view.
@@ -24,6 +26,11 @@ compile_error!("file exec and home write are separate closed profiles");
 #[cfg(native_zsh_file_exec)]
 #[path = "zsh-file-exec.rs"]
 mod file_exec;
+#[cfg(all(
+    native_zsh_cold_reopen,
+    not(all(native_zsh_file_exec, native_zsh_process, native_zsh_filesystem))
+))]
+compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
 pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_write) {
     b"AEFP0005"
 } else {
@@ -191,6 +198,7 @@ impl<T: Channel> Files<T> {
     }
     /// Fixed pre-startup materialization: 12 real requests, four mutations.
     /// Keep .terminfo's actual reference until healthy teardown.
+    #[cfg(not(native_zsh_cold_reopen))]
     pub fn provision(&mut self, asset: &[u8], workspace: &mut [u8; PAYLOAD]) -> Result<(), Error> {
         if self.retired
             || self.pending
@@ -256,6 +264,55 @@ impl<T: Channel> Files<T> {
             Ok(())
         })();
         self.mutation_failure = mutation_failure;
+        workspace.fill(0);
+        if result.is_err() {
+            self.abort();
+        }
+        result
+    }
+    /// Trusted cold startup only: reopen the existing retained directory view.
+    /// Every acquisition stays in the sole Client ledger; failed validation or
+    /// close retires that channel and never repairs or replays a mutation.
+    #[cfg(native_zsh_cold_reopen)]
+    pub fn reopen(&mut self, asset: &[u8], workspace: &mut [u8; PAYLOAD]) -> Result<(), Error> {
+        if self.retired
+            || self.pending
+            || self.descriptions.source.held.is_some()
+            || asset.is_empty()
+            || asset.len() > PAYLOAD
+        {
+            return Err(Error::Invalid);
+        }
+        let result = (|| {
+            let client = &mut self.descriptions.source.client;
+            let home = client.home()?;
+            let directory = client.lookup(home, b".terminfo", 3)?;
+            if directory.kind != Kind::Directory {
+                return Err(Error::Protocol);
+            }
+            self.descriptions.source.held = Some(directory.handle);
+            let v = client.lookup(directory.handle, b"v", 3)?;
+            if v.kind != Kind::Directory {
+                return Err(Error::Protocol);
+            }
+            let file = client.lookup(v.handle, b"vt100", 2)?;
+            if file.kind != Kind::File || file.size != asset.len() as u64 {
+                return Err(Error::Protocol);
+            }
+            if client.read(file.handle, asset.len() as u64, 1, workspace)? != 0
+                || client.read(file.handle, 0, asset.len(), workspace)? != asset.len()
+                || workspace[..asset.len()] != *asset
+            {
+                return Err(Error::Protocol);
+            }
+            let stat = client.stat(file.handle)?;
+            if stat.kind != Kind::File || stat.size != asset.len() as u64 {
+                return Err(Error::Protocol);
+            }
+            client.close(file.handle)?;
+            client.close(v.handle)?;
+            Ok(())
+        })();
         workspace.fill(0);
         if result.is_err() {
             self.abort();

@@ -128,6 +128,25 @@ aether_fs_home_receipt_order(const struct aether_fs_bootstrap_receipt *r,
         *protocol = 1;
     return !valid || (r->provider != 0 && !unassigned);
 }
+#ifdef AETHER_FS_HOME_COLD_REOPEN
+/* Final success only; this does not make an incomplete/unknown record clean. */
+static inline int
+aether_fs_home_cold_final_zero(const struct aether_fs_home_result *h)
+{
+    int protocol = 0;
+    int receipts = !aether_fs_home_receipt_order(&h->mkdir, &protocol) &&
+                   !aether_fs_home_receipt_order(&h->create, &protocol) &&
+                   !protocol && !h->mkdir.returned && !h->create.returned;
+    return h->version == 1 && h->bytes == 320 && !h->phase &&
+           !h->error_kind && !h->error_value &&
+           (h->flags & ~UINT64_C(2)) == UINT64_C(61) &&
+           !h->mutation_attempts && receipts && h->service.ready == 1 &&
+           h->service.requests >= 1 && h->service.requests <= 96 &&
+           !h->service.stop && !h->service.reader_close &&
+           !h->service.writer_close && !h->service.error &&
+           !h->service.txg && !h->service.bytes_staged && !h->service.state;
+}
+#endif
 static inline int
 aether_fs_home_order_required(const struct aether_fs_home_result *h,
                               int *protocol)
@@ -155,10 +174,20 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 h->flags == 48 && !close_attempted &&
                 !h->service.reader_close && !h->service.writer_close;
     }
+#ifndef AETHER_FS_HOME_COLD_REOPEN
     if (h->create.returned || active)
         valid = valid && h->mkdir.returned == 1;
+#else
+    /* Receipt validation above checks every zero carrier field. */
+    valid = valid && !h->mkdir.provider && !h->mkdir.returned &&
+            !h->create.provider && !h->create.returned &&
+            !h->mutation_attempts && !h->service.state;
+#endif
     if (active)
-        valid = valid && accepted && h->create.returned == 1 &&
+        valid = valid && accepted &&
+#ifndef AETHER_FS_HOME_COLD_REOPEN
+                h->create.returned == 1 &&
+#endif
                 (h->phase == 0 || h->phase == 9) && h->service.ready <= 1 &&
                 h->service.requests <= 96 && h->service.stop <= 6 &&
                 h->service.bytes_staged <= 4096 && h->service.state <= 3 &&
@@ -180,6 +209,25 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 (h->service.stop == 2 || h->service.stop == 5) &&
                 h->service.error && !h->service.txg && !h->service.bytes_staged;
     }
+#ifdef AETHER_FS_HOME_COLD_REOPEN
+    if (accepted) {
+        switch (h->phase) {
+        case 0:
+        case 9:
+            valid = valid && active;
+            break;
+        case 2:
+        case 3:
+        case 5:
+        case 7:
+        case 8:
+            valid = valid && !active;
+            break;
+        default:
+            valid = 0;
+        }
+    }
+#else
     if (accepted) {
         switch (h->phase) {
         case 0:
@@ -213,13 +261,18 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
         valid = valid && r->returned == 2 && h->error_kind == r->error_kind &&
                 h->error_value == r->error_value;
     }
+#endif
     if (!active) {
         const struct aether_fs_service_result *s = &h->service;
         valid = valid && h->mutation_attempts == calls && !s->ready &&
                 !s->requests && !s->stop && !s->error && !s->txg &&
                 !s->bytes_staged && !s->state;
     }
+#ifdef AETHER_FS_HOME_COLD_REOPEN
+    order |= active && !aether_fs_home_cold_final_zero(h);
+#else
     order |= active;
+#endif
     if (!!order != !!(h->flags & AETHER_FS_HOME_ORDER_REQUIRED))
         valid = 0;
     if (!valid)

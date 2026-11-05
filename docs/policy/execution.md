@@ -382,3 +382,46 @@ fresh complete-family attempt. Do not blindly retry unchanged failed work or
 replay unknown mutations. This standing default does not require another approval
 for each ordinary corrective attempt inside its scope; a larger bound or another
 consequential resource change remains the owner's decision.
+
+## Selected cold-reopen checkpoint decision —2026-11-04
+
+Cam directly approved [issue150’s separately reviewed proposal](https://github.com/gonz0w/Aether/issues/150#issuecomment-6648622214):
+“Approve scoped #150 design and gates”. Select one default-off cold composition
+that reopens existing home/probe and terminfo, using truthful canonical-zero
+bootstrap receipts on both success and actual failure phases. Preserve old
+result validation and extents; no fabricated creates or suppressed errors.
+The sole trusted Rust Owner selects the actual current-epoch helper object only
+after full expected3548-byte ELF/type/size/EOF/post-stat/checked-close validation;
+byte equality restricts existing execution authority and never creates it.
+Reopen/check the pinned1268-byte terminfo and retain its actual directory view.
+No mutation or WRITE alias, namespace forwarding, new syscall, capability kind,
+service, buffer or numeric increase follows. Existing0x2300B/C004/frozen-child/
+private-copy/ELF/W^X/fallback denials remain binding. All failed/short/unknown
+reads/stats/closes contain, retain obligations and never repair/replay.
+
+Select an exact-zero client/bootstrap mutation engine with matching C/Rust
+canonical result predicates, including pre-activation lookup/type/close errors.
+Retain original writable/accounted SPA, READ|WRITE|FLUSH region, import, ordering
+and export/cleanup; zero client mutations is not zero disk writes or bitwise
+unchanged media. No diagnostic interface is added solely for raw receipt counts.
+Native completion binds the actual reviewed predicates/artifact to focused host
+result tests; do not claim independent raw UART count observation.
+
+One fresh accepted provisioning writer is followed only after clean export and
+known stop/cleanup by one fresh cold VM on that exact stopped disposable disk.
+Use the fixed44-byte helper23/status23/prompt/exit workload, no network, once-only
+inputs/no retry, each existing60s workload/120s total/6000ticks, capture limits and
+known complete cleanup. Preserve Owner73728 RX/12288 mapped/12280 usable stack,
+Runtime/workspace4096 each,128 backing,96 requests/9 mutation ceiling (cold
+expected0), all existing application/engine/task/channel/worker/preparation bounds.
+Fresh changed code/data/stack/backing/closure fits precede image; verified unchanged
+inputs may reuse applicable evidence. A failed fit stops for replan.
+
+For issue150 only, guarded exact workload evidence may establish remaining scoped
+fit despite unknown general peaks. Focused affected behavior/capability/failure
+checks, separate source/artifact/native-result review, fresh actual fits, required
+protected CI and successful exact writer/cold evidence may qualify checkpoint
+delivery while issue141 stays open. This explicit decision is not a full-host
+pass or sustained manual/authenticated login, arbitrary exec, general write/reboot
+recovery, packages, assembled-system or R1 acceptance. Routine work/delivery retain
+standing authority; new consequential design/resource/gate decisions still stop.

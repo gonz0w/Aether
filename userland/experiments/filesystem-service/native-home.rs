@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: BSD-2-Clause
 //! Native engine entry for the bounded service; requires matched provisioning.
 #![no_std]
+#[cfg(all(
+    fs_home_cold_reopen,
+    any(
+        fs_home_probe_three,
+        fs_home_terminfo_six,
+        fs_home_terminfo_seven,
+        fs_af09_drain
+    )
+))]
+compile_error!("fs_home_cold_reopen requires its closed non-provisioning selection");
 #[cfg(any(
     all(fs_home_terminfo_six, fs_home_probe_three),
     all(fs_home_terminfo_six, fs_af09_drain)
@@ -9,11 +19,10 @@ compile_error!("fs_home_terminfo_six is incompatible with old-three or AF09 drai
 #[cfg(not(test))]
 use core::arch::asm;
 use core::{ffi::c_void, ptr::NonNull};
+#[cfg(not(fs_home_cold_reopen))]
+use filesystem_bridge::policy::{Completion, Mutation, NamespaceObservation};
 use filesystem_bridge::{
-    policy::{
-        Completion, Error, Handle, Identity, Kind, Mutation, NamespaceObservation, Owner, Rights,
-        Session,
-    },
+    policy::{Error, Handle, Identity, Kind, Owner, Rights, Session},
     Spa,
 };
 use filesystem_service::{
@@ -197,6 +206,7 @@ fn fail(out: &mut HomeResult, phase: u64, error: Error) {
     out.phase = phase;
     (out.error_kind, out.error_value) = error_fields(error);
 }
+#[cfg(not(fs_home_cold_reopen))]
 fn retain(
     receipt: &mut BootstrapReceipt,
     observation: NamespaceObservation,
@@ -243,30 +253,38 @@ fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy
 ) -> Result<(Session, Handle), (u64, Error)> {
     let rights = Rights::new(15).map_err(|e| (3, e))?;
     let admin = owner.attach(peer, rights).map_err(|e| (3, e))?;
-    let observed = owner.namespace_observed(
-        peer,
-        admin.session,
-        admin.root.handle,
-        Mutation::MakeDirectory(b"home"),
-    );
-    let outcome = retain(&mut out.mkdir, observed);
-    if out.mkdir.requires_ordering() {
-        out.flags |= ORDERED;
+    #[cfg(not(fs_home_cold_reopen))]
+    {
+        let observed = owner.namespace_observed(
+            peer,
+            admin.session,
+            admin.root.handle,
+            Mutation::MakeDirectory(b"home"),
+        );
+        let outcome = retain(&mut out.mkdir, observed);
+        if out.mkdir.requires_ordering() {
+            out.flags |= ORDERED;
+        }
+        outcome.map_err(|e| (4, e))?;
     }
-    outcome.map_err(|e| (4, e))?;
     let home = owner
         .lookup(peer, admin.session, admin.root.handle, b"home", rights)
         .map_err(|e| (5, e))?;
     owner
         .validate_home_source(peer, admin.session, home.handle)
         .map_err(|e| (5, e))?;
-    let observed =
-        owner.namespace_observed(peer, admin.session, home.handle, Mutation::Create(b"probe"));
-    let outcome = retain(&mut out.create, observed);
-    if out.create.requires_ordering() {
-        out.flags |= ORDERED;
+    #[cfg(not(fs_home_cold_reopen))]
+    {
+        let observed =
+            owner.namespace_observed(peer, admin.session, home.handle, Mutation::Create(b"probe"));
+        let outcome = retain(&mut out.create, observed);
+        if out.create.requires_ordering() {
+            out.flags |= ORDERED;
+        }
+        outcome.map_err(|e| (6, e))?;
     }
-    outcome.map_err(|e| (6, e))?;
+    #[cfg(fs_home_cold_reopen)]
+    let _ = out; // Cold selection leaves both creation receipts canonical zero.
     let probe = owner
         .lookup(
             peer,
@@ -276,7 +294,7 @@ fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy
             Rights::new(3).map_err(|e| (7, e))?,
         )
         .map_err(|e| (7, e))?;
-    if probe.kind != Kind::File || probe.size != 0 {
+    if probe.kind != Kind::File || probe.size != if cfg!(fs_home_cold_reopen) { 3548 } else { 0 } {
         return Err((7, Error::InvalidMetadata));
     }
     owner
@@ -434,6 +452,12 @@ pub unsafe extern "C" fn aether_fs_home_run(
         && report.cleanup == [0, 0];
     if let Stop::Provision(error) = report.stop {
         fail(output, 9, error);
+    }
+    // Only the complete final zero-mutation report can discharge activation's
+    // provisional mutation-order obligation. Failure/uncertainty retains it.
+    #[cfg(fs_home_cold_reopen)]
+    if clean && output.cold_final_zero() {
+        output.flags &= !ORDERED;
     }
     if clean {
         0
