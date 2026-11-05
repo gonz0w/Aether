@@ -25,6 +25,7 @@ impl<T: Channel> Files<T> {
     /// Sole trusted bootstrap call, before any child exists. Keep a READ2 label
     /// for this actual object while retiring the sole temporary WRITE4 label.
     /// No untrusted FILE or namespace operation can create a mutation alias.
+    #[cfg(not(native_zsh_cold_reopen))]
     pub fn provision_file_exec(&mut self, image: &[u8]) -> Result<(), Error> {
         if self.retired
             || self.pending
@@ -63,6 +64,55 @@ impl<T: Channel> Files<T> {
             Ok(())
         })();
         self.mutation_failure = mutation_failure;
+        if result.is_err() {
+            self.abort();
+        }
+        result
+    }
+    /// The already-authorized trusted Owner selects this actual current-epoch
+    /// object only after complete byte equality constrains its closed policy.
+    /// Retain this same READ handle; acquire_file_exec closes it before native
+    /// execution. No path, hash, READ label or previous-boot handle grants exec.
+    #[cfg(native_zsh_cold_reopen)]
+    pub fn reopen_file_exec(
+        &mut self,
+        image: &[u8],
+        workspace: &mut [u8; PAYLOAD],
+    ) -> Result<(), Error> {
+        if self.retired
+            || self.pending
+            || self.child.is_some()
+            || self.descriptions.source.held.is_none()
+            || self.file_exec.phase != 0
+            || image.is_empty()
+            || image.len() > PAYLOAD
+        {
+            return Err(Error::Invalid);
+        }
+        self.file_exec.phase = 3;
+        let result = (|| {
+            let client = &mut self.descriptions.source.client;
+            let home = client.home()?;
+            let sealed = client.lookup(home, b"probe", 2)?;
+            if sealed.kind != Kind::File || sealed.size != image.len() as u64 {
+                return Err(Error::Protocol);
+            }
+            if client.read(sealed.handle, image.len() as u64, 1, workspace)? != 0
+                || client.read(sealed.handle, 0, image.len(), workspace)? != image.len()
+                || workspace[..image.len()] != *image
+            {
+                return Err(Error::Protocol);
+            }
+            let stat = client.stat(sealed.handle)?;
+            if stat.kind != Kind::File || stat.size != image.len() as u64 {
+                return Err(Error::Protocol);
+            }
+            self.file_exec.held = Some(sealed.handle);
+            self.file_exec.size = image.len();
+            self.file_exec.phase = 1;
+            Ok(())
+        })();
+        workspace.fill(0);
         if result.is_err() {
             self.abort();
         }

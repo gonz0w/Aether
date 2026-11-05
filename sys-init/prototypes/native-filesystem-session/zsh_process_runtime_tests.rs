@@ -427,6 +427,12 @@ impl Fixture {
             let mut owner = p::Owner::new(
                 Storage {
                     probe_failure,
+                    #[cfg(native_zsh_cold_reopen)]
+                    made: [true; 3],
+                    #[cfg(native_zsh_cold_reopen)]
+                    data: TERMINFO.to_vec(),
+                    #[cfg(native_zsh_cold_reopen)]
+                    probe: FILE_EXEC_TEST_IMAGE.to_vec(),
                     ..Storage::default()
                 },
                 Time,
@@ -554,12 +560,21 @@ impl Fixture {
             .unwrap();
         runtime.files_live = true;
         runtime.file_binding = Some(binding);
+        #[cfg(not(native_zsh_cold_reopen))]
         runtime
             .with_files(|files| files.provision(TERMINFO, &mut [0; 4096]))
             .unwrap();
-        #[cfg(native_zsh_file_exec)]
+        #[cfg(native_zsh_cold_reopen)]
+        runtime
+            .with_files(|files| files.reopen(TERMINFO, &mut [0; 4096]))
+            .unwrap();
+        #[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
         runtime
             .with_files(|files| files.provision_file_exec(FILE_EXEC_ELF))
+            .unwrap();
+        #[cfg(native_zsh_cold_reopen)]
+        runtime
+            .with_files(|files| files.reopen_file_exec(FILE_EXEC_ELF, &mut [0; 4096]))
             .unwrap();
         Self {
             runtime,

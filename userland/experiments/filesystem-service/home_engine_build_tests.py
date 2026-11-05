@@ -96,6 +96,25 @@ class NativeBuildContract(unittest.TestCase):
             process.clean_env.assert_not_called()
             process.run.assert_not_called()
 
+    def test_cold_reopen_is_closed_and_rejects_before_effects(self):
+        expected = (*PROFILE[:-1], 'fs_home_cold_reopen')
+        self.assertEqual(builder['COLD_REOPEN_PROFILE'], expected)
+        self.assertEqual(builder['validate_profile'](expected, cold_reopen=True), expected)
+        for profile in (PROFILE, builder['DRAIN_PROFILE'], builder['TERMINFO_PROFILE'],
+                        builder['TERMINFO_SEVEN_PROFILE'], expected[:-1], (*expected, expected[-1])):
+            with self.subTest(profile=profile), self.assertRaisesRegex(ValueError, 'AF09 profile'):
+                builder['validate_profile'](profile, cold_reopen=True)
+        for kwargs in (dict(cold_reopen=1), dict(cold_reopen=True, terminfo_six=True),
+                       dict(cold_reopen=True, terminfo_seven=True),
+                       dict(cold_reopen=True, drain_case='stream')):
+            with self.subTest(kwargs=kwargs), tempfile.TemporaryDirectory() as directory:
+                process = mock.Mock()
+                with self.assertRaisesRegex(ValueError, 'closed'):
+                    builder['build'](Path(directory), process, {}, 0, {}, **kwargs)
+                self.assertEqual(list(Path(directory).iterdir()), [])
+                process.clean_env.assert_not_called()
+                process.run.assert_not_called()
+
     def test_exact_profile_and_object_exports(self):
         self.assertEqual(builder['validate_profile'](PROFILE), PROFILE)
         builder['validate_symbols'](SERVICE, LAUNCH)

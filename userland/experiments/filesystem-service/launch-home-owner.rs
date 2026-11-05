@@ -3,6 +3,16 @@
 #![no_std]
 use core::ffi::c_void;
 #[cfg(all(
+    fs_home_cold_reopen,
+    any(
+        fs_home_probe_three,
+        fs_home_terminfo_six,
+        fs_home_terminfo_seven,
+        fs_af09_drain
+    )
+))]
+compile_error!("fs_home_cold_reopen requires its closed non-provisioning selection");
+#[cfg(all(
     fs_home_terminfo_seven,
     any(fs_home_terminfo_six, fs_home_probe_three, fs_af09_drain)
 ))]
@@ -133,17 +143,28 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         2 => service.txg != 0 && service.bytes_staged <= 4096,
         _ => false,
     };
+    let expected_flags = CALLBACK
+        | ENTRY
+        | ACCEPTED
+        | CLOSE_ATTEMPTED
+        | ACTIVATION
+        | if cfg!(fs_home_cold_reopen) {
+            0
+        } else {
+            ORDERED
+        };
     if state.version != 1
         || state.bytes != 384
         || state.phases != FINISHED
         || state.engine_error != 0
         || !home.valid()
         || home.phase != 0
+        || cfg!(fs_home_cold_reopen) && home.mutation_attempts != 0
         || cfg!(fs_home_probe_three) && home.mutation_attempts != 3
         || cfg!(fs_home_terminfo_six) && home.mutation_attempts != 6
         || cfg!(fs_home_terminfo_seven) && home.mutation_attempts != 7
         || cfg!(fs_af09_drain) && (home.mutation_attempts != 2 || service.requests != 3)
-        || home.flags != CALLBACK | ENTRY | ACCEPTED | CLOSE_ATTEMPTED | ORDERED | ACTIVATION
+        || home.flags != expected_flags
         || service.ready != 1
         || service.requests == 0
         || service.stop != 0

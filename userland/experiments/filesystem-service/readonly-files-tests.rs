@@ -19,6 +19,10 @@ struct StorageState {
     probe_failure: u8,
     #[cfg(native_zsh_file_exec)]
     probe_read_failure: u8,
+    #[cfg(native_zsh_cold_reopen)]
+    data_read_failure: u8,
+    #[cfg(native_zsh_cold_reopen)]
+    wrong_kind: u64,
     mutations: usize,
     lookups: usize,
     reads: usize,
@@ -56,6 +60,10 @@ impl p::Backend for Storage {
             (2, b"probe") => 6,
             _ => return Err(p::Error::Backend(2)),
         };
+        #[cfg(native_zsh_cold_reopen)]
+        if s.wrong_kind == id {
+            return Ok(p::Node::new(id, 1, 0, p::Kind::Directory));
+        }
         #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
         if id == 6 {
             return Ok(node(id, s.probe.len()));
@@ -65,6 +73,18 @@ impl p::Backend for Storage {
     fn read(&mut self, at: p::Node, offset: u64, out: &mut [u8]) -> Result<usize, p::Error> {
         let mut s = self.0.lock().unwrap();
         s.reads += 1;
+        #[cfg(native_zsh_cold_reopen)]
+        if at.identity().0 == 5 {
+            match s.data_read_failure {
+                1 if offset == 0 => return Ok(out.len().saturating_sub(1)),
+                2 => return Err(p::Error::Backend(5)),
+                3 if offset > 0 => {
+                    out[0] = 1;
+                    return Ok(1);
+                }
+                _ => (),
+            }
+        }
         #[cfg(native_zsh_file_exec)]
         if at.identity().0 == 6 {
             match s.probe_read_failure {
@@ -174,6 +194,12 @@ impl p::Clock for Time {
 struct Seen {
     closes: usize,
     sent: Vec<[u8; 64]>,
+    #[cfg(native_zsh_cold_reopen)]
+    fail_close: usize,
+    #[cfg(native_zsh_cold_reopen)]
+    close_replies: usize,
+    #[cfg(native_zsh_cold_reopen)]
+    bad_stat: bool,
 }
 struct Pipe {
     tx: Option<mpsc::Sender<[u8; 64]>>,
@@ -190,6 +216,28 @@ impl Channel for Pipe {
             .rx
             .recv_timeout(Duration::from_secs(2))
             .map_err(|_| -32)?;
+        #[cfg(native_zsh_cold_reopen)]
+        {
+            let mut seen = self.seen.lock().unwrap();
+            if seen.bad_stat
+                && seen
+                    .sent
+                    .last()
+                    .is_some_and(|request| word(request, 1) == 6)
+            {
+                put(f, 5, word(f, 5) + 1);
+            }
+            if seen
+                .sent
+                .last()
+                .is_some_and(|request| word(request, 1) == 3)
+            {
+                seen.close_replies += 1;
+                if seen.fail_close == seen.close_replies {
+                    put(f, 1, (-5i64) as u64);
+                }
+            }
+        }
         Ok(())
     }
     fn close(&mut self) -> [i64; 2] {
@@ -215,9 +263,22 @@ struct Harness {
 }
 impl Harness {
     fn new() -> Self {
+        let mut h = Self::connected(cfg!(native_zsh_cold_reopen));
+        #[cfg(not(native_zsh_cold_reopen))]
+        h.files().provision(DATA, &mut [0; 4096]).unwrap();
+        #[cfg(native_zsh_cold_reopen)]
+        h.files().reopen(DATA, &mut [0; 4096]).unwrap();
+        h
+    }
+    fn connected(prepared: bool) -> Self {
         let (a, b) = mpsc::channel();
         let (c, d) = mpsc::channel();
         let state = Shared::default();
+        if prepared {
+            let mut storage = state.lock().unwrap();
+            storage.made = [true; 3];
+            storage.data = DATA.to_vec();
+        }
         let shared = state.clone();
         let seen = Arc::new(Mutex::new(Seen::default()));
         let worker = thread::spawn(move || {
@@ -261,14 +322,12 @@ impl Harness {
         )
         .ok()
         .unwrap();
-        let mut h = Self {
+        Self {
             slot,
             worker: Some(worker),
             state,
             seen,
-        };
-        h.files().provision(DATA, &mut [0; 4096]).unwrap();
-        h
+        }
     }
     fn files(&mut self) -> &mut Files<Pipe> {
         unsafe { self.slot.assume_init_mut() }
@@ -880,7 +939,7 @@ fn home_write_second_exec_denies_before_generation_or_cloexec_effects() {
     assert_eq!(h.requests(), requests, "SECOND_EXEC_CLOSED_FILE");
 }
 
-#[cfg(native_zsh_file_exec)]
+#[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
 #[test]
 fn file_exec_sealed_handle_delivers_exact_bytes_and_closes_once() {
     for size in [1, 4096] {
@@ -916,7 +975,7 @@ fn file_exec_sealed_handle_delivers_exact_bytes_and_closes_once() {
         h.files().disconnect_checked(|_| Ok(())).unwrap();
     }
 }
-#[cfg(native_zsh_file_exec)]
+#[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
 #[test]
 fn file_exec_rejects_unsealed_wrong_actor_and_bad_size_before_source_effect() {
     let mut h = Harness::new();
@@ -942,7 +1001,7 @@ fn file_exec_rejects_unsealed_wrong_actor_and_bad_size_before_source_effect() {
     assert_eq!(h.requests(), before, "AUTHORITY_BEFORE_ACQUISITION");
     assert_eq!(h.state.lock().unwrap().mutations, 5);
 }
-#[cfg(native_zsh_file_exec)]
+#[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
 #[test]
 fn file_exec_seal_exposes_no_write_or_namespace_alias_to_parent() {
     for op in [7, 11, 12] {
@@ -965,7 +1024,7 @@ fn file_exec_seal_exposes_no_write_or_namespace_alias_to_parent() {
     }
 }
 
-#[cfg(native_zsh_file_exec)]
+#[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
 #[test]
 fn file_exec_short_bad_eof_and_source_failure_poison_without_replay() {
     for failure in [1, 2, 3] {
@@ -990,7 +1049,7 @@ fn file_exec_short_bad_eof_and_source_failure_poison_without_replay() {
         assert_eq!(h.requests(), requests, "NO_FAILED_ACQUISITION_REPLAY");
     }
 }
-#[cfg(native_zsh_file_exec)]
+#[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
 #[test]
 fn file_exec_failed_provision_never_seals_or_replays_mutation() {
     for failure in [1, 2] {
@@ -1007,4 +1066,142 @@ fn file_exec_failed_provision_never_seals_or_replays_mutation() {
         assert_eq!(h.requests(), requests);
         assert_eq!(h.state.lock().unwrap().mutations, 5, "NO_PROVISION_REPLAY");
     }
+}
+
+#[cfg(native_zsh_cold_reopen)]
+#[test]
+fn cold_reopen_existing_bytes_seals_current_object_without_mutation() {
+    let mut h = Harness::new();
+    let image = b"persisted complete helper";
+    h.state.lock().unwrap().probe = image.to_vec();
+    let mut work = [0xa5; 4096];
+    h.files().reopen_file_exec(image, &mut work).unwrap();
+    assert_eq!(work, [0; 4096]);
+    assert_eq!(h.state.lock().unwrap().mutations, 0, "COLD_NO_MUTATION");
+    let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    let requests = h.requests();
+    let mut wrong = child;
+    wrong.generation += 1;
+    assert!(h.files().acquire_file_exec(wrong, &mut work).is_err());
+    assert_eq!(h.requests(), requests, "COLD_ACTOR_BEFORE_ACQUIRE");
+    assert_eq!(
+        h.files().acquire_file_exec(child, &mut work),
+        Ok(image.len())
+    );
+    assert_eq!(&work[..image.len()], image);
+    assert!(h.files().file_exec_consumed());
+    assert!(h.files().acquire_file_exec(child, &mut work).is_err());
+    h.files().settle_child(child).unwrap();
+    h.files().disconnect_checked(|_| Ok(())).unwrap();
+    assert_eq!(h.state.lock().unwrap().mutations, 0);
+}
+#[cfg(native_zsh_cold_reopen)]
+#[test]
+fn cold_reopen_terminfo_rejects_missing_kind_size_bytes_and_read_failures() {
+    for case in 0..8 {
+        let mut h = Harness::connected(true);
+        {
+            let mut s = h.state.lock().unwrap();
+            match case {
+                0 => s.made[0] = false,
+                1 => s.wrong_kind = 5,
+                2 => {
+                    s.data.pop();
+                }
+                3 => s.data[0] ^= 1,
+                4 => s.data.push(0),
+                _ => s.data_read_failure = case - 4,
+            }
+        }
+        let mut work = [0xa5; 4096];
+        assert!(
+            h.files().reopen(DATA, &mut work).is_err(),
+            "COLD_TERMINFO_REJECT_{case}"
+        );
+        assert_eq!(work, [0; 4096]);
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        let requests = h.requests();
+        assert!(h.files().reopen(DATA, &mut work).is_err());
+        assert_eq!(h.requests(), requests, "COLD_NO_REOPEN_REPLAY");
+        assert_eq!(h.state.lock().unwrap().mutations, 0);
+    }
+}
+#[cfg(native_zsh_cold_reopen)]
+#[test]
+fn cold_reopen_helper_rejects_wrong_bytes_kind_size_and_read_failures() {
+    let expected = b"persisted helper";
+    for case in 0..8 {
+        let mut h = Harness::new();
+        {
+            let mut s = h.state.lock().unwrap();
+            s.probe = expected.to_vec();
+            match case {
+                0 => s.probe.clear(),
+                1 => s.wrong_kind = 6,
+                2 => {
+                    s.probe.pop();
+                }
+                3 => s.probe[0] ^= 1,
+                4 => s.probe.push(0),
+                _ => s.probe_read_failure = case - 4,
+            }
+        }
+        let mut work = [0xa5; 4096];
+        assert!(
+            h.files().reopen_file_exec(expected, &mut work).is_err(),
+            "COLD_EXEC_REJECT_{case}"
+        );
+        assert_eq!(work, [0; 4096]);
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        let requests = h.requests();
+        assert!(h.files().reopen_file_exec(expected, &mut work).is_err());
+        assert_eq!(h.requests(), requests);
+        assert!(!h.files().file_exec_consumed());
+        assert_eq!(h.state.lock().unwrap().mutations, 0);
+    }
+}
+#[cfg(native_zsh_cold_reopen)]
+#[test]
+fn cold_reopen_checks_temporary_closes_and_contains_unknown_close() {
+    for close in 1..=2 {
+        let mut h = Harness::connected(true);
+        h.seen.lock().unwrap().fail_close = close;
+        assert!(h.files().reopen(DATA, &mut [0; 4096]).is_err());
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        assert_eq!(h.state.lock().unwrap().mutations, 0);
+    }
+}
+
+#[cfg(native_zsh_cold_reopen)]
+#[test]
+fn cold_reopen_post_stat_and_retained_helper_close_are_required() {
+    let image = b"actual persisted executable";
+    let mut h = Harness::connected(true);
+    h.seen.lock().unwrap().bad_stat = true;
+    assert!(h.files().reopen(DATA, &mut [0; 4096]).is_err());
+    assert_eq!(h.files().cleanup(), Some([0; 2]));
+    let mut h = Harness::new();
+    h.state.lock().unwrap().probe = image.to_vec();
+    h.seen.lock().unwrap().bad_stat = true;
+    assert!(h.files().reopen_file_exec(image, &mut [0; 4096]).is_err());
+    assert_eq!(h.files().cleanup(), Some([0; 2]));
+    let mut h = Harness::new();
+    h.state.lock().unwrap().probe = image.to_vec();
+    h.files().reopen_file_exec(image, &mut [0; 4096]).unwrap();
+    {
+        let mut seen = h.seen.lock().unwrap();
+        seen.fail_close = seen.close_replies + 1;
+    }
+    let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    let mut work = [0xa5; 4096];
+    assert!(
+        h.files().acquire_file_exec(child, &mut work).is_err(),
+        "COLD_CLOSE_BEFORE_EXEC"
+    );
+    assert_eq!(work, [0; 4096]);
+    assert!(!h.files().file_exec_consumed());
+    assert_eq!(h.files().cleanup(), Some([0; 2]));
+    assert_eq!(h.state.lock().unwrap().mutations, 0);
 }

@@ -233,10 +233,34 @@ impl HomeResult {
             && self.create.is_zero()
             && self.service.is_zero()
     }
+    /// Complete healthy cold teardown only. ORDERED may still be set while the
+    /// producer checks this predicate; no other flag is ignored.
+    #[cfg(fs_home_cold_reopen)]
+    pub fn cold_final_zero(&self) -> bool {
+        self.version == 1
+            && self.bytes == 320
+            && self.phase == 0
+            && self.error_kind == 0
+            && self.error_value == 0
+            && self.flags & !ORDERED == ENTRY | CALLBACK | ACCEPTED | CLOSE_ATTEMPTED | ACTIVATION
+            && self.mutation_attempts == 0
+            && self.mkdir.is_zero()
+            && self.create.is_zero()
+            && self.service.ready == 1
+            && (1..=96).contains(&self.service.requests)
+            && self.service.stop == 0
+            && self.service.reader_close == 0
+            && self.service.writer_close == 0
+            && self.service.error == 0
+            && self.service.txg == 0
+            && self.service.bytes_staged == 0
+            && self.service.state == 0
+    }
     pub fn requires_ordering(&self) -> bool {
-        self.flags & ACTIVATION != 0
-            || self.mkdir.requires_ordering()
-            || self.create.requires_ordering()
+        let active = self.flags & ACTIVATION != 0;
+        #[cfg(fs_home_cold_reopen)]
+        let active = active && !self.cold_final_zero();
+        active || self.mkdir.requires_ordering() || self.create.requires_ordering()
     }
     pub fn valid(&self) -> bool {
         if self.canonical_unaccepted() {
@@ -261,6 +285,14 @@ impl HomeResult {
         {
             return false;
         }
+        if cfg!(fs_home_cold_reopen)
+            && (!self.mkdir.is_zero()
+                || !self.create.is_zero()
+                || self.mutation_attempts != 0
+                || self.service.state != 0)
+        {
+            return false;
+        }
         if self.create.returned != 0 && self.mkdir.returned != 1 {
             return false;
         }
@@ -271,27 +303,36 @@ impl HomeResult {
             return false;
         }
         let active = self.flags & ACTIVATION != 0;
-        let phase_valid = match self.phase {
-            0 => active && self.service.stop != 4,
-            2 | 3 => !active && self.mkdir.is_zero() && self.create.is_zero(),
-            4 => {
-                !active
-                    && self.mkdir.returned == 2
-                    && self.create.is_zero()
-                    && self.error_kind == self.mkdir.error_kind
-                    && self.error_value == self.mkdir.error_value
+        let phase_valid = if cfg!(fs_home_cold_reopen) {
+            match self.phase {
+                0 => active && self.service.stop != 4,
+                2 | 3 | 5 | 7 | 8 => !active,
+                9 => active && self.service.stop == 4,
+                _ => false,
             }
-            5 => !active && self.mkdir.returned == 1 && self.create.is_zero(),
-            6 => {
-                !active
-                    && self.mkdir.returned == 1
-                    && self.create.returned == 2
-                    && self.error_kind == self.create.error_kind
-                    && self.error_value == self.create.error_value
+        } else {
+            match self.phase {
+                0 => active && self.service.stop != 4,
+                2 | 3 => !active && self.mkdir.is_zero() && self.create.is_zero(),
+                4 => {
+                    !active
+                        && self.mkdir.returned == 2
+                        && self.create.is_zero()
+                        && self.error_kind == self.mkdir.error_kind
+                        && self.error_value == self.mkdir.error_value
+                }
+                5 => !active && self.mkdir.returned == 1 && self.create.is_zero(),
+                6 => {
+                    !active
+                        && self.mkdir.returned == 1
+                        && self.create.returned == 2
+                        && self.error_kind == self.create.error_kind
+                        && self.error_value == self.create.error_value
+                }
+                7 | 8 => !active && self.mkdir.returned == 1 && self.create.returned == 1,
+                9 => active && self.service.stop == 4,
+                _ => false,
             }
-            7 | 8 => !active && self.mkdir.returned == 1 && self.create.returned == 1,
-            9 => active && self.service.stop == 4,
-            _ => false,
         };
         if !phase_valid
             || (!active && self.mutation_attempts != attempts)
@@ -300,7 +341,9 @@ impl HomeResult {
             return false;
         }
         if self.flags & ACTIVATION != 0 {
-            if self.mkdir.returned != 1 || self.create.returned != 1 || !matches!(self.phase, 0 | 9)
+            if (!cfg!(fs_home_cold_reopen)
+                && (self.mkdir.returned != 1 || self.create.returned != 1))
+                || !matches!(self.phase, 0 | 9)
             {
                 return false;
             }
@@ -374,3 +417,179 @@ const _: () = assert!(
         && core::mem::offset_of!(HomeLaunchState, startup_reader_close) == 368
         && core::mem::offset_of!(HomeLaunchState, startup_writer_close) == 376
 );
+
+#[cfg(all(test, fs_home_cold_reopen))]
+mod cold_tests {
+    use super::*;
+    fn active() -> HomeResult {
+        HomeResult {
+            flags: ENTRY | CALLBACK | ACCEPTED | CLOSE_ATTEMPTED | ACTIVATION,
+            service: ServiceResult {
+                ready: 1,
+                requests: 20,
+                ..ServiceResult::default()
+            },
+            ..HomeResult::initial()
+        }
+    }
+    #[test]
+    fn cold_active_is_canonical_zero_and_cannot_relabel_creation_or_mutation() {
+        let good = active();
+        assert!(good.valid(), "COLD_ZERO_ACTIVE");
+        for attempts in [1, 2, 7, 9, u64::MAX] {
+            assert!(!HomeResult {
+                mutation_attempts: attempts,
+                ..good
+            }
+            .valid());
+        }
+        for create in [false, true] {
+            let mut bad = good;
+            let receipt = if create {
+                &mut bad.create
+            } else {
+                &mut bad.mkdir
+            };
+            *receipt = BootstrapReceipt {
+                provider: 1,
+                returned: 1,
+                returned_txg: 789,
+                returned_state: 2,
+                provider_txg: 789,
+                provider_state: 2,
+                ..BootstrapReceipt::default()
+            };
+            assert!(!bad.valid());
+        }
+    }
+    #[test]
+    fn cold_failure_phases_preserve_zero_receipts_actual_error_and_cleanup() {
+        for phase in [2, 3, 5, 7, 8] {
+            let good = HomeResult {
+                phase,
+                error_kind: 10,
+                error_value: 5,
+                flags: ENTRY | CALLBACK | ACCEPTED | CLOSE_ATTEMPTED,
+                ..HomeResult::initial()
+            };
+            assert!(good.valid(), "COLD_ZERO_FAILURE:{phase}");
+            let mut bad = good;
+            bad.mkdir.provider = 2;
+            assert!(!bad.valid());
+            assert!(!HomeResult {
+                flags: good.flags | ORDERED,
+                ..good
+            }
+            .valid());
+            assert!(!HomeResult {
+                error_kind: 0,
+                ..good
+            }
+            .valid());
+        }
+        for phase in [4, 6] {
+            let bad = HomeResult {
+                phase,
+                error_kind: 10,
+                error_value: 5,
+                flags: ENTRY | CALLBACK | ACCEPTED | CLOSE_ATTEMPTED,
+                ..HomeResult::initial()
+            };
+            assert!(!bad.valid());
+        }
+    }
+    #[test]
+    fn cold_active_keeps_order_state_request_and_close_observations() {
+        let good = active();
+        assert!(!good.requires_ordering());
+        assert!(!HomeResult {
+            flags: good.flags | ORDERED,
+            ..good
+        }
+        .valid());
+        assert!(!HomeResult {
+            service: ServiceResult {
+                requests: 97,
+                ..good.service
+            },
+            ..good
+        }
+        .valid());
+        assert!(!HomeResult {
+            service: ServiceResult {
+                state: 2,
+                txg: 800,
+                ..good.service
+            },
+            ..good
+        }
+        .valid());
+        // Closing errors remain truthful carrier observations; the executable
+        // completion predicate, not valid(), rejects successful delivery.
+        assert!(HomeResult {
+            flags: good.flags | ORDERED,
+            service: ServiceResult {
+                reader_close: -5,
+                ..good.service
+            },
+            ..good
+        }
+        .valid());
+    }
+    #[test]
+    fn cold_final_zero_requires_every_known_final_fact() {
+        let good = active();
+        assert!(good.cold_final_zero());
+        assert!(HomeResult {
+            flags: good.flags | ORDERED,
+            ..good
+        }
+        .cold_final_zero());
+        for requests in [0, 1, 96, 97, u64::MAX] {
+            let candidate = HomeResult {
+                service: ServiceResult {
+                    requests,
+                    ..good.service
+                },
+                ..good
+            };
+            assert_eq!(candidate.cold_final_zero(), (1..=96).contains(&requests));
+        }
+        for case in 0..24 {
+            let mut bad = good;
+            match case {
+                0 => bad.version = 2,
+                1 => bad.bytes = 319,
+                2 => bad.phase = 9,
+                3 => bad.error_kind = 11,
+                4 => bad.error_value = 5,
+                5 => bad.mutation_attempts = 1,
+                6 => bad.mkdir.provider = 2,
+                7 => bad.create.error_kind = 14,
+                8 => bad.service.ready = 0,
+                9 => bad.service.requests = 0,
+                10 => bad.service.stop = 2,
+                11 => bad.service.reader_close = -5,
+                12 => bad.service.writer_close = -5,
+                13 => bad.service.error = -5,
+                14 => bad.service.txg = 800,
+                15 => bad.service.bytes_staged = 1,
+                16 => bad.service.state = 2,
+                17 => bad.flags |= 64,
+                18 => bad.flags &= !ACTIVATION,
+                19 => bad.flags &= !ACCEPTED,
+                20 => bad.flags &= !CLOSE_ATTEMPTED,
+                21 => bad.flags &= !CALLBACK,
+                22 => bad.flags &= !ENTRY,
+                _ => bad.service.state = 3,
+            }
+            assert!(!bad.cold_final_zero(), "COLD_FINAL_FACT:{case}");
+            // For admitted active records, no missing/unknown/dirty final fact
+            // can discharge the original provisional ordering obligation.
+            if bad.flags & ACTIVATION != 0 {
+                assert!(bad.requires_ordering(), "COLD_ORDER_CONSERVATIVE:{case}");
+            }
+            assert!(!bad.valid(), "COLD_FINAL_INVALID:{case}");
+        }
+    }
+}

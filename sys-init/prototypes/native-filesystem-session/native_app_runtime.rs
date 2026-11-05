@@ -160,6 +160,11 @@ compile_error!("Zsh home write requires the matched process controller");
 compile_error!("Zsh file exec requires the matched process controller");
 #[cfg(all(native_zsh_file_exec, native_zsh_home_write))]
 compile_error!("Zsh file exec and home write are separate closed profiles");
+#[cfg(all(
+    native_zsh_cold_reopen,
+    not(all(native_zsh_file_exec, native_zsh_process, native_zsh_filesystem))
+))]
+compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
 
 #[cfg(native_zsh_process)]
 struct ZshProcess<K: AppControl> {
@@ -630,9 +635,14 @@ impl<K: AppControl> Runtime<K> {
                 }
                 Err(error) => return Err(fs_errno(error.error)),
             }
+            #[cfg(not(native_zsh_cold_reopen))]
             self.with_files(|files| files.provision(TERMINFO, workspace))?;
-            #[cfg(native_zsh_file_exec)]
+            #[cfg(native_zsh_cold_reopen)]
+            self.with_files(|files| files.reopen(TERMINFO, workspace))?;
+            #[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
             self.with_files(|files| files.provision_file_exec(FILE_EXEC_ELF))?;
+            #[cfg(native_zsh_cold_reopen)]
+            self.with_files(|files| files.reopen_file_exec(FILE_EXEC_ELF, workspace))?;
         }
         let mut bindings = [Binding::default(); 16];
         bindings[1] = Binding {

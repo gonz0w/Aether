@@ -48,33 +48,36 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.error_kind = 0;
     state.home.flags = 63;
     state.home.mutation_attempts = STATE.with(|s| {
-        s.borrow()
-            .attempts
-            .unwrap_or(if cfg!(fs_home_terminfo_seven) {
-                7
-            } else if cfg!(fs_home_terminfo_six) {
-                6
-            } else if cfg!(fs_home_probe_three) {
-                3
-            } else {
-                2
-            })
+        s.borrow().attempts.unwrap_or(if cfg!(fs_home_cold_reopen) {
+            0
+        } else if cfg!(fs_home_terminfo_seven) {
+            7
+        } else if cfg!(fs_home_terminfo_six) {
+            6
+        } else if cfg!(fs_home_probe_three) {
+            3
+        } else {
+            2
+        })
     });
     state.phases = 8191;
-    state.home.mkdir = BootstrapReceipt {
-        provider: 1,
-        returned: 1,
-        returned_txg: 788,
-        returned_state: 2,
-        provider_txg: 788,
-        provider_state: 2,
-        ..BootstrapReceipt::default()
-    };
-    state.home.create = BootstrapReceipt {
-        returned_txg: 789,
-        provider_txg: 789,
-        ..state.home.mkdir
-    };
+    #[cfg(not(fs_home_cold_reopen))]
+    {
+        state.home.mkdir = BootstrapReceipt {
+            provider: 1,
+            returned: 1,
+            returned_txg: 788,
+            returned_state: 2,
+            provider_txg: 788,
+            provider_state: 2,
+            ..BootstrapReceipt::default()
+        };
+        state.home.create = BootstrapReceipt {
+            returned_txg: 789,
+            provider_txg: 789,
+            ..state.home.mkdir
+        };
+    }
     state.home.service.ready = 1;
     state.home.service.requests = STATE.with(|s| {
         s.borrow()
@@ -88,6 +91,10 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
             })
     });
     if mode == 5 {
+        state.home.flags &= !ORDERED;
+    }
+    #[cfg(fs_home_cold_reopen)]
+    {
         state.home.flags &= !ORDERED;
     }
     match STATE.with(|s| s.borrow().corrupt) {
@@ -110,7 +117,13 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
             state.home.service.txg = 0;
         }
         12 => state.home.service.bytes_staged = 1,
-        13 => state.home.flags &= !ORDERED,
+        13 => {
+            if cfg!(fs_home_cold_reopen) {
+                state.home.flags |= ORDERED;
+            } else {
+                state.home.flags &= !ORDERED;
+            }
+        }
         14 => state.phases = FINISHED - 1,
         15 => state.engine_error = 5,
         16 => state.home.service.state = 3,
@@ -231,7 +244,7 @@ fn malformed_launch_prefix_cannot_enter_callback() {
     }
 }
 
-#[cfg(not(any(fs_home_terminfo_six, fs_home_terminfo_seven)))]
+#[cfg(not(any(fs_home_cold_reopen, fs_home_terminfo_six, fs_home_terminfo_seven)))]
 #[test]
 fn fixed_home_probe_requires_three_attempts_only_when_selected() {
     for attempts in [2, 3, 4, 6] {
@@ -335,7 +348,11 @@ fn terminfo_six_keeps_all_clean_result_and_resource_checks() {
         });
         let mut selected = state();
         selected.phases = 0;
-        assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_REQUEST_CAP");
+        assert_eq!(
+            run(&mut selected),
+            if attempts > 2 + requests { 5 } else { expected },
+            "HOME_TERMINFO_REQUEST_CAP"
+        );
     }
 }
 
@@ -354,5 +371,53 @@ fn terminfo_seven_requires_exact_count_and_complete_clean_result() {
         let mut selected = state();
         selected.phases = 0;
         assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_SEVEN");
+    }
+}
+
+#[cfg(fs_home_cold_reopen)]
+#[test]
+fn cold_reopen_requires_exact_zero_and_all_completion_obligations() {
+    for attempts in [0, 1, 2, 7, 9, u64::MAX] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                attempts: Some(attempts),
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(
+            run(&mut selected),
+            if attempts == 0 { 0 } else { 5 },
+            "COLD_LAUNCH_COUNT"
+        );
+    }
+    for corrupt in 1..=20 {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                corrupt,
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(run(&mut selected), 5, "COLD_LAUNCH_COMPLETE:{corrupt}");
+    }
+    for requests in [0, 1, 4, 20, 96, 97, u64::MAX] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                requests: Some(requests),
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(
+            run(&mut selected),
+            if (1..=96).contains(&requests) { 0 } else { 5 }
+        );
     }
 }

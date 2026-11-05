@@ -42,3 +42,16 @@ markers, upstream Zsh presentation and the fixed prompt remain unchanged. Privat
 `--home-write` selections preserve existing plain ASCII/JSON and exit contracts;
 pure rendering and image preparation do not launch a guest or claim persistence.
 This scoped machine-record exception adds no renderer/theme conformance claim.
+
+## Cold-reopen host checker —2026-11-04
+
+The internal `userland/experiments/filesystem-service/check-home-cold-reopen.py`
+uses ASCII help/version and versioned JSON results on stdout, with escaped
+diagnostics on stderr. Exit0 means its selected host checks passed,1 a check
+failed (including tool/setup failures),2 the retained private manifest cannot be
+loaded, and64 invalid usage.
+`--inputs PATH` explicitly selects the retained build-input manifest; the public
+checkout does not contain that private evidence. Help/version launch no tests.
+The checker uses no styling, animation or theme dependency and changes no native
+marker/palette/renderer behavior. Host checks do not establish cold execution,
+login, native readiness or renderer conformance. Issue150 owns its actual gates.
