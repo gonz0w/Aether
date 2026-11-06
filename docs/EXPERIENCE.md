@@ -55,3 +55,9 @@ checkout does not contain that private evidence. Help/version launch no tests.
 The checker uses no styling, animation or theme dependency and changes no native
 marker/palette/renderer behavior. Host checks do not establish cold execution,
 login, native readiness or renderer conformance. Issue150 owns its actual gates.
+
+The issue152 cold idle/exit diagnostic has a v5 Owner row for the verified
+no-child path. It records the request count, no child, successful unused-helper
+close and restored mode. The settled helper retains its v4 row. The private
+fixed-input qualifier records staged input and idle timing in its JSON evidence
+and keeps the existing UART markers, capture limit and output conventions.

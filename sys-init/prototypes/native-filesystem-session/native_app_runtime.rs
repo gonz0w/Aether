@@ -165,6 +165,8 @@ compile_error!("Zsh file exec and home write are separate closed profiles");
     not(all(native_zsh_file_exec, native_zsh_process, native_zsh_filesystem))
 ))]
 compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
+#[cfg(all(native_zsh_idle_exit, not(native_zsh_cold_reopen)))]
+compile_error!("idle exit requires the selected cold reopen profile");
 
 #[cfg(native_zsh_process)]
 struct ZshProcess<K: AppControl> {
@@ -214,6 +216,28 @@ impl<K: AppControl> ZshProcess<K> {
             cleanup_attempted: 0,
             cleanup_last: (-5, 0, 0),
         }
+    }
+    #[cfg(native_zsh_idle_exit)]
+    fn pristine(&self) -> bool {
+        self.epoch == 0
+            && self.fork_sequence == 0
+            && self.sequence == 0
+            && self.children == Children::new()
+            && self.binding.is_none()
+            && self.endpoints.is_none()
+            && self.ends == [End::default(); 4]
+            && self.lease == ReadLease::Parent
+            && self.at == 0
+            && self.parent_at == 0
+            && self.prepaid == 0
+            && !self.fork_ready
+            && !self.committed
+            && !self.exec_ready
+            && self.wait_status.is_none()
+            && self.terminal.is_none()
+            && !self.reclaimed
+            && self.cleanup_attempted == 0
+            && self.cleanup_last == (-5, 0, 0)
     }
     fn identity(&self) -> Result<Identity, i64> {
         let binding = self.binding.ok_or(-9)?;
@@ -2166,7 +2190,7 @@ impl<K: AppControl> Runtime<K> {
         let _ = self.kernel.ctl(0x2a002, 0xf002, 0);
         Err(-5) // A returning successful halt is a defect, never another attempt.
     }
-    /// Selected version1 diagnostic, only after checked healthy teardown.
+    /// Selected diagnostic, only after checked healthy teardown.
     /// This reports the actual shared request ledger and cached private MODE
     /// cleanup result. It grants no authority and is not the final halt witness.
     #[cfg(native_zsh_filesystem)]
@@ -2195,51 +2219,56 @@ impl<K: AppControl> Runtime<K> {
         }
         // SAFETY: files_live is set only after successful final-slot Client
         // construction. Healthy disconnect consumed both close obligations.
-        if unsafe { self.files.assume_init_ref() }.cleanup() != Some([0; 2]) {
+        let files = unsafe { self.files.assume_init_ref() };
+        if files.cleanup() != Some([0; 2]) {
             return Err(-5);
         }
+        #[cfg(native_zsh_idle_exit)]
+        let no_child = self.process.pristine() && files.file_exec_unused_closed();
+        #[cfg(all(native_zsh_process, not(native_zsh_idle_exit)))]
+        let no_child = false;
         #[cfg(native_zsh_process)]
-        if self.process.wait_status
-            != Some(if cfg!(native_zsh_file_exec) {
+        {
+            let status = if cfg!(native_zsh_file_exec) {
                 5888
             } else if cfg!(native_zsh_home_write) {
                 0
             } else {
                 1792
-            })
-            || self.process.terminal
-                != Some(if cfg!(native_zsh_file_exec) {
-                    5888
-                } else if cfg!(native_zsh_home_write) {
-                    0
-                } else {
-                    1792
-                })
-            || !self.process.committed
-            || !self.process.exec_ready
-            || !self.process.reclaimed
-            || self.process.lease != ReadLease::Parent
-            || self.process.binding.is_some()
-            || self
-                .process
-                .ends
-                .iter()
-                .any(|end| end.owned && (!end.attempted || end.status != 0))
-        {
+            };
+            if !no_child
+                && (self.process.wait_status != Some(status)
+                    || self.process.terminal != Some(status)
+                    || !self.process.committed
+                    || !self.process.exec_ready
+                    || !self.process.reclaimed
+                    || self.process.lease != ReadLease::Parent
+                    || self.process.binding.is_some()
+                    || self
+                        .process
+                        .ends
+                        .iter()
+                        .any(|end| end.owned && (!end.attempted || end.status != 0)))
+            {
+                return Err(-5);
+            }
+        }
+        #[cfg(native_zsh_idle_exit)]
+        if !no_child && self.process.epoch != 1 {
             return Err(-5);
         }
-        // SAFETY: the same checked files_live final-slot lifetime above remains
-        // live after healthy disconnect; this reads retained completion facts.
         #[cfg(native_zsh_home_write)]
-        if !unsafe { self.files.assume_init_ref() }.home_write_complete() {
+        if !files.home_write_complete() {
             return Err(-5);
         }
         #[cfg(native_zsh_home_write)]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=3 requests=00 child_status=0 exec_ready=1 child_reclaimed=1 parent_lease=1 write_bytes=16 write_closed=1 mode_cleanup=0\n";
         #[cfg(native_zsh_file_exec)]
-        let file_exec_size = unsafe { self.files.assume_init_ref() }
-            .file_exec_size()
-            .ok_or(-5)?;
+        let file_exec_size = if no_child {
+            0
+        } else {
+            files.file_exec_size().ok_or(-5)?
+        };
         #[cfg(native_zsh_file_exec)]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=0000 file_exec_closed=1 image_receipt=49156 mode_cleanup=0\n";
         #[cfg(all(
@@ -2249,11 +2278,19 @@ impl<K: AppControl> Runtime<K> {
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=2 requests=00 child_status=1792 exec_ready=1 child_reclaimed=1 parent_lease=1 mode_cleanup=0\n";
         #[cfg(not(native_zsh_process))]
         const ROW: &[u8; 49] = b"\nAETHER ZSH OWNER v=1 requests=00 mode_cleanup=0\n";
-        workspace[..ROW.len()].copy_from_slice(ROW);
+        #[cfg(native_zsh_idle_exit)]
+        let row = if no_child {
+            b"\nAETHER ZSH OWNER v=5 requests=00 child=none helper_unused_closed=1 mode_cleanup=0\n"
+        } else {
+            ROW
+        };
+        #[cfg(not(native_zsh_idle_exit))]
+        let row = ROW;
+        workspace[..row.len()].copy_from_slice(row);
         workspace[31] = b'0' + (self.filesystem_requests / 10) as u8;
         workspace[32] = b'0' + (self.filesystem_requests % 10) as u8;
         #[cfg(native_zsh_file_exec)]
-        {
+        if !no_child {
             const AT: usize = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=".len();
             for (index, divisor) in [1000, 100, 10, 1].into_iter().enumerate() {
                 workspace[AT + index] = b'0' + ((file_exec_size / divisor) % 10) as u8;
@@ -2261,8 +2298,8 @@ impl<K: AppControl> Runtime<K> {
         }
         let result = (|| {
             let mut offset = 0;
-            while offset < ROW.len() {
-                let length = (ROW.len() - offset).min(16);
+            while offset < row.len() {
+                let length = (row.len() - offset).min(16);
                 self.bound.before(&mut self.kernel)?;
                 let count = self
                     .kernel
@@ -2277,7 +2314,7 @@ impl<K: AppControl> Runtime<K> {
             }
             Ok(())
         })();
-        workspace[..ROW.len()].fill(0);
+        workspace[..row.len()].fill(0);
         result
     }
     fn close_owned(&mut self) -> Result<(), i64> {

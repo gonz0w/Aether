@@ -176,10 +176,20 @@ impl<T: Channel> Files<T> {
     pub fn file_exec_consumed(&self) -> bool {
         self.file_exec_size().is_some()
     }
+    #[cfg(native_zsh_idle_exit)]
+    pub fn file_exec_unused_closed(&self) -> bool {
+        self.file_exec.phase == 4 && self.file_exec.held.is_none()
+    }
     pub(super) fn release_file_exec(&mut self) -> Result<(), Error> {
         if let Some(held) = self.file_exec.held.take() {
-            self.file_exec.phase = 3;
+            #[cfg(native_zsh_idle_exit)]
+            let validated = self.file_exec.phase == 1;
+            self.file_exec.phase = 3; // An unknown or failed close is never replayed.
             self.descriptions.source.client.close(held)?;
+            #[cfg(native_zsh_idle_exit)]
+            if validated {
+                self.file_exec.phase = 4;
+            }
         }
         Ok(())
     }

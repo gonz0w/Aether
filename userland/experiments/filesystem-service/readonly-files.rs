@@ -31,6 +31,8 @@ mod file_exec;
     not(all(native_zsh_file_exec, native_zsh_process, native_zsh_filesystem))
 ))]
 compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
+#[cfg(all(native_zsh_idle_exit, not(native_zsh_cold_reopen)))]
+compile_error!("idle exit requires the selected cold reopen profile");
 pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_write) {
     b"AEFP0005"
 } else {
