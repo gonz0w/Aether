@@ -425,3 +425,19 @@ delivery while issue141 stays open. This explicit decision is not a full-host
 pass or sustained manual/authenticated login, arbitrary exec, general write/reboot
 recovery, packages, assembled-system or R1 acceptance. Routine work/delivery retain
 standing authority; new consequential design/resource/gate decisions still stop.
+
+## Selected cold Zsh idle and clean exit — 2026-11-06
+
+Cam approved the [reviewed issue152 proposal](https://github.com/gonz0w/Aether/issues/152#issuecomment-6667792475)
+in the [recorded decision](https://github.com/gonz0w/Aether/issues/152#issuecomment-6685881337).
+Select the default-off Rust Owner cold-reopen variant. A clean no-child exit
+requires the pristine child ledger and a confirmed close of the unused helper.
+The existing exact settled-helper result, authority and resource limits apply.
+
+The [34-byte serial workload](https://github.com/gonz0w/Aether/issues/152#issuecomment-6685904616)
+uses one fresh qualifying writer and one cold trial on the exact stopped writer
+disk, with a five-second idle interval. Existing no-network, finite limits and
+stop rules apply. After fresh static fits, guarded native evidence may establish
+the remaining scoped workload fit. Focused affected checks, separate review,
+successful trial and required CI may qualify this checkpoint while issue141
+remains open. Sustained manual login and assembled R1 have separate gates.

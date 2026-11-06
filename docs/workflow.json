@@ -2705,6 +2705,16 @@
       "invariants": "Closed cold composition reopens actual existing objects without client/bootstrap mutations. C/Rust canonical-zero success/failure receipts and exact-zero engine completion, original writable OpenZFS import/export/order/cleanup. Sole Owner retains current-epoch READ object after complete bytes/type/size/EOF/post-stat checks; existing fresh acquisition closes before0x2300B/C004. No names/hash/mode authority, WRITE aliases, repair/replay, fallback, new syscall/capability/quota; old writer exactseven preserved. Only the fully known clean final-zero result omits selected-mutation ORDERED; dirty/unknown/incomplete records retain conservative ordering/failure, and original exporter/lifecycle always run.",
       "oracle": "Actual fresh VM consumes persisted terminfo/helper from stopped/exported writer disk; helper23/status23/prompt, normal parent/engine export, MODE restore, three reclaims and known holders/client cleanup. Host predicates/artifact identity bind zero mutations; no independent raw receipt/count telemetry or bitwise unchanged-media claim. Qualified corrected fixed pair:writer37.856s/42requests then cold25.628s/38requests,helper23/status23/prompt/normalexport/MODE0/21cleanup/3reclaims,knownhostcleanup. First cold engine5 failure retained; no failed media replay.",
       "gaps": "Owner-approved scoped150 fit/delivery gate leaves141 open. Current host checks/fits do not qualify cold execution by themselves. Sustained/manual/authenticated login, arbitrary exec, packages, general recovery and R1 remain separate; private dependencies are not a public build distribution."
+    },
+    {
+      "id": "zsh-idle-exit",
+      "reference": "userland/docs/ZSH-FILESYSTEM.md",
+      "owner": "Aether sys-init and userland, issue152",
+      "budget_seconds": 300,
+      "command": "Focused Rust Files and Runtime checks; private zsh-owner-fit.py --idle-exit and zsh-witness.py --idle-exit; reviewed writer followed by zsh_run.py --idle-exit on the exact stopped disk.",
+      "invariants": "Default-off cold-only Rust Owner; clean no-child exit requires a pristine child lane and known unused-helper close. Existing helper completion, kernel quiescence, OpenZFS export, mode restoration, limits and authority apply.",
+      "oracle": "34 once-only serial input bytes; positive PID and saved value after at least five seconds idle, then exit0, verified no child, normal app and engine terminal, two reclaims, halt/PASS and known host cleanup.",
+      "gaps": "Issue152 has a scoped focused gate while issue141 stays open. Sustained manual session, authentication, native packages and assembled R1 remain separate."
     }
   ]
 }

@@ -1205,3 +1205,34 @@ fn cold_reopen_post_stat_and_retained_helper_close_are_required() {
     assert_eq!(h.files().cleanup(), Some([0; 2]));
     assert_eq!(h.state.lock().unwrap().mutations, 0);
 }
+
+#[cfg(native_zsh_idle_exit)]
+#[test]
+fn unused_helper_close_requires_the_validated_held_reference_and_known_success() {
+    let image = b"actual persisted executable";
+    for failure in 0..3 {
+        let mut h = Harness::new();
+        assert!(!h.files().file_exec_unused_closed());
+        if failure != 1 {
+            h.state.lock().unwrap().probe = image.to_vec();
+            h.files().reopen_file_exec(image, &mut [0; 4096]).unwrap();
+            assert!(!h.files().file_exec_unused_closed());
+        }
+        if failure == 2 {
+            let mut seen = h.seen.lock().unwrap();
+            seen.fail_close = seen.close_replies + 1;
+        }
+        let result = h.files().disconnect_checked(|_| Ok(()));
+        assert_eq!(h.files().file_exec_unused_closed(), failure == 0);
+        assert!(!h.files().file_exec_consumed());
+        if failure == 2 {
+            assert!(result.is_err());
+            let requests = h.requests();
+            assert!(h.files().disconnect_checked(|_| Ok(())).is_err());
+            assert_eq!(h.requests(), requests);
+        } else {
+            assert_eq!(result, Ok([0; 2]));
+        }
+        assert_eq!(h.state.lock().unwrap().mutations, 0);
+    }
+}

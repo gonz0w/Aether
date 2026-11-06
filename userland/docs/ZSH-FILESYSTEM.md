@@ -605,3 +605,21 @@ python3 -B userland/experiments/filesystem-service/check-home-cold-reopen.py --i
 Omit `--ordering-only` for the selected bootstrap/result/closed-profile host checks.
 Manifest-loading failures return2; later tool/setup/check failures return1. Host
 success alone is not native evidence.
+
+## Cold idle and clean exit
+
+[Issue152](https://github.com/gonz0w/Aether/issues/152) selects a default-off
+`native_zsh_idle_exit` Rust Owner variant of cold reopen. The Owner validates
+the same persisted terminfo and sealed helper. When Zsh exits normally after
+builtins alone, the Owner requires the pristine child lane, a confirmed close
+of the unused helper, normal engine export, terminal mode restoration and
+reclamation of both processes. The v5 Owner diagnostic identifies the
+no-child outcome. The existing v4 diagnostic requires the settled helper.
+The kernel still checks quiescence before halt.
+
+The bounded trial sends two builtin commands five seconds apart, compares the
+shell PID and a stored value, and sends `exit 0` after the next prompt. The
+trial keeps the existing 6000-tick guest limit, watchdogs, requests, grants,
+memory bounds and disposable disk handling. The trial uses the stopped disk of
+a fresh accepted writer. The test exercises delayed serial input within that
+window. Sustained manual sessions and R1 require their own acceptance.

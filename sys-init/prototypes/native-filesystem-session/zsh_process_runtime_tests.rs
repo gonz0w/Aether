@@ -1583,3 +1583,82 @@ fn file_exec_v4_requires_actual_ready_and_exact_closed_acquisition() {
             .any(|bytes| bytes == b"child_status=5888")
     );
 }
+
+#[cfg(native_zsh_cold_reopen)]
+#[test]
+fn only_idle_exit_profile_accepts_a_pristine_no_child_shutdown() {
+    let mut h = Fixture::new();
+    h.prepare_healthy_oracle();
+    let result = h.runtime.write_native_oracle(&mut [0; 4096]);
+    let host = h.host.0.borrow();
+    if cfg!(native_zsh_idle_exit) {
+        assert_eq!(result, Ok(()), "PRISTINE_UNUSED_HELPER_EXIT");
+        let expected = std::format!(
+            "\nAETHER ZSH OWNER v=5 requests={:02} child=none helper_unused_closed=1 mode_cleanup=0\n",
+            h.runtime.filesystem_requests
+        );
+        assert_eq!(host.serial_output, expected.as_bytes());
+    } else {
+        assert_eq!(result, Err(-5));
+        assert!(host.serial_output.is_empty());
+    }
+}
+
+#[cfg(native_zsh_idle_exit)]
+#[test]
+fn idle_exit_rejects_a_used_or_incomplete_child_lane() {
+    let mut h = Fixture::new();
+    h.host.0.borrow_mut().copy_result = -11;
+    let raw = h.snapshot(false);
+    let mut work = [0; 4096];
+    zsh_process_frames::encode_fork(
+        &raw,
+        h.runtime.zsh_expected(false).unwrap(),
+        1,
+        (&mut work[..368]).try_into().unwrap(),
+    )
+    .unwrap();
+    h.runtime.zsh_fork(&mut work).unwrap();
+    assert!(h.runtime.process.binding.is_none());
+    assert_eq!(h.runtime.process.epoch, 0);
+    h.prepare_healthy_oracle();
+    assert_eq!(h.runtime.write_native_oracle(&mut work), Err(-5));
+    assert!(h.host.0.borrow().serial_output.is_empty());
+
+    let mut h = Fixture::new();
+    h.prepare_healthy_oracle();
+    for dirty in 0..6 {
+        h.runtime.process = ZshProcess::new();
+        match dirty {
+            0 => h.runtime.process.at = 1,
+            1 => h.runtime.process.parent_at = 1,
+            2 => h.runtime.process.wait_status = Some(5888),
+            3 => h.runtime.process.exec_ready = true,
+            4 => h.runtime.process.lease.contain(),
+            _ => h
+                .runtime
+                .process
+                .children
+                .admit(ChildIdentity::admitted(2, 1, CHILD).unwrap())
+                .unwrap(),
+        }
+        assert_eq!(
+            h.runtime.write_native_oracle(&mut work),
+            Err(-5),
+            "dirty lane {dirty}"
+        );
+    }
+    assert!(h.host.0.borrow().serial_output.is_empty());
+}
+
+#[cfg(native_zsh_idle_exit)]
+#[test]
+fn idle_exit_rejects_unconfirmed_engine_terminal_after_other_healthy_cleanup() {
+    let mut h = Fixture::new();
+    h.prepare_healthy_oracle();
+    for terminal in [None, Some((6, 1, 1)), Some((1, 1, 2))] {
+        h.runtime.observed_terminal[1] = terminal;
+        assert_eq!(h.runtime.write_native_oracle(&mut [0; 4096]), Err(-5));
+    }
+    assert!(h.host.0.borrow().serial_output.is_empty());
+}
