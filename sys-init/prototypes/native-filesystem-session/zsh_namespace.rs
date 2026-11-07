@@ -75,6 +75,10 @@ impl<K: AppControl> Namespace<K> {
     pub(super) fn verify_disconnect(&mut self, engine: u64) -> Result<(), Error> {
         loop {
             self.before().map_err(Error::Transport)?;
+            // SAFETY: before() validated the live, exclusive arm loan. No
+            // Runtime access or disarm occurs before this synchronous query.
+            #[cfg(native_zsh_operator)]
+            let sequence = unsafe { (&*self.bound).sequence };
             let state = self.kernel.ctl(0x20001, engine, 0);
             if state.0 > 0 {
                 if state.0 != 1 || state.2 != 1 {
@@ -93,9 +97,11 @@ impl<K: AppControl> Namespace<K> {
             unsafe {
                 let bound = &mut *self.bound;
                 bound.before(&mut self.kernel).map_err(Error::Transport)?;
-                let parked = self
-                    .kernel
-                    .park_events(bound.sequence, Some(bound.deadline));
+                #[cfg(not(native_zsh_operator))]
+                let sequence = bound.sequence;
+                let parked = self.kernel.park_events(sequence, Some(bound.deadline));
+                #[cfg(native_zsh_operator)]
+                bound.wake(parked, sequence).map_err(Error::Transport)?;
                 if parked.0 != 0 {
                     return Err(Error::Transport(if parked.0 < 0 { parked.0 } else { -5 }));
                 }

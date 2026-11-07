@@ -204,6 +204,22 @@ struct Host {
     parent_gone: bool,
     stop_result: Status,
     stop_observation: Status,
+    #[cfg(native_zsh_operator)]
+    event: Status,
+    #[cfg(native_zsh_operator)]
+    observations: VecDeque<Status>,
+    #[cfg(native_zsh_operator)]
+    parks: Vec<(u64, u64)>,
+    #[cfg(native_zsh_operator)]
+    wake: Status,
+    #[cfg(native_zsh_operator)]
+    engine_state: Status,
+    #[cfg(native_zsh_operator)]
+    parent_state: Option<Status>,
+    #[cfg(native_zsh_operator)]
+    output_blocked: bool,
+    #[cfg(native_zsh_operator)]
+    export_on_park: bool,
     serial_reads: usize,
     serial_output: Vec<u8>,
     fail_write: Option<(u64, usize)>,
@@ -220,6 +236,10 @@ struct Mock(Rc<RefCell<Host>>);
 impl Kernel for Mock {
     fn transfer(&mut self, cap: u64, bytes: &mut [u8], writing: bool) -> i64 {
         let mut h = self.0.borrow_mut();
+        #[cfg(native_zsh_operator)]
+        if h.export_on_park && h.last_namespace_opcode == 4 && bytes.len() == 1 {
+            return if cap == NSR && !writing { 0 } else { -32 };
+        }
         if cap == NSW && writing {
             let at = h.send_at;
             h.send[at..at + bytes.len()].copy_from_slice(bytes);
@@ -284,15 +304,48 @@ impl Kernel for Mock {
 }
 impl Control for Mock {
     fn observe_events(&mut self) -> Status {
+        #[cfg(native_zsh_operator)]
+        {
+            let mut h = self.0.borrow_mut();
+            if let Some(next) = h.observations.pop_front() {
+                h.event = next;
+            }
+            return h.event;
+        }
+        #[cfg(not(native_zsh_operator))]
         (0, 1, 1)
     }
-    fn park_events(&mut self, _: u64, _: Option<Deadline>) -> Status {
-        (0, 1, 1)
+    fn park_events(&mut self, sequence: u64, deadline: Option<Deadline>) -> Status {
+        #[cfg(native_zsh_operator)]
+        {
+            let mut h = self.0.borrow_mut();
+            h.parks.push((sequence, deadline.unwrap().get()));
+            if h.wake.0 == 0 {
+                h.event = h.wake;
+            }
+            if h.export_on_park {
+                h.engine_state = (1, 1, 1);
+            }
+            return h.wake;
+        }
+        #[cfg(not(native_zsh_operator))]
+        {
+            let _ = (sequence, deadline);
+            (0, 1, 1)
+        }
     }
     fn ctl(&mut self, op: u64, cap: u64, arg: u64) -> Status {
         let mut h = self.0.borrow_mut();
         h.calls.push((op, cap, arg));
         match op {
+            #[cfg(native_zsh_operator)]
+            0x20001 if cap == 0xb0000101 => {
+                let state = h.engine_state;
+                if h.export_on_park {
+                    h.event = (0, 8, 2);
+                }
+                state
+            }
             0x24000 => {
                 let id = h.pair;
                 h.pair += 1;
@@ -301,6 +354,10 @@ impl Control for Mock {
             0x23004 => (101, 0, 0),
             0x23005 | 0x1fffe => (0, 0, 0),
             0x20001 if cap == PARENT => {
+                #[cfg(native_zsh_operator)]
+                if let Some(state) = h.parent_state {
+                    return state;
+                }
                 if h.parent_gone {
                     (-9, 0, 0)
                 } else if h.parent_terminal {
@@ -358,6 +415,10 @@ impl Control for Mock {
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
         let mut h = self.0.borrow_mut();
         if writing {
+            #[cfg(native_zsh_operator)]
+            if h.output_blocked {
+                return -11;
+            }
             h.serial_output.extend_from_slice(bytes);
             bytes.len() as i64
         } else {
@@ -482,6 +543,22 @@ impl Fixture {
             parent_gone: false,
             stop_result: (0, 0, 0),
             stop_observation: (144, 0, 3),
+            #[cfg(native_zsh_operator)]
+            event: (0, 1, 1),
+            #[cfg(native_zsh_operator)]
+            observations: VecDeque::new(),
+            #[cfg(native_zsh_operator)]
+            parks: Vec::new(),
+            #[cfg(native_zsh_operator)]
+            wake: (0, 1, 1),
+            #[cfg(native_zsh_operator)]
+            engine_state: (0, 1, 0),
+            #[cfg(native_zsh_operator)]
+            parent_state: None,
+            #[cfg(native_zsh_operator)]
+            output_blocked: false,
+            #[cfg(native_zsh_operator)]
+            export_on_park: false,
             serial_reads: 0,
             serial_output: Vec::new(),
             fail_write: None,
@@ -1661,4 +1738,196 @@ fn idle_exit_rejects_unconfirmed_engine_terminal_after_other_healthy_cleanup() {
         assert_eq!(h.runtime.write_native_oracle(&mut [0; 4096]), Err(-5));
     }
     assert!(h.host.0.borrow().serial_output.is_empty());
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_phase_changes_check_the_outgoing_exclusive_deadline() {
+    let mut h = Fixture::new();
+    h.host.0.borrow_mut().event = (0, 1, 5999);
+    h.runtime.operator_dispatch().unwrap();
+    assert_eq!(h.runtime.bound.deadline.get(), 24000);
+    h.host.0.borrow_mut().event = (0, 2, 23999);
+    h.runtime.operator_teardown().unwrap();
+    assert_eq!(h.runtime.bound.deadline.get(), 29999);
+    for (deadline, tick, teardown) in [(6000, 6000, false), (24000, 24000, true)] {
+        let mut h = Fixture::new();
+        h.runtime.bound.deadline = Deadline::after(0, deadline).unwrap();
+        h.host.0.borrow_mut().event = (0, 1, tick);
+        assert_eq!(
+            if teardown {
+                h.runtime.operator_teardown()
+            } else {
+                h.runtime.operator_dispatch()
+            },
+            Err(-110)
+        );
+        assert_eq!(h.runtime.bound.deadline.get(), deadline);
+    }
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_pending_read_parks_with_the_pre_rescan_sequence() {
+    let mut h = Fixture::new();
+    h.runtime.engine = 0xb0000101;
+    h.runtime.process.parent_at = 32;
+    h.host
+        .0
+        .borrow_mut()
+        .observations
+        .extend([(0, 7, 10), (0, 8, 11)]);
+    h.host.0.borrow_mut().wake = (0, 8, 7001);
+    h.runtime.bound.deadline = Deadline::after(0, 24000).unwrap();
+    let before = h.runtime.bound.left;
+    assert!(
+        !h.runtime
+            .zsh_stream(false, &frame(1, 0x7a000001, 0, 1))
+            .unwrap()
+    );
+    assert_eq!(h.host.0.borrow().parks, [(7, 24000)]);
+    assert_eq!(h.runtime.bound.last_tick, 7001);
+    assert!(
+        before - h.runtime.bound.left < 40,
+        "idle wake does not spend per idle tick"
+    );
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_pending_read_rejects_bad_wakes_or_peer_terminal() {
+    for wake in [
+        (-110, 1, 1),
+        (1, 1, 1),
+        (0, 0, 1),
+        (0, 1, 0),
+        (0, u64::MAX, 1),
+        (0, 1, 24000),
+    ] {
+        let mut h = Fixture::new();
+        h.runtime.engine = 0xb0000101;
+        h.runtime.process.parent_at = 32;
+        h.runtime.bound.deadline = Deadline::after(0, 24000).unwrap();
+        h.host.0.borrow_mut().wake = wake;
+        assert!(
+            h.runtime
+                .zsh_stream(false, &frame(1, 0x7a000001, 0, 1))
+                .is_err(),
+            "wake {wake:?}"
+        );
+    }
+    for parent in [true, false] {
+        let mut h = Fixture::new();
+        h.runtime.engine = 0xb0000101;
+        h.runtime.process.parent_at = 32;
+        if parent {
+            h.host.0.borrow_mut().parent_state = Some((1, 1, 1));
+        } else {
+            h.host.0.borrow_mut().engine_state = (1, 1, 1);
+        }
+        assert_eq!(
+            h.runtime.zsh_stream(false, &frame(1, 0x7a000001, 0, 1)),
+            Err(-5)
+        );
+        assert!(h.host.0.borrow().parks.is_empty());
+    }
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_invalid_or_partial_reads_do_not_park() {
+    for (reference, n, at) in [
+        (0x7a000002, 1, 32),
+        (0x7a000001, 0, 32),
+        (0x7a000001, 1, 16),
+    ] {
+        let mut h = Fixture::new();
+        h.runtime.engine = 0xb0000101;
+        h.runtime.process.parent_at = at;
+        let _ = h
+            .runtime
+            .zsh_stream(false, &frame(1, reference, 0, n))
+            .unwrap();
+        assert!(h.host.0.borrow().parks.is_empty());
+    }
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_pending_output_keeps_the_timed_transmit_path() {
+    let mut h = Fixture::new();
+    h.runtime.engine = 0xb0000101;
+    h.runtime.process.parent_at = 32;
+    let (terminal, refs, caller) = h.runtime.tty.as_mut().unwrap();
+    let mut saved = terminal.snapshot(*caller, &refs.stdin).unwrap();
+    terminal
+        .apply_now(
+            *caller,
+            &refs.stdin,
+            &mut saved,
+            serial_tty::ModeRequest {
+                mode: Mode::CANONICAL,
+                action: serial_tty::ApplyWhen::Now,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        terminal.write(*caller, &refs.stdout, b"x", |_, _| Completion {
+            count: 0,
+            stop: Stop::WouldBlock,
+        }),
+        Ok(1)
+    );
+    assert!(terminal.output_pending());
+    h.host.0.borrow_mut().output_blocked = true;
+    assert!(
+        !h.runtime
+            .zsh_stream(false, &frame(1, 0x7a000001, 0, 1))
+            .unwrap()
+    );
+    assert!(h.host.0.borrow().parks.is_empty());
+    assert_eq!(h.host.0.borrow().serial_reads, 0);
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_export_wait_keeps_the_pre_terminal_query_sequence() {
+    let mut h = Fixture::new();
+    h.runtime.bound.deadline = Deadline::after(0, 24000).unwrap();
+    h.host.0.borrow_mut().event = (0, 7, 1);
+    h.host.0.borrow_mut().wake = (0, 8, 2);
+    h.host.0.borrow_mut().export_on_park = true;
+    let engine = 0xb0000101;
+    h.runtime
+        .with_files(|files| {
+            files
+                .disconnect_checked(|io| io.verify_disconnect(engine))
+                .map(|_| ())
+        })
+        .unwrap();
+    assert_eq!(h.host.0.borrow().parks, [(7, 24000)]);
+}
+
+#[cfg(native_zsh_operator)]
+#[test]
+fn operator_pending_read_rejects_new_frame_and_terminal_after_wake() {
+    let mut h = Fixture::new();
+    h.runtime.engine = 0xb0000101;
+    h.runtime.process.parent_at = 32;
+    h.feed(PR, b"x");
+    assert_eq!(
+        h.runtime.zsh_stream(false, &frame(1, 0x7a000001, 0, 1)),
+        Err(-5)
+    );
+    assert!(h.host.0.borrow().parks.is_empty());
+    let mut h = Fixture::new();
+    h.runtime.engine = 0xb0000101;
+    h.runtime.process.parent_at = 32;
+    h.host.0.borrow_mut().export_on_park = true;
+    h.host.0.borrow_mut().wake = (0, 8, 2);
+    assert_eq!(
+        h.runtime.zsh_stream(false, &frame(1, 0x7a000001, 0, 1)),
+        Err(-5)
+    );
+    assert_eq!(h.host.0.borrow().parks.len(), 1);
 }

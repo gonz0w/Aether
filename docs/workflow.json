@@ -2715,6 +2715,16 @@
       "invariants": "Default-off cold-only Rust Owner; clean no-child exit requires a pristine child lane and known unused-helper close. Existing helper completion, kernel quiescence, OpenZFS export, mode restoration, limits and authority apply.",
       "oracle": "34 once-only serial input bytes; positive PID and saved value after at least five seconds idle, then exit0, verified no child, normal app and engine terminal, two reclaims, halt/PASS and known host cleanup.",
       "gaps": "Issue152 has a scoped focused gate while issue141 stays open. Sustained manual session, authentication, native packages and assembled R1 remain separate."
+    },
+    {
+      "id": "zsh-serial-operator",
+      "reference": "userland/docs/ZSH-SERIAL.md",
+      "owner": "Aether sys-init/userland/kernel, issue154",
+      "budget_seconds": 360,
+      "command": "Focused native tick/build and Rust Owner phase/wake tests; private --operator fits/images, reviewed writer then foreground cold trial. --operator-manual binds local human attachment.",
+      "invariants": "Closed operator profile; exclusive6000/24000/30000 guest phases,330s/360s cold host bounds, pre-rescan event sequence, checked peers/RX/TX/export, private single foreground display and one-use stopped writer disk.",
+      "oracle": "Foreground typed PID/value survives65s post-prompt idle; v5 unused-helper closure, normal export/MODE,14cleanup/two reclaims,halt>6000 with>=100idle ticks and known original-process cleanup.",
+      "gaps": "Scoped154 focused checkpoint leaves141 open. Authentication, broader command/package and assembled R1 gates are separate."
     }
   ]
 }

@@ -441,3 +441,21 @@ stop rules apply. After fresh static fits, guarded native evidence may establish
 the remaining scoped workload fit. Focused affected checks, separate review,
 successful trial and required CI may qualify this checkpoint while issue141
 remains open. Sustained manual login and assembled R1 have separate gates.
+
+## Selected serial operator session — 2026-11-06
+
+Cam approved the [reviewed issue154 design](https://github.com/gonz0w/Aether/issues/154#issuecomment-6697115453)
+in the milestone chat and directed implementation through foreground serial trial
+and delivery. Select the default-off operator composition with exclusive guest
+limits of 6000 startup ticks, 24000 dispatch ticks and 30000 total ticks. Check
+the outgoing phase before each transition. The existing Owner event interface
+may park authenticated pending terminal reads using the pre-rescan sequence and
+checked parent/engine liveness. Retain the existing resource quotas.
+
+Use one local foreground Screen display on the private serial endpoint with
+host command escapes disabled. The provisioning writer keeps 60s workload and
+120s total. Cold operator execution has 330s workload and 360s total, with the
+reviewed one-use disk, stop and capture rules. Fresh fits, focused affected checks,
+separate review, a successful paired foreground trial with 65s idle and required
+CI may qualify this checkpoint while issue141 remains open. Include the reviewed
+local preparation and attachment instructions.

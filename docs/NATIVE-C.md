@@ -4736,3 +4736,27 @@ export, mode restoration,21 cleanup phases and three reclamations passed in
 and five Screen clients have known cleanup. This qualifies the approved fixed
 profile only; general execution, cold boot-to-program, login, packages and R1
 remain separate. Full-root coverage remains open in issue141.
+
+### Fixed serial Zsh operator profile
+
+Issue154 selects default-off `-Dnative-zsh-operator=true` on the private BSP
+file-exec composition. The kernel enforces an exclusive 30000 delivered-tick
+ceiling. The Rust Owner enforces startup before tick6000, shell dispatch before
+tick24000, and teardown before min(normal-exit observation+6000,30000). Each
+transition checks the outgoing deadline first. All quotas and ownership rules
+continue to apply.
+
+The Owner uses its existing observe/park interface for authenticated pending
+stdin reads after real serial would-block. It retains the sequence from before
+the final rescan, checks exact parent/engine liveness and pending output, and
+rescans after a checked wake. The selected export wait retains its pre-query
+sequence. Host expiry and kernel tick exhaustion are failed runs.
+
+Focused host checks run from the repository root:
+
+```sh
+python3 -B -m unittest tests.test_native_tick_assertion tests.test_native_zsh_operator
+```
+
+The private SDK workspace supplies the matched Owner/engine fits and foreground
+serial trial. See [serial Zsh](../userland/docs/ZSH-SERIAL.md) for operator use.
