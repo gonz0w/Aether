@@ -661,7 +661,7 @@ var clock_scan_ticks: usize = 0;
 var clock_scan_max_contexts: usize = 0;
 var clock_scan_max_ns: u64 = 0;
 var clock_scan_valid = true;
-const native_tick_limit: usize = if (@import("build_options").native_service_zpl_budget) 6000 else 3000;
+const native_tick_limit: usize = if (@hasDecl(@import("build_options"), "native_zsh_operator") and @import("build_options").native_zsh_operator) 30000 else if (@import("build_options").native_service_zpl_budget) 6000 else 3000;
 fn nativeTick() void {
     total_ticks = std.math.add(usize, total_ticks, 1) catch @panic("native clock exhausted");
     if (combined_profile or (!lifecycleEnabled() and !storageLifetime())) {

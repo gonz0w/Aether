@@ -61,3 +61,10 @@ no-child path. It records the request count, no child, successful unused-helper
 close and restored mode. The settled helper retains its v4 row. The private
 fixed-input qualifier records staged input and idle timing in its JSON evidence
 and keeps the existing UART markers, capture limit and output conventions.
+
+The issue154 local serial session uses the existing VT100 terminal and v5/v4
+Owner diagnostics. Its private supervisor prints a shell-quoted local attachment
+command to stderr, monitors the original processes and writes final JSON to
+stdout. The foreground display disables Screen host command escapes. The
+operator exits Zsh with `exit 0`; timeout, detach and unknown cleanup are
+reported as failures. Existing capture and emergency diagnostic conventions apply.

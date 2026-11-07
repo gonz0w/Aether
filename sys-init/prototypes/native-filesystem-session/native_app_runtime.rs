@@ -134,6 +134,19 @@ impl Bound {
         self.check(kernel)?;
         self.spend()
     }
+    #[cfg(native_zsh_operator)]
+    fn wake(&mut self, raw: Status, sequence: u64) -> Result<(), i64> {
+        let observed = Observation::checked(raw)?;
+        if observed.tick < self.last_tick
+            || observed.sequence < self.sequence
+            || observed.sequence < sequence
+        {
+            return Err(-5);
+        }
+        self.sequence = self.deadline.check(raw)?;
+        self.last_tick = observed.tick;
+        Ok(())
+    }
     fn reserve(&mut self) -> Result<(), i64> {
         if self.reserved == 0 {
             self.failed = -5;
@@ -167,6 +180,8 @@ compile_error!("Zsh file exec and home write are separate closed profiles");
 compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
 #[cfg(all(native_zsh_idle_exit, not(native_zsh_cold_reopen)))]
 compile_error!("idle exit requires the selected cold reopen profile");
+#[cfg(all(native_zsh_operator, not(native_zsh_idle_exit)))]
+compile_error!("operator session requires the selected idle exit profile");
 
 #[cfg(native_zsh_process)]
 struct ZshProcess<K: AppControl> {
@@ -948,6 +963,8 @@ impl<K: AppControl> Runtime<K> {
                                         kernel,
                                         bound,
                                         target: self.app,
+                                        #[cfg(native_zsh_operator)]
+                                        rx_empty: &mut false,
                                     },
                                 );
                                 #[cfg(not(native_tty_signal_probe))]
@@ -1807,6 +1824,24 @@ impl<K: AppControl> Runtime<K> {
     fn zsh_stream(&mut self, child: bool, frame: &[u8; 32]) -> Result<bool, i64> {
         let op = u32_at(frame, 0);
         let selector = u32_at(frame, 8) as usize;
+        #[cfg(native_zsh_operator)]
+        let idle_sequence = if !child
+            && op == 1
+            && selector == 0
+            && self.process.parent_at == 32
+            && self.process.at == 0
+            && self.process.binding.is_none()
+            && self.process.lease == ReadLease::Parent
+        {
+            // Preserve this observation across all final rescan calls. A newer
+            // Bound check must not absorb an event before park registration.
+            self.bound.check(&mut self.kernel)?;
+            let sequence = self.bound.sequence;
+            self.operator_peers_live()?;
+            Some(sequence)
+        } else {
+            None
+        };
         if op == 68 {
             if child || frame[12..] != [0; 20] {
                 return Err(-22);
@@ -1888,6 +1923,8 @@ impl<K: AppControl> Runtime<K> {
             _ => refs.stderr,
         };
         let mut unknown = false;
+        #[cfg(native_zsh_operator)]
+        let mut rx_empty = false;
         let mut plain = *frame;
         let eligible = if op == 1 {
             if frame[16] > 1 || frame[17..] != [0; 15] {
@@ -1922,6 +1959,8 @@ impl<K: AppControl> Runtime<K> {
                             kernel,
                             bound,
                             target: self.app,
+                            #[cfg(native_zsh_operator)]
+                            rx_empty: &mut rx_empty,
                         },
                     )
                     .map(|n| match n {
@@ -1942,7 +1981,32 @@ impl<K: AppControl> Runtime<K> {
             return Err(-5);
         }
         match outcome {
-            Outcome::Pending => Ok(false),
+            Outcome::Pending => {
+                #[cfg(native_zsh_operator)]
+                if rx_empty && !self.tty.as_ref().ok_or(-9)?.0.output_pending() {
+                    if let Some(sequence) = idle_sequence {
+                        self.operator_peers_live()?;
+                        self.bound.before(&mut self.kernel)?;
+                        // A synchronous pending request permits no next frame.
+                        // EOF or unexpected bytes cannot be hidden by caching it.
+                        let mut byte = [0];
+                        if self
+                            .endpoints
+                            .as_mut()
+                            .ok_or(-9)?
+                            .transfer(false, &mut byte)
+                            != -11
+                        {
+                            return Err(-5);
+                        }
+                        self.bound.before(&mut self.kernel)?;
+                        let wake = self.kernel.park_events(sequence, Some(self.bound.deadline));
+                        self.bound.wake(wake, sequence)?;
+                        self.operator_peers_live()?;
+                    }
+                }
+                Ok(false)
+            }
             Outcome::Reply(mut reply) => {
                 self.zsh_io(child, &mut reply, true)?;
                 if !child && op == 3 && selector < 3 && u32_at(&reply, 0) == 0 {
@@ -2109,6 +2173,40 @@ impl<K: AppControl> Runtime<K> {
         }
     }
 
+    #[cfg(native_zsh_operator)]
+    fn operator_peers_live(&mut self) -> Result<(), i64> {
+        let parent = self.ctl(0x20001, self.app, 0)?;
+        let engine = self.ctl(0x20001, self.engine, 0)?;
+        if parent.0 != 0 || parent.1 > 1 || parent.2 != 0 || engine != (0, 1, 0) {
+            return Err(-5);
+        }
+        Ok(())
+    }
+    #[cfg(native_zsh_operator)]
+    fn operator_dispatch(&mut self) -> Result<(), i64> {
+        self.bound.check(&mut self.kernel)?;
+        if self.bound.deadline.get() != WRITER_DEADLINE_TICK {
+            return Err(-5);
+        }
+        self.bound.deadline = Deadline::after(0, 24_000)?;
+        Ok(())
+    }
+    #[cfg(native_zsh_operator)]
+    fn operator_teardown(&mut self) -> Result<(), i64> {
+        self.bound.check(&mut self.kernel)?;
+        if self.bound.deadline.get() != 24_000 {
+            return Err(-5);
+        }
+        let end = self
+            .bound
+            .last_tick
+            .checked_add(6_000)
+            .ok_or(-22)?
+            .min(30_000);
+        self.bound.deadline = Deadline::after(0, end)?;
+        Ok(())
+    }
+
     fn terminal_zero(&mut self, handle: u64) -> Result<(), i64> {
         loop {
             let state = self.ctl(0x20001, handle, 0)?;
@@ -2150,8 +2248,12 @@ impl<K: AppControl> Runtime<K> {
     }
     fn run_inner(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
         self.provision(workspace)?;
+        #[cfg(native_zsh_operator)]
+        self.operator_dispatch()?;
         while self.request(workspace)? {}
         self.terminal_zero(self.app)?;
+        #[cfg(native_zsh_operator)]
+        self.operator_teardown()?;
         #[cfg(native_zsh_process)]
         {
             if self.process.binding.is_some() || self.process.lease != ReadLease::Parent {
@@ -2638,6 +2740,8 @@ struct SignalBackend<'a, K> {
     kernel: &'a mut K,
     bound: &'a mut Bound,
     target: u64,
+    #[cfg(native_zsh_operator)]
+    rx_empty: &'a mut bool,
 }
 #[cfg(native_tty_signal_probe)]
 impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
@@ -2648,7 +2752,12 @@ impl<K: AppControl> serial_tty::SignalInput for SignalBackend<'_, K> {
                 stop: serial_tty::Stop::Unknown,
             };
         }
-        completion(self.kernel.serial(false, output), output.len())
+        let raw = self.kernel.serial(false, output);
+        #[cfg(native_zsh_operator)]
+        {
+            *self.rx_empty = raw == -11;
+        }
+        completion(raw, output.len())
     }
     #[cfg(native_tty_canonical_probe)]
     fn write(&mut self, _role: serial_tty::Role, input: &[u8]) -> Completion {

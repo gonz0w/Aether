@@ -623,3 +623,15 @@ trial keeps the existing 6000-tick guest limit, watchdogs, requests, grants,
 memory bounds and disposable disk handling. The trial uses the stopped disk of
 a fresh accepted writer. The test exercises delayed serial input within that
 window. Sustained manual sessions and R1 require their own acceptance.
+
+## Serial operator session
+
+[Issue154](https://github.com/gonz0w/Aether/issues/154) selects the finite
+foreground serial session. The operator Owner requires the complete cold and
+idle-exit composition. It checks startup and normal-exit deadline transitions,
+waits for authenticated input through the existing event interface and retains
+the checked filesystem close/export sequence. Its v5 no-child and v4 settled
+helper results keep their existing meanings.
+
+Use [the local operator procedure](ZSH-SERIAL.md) for preparation, attachment,
+supported commands, clean exit and failure handling.

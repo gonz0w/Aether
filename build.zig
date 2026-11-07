@@ -38,6 +38,8 @@ pub fn build(b: *std.Build) void {
     options.addOption(bool, "native_zsh_external", native_zsh_external);
     const native_zsh_file_exec = b.option(bool, "native-zsh-file-exec", "Private Rust Owner snapshot exec of one sealed filesystem ELF") orelse false;
     options.addOption(bool, "native_zsh_file_exec", native_zsh_file_exec);
+    const native_zsh_operator = b.option(bool, "native-zsh-operator", "Private foreground Zsh operator session with a fixed 30000-tick ceiling") orelse false;
+    options.addOption(bool, "native_zsh_operator", native_zsh_operator);
     const native_zsh_terminfo = b.option(bool, "native-zsh-terminfo", "Private large-Zsh MODE/SIGINT composition with retained Owner namespace custody") orelse false;
     options.addOption(bool, "native_zsh_terminfo", native_zsh_terminfo);
     const block_test = b.option([]const u8, "block-test", "Disposable disk bring-up: write or verify");
@@ -248,6 +250,11 @@ pub fn build(b: *std.Build) void {
         @panic("Zsh external requires its selected terminfo, copy/exec and generation-safe child signal closure");
     if (native_zsh_file_exec and !native_zsh_external)
         @panic("Zsh file exec requires the selected external-Zsh closure");
+    if (native_zsh_operator and (!native_zsh_file_exec or release_artifact or smp or
+        native_c_image == null or !native_fs_session or !native_fs_session_init or
+        !native_fs_owner_data or !native_fs_owner_stack or af09_diagnostic or
+        native_mktemp_reader or service_lifetime))
+        @panic("Zsh operator requires the selected private file-exec closure");
 
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));

@@ -28,7 +28,7 @@ class NativeTickAssertion(unittest.TestCase):
         cls.panic = block((ROOT / 'kernel/main.zig').read_text(), 'fn panicImpl(')
 
     def run_case(self, name, start=2999, sustained=False, session=False,
-                 prefix=None, iterations=1, extended=False, storage=False, combined=False):
+                 prefix=None, iterations=1, extended=False, storage=False, combined=False, operator=False):
         source = '''const std = @import("std");
 const serial = struct {
     fn write(text: []const u8) void { std.debug.print("{s}", .{text}); }
@@ -51,11 +51,11 @@ pub const panic = std.debug.FullPanic(panicImpl);
         path.write_text(source)
         binary = self.output / name
         options = self.output / (name + '-options.zig')
-        options.write_text('pub const native_fs_owner_stack = false;\n' + 'pub const native_service_zpl_budget = ' + str(extended).lower() + ';\npub const native_service_lifetime = ' + str(storage).lower() + ';\n')
+        options.write_text('pub const native_zsh_operator = ' + str(operator).lower() + ';\n' + 'pub const native_fs_owner_stack = false;\n' + 'pub const native_service_zpl_budget = ' + str(extended).lower() + ';\npub const native_service_lifetime = ' + str(storage).lower() + ';\n')
         command = ['zig', 'build-exe', '-OReleaseSafe', '--dep', 'build_options',
                    '-Mroot=' + str(path), '-Mbuild_options=' + str(options),
                    '-femit-bin=' + str(binary), '--cache-dir', str(self.output / 'cache'),
-                   '--global-cache-dir', str(ROOT / '.zig-cache/global')]
+                   '--global-cache-dir', str(self.output / 'global')]
         built = subprocess.run(af09_command(command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, timeout=180)
         self.assertEqual(built.returncode, 0, built.stdout)
@@ -130,3 +130,13 @@ pub const panic = std.debug.FullPanic(panicImpl);
         self.assertEqual((r.returncode,r.stdout),(0,'HOST TICK CONTINUE ticks=12500\n'))
         r=self.run_case('storage-overflow',start='std.math.maxInt(usize)',storage=True)
         self.assertEqual((r.returncode,r.stdout),(93,'AETHER PANIC: native clock exhausted\n'))
+
+    def test_operator_session_has_exclusive30000_ceiling_and_checked_overflow(self):
+        flags = dict(operator=True, combined=True, session=True, extended=True)
+        result = self.run_case('operator-before', start=29998, **flags)
+        self.assertEqual((result.returncode, result.stdout),
+                         (0, 'HOST TICK CONTINUE ticks=29999\n'))
+        self.assert_budget_rejection(self.run_case('operator-at', start=29999, **flags), 30000)
+        result = self.run_case('operator-overflow', start='std.math.maxInt(usize)', **flags)
+        self.assertEqual((result.returncode, result.stdout),
+                         (93, 'AETHER PANIC: native clock exhausted\n'))
