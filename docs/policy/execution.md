@@ -459,3 +459,19 @@ reviewed one-use disk, stop and capture rules. Fresh fits, focused affected chec
 separate review, a successful paired foreground trial with 65s idle and required
 CI may qualify this checkpoint while issue141 remains open. Include the reviewed
 local preparation and attachment instructions.
+
+## Selected interactive serial workload — 2026-11-07
+
+Cam directly approved the [issue156 workload and gates](https://github.com/gonz0w/Aether/issues/156#issuecomment-6707933187).
+Use the existing operator guest for the fixed153-byte editing, real Ctrl-C130,
+persisted-helper23 and clean-exit workload. This adds no target profile,
+interface, authority or numeric limit. A closed host workload selection binds
+its own proposal and approval; old automated and manual sessions stay unchanged.
+
+Reuse only exactly bound unchanged target fits; changed target inputs require
+fresh affected fits. One fresh reviewed writer/cold pair may establish remaining
+scoped workload fit within the existing ceilings. Focused checks, separate
+review, successful actual trial and required protected CI may qualify issue156
+delivery while141 stays open. Keep one-use media, finite attempts, no replay of
+unknown effects and known cleanup. General peaks, job control, authentication,
+packages and assembled R1 remain separate.

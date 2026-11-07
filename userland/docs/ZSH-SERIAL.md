@@ -52,6 +52,27 @@ print -r -- "$$ $x"
 
 Pause, then print the values again. Zsh keeps the same process and variable.
 Screen host command escapes are disabled, so keys belong to the guest console.
+
+The selected interactive checkpoint checks Delete (byte127) in Zsh's default
+Emacs editing mode. Type a wrong character, press Delete, then complete the
+command. To cancel an unfinished line, press Ctrl-C before Enter. The expected
+result is a fresh prompt and status130; the unfinished command must not run.
+Issue156 qualified this combined behavior with automated input through the
+foreground PTY: status130, the same shell PID and saved value, followed by the
+persisted helper and clean exit. This does not claim a human typing trial or
+general job control.
+
+The admitted persisted helper can run once during this session:
+
+```zsh
+(exec -c /home/probe)
+print -r -- $?
+```
+
+It returns23, and Zsh must return to its prompt. The helper has no arguments.
+Its path refers to the exact sealed executable already held by the Rust Owner;
+typing another path does not grant execution authority.
+
 Finish before the typing deadline with:
 
 ```zsh
