@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(AEFD_ZSH_HOME_CWD_EXEC_BINDINGS) &&                                \
+    !defined(AEFD_ZSH_HOME_CWD_BINDINGS)
+#error "home CWD execution requires the closed home CWD provider"
+#endif
 #if defined(AEFD_ZSH_HOME_CWD_BINDINGS) && \
     !defined(AEFD_ZSH_LOGIN_STARTUP_BINDINGS)
 #error "home CWD requires the closed login startup provider"

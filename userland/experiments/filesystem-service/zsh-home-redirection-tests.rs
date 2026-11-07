@@ -389,6 +389,7 @@ fn cwd_root_home_relative_reread_uses_actual_directory_and_preserves_denial() {
     let (r, body) = h.rpc(9, [0; 4], &[]);
     assert_eq!((word(&r, 1), word(&r, 5)), (0, 2));
     assert_eq!(&body[..2], b"/\0");
+    #[cfg(not(native_zsh_home_cwd_exec))]
     assert!(h.files().inherit_child(binding(), child_binding()).is_err());
     assert_eq!(h.state.lock().unwrap().cwd_observations, [1, 2, 2, 1, 1]);
 }
@@ -509,5 +510,146 @@ fn cwd_unexpected_physical_directory_and_padding_are_contained() {
         assert!(!h.files().live(binding()));
         assert!(!h.files().note.cwd_home);
         assert!(!h.files().note_complete());
+    }
+}
+
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn cwd_exec_child_observes_snapshot_independent_of_parent_and_exec() {
+    for home in [false, true] {
+        let mut h = sourced();
+        if home {
+            assert_eq!(word(&h.rpc(13, [0, 5, 0, 0], b"/home").0, 1), 0);
+        }
+        let child = child_binding();
+        h.files().inherit_child(binding(), child).unwrap();
+        let (_, path) = rpc_as(&mut h, child, 9, [0; 4]);
+        assert_eq!(
+            &path[..if home { 6 } else { 2 }],
+            if home { &b"/home\0"[..] } else { &b"/\0"[..] }
+        );
+        let target: &[u8] = if home { b"/" } else { b"/home" };
+        assert_eq!(
+            word(&h.rpc(13, [0, target.len() as u64, 0, 0], target).0, 1),
+            0
+        );
+        let next = h.files().exec_child(child, child.generation + 1).unwrap();
+        let (_, path) = rpc_as(&mut h, next, 9, [0; 4]);
+        assert_eq!(
+            &path[..if home { 6 } else { 2 }],
+            if home { &b"/home\0"[..] } else { &b"/\0"[..] }
+        );
+        h.files().settle_child(next).unwrap();
+        assert!(h.files().child.is_none());
+        assert!(!h.files().live(next));
+    }
+}
+
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn cwd_exec_unsettled_profile_never_admits_child() {
+    for phase in [0, 1, 5, 6, 8] {
+        let mut h = sourced();
+        h.files().note.phase = phase;
+        let prior = h.requests();
+        assert!(h.files().inherit_child(binding(), child_binding()).is_err());
+        assert!(h.files().child.is_none());
+        assert_eq!(h.requests(), prior);
+    }
+    let mut h = sourced();
+    let raw = cwd_frame(&mut h, 9, [0; 4]);
+    let mut work = [0; 4096];
+    let reply = h.files().prepare(binding(), &raw, 0, &mut work).unwrap();
+    assert!(!reply.files.note_fork_ready());
+    reply.delivered();
+    assert!(h.files().note_fork_ready());
+    h.files().inherit_child(binding(), child_binding()).unwrap();
+}
+
+#[cfg(native_zsh_home_cwd_exec)]
+fn cwd_exec_child_rpc(
+    h: &mut Harness,
+    child: Binding,
+    op: u64,
+    body: &[u8],
+) -> ([u8; 64], Vec<u8>) {
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    put(&mut raw, 1, op);
+    put(&mut raw, 2, child.generation);
+    put(&mut raw, 3, h.files().child_next);
+    put(&mut raw, 5, body.len() as u64);
+    let mut work = [0; 4096];
+    work[..body.len()].copy_from_slice(body);
+    let mut reply = h
+        .files()
+        .prepare(child, &raw, if body.is_empty() { 0 } else { 64 }, &mut work)
+        .unwrap();
+    let header = *reply.header();
+    let payload = reply.body_mut().to_vec();
+    reply.delivered();
+    (header, payload)
+}
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn cwd_exec_child_denials_and_observation_errors_preserve_actual_state() {
+    let mut h = sourced();
+    h.rpc(13, [0, 5, 0, 0], b"/home");
+    let child = child_binding();
+    h.files().inherit_child(binding(), child).unwrap();
+    let before = h.requests();
+    for (op, path) in [(13, &b"/"[..]), (1, &b".zprofile"[..]), (1, NOTE)] {
+        let (r, body) = cwd_exec_child_rpc(&mut h, child, op, path);
+        assert!(word(&r, 1) != 0);
+        assert!(body.is_empty());
+    }
+    assert_eq!(h.requests(), before);
+    assert!(h.files().note.child_cwd_home);
+    assert!(h.files().inherit_child(child, child).is_err());
+    h.state.lock().unwrap().cwd_failure = 1;
+    let (r, body) = rpc_as(&mut h, child, 9, [0; 4]);
+    assert_eq!(word(&r, 1) as i64, -13);
+    assert!(body.is_empty());
+    assert!(h.files().live(child));
+    h.state.lock().unwrap().cwd_failure = 0;
+    let (_, body) = rpc_as(&mut h, child, 9, [0; 4]);
+    assert_eq!(&body[..6], b"/home\0");
+    h.files().settle_child(child).unwrap();
+    assert!(!h.files().note.child_cwd_home);
+}
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn cwd_exec_stale_generation_unknown_reply_and_moved_object_retire() {
+    for variant in 0..3 {
+        let mut h = sourced();
+        h.rpc(13, [0, 5, 0, 0], b"/home");
+        let child = child_binding();
+        h.files().inherit_child(binding(), child).unwrap();
+        let mut raw = [0; 64];
+        raw[..8].copy_from_slice(MAGIC);
+        put(&mut raw, 1, 9);
+        put(&mut raw, 2, child.generation);
+        put(&mut raw, 3, 1);
+        let mut work = [0; 4096];
+        match variant {
+            0 => {
+                h.files().exec_child(child, child.generation + 1).unwrap();
+                let before = h.requests();
+                assert_eq!(h.files().body_length(child, &raw), Err(Error::Protocol));
+                assert_eq!(h.requests(), before);
+            }
+            1 => {
+                let reply = h.files().prepare(child, &raw, 0, &mut work).unwrap();
+                assert_eq!(word(reply.header(), 1), 0);
+                drop(reply);
+            }
+            _ => {
+                h.state.lock().unwrap().cwd_failure = 2;
+                assert!(h.files().prepare(child, &raw, 0, &mut work).is_err());
+            }
+        }
+        assert!(h.files().retired);
+        assert!(!h.files().note_complete());
+        assert!(!h.files().live(child));
     }
 }

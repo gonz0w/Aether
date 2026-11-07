@@ -25,6 +25,8 @@ pub(super) struct Note {
     count: u8,
     #[cfg(native_zsh_home_cwd)]
     pub(super) cwd_home: bool,
+    #[cfg(native_zsh_home_cwd_exec)]
+    pub(super) child_cwd_home: bool,
 }
 impl Note {
     pub(super) const fn new() -> Self {
@@ -36,6 +38,8 @@ impl Note {
             count: 0,
             #[cfg(native_zsh_home_cwd)]
             cwd_home: false,
+            #[cfg(native_zsh_home_cwd_exec)]
+            child_cwd_home: false,
         }
     }
 }
@@ -84,7 +88,12 @@ impl<T: Channel> Files<T> {
         workspace: &mut [u8; PAYLOAD],
     ) -> descriptions::Result<usize, Error> {
         workspace.fill(0);
-        if view != 0 {
+        if view != 0
+            && !(cfg!(native_zsh_home_cwd_exec)
+                && view == 1
+                && self.child.is_some()
+                && !self.retired)
+        {
             return Err(Failure::Source(Error::Remote(-13)));
         }
         let client = &mut self.descriptions.source.client;
@@ -131,6 +140,15 @@ impl<T: Channel> Files<T> {
         self.note.cwd_home = home;
         workspace.fill(0);
         Ok(())
+    }
+    /// The new child may inherit only a fully delivered profile read and no
+    /// description/reply obligation. Phase5 and undelivered close8 are not ready.
+    #[cfg(native_zsh_home_cwd_exec)]
+    pub fn note_fork_ready(&self) -> bool {
+        self.live(self.binding)
+            && self.child.is_none()
+            && self.note_complete()
+            && self.note.description == 255
     }
     /// No fork snapshot may copy note descriptions, attempted effects, or live aliases.
     pub fn note_io_active(&self) -> bool {

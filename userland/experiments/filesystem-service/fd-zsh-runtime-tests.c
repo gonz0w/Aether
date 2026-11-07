@@ -14,12 +14,15 @@
 struct fixture {
     struct aefd_fork *f;
     struct aefd_startup_auxv aux;
-    unsigned char startup[336], child[336], sent[672], reply[32];
+    unsigned char startup[336], child[336], sent[672], reply[128];
     size_t offset, written, limit, write_limit;
     long pid, parent;
     uint64_t mask;
     unsigned calls, closes, rebinds, parks, ready, transactions;
     int mode, reenter, rebind_error, park_result;
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+    unsigned cwd_response, file_requests, terminal_writes;
+#endif
 };
 static struct fixture x;
 static struct aefd_fork local;
@@ -62,6 +65,60 @@ static void snapshot(unsigned char raw[336], int child)
         put32(raw, 304 + i * 4, 1000);
     put32(raw, 320, 1);
 }
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+static void child_response(void)
+{
+    memset(x.reply, 0, sizeof x.reply);
+    x.offset = 0;
+    if (memcmp(x.sent, AEFD_MAGIC, 8)) {
+        assert(aether_fs_session_u32(x.sent) == 2 &&
+               aether_fs_session_u32(x.sent + 4) == 0x7a010001 &&
+               aether_fs_session_u32(x.sent + 8) == 1 &&
+               aether_fs_session_u32(x.sent + 12) == 5 &&
+               !memcmp(x.sent + 16, "/home", 5));
+        aefd_put(x.reply, 0, 5);
+        x.limit = 32;
+        ++x.terminal_writes;
+        return;
+    }
+    assert(!memcmp(AEFD_MAGIC, "AEFP0007", 8) && aefd_word(x.sent, 2) == 32);
+    memcpy(x.reply, AEFD_MAGIC, 8);
+    aefd_put(x.reply, 2, 32);
+    aefd_put(x.reply, 3, aefd_word(x.sent, 3));
+    x.limit = 64;
+    uint64_t operation = aefd_word(x.sent, 1);
+    if (operation == 9) {
+        for (unsigned i = 4; i < 8; ++i)
+            assert(!aefd_word(x.sent, i));
+        if (x.cwd_response == 2) {
+            aefd_put(x.reply, 1, (uint64_t)-13);
+        } else {
+            size_t n = x.cwd_response ? 6 : 2;
+            memcpy(x.reply + 64, x.cwd_response ? "/home" : "/", n);
+            aefd_put(x.reply, 5, n);
+            x.limit = 128;
+            if (x.cwd_response == 3)
+                x.reply[127] = 1;
+            if (x.cwd_response == 4)
+                memcpy(x.reply, "AEFP0006", 8);
+            if (x.cwd_response == 5)
+                aefd_put(x.reply, 2, 31);
+            if (x.cwd_response == 6)
+                aefd_put(x.reply, 5, 3);
+            if (x.cwd_response == 7)
+                x.limit = 70;
+        }
+    } else {
+        assert(operation == 13 || operation == 1);
+        /* These bytes are forwarded to the Owner, never locally authorized. */
+        assert(
+            !memcmp(x.sent + 64, operation == 13 ? "/" : AEFD_HOME_PROFILE_PATH,
+                    operation == 13 ? 1 : sizeof(AEFD_HOME_PROFILE_PATH) - 1));
+        aefd_put(x.reply, 1, (uint64_t)-13);
+    }
+    ++x.file_requests;
+}
+#endif
 static int64_t call(void *unused, uint64_t op, uint64_t cap, uint64_t a,
                     uint64_t b, uint64_t c)
 {
@@ -115,6 +172,17 @@ static int64_t call(void *unused, uint64_t op, uint64_t cap, uint64_t a,
             count = x.write_limit - x.written;
         memcpy(x.sent + x.written, (void *)(uintptr_t)a, count);
         x.written += count;
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+        if (x.mode == 7 && x.written >= 8) {
+            size_t goal = 32;
+            if (!memcmp(x.sent, AEFD_MAGIC, 8)) {
+                uint64_t operation = aefd_word(x.sent, 1);
+                goal = operation == 9 ? 64 : 128;
+            }
+            if (x.written == goal)
+                child_response();
+        }
+#endif
         if (x.mode == 5 && x.written == 32) {
             assert(aether_fs_session_u32(x.sent) == 3);
             memset(x.reply, 0, 32);
@@ -128,6 +196,11 @@ static int64_t call(void *unused, uint64_t op, uint64_t cap, uint64_t a,
             count = x.limit - x.offset;
         memcpy((void *)(uintptr_t)a, raw + x.offset, count);
         x.offset += count;
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+        if (x.mode == 7 && x.offset == x.limit && x.cwd_response != 7) {
+            x.written = x.offset = 0;
+        }
+#endif
         if (x.mode == 5 && x.offset == 32) {
             ++x.transactions;
             x.written = 0;
@@ -291,10 +364,71 @@ static void pipe_alias_case(void)
            c->native.factory == 0);
     ++cases;
 }
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+static void child_cwd_cases(void)
+{
+    for (unsigned response = 0; response < 8; ++response) {
+        setup(0);
+        assert(become_child() == 0);
+        struct aefd_context *c = &x.f->boot.context;
+        assert(c->native.input == 81 && c->native.output == 82 &&
+               c->native.factory == 0 && c->mode_control == 0 &&
+               c->client.sequence == 1 && c->client.generation == 32 &&
+               c->client.workspace == c->workspace &&
+               c->client.io.context == &c->native);
+        x.mode = 7;
+        x.cwd_response = response;
+        x.offset = x.written = 0;
+        x.limit = 0;
+        unsigned char path[6];
+        memset(path, 0xa5, sizeof path);
+        int64_t result = aefd_context_home_getcwd(c, path);
+        assert(x.file_requests == 1 && x.mask == UINT64_MAX);
+        if (response <= 1) {
+            assert(result == (response ? 6 : 2) &&
+                   !memcmp(path, response ? "/home" : "/", (size_t)result));
+            assert(c->client.live && !x.closes);
+            assert(aefd_context_write(c, 1, (const unsigned char *)"/home",
+                                      5) == 5);
+            assert(x.terminal_writes == 1);
+            assert(aefd_context_home_chdir(c, (const unsigned char *)"/", 1) ==
+                   -13);
+            assert(aefd_context_open(
+                       c, (const unsigned char *)AEFD_HOME_PROFILE_PATH,
+                       sizeof(AEFD_HOME_PROFILE_PATH) - 1, 0) == -13);
+            unsigned calls = x.calls;
+            assert(aefd_fork_arm(x.f, x.aux) == -16 && x.calls == calls);
+            assert(c->client.live && !x.closes && c->client.sequence == 4);
+            aefd_client_abort(&c->client);
+            assert(x.closes == 2);
+        } else {
+            for (unsigned i = 0; i < sizeof path; ++i)
+                assert(path[i] == 0xa5);
+            assert(result == (response == 2 ? -13 : -5));
+            assert(c->client.live == (response == 2));
+            assert(x.closes == (response == 2 ? 0U : 2U));
+            if (response != 2) {
+                unsigned calls = x.calls;
+                assert(aefd_context_home_getcwd(c, path) == -5 &&
+                       x.calls == calls);
+            } else {
+                aefd_client_abort(&c->client);
+                assert(x.closes == 2);
+            }
+        }
+        ++cases;
+    }
+}
+#endif
 static void exec_cases(void)
 {
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+    char arg0[] = "/home/probe";
+    char *argv[] = {arg0, NULL}, *envp[] = {NULL};
+#else
     char arg0[] = "/inputs/helper", arg1[] = "status", env0[] = "TERM=vt100";
     char *argv[] = {arg0, arg1, NULL}, *envp[] = {env0, NULL};
+#endif
     for (unsigned which = 0; which < 5; ++which) {
         setup(0);
         assert(become_child() == 0);
@@ -323,9 +457,15 @@ static void exec_cases(void)
         uint64_t sequence;
         assert(aefd_zsh_exec_decode(x.sent, 672, x.aux, 10, 9, 32, &view,
                                     &sequence));
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+        assert(sequence == 2 && aefd_word(x.sent + 400, 0) == 1 &&
+               !aefd_word(x.sent + 400, 1) &&
+               !strcmp((char *)x.sent + 416, "/home/probe"));
+#else
         assert(sequence == 2 && aefd_word(x.sent + 400, 0) == 2);
         assert(aefd_word(x.sent + 400, 1) == 1 &&
                !strcmp((char *)x.sent + 448, "status"));
+#endif
         assert(x.closes == (which ? 2U : 0U));
         ++cases;
     }
@@ -447,6 +587,9 @@ int main(int argc, char **argv)
     }
     fork_cases();
     pipe_alias_case();
+#ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
+    child_cwd_cases();
+#endif
     exec_cases();
     wait_cases();
     helper_case();

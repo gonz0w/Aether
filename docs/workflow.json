@@ -2765,6 +2765,16 @@
       "invariants": "Cold-only AEFP0007 with parent held ROOT/HOME selector, actual directory observations, CHDIR13/variableGETCWD9, relativeREAD onlyatHOME, attempt-before-lookup phase7 reopen, nofork/childinheritance. Existing80KiB eligibility only; all numeric limits and older profiles unchanged.",
       "oracle": "Warm228 known once-only PTY bytes as160; cold216: actual /home and HOME0/PID/PWD,REL0/samePID/exactprofile,actual / and ROOT0/samePID/PWD,DENY1/samePID/root,prompts/exit0. Exact9/0 engine,export/MODE0/two reclaims/halt/PASS and known originalhost cleanup required. Actual QEMU pair passes: warm39.834s/61requests,cold26.895s/83requests,228/216 once-only PTY bytes,physical paths/PWD/relative READ/root denial/prompts and full cleanup.",
       "gaps": "Scoped162 paired navigation qualification complete;141/genericpaths/stat/CWDinheritance/authentication/packages/assembledR1 remain open."
+    },
+    {
+      "id": "zsh-home-cwd-exec",
+      "reference": "userland/docs/proposals/ZSH-HOME-CWD-EXEC.md",
+      "owner": "Aether sys-init/userland, issue164",
+      "budget_seconds": 360,
+      "command": "Focused actual Rust Files/Runtime and reconstructed C child context/stdio/GETCWD checks; fresh private --home-cwd-exec parent/helper/Owner fits and linked-route inspection; reviewed unchanged160 writer/new164 cold pair.",
+      "invariants": "Cold-only matched AEFP0007: phase7 settled before copy; exact child binding ROOT/HOME snapshot retained across exec, cleared on settlement; child GETCWD actual held-directory observation only; deny child CHDIR/profile READ/nested fork. Existing80KiB eligibility, numeric limits and old profiles unchanged.",
+      "oracle": "Warm228 approved bytes; cold172 once-only foreground PTY bytes: PROFILE0, HOME0 and physical/home, copied child physical/home then helper23, STATUS23/same parent PID/PWDhome and physical/home, prompts/normal exit/export/MODE0/three reclaims/halt/PASS and known host cleanup. CWD evidence combines actual-function controls, fresh linked route and native output. Actual reviewed corrected pair passes: writer42.480s/61requests and cold27.966s/68requests,PID9,helper/status23,pwdhome,three reclaims/halt2083/PASS and complete host cleanup.",
+      "gaps": "Scoped164 fixed combined startup/CWD/helper qualification complete; first cold host-guard failure retained, corrected before fresh pair. Physical text alone is not actual-call proof.141,general paths,packages/authentication and assembledR1 remain open."
     }
   ]
 }
