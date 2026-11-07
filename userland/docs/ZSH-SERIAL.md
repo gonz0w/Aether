@@ -149,3 +149,23 @@ and the saved preference, without an operator source command. See the owning
 issue for review and delivery. This does not claim human typing or authentication.
 Use the existing finite session and failure procedure above; a failed or uncertain
 disk is never replayed.
+
+## Home working directory
+
+Issue162 adds a separate cold home-CWD profile. After automatic login startup,
+the admitted parent can use ordinary `cd /home`, `pwd -P` and a relative read of
+`.zprofile`, then return with `cd /`. Rust keeps directory custody and obtains
+actual physical paths. HOME/PWD text alone never changes the current directory.
+Other relative paths stay unadmitted; reading `.zprofile` from `/` returns a
+permission error and leaves the shell's directory unchanged.
+
+This profile deliberately blocks fork before native effects; it does not add
+child CWD inheritance. Use the older operator profiles for their qualified helper
+workload. The home-CWD qualification is one fresh160 provisioning writer followed
+by one new cold session on that exact stopped disk. See the
+[scope and fixed workload](proposals/ZSH-HOME-CWD.md). The automated QEMU pair
+passed: writer 39.834s/61 requests and cold 26.895s/83 requests, with228/216 known
+foreground PTY bytes. The `/home` and `/` physical paths, relative read status0 and root-relative
+read status1 passed with returned prompts, clean export and known cleanup. This is a
+fixed workload result; it does not claim a human typing or general CWD trial.
+The same finite session/failure procedure applies.

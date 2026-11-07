@@ -23,6 +23,8 @@ pub(super) struct Note {
     pub(super) phase: u8,
     description: u8,
     count: u8,
+    #[cfg(native_zsh_home_cwd)]
+    pub(super) cwd_home: bool,
 }
 impl Note {
     pub(super) const fn new() -> Self {
@@ -32,6 +34,8 @@ impl Note {
             phase: 0,
             description: 255,
             count: 0,
+            #[cfg(native_zsh_home_cwd)]
+            cwd_home: false,
         }
     }
 }
@@ -72,6 +76,62 @@ fn progress(failure: MutationFailure) -> (u64, u64, u64) {
     )
 }
 impl<T: Channel> Files<T> {
+    #[cfg(native_zsh_home_cwd)]
+    pub(super) fn observe_home_cwd(
+        &mut self,
+        view: usize,
+        home: bool,
+        workspace: &mut [u8; PAYLOAD],
+    ) -> descriptions::Result<usize, Error> {
+        workspace.fill(0);
+        if view != 0 {
+            return Err(Failure::Source(Error::Remote(-13)));
+        }
+        let client = &mut self.descriptions.source.client;
+        let directory =
+            if home { client.home() } else { client.root() }.map_err(Failure::Source)?;
+        let path = (&mut workspace[..256]).try_into().unwrap();
+        let length = client
+            .directory_path(directory, path)
+            .map_err(Failure::Source)?;
+        let expected: &[u8] = if home { b"/home\0" } else { b"/\0" };
+        if &workspace[..length] != expected {
+            workspace.fill(0);
+            self.abort();
+            return Err(Failure::Source(Error::Protocol));
+        }
+        Ok(length)
+    }
+    #[cfg(native_zsh_home_cwd)]
+    pub(super) fn change_home_cwd(
+        &mut self,
+        view: usize,
+        length: usize,
+        workspace: &mut [u8; PAYLOAD],
+    ) -> descriptions::Result<(), Error> {
+        if view != 0 {
+            workspace.fill(0);
+            return Err(Failure::Source(Error::Remote(-13)));
+        }
+        let home = match &workspace[..length] {
+            b"/" => false,
+            b"/home" => true,
+            _ => {
+                workspace.fill(0);
+                return Err(Failure::Source(Error::Remote(-13)));
+            }
+        };
+        if self.note.phase != 7 || self.note.description != 255 {
+            workspace.fill(0);
+            return Err(Failure::Source(Error::Remote(-16)));
+        }
+        self.observe_home_cwd(view, home, workspace)?;
+        // This selector is committed only after an actual held-object observation.
+        // The enclosing Reply owns it until delivery, or aborts the whole view.
+        self.note.cwd_home = home;
+        workspace.fill(0);
+        Ok(())
+    }
     /// No fork snapshot may copy note descriptions, attempted effects, or live aliases.
     pub fn note_io_active(&self) -> bool {
         matches!(self.note.phase, 1..=4 | 6)
@@ -114,6 +174,18 @@ impl<T: Channel> Files<T> {
         view: usize,
         cloexec: bool,
     ) -> descriptions::Result<i32, Error> {
+        #[cfg(native_zsh_home_cwd)]
+        {
+            if view != 0 {
+                return Err(Failure::Source(Error::Remote(-13)));
+            }
+            if self.note.phase == 7 {
+                // A new admitted read cannot inherit the previous completion.
+                self.note.phase = 5;
+                self.note.count = 0;
+                self.note.description = 255;
+            }
+        }
         #[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection_reader)))]
         if view == 0 && self.note.phase == 0 {
             // Only the canonical remote missing result leaves this startup probe

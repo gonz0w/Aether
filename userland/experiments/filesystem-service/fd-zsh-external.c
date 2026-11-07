@@ -162,13 +162,18 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
     if (length == 256)
         return (int)libc_result(-ENAMETOOLONG, saved);
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
-    if (!strcmp(path, AEFD_HOME_PROFILE_PATH)) {
+    if (!strcmp(path, AEFD_HOME_PROFILE_PATH)
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+        || !strcmp(path, ".zprofile")
+#endif
+    ) {
 #ifdef AEFD_ZSH_HELPER_ENTRY
         return (int)libc_result(-EACCES, saved);
 #else
         int admitted = flags & ~O_LARGEFILE;
         if (!live())
             return (int)libc_result(-EBADF, saved);
+#ifndef AEFD_ZSH_HOME_CWD_BINDINGS
         if (admitted & O_CREAT) {
             unsigned effective = (unsigned)mode & ~(unsigned)note_umask;
             int allowed = O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY | O_CLOEXEC;
@@ -183,6 +188,7 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
                                          !!(admitted & O_CLOEXEC), effective),
                 saved);
         }
+#endif
         if (admitted & ~(O_NOCTTY | O_CLOEXEC))
             return (int)libc_result(-EOPNOTSUPP, saved);
         return (int)libc_result(
@@ -382,6 +388,28 @@ int __wrap_access(const char *path, int mode)
                                   n, (unsigned)mode);
     return (int)libc_result(result, saved);
 }
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+int __wrap_chdir(const char *path)
+{
+    int saved = errno;
+#ifdef AEFD_ZSH_HELPER_ENTRY
+    (void)path;
+    return (int)libc_result(-EACCES, saved);
+#else
+    size_t n = path_length(path);
+    int64_t result =
+        !path                         ? -EFAULT
+        : n == 256                    ? -ENAMETOOLONG
+        : !outside_context(path, n + 1) ? -EFAULT
+        : !((n == 1 && path[0] == '/') ||
+            (n == 5 && !memcmp(path, "/home", 5))) ? -EACCES
+        : !live()                     ? -EBADF
+        : aefd_context_home_chdir(&startup.context,
+                                   (const unsigned char *)path, n);
+    return (int)libc_result(result, saved);
+#endif
+}
+#endif
 char *__wrap_getcwd(char *buffer, size_t size)
 {
     int saved = errno;
@@ -393,6 +421,28 @@ char *__wrap_getcwd(char *buffer, size_t size)
         errno = !live() ? EBADF : EFAULT;
         return NULL;
     }
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+#ifdef AEFD_ZSH_HELPER_ENTRY
+    errno = EACCES;
+    return NULL;
+#endif
+    unsigned char path[6];
+    int64_t count = aefd_context_home_getcwd(&startup.context, path);
+    if (count < 0) {
+        (void)libc_result(count, saved);
+        return NULL;
+    }
+    if (size && size < (size_t)count) {
+        errno = ERANGE;
+        return NULL;
+    }
+    char *out = buffer ? buffer : malloc(size ? size : (size_t)count);
+    if (!out) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    memcpy(out, path, (size_t)count);
+#else
     char *out = buffer ? buffer : malloc(size ? size : 2);
     if (!out) {
         errno = ENOMEM;
@@ -405,6 +455,7 @@ char *__wrap_getcwd(char *buffer, size_t size)
         (void)libc_result(result, saved);
         return NULL;
     }
+#endif
     errno = saved;
     return out;
 }

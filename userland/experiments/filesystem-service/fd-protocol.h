@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(AEFD_ZSH_HOME_CWD_BINDINGS) && \
+    !defined(AEFD_ZSH_LOGIN_STARTUP_BINDINGS)
+#error "home CWD requires the closed login startup provider"
+#endif
 #ifdef AEFD_ZSH_LOGIN_STARTUP_BINDINGS
 #ifndef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
 #error "login startup requires the closed home redirection provider"
@@ -199,6 +203,10 @@
 #undef AEFD_MAGIC
 #define AEFD_MAGIC "AEFP0006"
 #endif
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+#undef AEFD_MAGIC
+#define AEFD_MAGIC "AEFP0007"
+#endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U
 
@@ -261,6 +269,9 @@ static inline int aefd_name(unsigned char out[256], const unsigned char *name,
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
                                           ,
                                           AEFD_HOME_PROFILE_PATH
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+                                          , ".zprofile"
+#endif
 #endif
     };
     int found = 0;
@@ -356,9 +367,19 @@ static inline int aefd_decode(const unsigned char *frame, size_t length,
                 return 0;
             break;
         case 9:
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+            if (result || (body != 2 && body != 6))
+#else
             if (result || body != 2)
+#endif
                 return 0;
             break;
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+        case 13:
+            if (result || body)
+                return 0;
+            break;
+#endif
         case 10:
             if (result || body != 32)
                 return 0;

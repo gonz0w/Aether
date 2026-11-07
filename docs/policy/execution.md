@@ -530,3 +530,33 @@ Focused checks, separate review, actual trial success and required protected CI
 may qualify this checkpoint for delivery while141 remains open. No general RC
 file discovery, authentication/accounts, helper workload, general peak-demand,
 package or assembled R1 acceptance follows.
+
+## Selected Zsh home working directory — 2026-11-07
+
+Cam directly approved “Approve scoped #162 design and gates” for the
+[reviewed proposal](https://github.com/gonz0w/Aether/issues/162#issuecomment-6713417824);
+[approval record](https://github.com/gonz0w/Aether/issues/162#issuecomment-6713444434).
+Select one closed cold-reader composition over the login-startup reader. Rust
+retains ROOT/HOME custody and one parent-local CWD selector. Actual existing
+directory_path observations precede CHDIR commit and supply physical GETCWD;
+HOME/PWD strings never grant authority. Matched AEFP0007 adds CHDIR13, checked
+variable GETCWD9 and parent relative profile READ at HOME. Old protocols/defaults
+stay exact, opcode7 stays reserved and stat remains unsupported.
+
+Readonly phase7 reopening marks its new attempt before lookup, so a failed
+admitted read cannot inherit historical completion. Root-relative denial occurs
+before that transition and preserves the session. Lost/malformed replies retain
+real facts, retire/contain and never replay. This composition refuses fork before
+native effects and denies child CWD/profile inheritance. No new kernel entry,
+namespace grant, generic resolver, extra file or CWD inheritance follows.
+
+Bind one fresh unchanged160 writer to the new162 cold reader explicitly, with
+separate exact app/helper/Owner identities and the same successful stopped disk.
+Existing81920-byte Owner RX eligibility applies only to this additional closed
+profile. All other state/stack/backing/app/engine/request/mutation/tick/host/input/
+capture limits stay unchanged. Fresh affected fits and actual linked cd/getcwd
+route inspection precede images; stop/replan on a required-bound failure. One
+guarded pair may establish remaining scoped workload fit. Actual success,
+focused checks, separate review and required protected CI permit checkpoint
+delivery while141 remains open. Keep one-use/no-network/no-retry/known original
+host cleanup and compact retention. Authentication and assembled R1 remain open.

@@ -34,6 +34,9 @@ gid_t __wrap_getgid(void);
 gid_t __wrap_getegid(void);
 int __wrap_access(const char *, int);
 char *__wrap_getcwd(char *, size_t);
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+int __wrap_chdir(const char *);
+#endif
 #endif
 #ifdef AEFD_ZSH_DIAGNOSTIC
 #ifndef AEFD_ZSH_FILESYSTEM_BINDINGS

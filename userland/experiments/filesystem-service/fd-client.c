@@ -77,6 +77,11 @@ static int shape(uint64_t opcode, const uint64_t args[4], size_t name_length)
         return args[0] <= 1 && args[1] == name_length && name_length >= 1 &&
                name_length <= 255 && args[2] <= 2;
 #endif
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    if (opcode == 13)
+        return !args[0] && args[1] == name_length &&
+               (name_length == 1 || name_length == 5) && !args[2];
+#endif
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
     if (opcode == 8 || opcode == 10)
         return (opcode == 8 ? args[0] == 0 || args[0] == 4 : !args[0]) &&
@@ -123,6 +128,18 @@ static int shape(uint64_t opcode, const uint64_t args[4], size_t name_length)
 static int stage_name(unsigned char out[256], uint64_t opcode,
                       const unsigned char *name, size_t length)
 {
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    if (opcode == 13) {
+        if (!name || !((length == 1 && name[0] == '/') ||
+                       (length == 5 && !memcmp(name, "/home", 5)))) {
+            memset(out, 0, 256);
+            return 0;
+        }
+        memcpy(out, name, length);
+        memset(out + length, 0, 256 - length);
+        return 1;
+    }
+#endif
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
     if (opcode == 12) {
         if (!name || length != 11 || memcmp(name, "/home/probe", 11)) {
@@ -154,6 +171,9 @@ int aefd_client_exchange(struct aefd_client *client, uint64_t opcode,
         return -1;
     }
     int path_call = opcode == 1;
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    path_call = path_call || opcode == 13;
+#endif
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
     path_call = path_call || opcode == 12;
 #endif
@@ -221,7 +241,12 @@ int aefd_client_exchange(struct aefd_client *client, uint64_t opcode,
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
     if (!reply.status &&
         ((opcode == 9 &&
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+          !((reply.body == 2 && !memcmp(client->workspace, "/", 2)) ||
+            (reply.body == 6 && !memcmp(client->workspace, "/home", 6)))) ||
+#else
           (client->workspace[0] != '/' || client->workspace[1])) ||
+#endif
          (opcode == 10 && (aefd_word(client->workspace, 0) != 2 ||
                            !aefd_word(client->workspace, 2) ||
                            !aefd_word(client->workspace, 3)))))

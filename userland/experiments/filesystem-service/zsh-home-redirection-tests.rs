@@ -120,6 +120,12 @@ fn note_completed_create_survives_later_lookup_failure() {
 fn note_child_cannot_create_open_or_write_parent_note() {
     let mut h = prepared();
     let child = child_binding();
+    if cfg!(native_zsh_home_cwd) {
+        let before = h.requests();
+        assert!(h.files().inherit_child(binding(), child).is_err());
+        assert_eq!(h.requests(), before);
+        return;
+    }
     h.files().inherit_child(binding(), child).unwrap();
     let before = h.requests();
     let files = h.files();
@@ -341,5 +347,167 @@ fn login_cold_invalid_profile_or_unknown_close_never_enables_startup_read() {
         assert!(!h.files().note_complete());
         assert!(!h.files().live(binding()));
         assert_eq!(h.state.lock().unwrap().mutations, before);
+    }
+}
+
+#[cfg(native_zsh_home_cwd)]
+fn sourced() -> Harness {
+    let mut h = prepared();
+    let (r, _) = h.rpc(1, [0, NOTE.len() as u64, 0, 0], NOTE);
+    let fd = word(&r, 4);
+    assert_eq!(word(&h.rpc(2, [fd, 16, 0, 0], &[]).0, 4), 16);
+    h.rpc(5, [fd, 0, 0, 0], &[]);
+    assert!(h.files().note_complete());
+    h
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn cwd_root_home_relative_reread_uses_actual_directory_and_preserves_denial() {
+    let mut h = sourced();
+    assert_eq!(MAGIC, b"AEFP0007");
+    let (r, body) = h.rpc(9, [0; 4], &[]);
+    assert_eq!((word(&r, 1), word(&r, 5)), (0, 2));
+    assert_eq!(&body[..2], b"/\0");
+    let prior = h.requests();
+    let (r, _) = h.rpc(1, [0, 9, 0, 0], b".zprofile");
+    assert_eq!(word(&r, 1) as i64, -13);
+    assert_eq!(h.requests(), prior);
+    assert!(h.files().note_complete());
+    assert_eq!(word(&h.rpc(13, [0, 5, 0, 0], b"/home").0, 1), 0);
+    let (r, body) = h.rpc(9, [0; 4], &[]);
+    assert_eq!((word(&r, 1), word(&r, 5)), (0, 6));
+    assert_eq!(&body[..6], b"/home\0");
+    let (r, _) = h.rpc(1, [0, 9, 0, 0], b".zprofile");
+    assert_eq!(word(&r, 1), 0);
+    let fd = word(&r, 4);
+    assert!(!h.files().note_complete());
+    assert_eq!(word(&h.rpc(13, [0, 1, 0, 0], b"/").0, 1) as i64, -16);
+    h.rpc(2, [fd, 16, 0, 0], &[]);
+    h.rpc(5, [fd, 0, 0, 0], &[]);
+    assert!(h.files().note_complete());
+    assert_eq!(word(&h.rpc(13, [0, 1, 0, 0], b"/").0, 1), 0);
+    let (r, body) = h.rpc(9, [0; 4], &[]);
+    assert_eq!((word(&r, 1), word(&r, 5)), (0, 2));
+    assert_eq!(&body[..2], b"/\0");
+    assert!(h.files().inherit_child(binding(), child_binding()).is_err());
+    assert_eq!(h.state.lock().unwrap().cwd_observations, [1, 2, 2, 1, 1]);
+}
+
+#[cfg(native_zsh_home_cwd)]
+fn cwd_frame(h: &mut Harness, op: u64, args: [u64; 4]) -> [u8; 64] {
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    put(&mut raw, 1, op);
+    put(&mut raw, 2, binding().generation);
+    put(&mut raw, 3, h.files().next);
+    for (i, value) in args.into_iter().enumerate() {
+        put(&mut raw, i + 4, value);
+    }
+    raw
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn cwd_unknown_change_reply_never_reuses_historical_completion() {
+    let mut h = sourced();
+    let raw = cwd_frame(&mut h, 13, [0, 5, 0, 0]);
+    let mut work = [0; 4096];
+    work[..5].copy_from_slice(b"/home");
+    let reply = h.files().prepare(binding(), &raw, 64, &mut work).unwrap();
+    assert_eq!(word(reply.header(), 1), 0);
+    drop(reply);
+    assert!(h.files().cleanup().is_some());
+    assert!(!h.files().live(binding()));
+    assert!(!h.files().note_complete());
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn cwd_known_observation_failure_preserves_root_and_publishes_no_path() {
+    let mut h = sourced();
+    h.state.lock().unwrap().cwd_failure = 1;
+    let (r, body) = h.rpc(13, [0, 5, 0, 0], b"/home");
+    assert_eq!(word(&r, 1) as i64, -13);
+    assert!(body.is_empty());
+    assert!(!h.files().note.cwd_home);
+    let (r, body) = h.rpc(9, [0; 4], &[]);
+    assert_eq!(word(&r, 1) as i64, -13);
+    assert!(body.is_empty());
+    assert!(!h.files().note.cwd_home);
+    assert!(h.files().note_complete());
+    assert!(h.files().cleanup().is_none());
+    h.state.lock().unwrap().cwd_failure = 0;
+    let (r, body) = h.rpc(9, [0; 4], &[]);
+    assert_eq!(word(&r, 1), 0);
+    assert_eq!(&body[..2], b"/\0");
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn cwd_busy_path_child_and_header_denials_precede_source_effects() {
+    let mut h = prepared();
+    let prior = h.requests();
+    assert_eq!(word(&h.rpc(13, [0, 5, 0, 0], b"/home").0, 1) as i64, -16);
+    assert_eq!(h.requests(), prior);
+    let mut h = sourced();
+    let prior = h.requests();
+    assert_eq!(word(&h.rpc(13, [0, 5, 0, 0], b"/root").0, 1) as i64, -13);
+    assert_eq!(word(&h.rpc(1, [0, 3, 0, 0], b"foo").0, 1) as i64, -13);
+    let mut work = [0; 4096];
+    work[..5].copy_from_slice(b"/home");
+    assert!(matches!(
+        h.files().change_home_cwd(1, 5, &mut work),
+        Err(Failure::Source(Error::Remote(-13)))
+    ));
+    assert_eq!(h.requests(), prior);
+    assert!(h.files().note_complete());
+    for variant in 0..4 {
+        let mut h = sourced();
+        let prior = h.requests();
+        let mut raw = cwd_frame(&mut h, 13, [0, 5, 0, 0]);
+        match variant {
+            0 => raw[..8].copy_from_slice(b"AEFP0006"),
+            1 => put(&mut raw, 1, 7),
+            2 => put(&mut raw, 2, 999),
+            _ => put(&mut raw, 6, 1),
+        }
+        assert_eq!(h.files().body_length(binding(), &raw), Err(Error::Protocol));
+        assert_eq!(h.requests(), prior);
+        assert!(!h.files().live(binding()));
+    }
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn cwd_admitted_failed_reread_and_partial_read_cannot_reuse_completion() {
+    let mut h = sourced();
+    h.rpc(13, [0, 5, 0, 0], b"/home");
+    h.state.lock().unwrap().note_lookup_denied = true;
+    let (r, _) = h.rpc(1, [0, 9, 0, 0], b".zprofile");
+    assert_eq!(word(&r, 1) as i64, -13);
+    assert_eq!(h.files().note.phase, 5);
+    assert!(!h.files().note_complete());
+    assert!(h.files().note.cwd_home);
+    let mut h = sourced();
+    h.rpc(13, [0, 5, 0, 0], b"/home");
+    let (r, _) = h.rpc(1, [0, 9, 0, 0], b".zprofile");
+    let fd = word(&r, 4);
+    h.rpc(2, [fd, 1, 0, 0], &[]);
+    h.rpc(5, [fd, 0, 0, 0], &[]);
+    assert!(!h.files().note_complete());
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn cwd_unexpected_physical_directory_and_padding_are_contained() {
+    for variant in 0..2 {
+        let mut h = sourced();
+        let raw = cwd_frame(&mut h, 13, [0, 5, 0, 0]);
+        let mut work = [0; 4096];
+        work[..5].copy_from_slice(b"/home");
+        if variant == 0 {
+            h.state.lock().unwrap().cwd_failure = 2;
+        } else {
+            work[5] = 1;
+        }
+        assert!(h.files().prepare(binding(), &raw, 64, &mut work).is_err());
+        assert!(!h.files().live(binding()));
+        assert!(!h.files().note.cwd_home);
+        assert!(!h.files().note_complete());
     }
 }
