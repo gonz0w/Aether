@@ -17,6 +17,8 @@ pub const owner_data_bytes = 8192;
 pub const owner_stack_code_limit = 49152;
 // Closed native-zsh-external capacity; old selectors above stay exact.
 pub const zsh_external_owner_code_limit = 73728;
+// Closed issue158 writer/reader selection; never inferred from envelope bytes.
+pub const zsh_home_redirection_owner_code_limit = 81920;
 pub const zsh_external_owner_stack_pages = 3;
 pub const zsh_external_owner_stack_base = 0x7ff000;
 pub const Error = error{InvalidComposition};

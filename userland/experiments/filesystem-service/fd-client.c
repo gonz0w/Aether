@@ -235,7 +235,8 @@ retired:
     return -1;
 }
 
-#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
+#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS) ||       \
+    defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS)
 int aefd_client_write(struct aefd_client *client, int fd,
                       const unsigned char *bytes, size_t count,
                       struct aefd_write_result *out)
@@ -263,6 +264,9 @@ int aefd_client_write(struct aefd_client *client, int fd,
     memset(client->workspace, 0, AEFD_READ_MAX);
     if (!aefd_file_selector((uint64_t)fd) || !bytes || !count ||
         count > AEFD_READ_MAX
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+        || count > 16
+#endif
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
         || count != 16 || memcmp(bytes, "AETHER-ZSH-HOME\n", 16)
 #endif
@@ -307,6 +311,76 @@ failed_write:
     result.file_closed = 1;
     result.file_cleanup = client->closed;
     *out = result;
+    return -1;
+}
+#endif
+
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+int aefd_client_note_create(struct aefd_client *client,
+                            const unsigned char *name, size_t length,
+                            int cloexec, unsigned mode,
+                            struct aefd_note_create_result *out)
+{
+    if (!out)
+        return 0;
+    struct aefd_note_create_result r = {.observation = AEFD_WRITE_NOT_SENT,
+                                        .status = -22};
+    if (!client) {
+        *out = r;
+        return 0;
+    }
+    r.generation = client->generation;
+    r.sequence = client->sequence;
+    if (!client->live || client->sequence == UINT64_MAX) {
+        aefd_client_abort(client);
+        r.status = -5;
+        r.file_closed = 1;
+        r.file_cleanup = client->closed;
+        *out = r;
+        return -1;
+    }
+    if (!name || length != 10 || memcmp(name, "/home/note", 10) ||
+        cloexec < 0 || cloexec > 1 || mode != 0600) {
+        *out = r;
+        return 0;
+    }
+    unsigned char frame[64];
+    uint64_t args[4] = {(uint64_t)cloexec, length, mode, 0};
+    if (!aefd_request(frame, client->generation, client->sequence, 12, args)) {
+        *out = r;
+        return 0;
+    }
+    memset(client->workspace, 0, AEFD_READ_MAX);
+    memcpy(client->workspace, name, length);
+    unsigned budget = AEFD_IO_BUDGET;
+    r.observation = AEFD_WRITE_UNKNOWN;
+    r.status = -5;
+    if (!transfer(client, frame, 64, 1, &budget) ||
+        !transfer(client, client->workspace, 64, 1, &budget))
+        goto failed_note;
+    memset(client->workspace, 0, AEFD_READ_MAX);
+    if (!transfer(client, frame, 64, 0, &budget) ||
+        !transfer(client, client->workspace, 64, 0, &budget) ||
+        !aefd_note_create_decode(frame, client->workspace, 64,
+                                 client->generation, client->sequence,
+                                 &r.remote))
+        goto failed_note;
+    r.observation = AEFD_WRITE_REMOTE;
+    r.status = r.remote.status;
+    ++client->sequence;
+    memset(client->workspace, 0, AEFD_READ_MAX);
+    if (r.status || (r.remote.flags & 16U)) {
+        aefd_client_abort(client);
+        r.file_closed = 1;
+        r.file_cleanup = client->closed;
+    }
+    *out = r;
+    return 1;
+failed_note:
+    aefd_client_abort(client);
+    r.file_closed = 1;
+    r.file_cleanup = client->closed;
+    *out = r;
     return -1;
 }
 #endif

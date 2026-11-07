@@ -6,6 +6,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    'native-zsh-home-redirection',  # Approved issue158-only80KiB Owner under operator/file-exec; default-off.
+    'native-zsh-file-exec',  # Approved Owner-only sealed filesystem ELF exec; default-off.
+    'native-zsh-operator',  # Approved private foreground session; fixed30000-tick limit.
     'native-zsh-external',  # Approved closed parent1/helper2 copy/exec/SIGCHLD; old terminfo required; default-off.
     'native-zsh-terminfo',  # Approved closed large-Zsh/MODE/SIGINT; Owner retains namespace; default-off/private.
     'native-tty-signal-probe',  # Approved default-off MODE Owner/app SIGINT; checked safe unmask; release rejected.

@@ -15,6 +15,20 @@ LAUNCH = '0000000000000000 T main\n0000000000000010 T aether_fs_home_launch_serv
 
 
 class NativeBuildContract(unittest.TestCase):
+    def test_terminfo_nine_is_closed_without_raising_the_mutation_ceiling(self):
+        expected=(*PROFILE[:-1], 'fs_home_terminfo_nine')
+        self.assertEqual(builder['TERMINFO_NINE_PROFILE'],expected)
+        self.assertEqual(builder['validate_profile'](expected,terminfo_nine=True),expected)
+        for other in ('terminfo_six','terminfo_seven','cold_reopen'):
+            with self.subTest(other=other),self.assertRaises(ValueError):
+                builder['validate_profile'](expected,terminfo_nine=True,**{other:True})
+        for invalid in (1,None,'nine'):
+            with self.subTest(invalid=invalid),self.assertRaises(ValueError):
+                builder['validate_profile'](expected,terminfo_nine=invalid)
+        for wrong in (PROFILE,expected[:-1],(*expected,expected[-1])):
+            with self.subTest(wrong=wrong),self.assertRaises(ValueError):
+                builder['validate_profile'](wrong,terminfo_nine=True)
+
     def test_drain_profile_replaces_only_the_three_count_selection(self):
         cases = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
                  'partial_ack', 'exit_deadline', 'pending_fragment')

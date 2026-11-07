@@ -10,10 +10,15 @@
 #endif
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #ifdef AEFD_LIBC_HOST_TEST
 /* Rename only after system declarations, preserving the production bodies. */
 #define open aefd_test_open
 #define open64 aefd_test_open64
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+#define umask aefd_test_umask
+mode_t umask(mode_t);
+#endif
 #define fcntl aefd_test_fcntl
 #define isatty aefd_test_isatty
 #ifdef AEFD_TERMINAL_MODE_BINDINGS
@@ -157,13 +162,41 @@ int isatty(int fd)
     errno = saved;
     return 1;
 }
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+mode_t umask(mode_t requested) { return aether_zsh_umask(requested); }
+#endif
 int open(const char *path, int flags, ...)
 {
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    mode_t mode = 0;
+    if (flags & O_CREAT) {
+        va_list ap;
+        va_start(ap, flags);
+        mode = va_arg(ap, mode_t);
+        va_end(ap);
+    }
+    return aether_zsh_open(path, flags, mode);
+#else
     int saved = errno;
     return (int)checked(aefd_libc_open(&shell.context, path, flags), saved);
+#endif
 }
 int open64(const char *path, int flags, ...);
-int open64(const char *path, int flags, ...) { return open(path, flags); }
+int open64(const char *path, int flags, ...)
+{
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    mode_t mode = 0;
+    if (flags & O_CREAT) {
+        va_list ap;
+        va_start(ap, flags);
+        mode = va_arg(ap, mode_t);
+        va_end(ap);
+    }
+    return aether_zsh_open(path, flags, mode);
+#else
+    return open(path, flags);
+#endif
+}
 int fcntl(int fd, int command, ...)
 {
     int saved = errno, argument = 0;
@@ -184,9 +217,13 @@ int dup(int fd)
 }
 int dup2(int from, int to)
 {
-#ifdef AEFD_DUP2_WIRE
+#if defined(AEFD_DUP2_WIRE) || defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS)
     int saved = errno;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    int64_t result = aefd_context_note_replace(&shell.context, from, to);
+#else
     int64_t result = aefd_context_replace(&shell.context, from, to);
+#endif
     if (shell.phase == 2 && !shell.context.client.live)
         __wrap__exit(141);
     return (int)checked(result, saved);

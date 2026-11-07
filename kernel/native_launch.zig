@@ -53,6 +53,11 @@ pub fn externalApplicationBundle(raw: []const u8) Error!Bundle {
     if (raw.len < 8 or !std.mem.eql(u8, raw[0..8], "AENMX011")) return error.InvalidLaunch;
     return threeImageBundleLimit(raw, 112, @import("arch/x86_64/native_fs_roles.zig").zsh_external_owner_code_limit, elf.application_limits.file_bytes);
 }
+/// Same wire, only under the validated home-redirection operator selection.
+pub fn homeRedirectionApplicationBundle(raw: []const u8) Error!Bundle {
+    if (raw.len < 8 or !std.mem.eql(u8, raw[0..8], "AENMX011")) return error.InvalidLaunch;
+    return threeImageBundleLimit(raw, 112, @import("arch/x86_64/native_fs_roles.zig").zsh_home_redirection_owner_code_limit, elf.application_limits.file_bytes);
+}
 fn threeImageBundleLimit(raw: []const u8, header: usize, limit: usize, image_limit: usize) Error!Bundle {
     if (raw.len < header) return error.InvalidLaunch;
     const a: usize = std.mem.readInt(u32, raw[8..12], .little);

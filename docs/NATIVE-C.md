@@ -266,6 +266,27 @@ The same test file supplies actual parser/boot/mapping body fixtures for bounded
 Zig execution recorded separately. These host checks do not execute page tables
 or qualify a guest. Fresh matched fit and separate review still precede an image.
 
+### Selected home-redirection Owner capacity
+
+The [issue158 amendment](https://github.com/gonz0w/Aether/issues/158#issuecomment-6711078557)
+permits81,920 Owner RX bytes only with default-off
+`native-zsh-home-redirection`, which requires the existing operator/file-exec
+closure. The kernel selects `parseHomeRedirectionApplication` at the boot-size,
+early-start and role-loading boundaries; its nested parser uses the same cap.
+AENFS006/AENMX011 bytes cannot opt into the allowance. Existing external-Zsh
+and application profiles retain73,728 and49,152-byte caps respectively.
+
+This profile maps at most20 RX+3 stack+2 data pages,25 of the existing128 Owner
+pages. Stack guards, ABI31, Runtime/workspace and total backing are unchanged.
+The allowance is not evidence that either writer or reader fits. Fresh matching
+RX/Runtime/stack measurements and the remaining issue158 gates precede images.
+
+Run focused fixture-source controls from root with
+`python3 -B -m unittest discover -s tests -p test_zsh_home_redirection_profile.py -v`.
+The module also supplies bounded actual parser/boot/start/mapping and build-help
+fixtures; compact executable results are recorded by the integration lead.
+No host fixture is an MMU, guest or release qualification.
+
 ## Guarded complete-owner candidate — AENFS005 / ABI31
 
 The maintainer approved a separate8KiB guarded stack and measurement-led code

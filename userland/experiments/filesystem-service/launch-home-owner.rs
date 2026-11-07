@@ -3,6 +3,38 @@
 #![no_std]
 use core::ffi::c_void;
 #[cfg(all(
+    fs_home_terminfo_nine,
+    any(
+        fs_home_cold_reopen,
+        fs_home_probe_three,
+        fs_home_terminfo_six,
+        fs_home_terminfo_seven,
+        fs_af09_drain
+    )
+))]
+compile_error!("fs_home_terminfo_nine requires its closed warm exact-nine selection");
+#[cfg(all(
+    fs_home_terminfo_nine,
+    not(all(
+        fs_namespace,
+        fs_lifetimes,
+        fs_mixed,
+        fs_wait,
+        fs_bulk,
+        fs_runtime,
+        fs_activation,
+        fs_names,
+        fs_directories,
+        fs_metadata,
+        fs_directory_contexts,
+        fs_home,
+        fs_home_wire,
+        fs_home_native,
+        fs_home_activation
+    ))
+))]
+compile_error!("fs_home_terminfo_nine requires the complete HOME feature closure");
+#[cfg(all(
     fs_home_cold_reopen,
     any(
         fs_home_probe_three,
@@ -163,6 +195,7 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         || cfg!(fs_home_probe_three) && home.mutation_attempts != 3
         || cfg!(fs_home_terminfo_six) && home.mutation_attempts != 6
         || cfg!(fs_home_terminfo_seven) && home.mutation_attempts != 7
+        || cfg!(fs_home_terminfo_nine) && home.mutation_attempts != 9
         || cfg!(fs_af09_drain) && (home.mutation_attempts != 2 || service.requests != 3)
         || home.flags != expected_flags
         || service.ready != 1

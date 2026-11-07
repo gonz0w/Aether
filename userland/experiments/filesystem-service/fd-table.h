@@ -17,6 +17,11 @@ int64_t aefd_table_open_duplex(struct aefd_bindings *, struct aefd_client *,
 int64_t aefd_table_open_home_write(struct aefd_bindings *, struct aefd_client *,
                                    const unsigned char *, size_t, int);
 #endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+int64_t aefd_table_create_note(struct aefd_bindings *, struct aefd_client *,
+                               const unsigned char *, size_t, int, unsigned,
+                               struct aefd_note_create_result *);
+#endif
 int64_t aefd_table_open(struct aefd_bindings *, struct aefd_client *,
                         const unsigned char *name, size_t length, int cloexec);
 int64_t aefd_table_dup(struct aefd_bindings *, struct aefd_client *, int fd,

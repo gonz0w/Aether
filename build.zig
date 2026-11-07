@@ -40,6 +40,8 @@ pub fn build(b: *std.Build) void {
     options.addOption(bool, "native_zsh_file_exec", native_zsh_file_exec);
     const native_zsh_operator = b.option(bool, "native-zsh-operator", "Private foreground Zsh operator session with a fixed 30000-tick ceiling") orelse false;
     options.addOption(bool, "native_zsh_operator", native_zsh_operator);
+    const native_zsh_home_redirection = b.option(bool, "native-zsh-home-redirection", "Private parent home redirection with the selected 80 KiB Rust Owner") orelse false;
+    options.addOption(bool, "native_zsh_home_redirection", native_zsh_home_redirection);
     const native_zsh_terminfo = b.option(bool, "native-zsh-terminfo", "Private large-Zsh MODE/SIGINT composition with retained Owner namespace custody") orelse false;
     options.addOption(bool, "native_zsh_terminfo", native_zsh_terminfo);
     const block_test = b.option([]const u8, "block-test", "Disposable disk bring-up: write or verify");
@@ -255,6 +257,8 @@ pub fn build(b: *std.Build) void {
         !native_fs_owner_data or !native_fs_owner_stack or af09_diagnostic or
         native_mktemp_reader or service_lifetime))
         @panic("Zsh operator requires the selected private file-exec closure");
+    if (native_zsh_home_redirection and (!native_zsh_operator or !native_zsh_file_exec))
+        @panic("Zsh home redirection requires the selected private operator/file-exec closure");
 
     options.addOption(bool, "native_exec_copy", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-copy", "Copy an unpublished replacement for rejection testing"));
     options.addOption(bool, "native_exec_early", negativeOption(b, release_artifact, af09_diagnostic, "native-exec-early", "Publish replacement before owner confirmation"));

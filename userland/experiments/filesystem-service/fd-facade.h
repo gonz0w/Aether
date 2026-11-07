@@ -26,7 +26,8 @@ int64_t aefd_file_open_home_write(struct aefd_client *, const unsigned char *,
 int64_t aefd_file_open_home(struct aefd_client *, const unsigned char *, size_t,
                             int access, int cloexec);
 #endif
-#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
+#if defined(AEFD_WRITE_WIRE) || defined(AEFD_ZSH_HOME_WRITE_BINDINGS) ||       \
+    defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS)
 int64_t aefd_file_write(struct aefd_client *, int fd, const unsigned char *,
                         size_t, struct aefd_write_result *);
 #endif

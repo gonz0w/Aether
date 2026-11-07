@@ -32,6 +32,8 @@ struct Storage {
     made: [bool; 3],
     data: Vec<u8>,
     probe: Vec<u8>,
+    #[cfg(native_zsh_home_redirection)]
+    note: Option<Vec<u8>>,
     probe_failure: u8,
     mutations: u64,
 }
@@ -40,7 +42,7 @@ fn node(id: u64, size: usize) -> p::Node {
         id,
         1,
         size as u64,
-        if matches!(id, 5 | 6) {
+        if matches!(id, 5 | 6) || (cfg!(native_zsh_home_redirection) && id == 7) {
             p::Kind::File
         } else {
             p::Kind::Directory
@@ -59,6 +61,8 @@ impl p::Backend for Storage {
             (1, b"home") => 2,
             (2, b".terminfo") if self.made[0] => 3,
             (2, b"probe") => 6,
+            #[cfg(native_zsh_home_redirection)]
+            (2, b"note") if self.note.is_some() => 7,
             (3, b"v") if self.made[1] => 4,
             (4, b"vt100") if self.made[2] => 5,
             _ => return Err(p::Error::Backend(2)),
@@ -68,11 +72,21 @@ impl p::Backend for Storage {
             match id {
                 5 => self.data.len(),
                 6 => self.probe.len(),
+                #[cfg(native_zsh_home_redirection)]
+                7 => self.note.as_ref().unwrap().len(),
                 _ => 0,
             },
         ))
     }
     fn read(&mut self, node: p::Node, at: u64, out: &mut [u8]) -> Result<usize, p::Error> {
+        #[cfg(native_zsh_home_redirection)]
+        if node.identity().0 == 7 {
+            let data = self.note.as_ref().unwrap();
+            let at = (at as usize).min(data.len());
+            let count = out.len().min(data.len() - at);
+            out[..count].copy_from_slice(&data[at..at + count]);
+            return Ok(count);
+        }
         let data = if node.identity().0 == 6 {
             &self.probe
         } else {
@@ -94,6 +108,8 @@ impl p::Backend for Storage {
         self.mutations += 1;
         match n.identity().0 {
             5 => self.data = bytes.to_vec(),
+            #[cfg(native_zsh_home_redirection)]
+            7 => self.note = Some(bytes.to_vec()),
             6 => {
                 assert_eq!(
                     bytes,
@@ -132,6 +148,21 @@ impl p::Backend for Storage {
         op: p::Namespace<'_>,
         _: p::Utc,
     ) -> Result<p::Completion, p::Lost> {
+        #[cfg(native_zsh_home_redirection)]
+        if matches!(
+            (n.identity().0, &op),
+            (2, p::Namespace::Create { name: b"note", .. })
+        ) {
+            assert!(self.note.is_none());
+            self.note = Some(Vec::new());
+            self.mutations += 1;
+            return Ok(p::Completion {
+                error: 0,
+                txg: self.mutations,
+                bytes_staged: 0,
+                state: 2,
+            });
+        }
         let i = match (n.identity().0, op) {
             (
                 2,
@@ -488,6 +519,8 @@ impl Fixture {
             let mut owner = p::Owner::new(
                 Storage {
                     probe_failure,
+                    #[cfg(native_zsh_home_redirection_reader)]
+                    note: Some(b"AETHER-HOME-158\n".to_vec()),
                     #[cfg(native_zsh_cold_reopen)]
                     made: [true; 3],
                     #[cfg(native_zsh_cold_reopen)]
@@ -652,6 +685,10 @@ impl Fixture {
         #[cfg(native_zsh_cold_reopen)]
         runtime
             .with_files(|files| files.reopen_file_exec(FILE_EXEC_ELF, &mut [0; 4096]))
+            .unwrap();
+        #[cfg(native_zsh_home_redirection_reader)]
+        runtime
+            .with_files(|files| files.reopen_note(&mut [0; 4096]))
             .unwrap();
         Self {
             runtime,
@@ -1930,4 +1967,120 @@ fn operator_pending_read_rejects_new_frame_and_terminal_after_wake() {
         Err(-5)
     );
     assert_eq!(h.host.0.borrow().parks.len(), 1);
+}
+
+#[cfg(native_zsh_home_redirection)]
+impl Fixture {
+    fn note_request(
+        &mut self,
+        op: u64,
+        sequence: u64,
+        args: [u64; 4],
+        body: &[u8],
+    ) -> Result<Vec<u8>, i64> {
+        let binding = self.runtime.file_binding.unwrap();
+        let mut raw = [0; 64];
+        raw[..8].copy_from_slice(filesystem_readonly::MAGIC);
+        for (index, value) in [
+            op,
+            binding.generation,
+            sequence,
+            args[0],
+            args[1],
+            args[2],
+            args[3],
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            raw[(index + 1) * 8..(index + 2) * 8].copy_from_slice(&value.to_le_bytes());
+        }
+        self.runtime.file_header = raw;
+        if !body.is_empty() {
+            let mut padded = [0; 64];
+            padded[..body.len()].copy_from_slice(body);
+            self.feed(PR, &padded);
+        }
+        self.clear();
+        self.runtime.file_request(&mut [0; 4096], false)?;
+        Ok(self.output(PW))
+    }
+}
+#[cfg(all(native_zsh_home_redirection, not(native_zsh_home_redirection_reader)))]
+#[test]
+fn note_live_alias_refuses_fork_before_freeze_or_native_copy() {
+    let mut h = Fixture::new();
+    let r = h
+        .note_request(12, 1, [0, 10, 0o600, 0], b"/home/note")
+        .unwrap();
+    assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
+    let raw = h.snapshot(false);
+    let mut work = [0; 4096];
+    zsh_process_frames::encode_fork(
+        &raw,
+        h.runtime.zsh_expected(false).unwrap(),
+        1,
+        (&mut work[..368]).try_into().unwrap(),
+    )
+    .unwrap();
+    let before = h.host.0.borrow().calls.len();
+    assert_eq!(h.runtime.zsh_fork(&mut work), Err(-16));
+    assert_eq!(h.host.0.borrow().calls.len(), before);
+}
+#[cfg(native_zsh_home_redirection)]
+#[test]
+fn note_incomplete_session_cannot_emit_success_oracle() {
+    let mut h = Fixture::new();
+    assert!(
+        !h.runtime
+            .with_files(|files| Ok(files.note_complete()))
+            .unwrap()
+    );
+    h.prepare_healthy_oracle();
+    assert_eq!(h.runtime.write_native_oracle(&mut [0; 4096]), Err(-5));
+    assert!(h.host.0.borrow().serial_output.is_empty());
+}
+
+#[cfg(native_zsh_home_redirection)]
+#[test]
+fn note_explicit_read_close_allows_healthy_existing_no_child_marker() {
+    let mut h = Fixture::new();
+    let mut seq = 1;
+    #[cfg(not(native_zsh_home_redirection_reader))]
+    {
+        let r = h
+            .note_request(12, seq, [0, 10, 0o600, 0], b"/home/note")
+            .unwrap();
+        seq += 1;
+        let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
+        let r = h
+            .note_request(11, seq, [fd, 16, 0, 0], b"AETHER-HOME-158\n")
+            .unwrap();
+        seq += 1;
+        assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
+        h.note_request(5, seq, [fd, 0, 0, 0], b"").unwrap();
+        seq += 1;
+    }
+    let r = h
+        .note_request(1, seq, [0, 10, 0, 0], b"/home/note")
+        .unwrap();
+    seq += 1;
+    let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
+    let r = h.note_request(2, seq, [fd, 16, 0, 0], b"").unwrap();
+    seq += 1;
+    assert_eq!(&r[64..80], b"AETHER-HOME-158\n");
+    h.note_request(5, seq, [fd, 0, 0, 0], b"").unwrap();
+    assert!(
+        h.runtime
+            .with_files(|files| Ok(files.note_complete()))
+            .unwrap()
+    );
+    h.prepare_healthy_oracle();
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    let host = h.host.0.borrow();
+    assert!(
+        host.serial_output
+            .windows(8)
+            .any(|bytes| bytes == b"child=no")
+    );
 }

@@ -23,6 +23,14 @@ struct StorageState {
     data_read_failure: u8,
     #[cfg(native_zsh_cold_reopen)]
     wrong_kind: u64,
+    #[cfg(native_zsh_home_redirection)]
+    note: Vec<u8>,
+    #[cfg(native_zsh_home_redirection)]
+    note_exists: bool,
+    #[cfg(native_zsh_home_redirection)]
+    note_failure: u8,
+    #[cfg(native_zsh_home_redirection)]
+    note_lookup_failure: bool,
     mutations: usize,
     lookups: usize,
     reads: usize,
@@ -34,7 +42,10 @@ fn node(id: u64, size: usize) -> p::Node {
         id,
         1,
         size as u64,
-        if id == 5 || (cfg!(any(native_zsh_home_write, native_zsh_file_exec)) && id == 6) {
+        if id == 5
+            || (cfg!(any(native_zsh_home_write, native_zsh_file_exec)) && id == 6)
+            || (cfg!(native_zsh_home_redirection) && id == 7)
+        {
             p::Kind::File
         } else {
             p::Kind::Directory
@@ -58,6 +69,13 @@ impl p::Backend for Storage {
             (4, b"vt100") if s.made[2] => 5,
             #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
             (2, b"probe") => 6,
+            #[cfg(native_zsh_home_redirection)]
+            (2, b"note") if s.note_exists => {
+                if s.note_lookup_failure {
+                    return Err(p::Error::Backend(5));
+                }
+                7
+            }
             _ => return Err(p::Error::Backend(2)),
         };
         #[cfg(native_zsh_cold_reopen)]
@@ -67,6 +85,10 @@ impl p::Backend for Storage {
         #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
         if id == 6 {
             return Ok(node(id, s.probe.len()));
+        }
+        #[cfg(native_zsh_home_redirection)]
+        if id == 7 {
+            return Ok(node(id, s.note.len()));
         }
         Ok(node(id, if id == 5 { s.data.len() } else { 0 }))
     }
@@ -107,6 +129,8 @@ impl p::Backend for Storage {
         };
         #[cfg(not(any(native_zsh_home_write, native_zsh_file_exec)))]
         let data = &s.data;
+        #[cfg(native_zsh_home_redirection)]
+        let data = if at.identity().0 == 7 { &s.note } else { data };
         let start = (offset as usize).min(data.len());
         let count = out.len().min(data.len() - start);
         out[..count].copy_from_slice(&data[start..start + count]);
@@ -119,6 +143,28 @@ impl p::Backend for Storage {
         data: &[u8],
         _: p::Utc,
     ) -> Result<p::Completion, p::Lost> {
+        #[cfg(native_zsh_home_redirection)]
+        if n.identity().0 == 7 {
+            let mut s = self.0.lock().unwrap();
+            s.mutations += 1;
+            assert_eq!(offset, 0);
+            s.note = data.to_vec();
+            return match s.note_failure {
+                4 => Err(p::Lost),
+                5 => Ok(p::Completion {
+                    error: 5,
+                    txg: 99,
+                    bytes_staged: data.len() as u64,
+                    state: 1,
+                }),
+                _ => Ok(p::Completion {
+                    error: 0,
+                    txg: s.mutations as u64,
+                    bytes_staged: data.len() as u64,
+                    state: 2,
+                }),
+            };
+        }
         #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
         if n.identity().0 == 6 {
             assert_eq!(offset, 0);
@@ -158,6 +204,38 @@ impl p::Backend for Storage {
         op: p::Namespace<'_>,
         _: p::Utc,
     ) -> Result<p::Completion, p::Lost> {
+        #[cfg(native_zsh_home_redirection)]
+        if matches!(
+            (n.identity().0, &op),
+            (2, p::Namespace::Create { name: b"note", .. })
+        ) {
+            let mut s = self.0.lock().unwrap();
+            s.mutations += 1;
+            if s.note_exists || s.note_failure == 3 {
+                return Ok(p::Completion {
+                    error: 17,
+                    txg: 0,
+                    bytes_staged: 0,
+                    state: 0,
+                });
+            }
+            s.note_exists = true;
+            return match s.note_failure {
+                1 => Err(p::Lost),
+                2 => Ok(p::Completion {
+                    error: 5,
+                    txg: 99,
+                    bytes_staged: 0,
+                    state: 1,
+                }),
+                _ => Ok(p::Completion {
+                    error: 0,
+                    txg: s.mutations as u64,
+                    bytes_staged: 0,
+                    state: 2,
+                }),
+            };
+        }
         let index = match (n.identity().0, op) {
             (
                 2,
@@ -1206,7 +1284,7 @@ fn cold_reopen_post_stat_and_retained_helper_close_are_required() {
     assert_eq!(h.state.lock().unwrap().mutations, 0);
 }
 
-#[cfg(native_zsh_idle_exit)]
+#[cfg(all(native_zsh_idle_exit, native_zsh_cold_reopen))]
 #[test]
 fn unused_helper_close_requires_the_validated_held_reference_and_known_success() {
     let image = b"actual persisted executable";
@@ -1236,3 +1314,7 @@ fn unused_helper_close_requires_the_validated_held_reference_and_known_success()
         assert_eq!(h.state.lock().unwrap().mutations, 0);
     }
 }
+
+#[cfg(native_zsh_home_redirection)]
+#[path = "zsh-home-redirection-tests.rs"]
+mod home_redirection_tests;

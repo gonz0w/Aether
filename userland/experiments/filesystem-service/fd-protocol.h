@@ -5,7 +5,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
+#if defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS) &&                             \
+    defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
+#error "home redirection excludes the historical helper-write profile"
+#endif
+#if defined(AEFD_ZSH_HOME_WRITE_BINDINGS) ||                                   \
+    defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS)
 #ifndef AEFD_ZSH_PROCESS_BINDINGS
 #define AEFD_ZSH_PROCESS_BINDINGS
 #endif
@@ -181,6 +186,10 @@
 #undef AEFD_MAGIC
 #define AEFD_MAGIC "AEFP0005"
 #endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+#undef AEFD_MAGIC
+#define AEFD_MAGIC "AEFP0006"
+#endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U
 
@@ -239,7 +248,12 @@ static inline int aefd_name(unsigned char out[256], const unsigned char *name,
     /* This literal alias is the selected ncurses lookup, not normalization. */
     static const char *const allowed[] = {"/home/.terminfo",
                                           "/home/.terminfo/v/vt100",
-                                          "/home/.terminfo/./v/vt100"};
+                                          "/home/.terminfo/./v/vt100"
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+                                          ,
+                                          "/home/note"
+#endif
+    };
     int found = 0;
     for (unsigned i = 0; i < sizeof(allowed) / sizeof(allowed[0]); ++i)
         if (strlen(allowed[i]) == length && !memcmp(name, allowed[i], length))

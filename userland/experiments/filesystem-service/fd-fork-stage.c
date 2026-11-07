@@ -11,6 +11,10 @@ int64_t aefd_zsh_capture(struct aefd_startup *boot,
         observed.input != boot->context.native.input ||
         observed.output != boot->context.native.output)
         return -22;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    if (boot->context.note_writers)
+        return -16;
+#endif
     memset(out, 0, 336);
     memcpy(out, "AEFDB009", 8);
     aefd_put(out, 1, 1 | UINT64_C(336) << 32);
@@ -105,6 +109,12 @@ int64_t aefd_fork_arm(struct aefd_fork *f, struct aefd_startup_auxv observed)
         observed.input != b->context.native.input ||
         observed.output != b->context.native.output)
         return -22;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    /* Check before the mask/freeze transaction or any request/copy. The
+     * existing native active/busy guard above covers in-flight note I/O. */
+    if (b->context.note_writers)
+        return -16;
+#endif
     if (f->counter == UINT64_MAX
 #ifdef AEFD_ZSH_PROCESS_BINDINGS
         || f->counter == UINT64_MAX - 1
@@ -235,6 +245,10 @@ int64_t aefd_fork_child(struct aefd_fork *f, struct aefd_startup_auxv grants,
     struct aefd_native_source sources[7] = {0};
     unsigned history[2] = {0};
     int borrowed = 0, reset = 0, constructed = 0;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    if (b->context.note_writers)
+        goto failed;
+#endif
     if (!f->call || !f->sequence ||
         aefd_word(b->scratch +
 #ifdef AEFD_ZSH_PROCESS_BINDINGS

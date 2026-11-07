@@ -475,3 +475,29 @@ review, successful actual trial and required protected CI may qualify issue156
 delivery while141 stays open. Keep one-use media, finite attempts, no replay of
 unknown effects and known cleanup. General peaks, job control, authentication,
 packages and assembled R1 remain separate.
+
+## Selected parent home redirection — 2026-11-07
+
+Cam [approved issue158](https://github.com/gonz0w/Aether/issues/158#issuecomment-6710663004)
+and its [reviewed design](https://github.com/gonz0w/Aether/issues/158#issuecomment-6710522629).
+Select parent-only exclusive note creation/write under the Rust Owner's HOME
+custody, actual process-local0077 mask, AEFP0006 receipts and scoped stdio
+redirect with opcode7 reserved. The new warm operator uses exact9 mutations;
+its one cold reader retains original exact0 semantics. Existing helper/terminfo,
+authority boundaries, numerical limits and old profiles remain protected.
+
+Fix and separately review the precise wire layout before code. Focused checks
+and fresh affected parent/Owner/helper/engine fits precede images; stop/replan
+on overflow, with no automatic limit increase or third-boot fallback. Guarded
+paired evidence may establish remaining scoped workload fit. Focused checks,
+separate review, actual success and required protected CI may qualify158
+checkpoint delivery while141 stays open. Existing one-use media/no-network/
+no-retry/known-cleanup rules remain. General overwrite/truncate/file operations,
+job control, packages, authentication, indefinite sessions, general peaks and
+assembled R1 acceptance remain separate.
+
+## Issue158 scoped Owner code-cap amendment —2026-11-07
+
+Cam directly approved the reviewed [80KiB amendment](https://github.com/gonz0w/Aether/issues/158#issuecomment-6711078557): “Approve scoped80KiB amendment (Recommended)”. Only the new home-redirection writer/reader profile may admit81920 Owner RX bytes through a closed default-off kernel/build selector; old profiles retain73728 and existing rejection behavior. Preserve Runtime/workspace4096 each,12288 mapped/12280 usable stack,128-page backing, all authority and execution limits. No generic cap override or new kernel entry/capability follows. Fresh actual writer/reader RX/Runtime/stack and other affected fits, separate reviews, guarded warm9/cold0 evidence, required CI and the already approved158 checkpoint gates remain binding. Stop/replan on another required-bound failure.
+
+The scoped15880KiB [approval record](https://github.com/gonz0w/Aether/issues/158#issuecomment-6711120030) binds the directly approved amendment above; the linked6711078557 comment is its reviewed proposal.

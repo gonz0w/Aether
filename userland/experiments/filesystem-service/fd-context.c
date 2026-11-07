@@ -140,6 +140,87 @@ int64_t aefd_context_open_home_write(struct aefd_context *c,
     return end(c, result);
 }
 #endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+/* This bitset describes successful FILE results only. Rust enforces actual
+ * object rights. Retirement invalidates it; selector removal prevents reuse. */
+static void note_refresh(struct aefd_context *c)
+{
+    uint16_t present = 0;
+    if (c->client.live)
+        for (unsigned fd = 0; fd < 16; ++fd)
+            if (c->map.slots[fd].kind == AEFD_BIND_FILE)
+                present |= (uint16_t)(1U << c->map.slots[fd].selector);
+    c->note_writers &= present;
+}
+static int note_writer(struct aefd_context *c, struct aefd_binding binding)
+{
+    return c->client.live && binding.kind == AEFD_BIND_FILE &&
+           (c->note_writers & (uint16_t)(1U << binding.selector));
+}
+int64_t aefd_context_create_note(struct aefd_context *c,
+                                 const unsigned char *name, size_t length,
+                                 int cloexec, unsigned mode)
+{
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    if (c->note_create_attempted)
+        return end(c, -16);
+    c->note_create_attempted = 1;
+    result = aefd_table_create_note(&c->map, &c->client, name, length, cloexec,
+                                    mode, &c->note_create);
+    if (result >= 0) {
+        struct aefd_binding b = c->map.slots[result];
+        c->note_writers |= (uint16_t)(1U << b.selector);
+    }
+    note_refresh(c);
+    return end(c, result);
+}
+int64_t aefd_context_note_replace(struct aefd_context *c, int from, int to)
+{
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    struct aefd_binding source, target;
+    int found =
+        aefd_bindings_lookup(&c->map, c->client.generation, from, &source);
+    int victim =
+        aefd_bindings_lookup(&c->map, c->client.generation, to, &target);
+    if (found < 0 || victim < 0) {
+        aefd_client_abort(&c->client);
+        note_refresh(c);
+        return end(c, -5);
+    }
+    if (!found || to < 0 || to >= 16)
+        return end(c, -9);
+    if (from == to)
+        return end(c, to);
+    if ((source.kind != AEFD_BIND_FILE && source.kind != AEFD_BIND_TERMINAL &&
+         source.kind != AEFD_BIND_DUPLEX_TERMINAL) ||
+        (victim && target.kind != AEFD_BIND_FILE &&
+         target.kind != AEFD_BIND_TERMINAL &&
+         target.kind != AEFD_BIND_DUPLEX_TERMINAL) ||
+        (source.kind == AEFD_BIND_FILE && victim &&
+         target.kind == AEFD_BIND_FILE))
+        return end(c, -38);
+    int writer = note_writer(c, source);
+    struct aefd_redirect_result r =
+        aefd_session_redirect(&c->session, from, to);
+    c->note_redirect = r;
+    /* FILE close errors do not encode whether Rust consumed the alias. A
+     * failed target close cannot safely resume even if the C slot remains. */
+    if (r.unknown || r.unresolved ||
+        (r.target_attempted && r.target_status < 0))
+        aefd_client_abort(&c->client);
+    if (r.committed && writer)
+        c->note_writers |= (uint16_t)(1U << c->map.slots[to].selector);
+    note_refresh(c);
+    result = r.committed && !r.unknown && !r.unresolved && c->client.live ? to
+             : r.status < 0 ? r.status
+                            : -5;
+    return end(c, result);
+}
+#endif
 int64_t aefd_context_open(struct aefd_context *c, const unsigned char *name,
                           size_t length, int flag)
 {
@@ -154,6 +235,12 @@ int64_t aefd_context_read(struct aefd_context *c, int fd, unsigned char *out,
     int64_t result = begin(c);
     if (result)
         return result;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    struct aefd_binding b;
+    result = aefd_session_binding(&c->session, fd, &b);
+    if (result || note_writer(c, b))
+        return end(c, result ? result : -9);
+#endif
     return end(c, aefd_session_read(&c->session, fd, out, length));
 }
 int64_t aefd_context_write(struct aefd_context *c, int fd,
@@ -176,6 +263,25 @@ int64_t aefd_context_write(struct aefd_context *c, int fd,
         return end(c, result);
     }
 #endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    struct aefd_binding b;
+    result = aefd_session_binding(&c->session, fd, &b);
+    if (result)
+        return end(c, result);
+    if (b.kind == AEFD_BIND_FILE) {
+        if (!note_writer(c, b))
+            return end(c, -30);
+        if (!in || !length || length > 16)
+            return end(c, -22);
+        if (c->note_write_attempted)
+            return end(c, -16);
+        c->note_write_attempted = 1;
+        result =
+            aefd_file_write(&c->client, b.selector, in, length, &c->note_write);
+        note_refresh(c);
+        return end(c, result);
+    }
+#endif
     return end(c, aefd_session_write(&c->session, fd, in, length));
 }
 int64_t aefd_context_dup(struct aefd_context *c, int fd, int minimum, int flag)
@@ -183,7 +289,20 @@ int64_t aefd_context_dup(struct aefd_context *c, int fd, int minimum, int flag)
     int64_t result = begin(c);
     if (result)
         return result;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    struct aefd_binding b;
+    result = aefd_session_binding(&c->session, fd, &b);
+    if (result)
+        return end(c, result);
+    int writer = note_writer(c, b);
+    result = aefd_session_dup(&c->session, fd, minimum, flag);
+    if (result >= 0 && writer)
+        c->note_writers |= (uint16_t)(1U << c->map.slots[result].selector);
+    note_refresh(c);
+    return end(c, result);
+#else
     return end(c, aefd_session_dup(&c->session, fd, minimum, flag));
+#endif
 }
 int64_t aefd_context_replace(struct aefd_context *c, int from, int to)
 {
@@ -239,7 +358,13 @@ int64_t aefd_context_close(struct aefd_context *c, int fd)
         return end(c, c->home_close_status);
     }
 #endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    result = aefd_session_close(&c->session, fd);
+    note_refresh(c);
+    return end(c, result);
+#else
     return end(c, aefd_session_close(&c->session, fd));
+#endif
 }
 int64_t aefd_context_describe(struct aefd_context *c, int fd,
                               struct aefd_binding *out, unsigned *rights)
@@ -275,6 +400,10 @@ int64_t aefd_context_describe(struct aefd_context *c, int fd,
     }
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
     if (!result && binding.kind == AEFD_BIND_FILE && fd == c->home_write_fd)
+        actual = 2;
+#endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    if (!result && note_writer(c, binding))
         actual = 2;
 #endif
     result = end(c, result);
@@ -383,6 +512,12 @@ int64_t aefd_context_seek(struct aefd_context *c, int fd, int64_t delta,
     int64_t result = begin(c);
     if (result)
         return result;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    struct aefd_binding b;
+    result = aefd_session_binding(&c->session, fd, &b);
+    if (result || note_writer(c, b))
+        return end(c, result ? result : -9);
+#endif
     return end(c, aefd_session_seek(&c->session, fd, delta, whence));
 }
 int64_t aefd_context_snapshot(struct aefd_context *c, unsigned char *out,

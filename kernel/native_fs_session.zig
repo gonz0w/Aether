@@ -14,6 +14,8 @@ pub const application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 1
     3 * elf.application_limits.file_bytes + roles.owner_stack_code_limit;
 pub const external_application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 112 +
     3 * elf.application_limits.file_bytes + roles.zsh_external_owner_code_limit;
+pub const home_redirection_application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 112 +
+    3 * elf.application_limits.file_bytes + roles.zsh_home_redirection_owner_code_limit;
 pub const Error = roles.Error;
 pub const Bundle = struct {
     engine: []const u8,
@@ -40,17 +42,21 @@ pub fn parseApplication(raw: []const u8) Error!Bundle {
 pub fn parseExternalApplication(raw: []const u8) Error!Bundle {
     return parseSelected(raw, .external_application);
 }
-const Profile = enum { conformance, init, owner_data, owner_stack, application, external_application };
+// Only the closed kernel build selection may choose issue158's allowance.
+pub fn parseHomeRedirectionApplication(raw: []const u8) Error!Bundle {
+    return parseSelected(raw, .home_redirection_application);
+}
+const Profile = enum { conformance, init, owner_data, owner_stack, application, external_application, home_redirection_application };
 fn parseSelected(raw: []const u8, comptime profile: Profile) Error!Bundle {
     const init_owner = profile != .conformance;
-    const application = profile == .application or profile == .external_application;
-    const limit: usize = if (profile == .external_application) roles.zsh_external_owner_code_limit else if (profile == .owner_stack or profile == .application) roles.owner_stack_code_limit else if (init_owner) 16384 else roles.controller_limit;
+    const application = profile == .application or profile == .external_application or profile == .home_redirection_application;
+    const limit: usize = if (profile == .home_redirection_application) roles.zsh_home_redirection_owner_code_limit else if (profile == .external_application) roles.zsh_external_owner_code_limit else if (profile == .owner_stack or profile == .application) roles.owner_stack_code_limit else if (init_owner) 16384 else roles.controller_limit;
     const selected_magic = switch (profile) {
         .conformance => magic,
         .init => init_magic,
         .owner_data => owner_data_magic,
         .owner_stack => owner_stack_magic,
-        .application, .external_application => application_magic,
+        .application, .external_application, .home_redirection_application => application_magic,
     };
     if (raw.len < 48 or !std.mem.eql(u8, raw[0..8], selected_magic)) return error.InvalidComposition;
     const engine: usize = std.mem.readInt(u32, raw[8..12], .little);
@@ -64,7 +70,7 @@ fn parseSelected(raw: []const u8, comptime profile: Profile) Error!Bundle {
     launch.layout(&image) catch return error.InvalidComposition;
     const nested = raw[48 + engine ..];
     if (!std.mem.eql(u8, nested[0..8], if (application) "AENMX011" else if (profile == .owner_stack) "AENMX010" else "AENMX009")) return error.InvalidComposition;
-    const bundle = (if (profile == .external_application) launch.externalApplicationBundle(nested) else if (profile == .application) launch.applicationBundle(nested) else if (profile == .owner_stack) launch.ownerStackBundle(nested) else launch.pipelineBundle(nested)) catch return error.InvalidComposition;
+    const bundle = (if (profile == .home_redirection_application) launch.homeRedirectionApplicationBundle(nested) else if (profile == .external_application) launch.externalApplicationBundle(nested) else if (profile == .application) launch.applicationBundle(nested) else if (profile == .owner_stack) launch.ownerStackBundle(nested) else launch.pipelineBundle(nested)) catch return error.InvalidComposition;
     if (bundle.supervisor.len > limit) return error.InvalidComposition;
     for (bundle.images) |process_bytes| {
         const process_image = (if (application) elf.parseApplication(process_bytes) else elf.parse(process_bytes)) catch return error.InvalidComposition;
