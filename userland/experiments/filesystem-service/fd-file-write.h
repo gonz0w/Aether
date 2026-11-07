@@ -2,7 +2,8 @@
 #ifndef AETHER_FD_FILE_WRITE_H
 #define AETHER_FD_FILE_WRITE_H
 #include "fd-client.h"
-#if !defined(AEFD_WRITE_WIRE) && !defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
+#if !defined(AEFD_WRITE_WIRE) && !defined(AEFD_ZSH_HOME_WRITE_BINDINGS) &&     \
+    !defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS)
 #error "file write receipt requires explicit selected write wire"
 #endif
 /* Local observations never masquerade as fully decoded remote receipts. */
@@ -98,6 +99,10 @@ static inline int aefd_write_decode(const unsigned char header[64],
                            aefd_write_signed(aefd_word(body, 5))},
         .error_kind = aefd_word(body, 6),
         .error_value = aefd_write_signed(aefd_word(body, 7))};
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    if (requested > 16 || r.offset)
+        return 0;
+#endif
     uint64_t tag = r.flags & 7U;
     int has_offset = (r.flags & 8U) != 0, has_cleanup = (r.flags & 16U) != 0;
     if (r.flags & ~UINT64_C(31) || tag == 7 || (!has_offset && r.offset) ||

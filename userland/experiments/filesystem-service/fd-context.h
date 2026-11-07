@@ -16,6 +16,13 @@ struct aefd_context {
     struct aefd_session session;
     unsigned char workspace[AEFD_READ_MAX];
     int state;
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    struct aefd_note_create_result note_create;
+    struct aefd_write_result note_write;
+    struct aefd_redirect_result note_redirect;
+    uint16_t note_writers;
+    int note_create_attempted, note_write_attempted;
+#endif
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
     /* Local correlated observations survive finish; they grant no authority. */
     struct aefd_write_result home_write;
@@ -63,6 +70,11 @@ int64_t aefd_context_directory(struct aefd_context *, const unsigned char *,
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
 int64_t aefd_context_open_home_write(struct aefd_context *,
                                      const unsigned char *, size_t, int);
+#endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+int64_t aefd_context_create_note(struct aefd_context *, const unsigned char *,
+                                 size_t, int, unsigned);
+int64_t aefd_context_note_replace(struct aefd_context *, int, int);
 #endif
 int64_t aefd_context_open(struct aefd_context *, const unsigned char *, size_t,
                           int);

@@ -109,9 +109,18 @@ long __aether_io(unsigned long operation, unsigned long fd,
         result = pointer || count
                      ? -EINVAL
                      : aefd_context_dup(&startup.context, (int)fd, 0, 0);
-    else if (operation == 33)
+    else if (operation == 33) {
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+        result = pointer >= 16 || count
+                     ? -EINVAL
+                     : aefd_context_note_replace(&startup.context, (int)fd,
+                                                 (int)pointer);
+        if (!startup.context.client.live)
+            __wrap__exit(141);
+#else
         result = -EOPNOTSUPP;
-    else
+#endif
+    } else
         result = aefd_libc_io(&startup.context, operation, fd,
                               (uintptr_t)pointer, count);
 #ifdef AEFD_ZSH_DIAGNOSTIC
@@ -130,9 +139,18 @@ static long libc_result(int64_t result, int saved)
     errno = saved;
     return (long)result;
 }
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+static mode_t note_umask = 0077;
+mode_t aether_zsh_umask(mode_t requested)
+{
+    mode_t previous = note_umask;
+    note_umask = requested & 0777;
+    return previous;
+}
+#endif
 int aether_zsh_open(const char *path, int flags, mode_t mode)
 {
-    (void)mode; /* Existing readonly opens do not use a creation mode. */
+    (void)mode; /* Only the admitted parent creation path consumes mode. */
     int saved = errno;
     /* On this x86_64 target O_LARGEFILE is the musl syscall shim's no-op bit,
      * not a request for additional descriptor rights. All other flags remain
@@ -143,6 +161,37 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
         return (int)libc_result(-EFAULT, saved);
     if (length == 256)
         return (int)libc_result(-ENAMETOOLONG, saved);
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+    if (!strcmp(path, "/home/note")) {
+#ifdef AEFD_ZSH_HELPER_ENTRY
+        return (int)libc_result(-EACCES, saved);
+#else
+        int admitted = flags & ~O_LARGEFILE;
+        if (!live())
+            return (int)libc_result(-EBADF, saved);
+        if (admitted & O_CREAT) {
+            unsigned effective = (unsigned)mode & ~(unsigned)note_umask;
+            int allowed = O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY | O_CLOEXEC;
+            if ((admitted & ~allowed) ||
+                (admitted & (O_WRONLY | O_CREAT | O_EXCL)) !=
+                    (O_WRONLY | O_CREAT | O_EXCL) ||
+                ((unsigned)mode & ~0777U) || effective != 0600)
+                return (int)libc_result(-EOPNOTSUPP, saved);
+            return (int)libc_result(
+                aefd_context_create_note(&startup.context,
+                                         (const unsigned char *)path, length,
+                                         !!(admitted & O_CLOEXEC), effective),
+                saved);
+        }
+        if (admitted & ~(O_NOCTTY | O_CLOEXEC))
+            return (int)libc_result(-EOPNOTSUPP, saved);
+        return (int)libc_result(
+            aefd_context_open(&startup.context, (const unsigned char *)path,
+                              length, !!(admitted & O_CLOEXEC)),
+            saved);
+#endif
+    }
+#endif
     if (strcmp(path, "/dev/tty") && !entry_path(path)
 #if defined(AEFD_ZSH_HOME_WRITE_BINDINGS) && defined(AEFD_ZSH_HELPER_ENTRY)
         && strcmp(path, "/home/probe")

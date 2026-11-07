@@ -178,7 +178,10 @@ compile_error!("Zsh file exec and home write are separate closed profiles");
     not(all(native_zsh_file_exec, native_zsh_process, native_zsh_filesystem))
 ))]
 compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
-#[cfg(all(native_zsh_idle_exit, not(native_zsh_cold_reopen)))]
+#[cfg(all(
+    native_zsh_idle_exit,
+    not(any(native_zsh_cold_reopen, native_zsh_home_redirection))
+))]
 compile_error!("idle exit requires the selected cold reopen profile");
 #[cfg(all(native_zsh_operator, not(native_zsh_idle_exit)))]
 compile_error!("operator session requires the selected idle exit profile");
@@ -682,6 +685,8 @@ impl<K: AppControl> Runtime<K> {
             self.with_files(|files| files.provision_file_exec(FILE_EXEC_ELF))?;
             #[cfg(native_zsh_cold_reopen)]
             self.with_files(|files| files.reopen_file_exec(FILE_EXEC_ELF, workspace))?;
+            #[cfg(native_zsh_home_redirection_reader)]
+            self.with_files(|files| files.reopen_note(workspace))?;
         }
         let mut bindings = [Binding::default(); 16];
         bindings[1] = Binding {
@@ -1287,9 +1292,9 @@ impl<K: AppControl> Runtime<K> {
                 .prepare(binding, &header, length, workspace)
                 .map_err(fs_errno)?;
             let mut bytes = *reply.header();
-            #[cfg(native_zsh_home_write)]
+            #[cfg(any(native_zsh_home_write, native_zsh_home_redirection))]
             let source_closed = reply.source_closed();
-            #[cfg(not(native_zsh_home_write))]
+            #[cfg(not(any(native_zsh_home_write, native_zsh_home_redirection)))]
             let source_closed = false;
             // End the namespace loan before process I/O reborrows Bound. A lost
             // reply rearms only the close journal before Reply's abort/drop.
@@ -1528,6 +1533,10 @@ impl<K: AppControl> Runtime<K> {
             || self.process.binding.is_some()
             || self.process.lease != ReadLease::Parent
         {
+            return Err(-16);
+        }
+        #[cfg(native_zsh_home_redirection)]
+        if self.with_files(|files| Ok(files.note_io_active()))? {
             return Err(-16);
         }
         let plan = zsh_stream_plan(snapshot.raw(), expected)?;
@@ -2323,6 +2332,10 @@ impl<K: AppControl> Runtime<K> {
         // construction. Healthy disconnect consumed both close obligations.
         let files = unsafe { self.files.assume_init_ref() };
         if files.cleanup() != Some([0; 2]) {
+            return Err(-5);
+        }
+        #[cfg(native_zsh_home_redirection)]
+        if !files.note_complete() {
             return Err(-5);
         }
         #[cfg(native_zsh_idle_exit)]

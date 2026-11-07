@@ -50,6 +50,8 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.mutation_attempts = STATE.with(|s| {
         s.borrow().attempts.unwrap_or(if cfg!(fs_home_cold_reopen) {
             0
+        } else if cfg!(fs_home_terminfo_nine) {
+            9
         } else if cfg!(fs_home_terminfo_seven) {
             7
         } else if cfg!(fs_home_terminfo_six) {
@@ -80,15 +82,19 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     }
     state.home.service.ready = 1;
     state.home.service.requests = STATE.with(|s| {
-        s.borrow()
-            .requests
-            .unwrap_or(if cfg!(any(fs_home_terminfo_six, fs_home_terminfo_seven)) {
+        s.borrow().requests.unwrap_or(
+            if cfg!(any(
+                fs_home_terminfo_six,
+                fs_home_terminfo_seven,
+                fs_home_terminfo_nine
+            )) {
                 13
             } else if cfg!(fs_af09_drain) {
                 3
             } else {
                 2
-            })
+            },
+        )
     });
     if mode == 5 {
         state.home.flags &= !ORDERED;
@@ -220,7 +226,14 @@ fn launch_requires_complete_valid_evidence_and_only_closes_proven_handback() {
         });
         let mut state = state();
         state.phases = 0;
-        assert_eq!(run(&mut state), code, "HOME_LAUNCH_VALIDATION");
+        // Cold final-zero success intentionally has no ORDERED bit. Mode5
+        // clears that bit, so it is a negative only for the warm profiles.
+        let expected = if mode == 5 && cfg!(fs_home_cold_reopen) {
+            0
+        } else {
+            code
+        };
+        assert_eq!(run(&mut state), expected, "HOME_LAUNCH_VALIDATION");
         STATE.with(|s| assert_eq!(s.borrow().closes.len(), closes, "HOME_LAUNCH_HANDBACK"));
     }
 }
@@ -244,7 +257,12 @@ fn malformed_launch_prefix_cannot_enter_callback() {
     }
 }
 
-#[cfg(not(any(fs_home_cold_reopen, fs_home_terminfo_six, fs_home_terminfo_seven)))]
+#[cfg(not(any(
+    fs_home_cold_reopen,
+    fs_home_terminfo_six,
+    fs_home_terminfo_seven,
+    fs_home_terminfo_nine
+)))]
 #[test]
 fn fixed_home_probe_requires_three_attempts_only_when_selected() {
     for attempts in [2, 3, 4, 6] {
@@ -315,10 +333,16 @@ fn terminfo_six_requires_exact_count_and_complete_clean_result() {
     }
 }
 
-#[cfg(any(fs_home_terminfo_six, fs_home_terminfo_seven))]
+#[cfg(any(fs_home_terminfo_six, fs_home_terminfo_seven, fs_home_terminfo_nine))]
 #[test]
 fn terminfo_six_keeps_all_clean_result_and_resource_checks() {
-    let attempts = if cfg!(fs_home_terminfo_seven) { 7 } else { 6 };
+    let attempts = if cfg!(fs_home_terminfo_nine) {
+        9
+    } else if cfg!(fs_home_terminfo_seven) {
+        7
+    } else {
+        6
+    };
     for corrupt in 1..=20 {
         STATE.with(|s| {
             *s.borrow_mut() = State {
@@ -419,5 +443,23 @@ fn cold_reopen_requires_exact_zero_and_all_completion_obligations() {
             run(&mut selected),
             if (1..=96).contains(&requests) { 0 } else { 5 }
         );
+    }
+}
+
+#[cfg(fs_home_terminfo_nine)]
+#[test]
+fn terminfo_nine_requires_exact_count_and_complete_clean_result() {
+    for (attempts, expected) in [(3, 5), (6, 5), (7, 5), (8, 5), (9, 0), (10, 5)] {
+        STATE.with(|s| {
+            *s.borrow_mut() = State {
+                mode: 4,
+                attempts: Some(attempts),
+                requests: Some(18),
+                ..State::default()
+            }
+        });
+        let mut selected = state();
+        selected.phases = 0;
+        assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_NINE");
     }
 }

@@ -2735,6 +2735,16 @@
       "invariants": "Exact153-byte once-only foreground PTY stages; retained same parent, real SIGINT130, no interrupted command execution, sole sealed helper after its input stage; unchanged operator ticks/host limits/resources/media and known cleanup.",
       "oracle": "EDIT PID156; AFTER130 samePID156; actual helper23/reclaim/prompt; STATUS23 samePID156; normal parent/engine, v4/C004/export/MODE0/21cleanup/3reclaims/halt/PASS and known host cleanup. Qualified once: writer37.792s then cold26.788s, PID9/value156, interrupt130/helper23,38requests,halt2001/21cleanup/3reclaims; actual foreground PTY input.",
       "gaps": "Approved156 guarded-fit and focused checkpoint gate leaves141 open; no general peaks/job control/authentication/package/R1 acceptance."
+    },
+    {
+      "id": "zsh-home-redirection",
+      "reference": "userland/docs/proposals/ZSH-HOME-REDIRECTION.md",
+      "owner": "Aether kernel/sys-init/userland, issue158",
+      "budget_seconds": 360,
+      "command": "Focused test_zsh_home_redirection_profile.py and old capacity/build-policy checks; actual C receipt/context/provider and Rust Files/Runtime checks; matched private parent/helper/Owner/engine fits; reviewed warm --home-redirection then --home-redirection-reader on the exact stopped writer disk.",
+      "invariants": "Default-off closed158 profile: parent-only exclusive /home/note creation, one1..16-byte write at offset0 through Rust Owner HOME custody, process-local0077 mask, AEFP0006 and reserved7, scoped stdio save/restore, no child note authority. Only selected writer/reader Owner RX81920; old73728 caps and all other state/stack/backing/request/mutation/time/authority limits stay unchanged.",
+      "oracle": "Warm176 once-only foreground PTY bytes:077,WRITE0,NOTE0/PID/AETHER-HOME-158/prompt/exit0, exact9 engine; cold70 bytes:COLD0/PID/same16 bytes/prompt/exit0, exact0 engine. Both require v5 unused-helper close, healthy export/MODE0/two reclaims/halt/PASS and known original host cleanup. Qualified QEMU pair: warm40.437s/60 requests, cold26.701s/57 requests;176/70 known foreground PTY bytes, normal exits/export/MODE0/two reclaims/halt/PASS and known host cleanup.",
+      "gaps": "Scoped158 design/resource/fit/checkpoint decisions leave141 and broader R1 open. No overwrite/truncate, generic file operations, mode readback, packages, authentication or indefinite session."
     }
   ]
 }

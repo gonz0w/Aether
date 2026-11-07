@@ -90,3 +90,37 @@ The supervisor stops its original guest and Screen processes and records their
 cleanup. It never signals a client found by PID lookup. A timeout or interrupted
 run does not prove filesystem export; discard that disposable disk and prepare
 fresh media. Preserve the compact failure result if cleanup is unknown.
+
+## First persistent home note
+
+Issue158 selects a separate home-redirection image for one bounded write and
+cold readback. Its Rust Owner retains filesystem custody and admits only the
+parent's exclusive creation of `/home/note`, followed by one write of at most16
+bytes at offset zero. The sealed helper and terminfo remain protected.
+
+The qualification uses fresh disposable media and managed foreground input:
+
+```zsh
+umask 077; setopt noclobber; umask
+print -rn -- $'AETHER-HOME-158\n' > /home/note; print -r -- "WRITE $?"
+IFS= read -r note < /home/note; print -r -- "NOTE $? $$ $note"
+exit 0
+```
+
+Require `077`, `WRITE 0`, then `NOTE 0 PID AETHER-HOME-158`, with a returned
+prompt after each command. A successful stopped writer disk may be used once
+by the matching cold reader, which reads the same note using marker `COLD` and
+exits cleanly. Issue158 qualified this fixed write/read/export/cold-readback pair
+in QEMU using automated input through the foreground PTY. Both boots returned
+to the prompt and completed clean shutdown; this does not claim human typing
+or general home-file operations.
+
+Use private `zsh-target-fit.py --home-redirection`, the writer/reader variants
+of `zsh-owner-fit.py` and `zsh-witness.py`, and the reviewed exact-nine writer /
+exact-zero cold engines. Run preparation uses `zsh_run.py --home-redirection`
+and `--home-redirection-reader`; the reader requires the exact successful writer
+execution record and hash. Image and run-proposal review precede execution.
+The same operator deadlines and original-process cleanup requirements apply.
+An existing note or failed/unknown mutation aborts this once-only experiment;
+prepare fresh media rather than reopen or replay it. General overwrite/truncate,
+packages, authentication and indefinite sessions retain separate gates.

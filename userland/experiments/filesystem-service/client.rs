@@ -286,9 +286,8 @@ impl<T: Channel> Client<T> {
         })
     }
 
-    /// One component relative to a retained directory, attenuated to its grant.
-    /// Old roots permit LOOKUP1/READ2; AF09 home also permits WRITE4/MUTATE_DIR8.
-    pub fn lookup(&mut self, directory: Handle, name: &[u8], rights: u8) -> Result<Entry> {
+    /// Pure local admission for a following lookup; sends no request and reserves nothing.
+    pub fn preflight_lookup(&self, directory: Handle, name: &[u8], rights: u8) -> Result<()> {
         let (_, parent) = self.binding(directory)?;
         if parent.entry.kind != Kind::Directory
             || parent.rights & 1 == 0
@@ -302,6 +301,16 @@ impl<T: Channel> Client<T> {
         {
             return Err(Error::Invalid);
         }
+        if !self.bindings.iter().any(Option::is_none) || self.next.checked_add(1).is_none() {
+            return Err(Error::Full);
+        }
+        Ok(())
+    }
+
+    /// One component relative to a retained directory, attenuated to its grant.
+    /// Old roots permit LOOKUP1/READ2; AF09 home also permits WRITE4/MUTATE_DIR8.
+    pub fn lookup(&mut self, directory: Handle, name: &[u8], rights: u8) -> Result<Entry> {
+        self.preflight_lookup(directory, name, rights)?;
         let slot = self
             .bindings
             .iter()
@@ -439,7 +448,7 @@ impl<T: Channel> Drop for Client<T> {
 }
 #[cfg(test)]
 extern crate std;
-#[cfg(test)]
+#[cfg(all(test, not(fs_home_wire)))]
 #[path = "client-tests.rs"]
 mod tests;
 
@@ -468,3 +477,62 @@ mod mutation_client;
 pub use mutation_client::{
     MutationCompletion, MutationFailure, MutationOutcome, MutationProgress, NamespaceMutation,
 };
+
+#[cfg(test)]
+mod lookup_preflight_tests {
+    use super::*;
+    struct NoIo;
+    impl Channel for NoIo {
+        fn send(&mut self, _: &Message) -> core::result::Result<(), i64> {
+            panic!("PREFLIGHT_SENT")
+        }
+        fn receive(&mut self, _: &mut Message) -> core::result::Result<(), i64> {
+            panic!("PREFLIGHT_RECEIVED")
+        }
+        fn close(&mut self) -> [i64; 2] {
+            [0; 2]
+        }
+    }
+    #[test]
+    fn lookup_capacity_token_retired_and_allowed_are_pure() {
+        let handle = Handle {
+            epoch: 91,
+            token: 2,
+        };
+        let binding = Binding {
+            entry: Entry {
+                handle,
+                kind: Kind::Directory,
+                size: 0,
+            },
+            rights: 15,
+        };
+        let mut client = Client {
+            channel: NoIo,
+            epoch: 91,
+            bindings: [None; SLOTS],
+            next: 3,
+            cleanup: None,
+        };
+        client.bindings[1] = Some(binding);
+        assert_eq!(client.preflight_lookup(handle, b"note", 4), Ok(()));
+        assert_eq!(client.next, 3);
+        client.bindings.fill(Some(binding));
+        assert_eq!(
+            client.preflight_lookup(handle, b"note", 4),
+            Err(Error::Full)
+        );
+        client.bindings[2] = None;
+        client.next = u64::MAX;
+        assert_eq!(
+            client.preflight_lookup(handle, b"note", 4),
+            Err(Error::Full)
+        );
+        client.next = 3;
+        client.cleanup = Some([0; 2]);
+        assert_eq!(
+            client.preflight_lookup(handle, b"note", 4),
+            Err(Error::Closed)
+        );
+    }
+}

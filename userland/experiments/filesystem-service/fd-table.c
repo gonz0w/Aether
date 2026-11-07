@@ -115,6 +115,43 @@ int64_t aefd_table_open_home_write(struct aefd_bindings *map,
     return install(map, client, logical, selector, cloexec);
 }
 #endif
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+int64_t aefd_table_create_note(struct aefd_bindings *map,
+                               struct aefd_client *client,
+                               const unsigned char *name, size_t length,
+                               int cloexec, unsigned mode,
+                               struct aefd_note_create_result *out)
+{
+    if (!out)
+        return -22;
+    *out = (struct aefd_note_create_result){.observation = AEFD_WRITE_NOT_SENT,
+                                            .status = -22};
+    if (!ready(map, client)) {
+        out->status = -5;
+        return -5;
+    }
+    out->generation = client->generation;
+    out->sequence = client->sequence;
+    int logical = free_slot(map, 0);
+    if (logical < 0) {
+        out->status = -24;
+        return -24;
+    }
+    int moved =
+        aefd_client_note_create(client, name, length, cloexec, mode, out);
+    if (moved != 1 || out->status)
+        return out->status;
+    int64_t installed =
+        install(map, client, logical, (int64_t)out->remote.fd, cloexec);
+    if (installed < 0) {
+        out->installation_status = installed;
+        out->file_closed = !client->live;
+        if (out->file_closed)
+            out->file_cleanup = client->closed;
+    }
+    return installed;
+}
+#endif
 int64_t aefd_table_open(struct aefd_bindings *map, struct aefd_client *client,
                         const unsigned char *name, size_t length, int cloexec)
 {

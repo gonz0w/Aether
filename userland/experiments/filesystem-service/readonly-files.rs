@@ -31,9 +31,41 @@ mod file_exec;
     not(all(native_zsh_file_exec, native_zsh_process, native_zsh_filesystem))
 ))]
 compile_error!("cold reopen requires the complete selected filesystem file-exec profile");
-#[cfg(all(native_zsh_idle_exit, not(native_zsh_cold_reopen)))]
+#[cfg(all(
+    native_zsh_idle_exit,
+    not(any(native_zsh_cold_reopen, native_zsh_home_redirection))
+))]
 compile_error!("idle exit requires the selected cold reopen profile");
-pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_write) {
+#[cfg(all(
+    native_zsh_home_redirection,
+    not(all(
+        native_zsh_filesystem,
+        native_zsh_process,
+        native_zsh_file_exec,
+        native_zsh_idle_exit,
+        native_zsh_operator
+    ))
+))]
+compile_error!("home redirection requires its complete closed operator profile");
+#[cfg(all(native_zsh_home_redirection, native_zsh_home_write))]
+compile_error!("home redirection and old home write are separate profiles");
+#[cfg(all(
+    native_zsh_home_redirection_reader,
+    not(all(native_zsh_home_redirection, native_zsh_cold_reopen))
+))]
+compile_error!("home reader requires redirection and cold reopen");
+#[cfg(all(
+    native_zsh_home_redirection,
+    native_zsh_cold_reopen,
+    not(native_zsh_home_redirection_reader)
+))]
+compile_error!("cold home redirection requires the reader profile");
+#[cfg(native_zsh_home_redirection)]
+#[path = "zsh-home-redirection.rs"]
+mod home_redirection;
+pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_redirection) {
+    b"AEFP0006"
+} else if cfg!(native_zsh_home_write) {
     b"AEFP0005"
 } else {
     b"AEFP0004"
@@ -112,6 +144,8 @@ pub struct Files<T: Channel> {
     child_pending: bool,
     #[cfg(native_zsh_process)]
     child_epoch: u8,
+    #[cfg(native_zsh_home_redirection)]
+    note: home_redirection::Note,
     namespace_epoch: u64,
     next: u64,
     pending: bool,
@@ -150,6 +184,8 @@ impl<T: Channel> Files<T> {
                 core::ptr::addr_of_mut!((*pointer).child_pending).write(false);
                 core::ptr::addr_of_mut!((*pointer).child_epoch).write(0);
             }
+            #[cfg(native_zsh_home_redirection)]
+            core::ptr::addr_of_mut!((*pointer).note).write(home_redirection::Note::new());
             core::ptr::addr_of_mut!((*pointer).namespace_epoch).write(epoch);
             core::ptr::addr_of_mut!((*pointer).next).write(1);
             core::ptr::addr_of_mut!((*pointer).pending).write(false);
@@ -379,6 +415,10 @@ impl<T: Channel> Files<T> {
         {
             return Err(Error::Protocol);
         }
+        #[cfg(native_zsh_home_redirection)]
+        if self.note_io_active() {
+            return Err(Error::Invalid);
+        }
         self.descriptions
             .inherit_view(0, 1)
             .map_err(|_| Error::Protocol)?;
@@ -451,6 +491,10 @@ impl<T: Channel> Files<T> {
                 8 => matches!(a, 0 | 4) && (1..=255).contains(&b) && c == 0 && d == 0,
                 9 => a == 0 && b == 0 && c == 0 && d == 0,
                 10 => a == 0 && (1..=255).contains(&b) && c == 0 && d == 0,
+                #[cfg(native_zsh_home_redirection)]
+                11 => fd(a) && (1..=16).contains(&b) && c == 0 && d == 0,
+                #[cfg(native_zsh_home_redirection)]
+                12 => a <= 1 && b == 10 && c == 0o600 && d == 0,
                 #[cfg(native_zsh_home_write)]
                 11 => fd(a) && (1..=PAYLOAD as u64).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_write)]
@@ -463,7 +507,8 @@ impl<T: Channel> Files<T> {
         }
         Ok(
             if matches!(word(raw, 1), 1 | 8 | 10)
-                || (cfg!(native_zsh_home_write) && matches!(word(raw, 1), 11 | 12))
+                || ((cfg!(native_zsh_home_write) || cfg!(native_zsh_home_redirection))
+                    && matches!(word(raw, 1), 11 | 12))
             {
                 (b as usize).div_ceil(FRAME) * FRAME
             } else {
@@ -490,6 +535,10 @@ impl<T: Channel> Files<T> {
         #[cfg(native_zsh_home_write)]
         if word(raw, 1) == 11 {
             return self.prepare_home_write(binding, raw, workspace);
+        }
+        #[cfg(native_zsh_home_redirection)]
+        if matches!(word(raw, 1), 11 | 12) {
+            return self.prepare_note(binding, raw, workspace);
         }
         let (result, body) = self.execute(view, raw, workspace);
         if self.cleanup().is_some() {
@@ -550,6 +599,12 @@ impl<T: Channel> Files<T> {
                 workspace.fill(0);
                 result.map(|fd| fd as u64)
             }
+            #[cfg(native_zsh_home_redirection)]
+            1 if workspace[..b as usize] == *home_redirection::ENTRY => {
+                let value = self.open_note_read(view, a != 0).map(|fd| fd as u64);
+                workspace.fill(0);
+                value
+            }
             1 => {
                 let value = self
                     .descriptions
@@ -559,13 +614,26 @@ impl<T: Channel> Files<T> {
                 value
             }
             2 => {
+                #[cfg(native_zsh_home_redirection)]
+                if self.note_write_fd(view, a as i32) {
+                    workspace.fill(0);
+                    return (Err(Failure::BadFd), 0);
+                }
                 #[cfg(native_zsh_home_write)]
                 if self.is_home_file(view, a as i32) {
                     workspace.fill(0);
                     return (Err(Failure::BadFd), 0);
                 }
-                self.descriptions
-                    .read_in(view, a as i32, b as usize, workspace)
+                #[cfg(native_zsh_home_redirection)]
+                let before = self.note_position(view, a as i32);
+                let result = self
+                    .descriptions
+                    .read_in(view, a as i32, b as usize, workspace);
+                #[cfg(native_zsh_home_redirection)]
+                if let Ok(count) = result {
+                    self.note_read(view, a as i32, before, count, workspace);
+                }
+                result
             }
             .map(|count| {
                 body = count;
@@ -621,6 +689,10 @@ impl<T: Channel> Files<T> {
                 if self.is_home_file(view, a as i32) && opcode != 5 {
                     return (Err(Failure::Invalid), 0);
                 }
+                #[cfg(native_zsh_home_redirection)]
+                if opcode == 3 && self.note_write_fd(view, a as i32) {
+                    return (Err(Failure::Invalid), 0);
+                }
                 match opcode {
                     3 => self.descriptions.seek_in(
                         view,
@@ -638,7 +710,11 @@ impl<T: Channel> Files<T> {
                     5 => {
                         #[cfg(native_zsh_home_write)]
                         let closing_home = self.is_home_file(view, a as i32);
+                        #[cfg(native_zsh_home_redirection)]
+                        let note_position = self.note_position(view, a as i32);
                         let result = self.descriptions.close_in(view, a as i32).map(|()| 0);
+                        #[cfg(native_zsh_home_redirection)]
+                        self.note_closed(note_position, result.is_ok());
                         #[cfg(native_zsh_home_write)]
                         if closing_home {
                             self.home_write.close_sequence = word(raw, 3);
@@ -707,7 +783,7 @@ impl<T: Channel> Reply<'_, T> {
         self.files.configure(configure)
     }
     /// Real namespace close receipt; process reply delivery may still finish once.
-    #[cfg(native_zsh_home_write)]
+    #[cfg(any(native_zsh_home_write, native_zsh_home_redirection))]
     pub fn source_closed(&self) -> bool {
         self.files.cleanup().is_some()
     }
@@ -718,6 +794,10 @@ impl<T: Channel> Reply<'_, T> {
         &mut self.workspace[..self.body.div_ceil(FRAME) * FRAME]
     }
     pub fn delivered(mut self) {
+        #[cfg(native_zsh_home_redirection)]
+        if self.view == 0 && self.files.note.phase == 8 {
+            self.files.note.phase = 7;
+        }
         #[cfg(native_zsh_home_write)]
         if self.view == 1
             && self.files.home_write.phase == 4

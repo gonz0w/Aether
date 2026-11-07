@@ -14,6 +14,9 @@ long aether_zsh_vector_write(int, const struct iovec *, int);
  * before effects. All spans must be outside the stable descriptor context.
  * These four calls return libc -1/errno; successful calls preserve errno. */
 int aether_zsh_open(const char *, int, mode_t);
+#ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+mode_t aether_zsh_umask(mode_t);
+#endif
 long aether_zsh_vector_read(int, const struct iovec *, int);
 long aether_zsh_read(int, void *, size_t);
 off_t aether_zsh_seek(int, off_t, int);
