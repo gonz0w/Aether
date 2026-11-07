@@ -183,6 +183,8 @@ compile_error!("cold reopen requires the complete selected filesystem file-exec 
     not(any(native_zsh_cold_reopen, native_zsh_home_redirection))
 ))]
 compile_error!("idle exit requires the selected cold reopen profile");
+#[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection)))]
+compile_error!("login startup requires its complete home redirection profile");
 #[cfg(all(native_zsh_operator, not(native_zsh_idle_exit)))]
 compile_error!("operator session requires the selected idle exit profile");
 
@@ -2926,12 +2928,24 @@ pub fn encode_launch(
     #[cfg(native_zsh_filesystem)]
     for (slot, text) in [
         b"zsh".as_slice(),
-        b"-f",
-        b"-i",
+        if cfg!(native_zsh_login_startup) {
+            b"-d"
+        } else {
+            b"-f"
+        },
+        if cfg!(native_zsh_login_startup) {
+            b"-il".as_slice()
+        } else {
+            b"-i".as_slice()
+        },
         b"+m",
         b"TERM=vt100",
         b"LC_ALL=C",
-        b"HOME=/",
+        if cfg!(native_zsh_login_startup) {
+            b"HOME=/home".as_slice()
+        } else {
+            b"HOME=/".as_slice()
+        },
         b"PWD=/",
     ]
     .iter()

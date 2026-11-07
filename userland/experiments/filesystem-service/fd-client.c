@@ -339,7 +339,8 @@ int aefd_client_note_create(struct aefd_client *client,
         *out = r;
         return -1;
     }
-    if (!name || length != 10 || memcmp(name, "/home/note", 10) ||
+    if (!name || length != sizeof(AEFD_HOME_PROFILE_PATH) - 1 ||
+        memcmp(name, AEFD_HOME_PROFILE_PATH, sizeof(AEFD_HOME_PROFILE_PATH) - 1) ||
         cloexec < 0 || cloexec > 1 || mode != 0600) {
         *out = r;
         return 0;

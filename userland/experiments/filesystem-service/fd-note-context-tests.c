@@ -25,10 +25,12 @@ static void answer(void)
     aefd_put(h, 3, aefd_word(f.request, 3));
     f.length = 64;
     if (op == 12) {
-        assert(aefd_word(f.request, 4) <= 1 && aefd_word(f.request, 5) == 10);
+        assert(aefd_word(f.request, 4) <= 1 && aefd_word(f.request, 5) ==
+                   sizeof(AEFD_HOME_PROFILE_PATH) - 1);
         assert(aefd_word(f.request, 6) == 0600 && !aefd_word(f.request, 7));
-        assert(!memcmp(f.request + 64, "/home/note", 10));
-        for (unsigned i = 74; i < 128; i++)
+        assert(!memcmp(f.request + 64, AEFD_HOME_PROFILE_PATH,
+                       sizeof(AEFD_HOME_PROFILE_PATH) - 1));
+        for (unsigned i = 64 + sizeof(AEFD_HOME_PROFILE_PATH) - 1; i < 128; i++)
             assert(!f.request[i]);
         aefd_put(h, 4, 3);
         aefd_put(h, 5, 64);
@@ -142,7 +144,8 @@ static void setup(int mode)
 static int create(void)
 {
     return (int)aefd_context_create_note(
-        &c, (const unsigned char *)"/home/note", 10, 1, 0600);
+        &c, (const unsigned char *)AEFD_HOME_PROFILE_PATH,
+        sizeof(AEFD_HOME_PROFILE_PATH) - 1, 1, 0600);
 }
 static void close_client(void)
 {

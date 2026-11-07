@@ -501,3 +501,32 @@ assembled R1 acceptance remain separate.
 Cam directly approved the reviewed [80KiB amendment](https://github.com/gonz0w/Aether/issues/158#issuecomment-6711078557): “Approve scoped80KiB amendment (Recommended)”. Only the new home-redirection writer/reader profile may admit81920 Owner RX bytes through a closed default-off kernel/build selector; old profiles retain73728 and existing rejection behavior. Preserve Runtime/workspace4096 each,12288 mapped/12280 usable stack,128-page backing, all authority and execution limits. No generic cap override or new kernel entry/capability follows. Fresh actual writer/reader RX/Runtime/stack and other affected fits, separate reviews, guarded warm9/cold0 evidence, required CI and the already approved158 checkpoint gates remain binding. Stop/replan on another required-bound failure.
 
 The scoped15880KiB [approval record](https://github.com/gonz0w/Aether/issues/158#issuecomment-6711120030) binds the directly approved amendment above; the linked6711078557 comment is its reviewed proposal.
+
+## Selected persisted login startup — 2026-11-07
+
+Cam directly approved “Approve scoped #160 design and gates” for the
+[reviewed proposal](https://github.com/gonz0w/Aether/issues/160#issuecomment-6712891650);
+[approval record](https://github.com/gonz0w/Aether/issues/160#issuecomment-6712921729).
+Select one closed composition of the existing home-redirection operator profile:
+real `zsh -d -il +m`, HOME=/home and actual cwd/PWD=/, with the same prompt.
+Rust remains the sole HOME namespace holder. Only the admitted parent may
+exclusively create/write the selected16-byte `/home/.zprofile`; the cold role
+fully validates it before actual upstream automatic sourcing. Warm startup
+returns actual lookup ENOENT without retiring the source; unexpected existing
+input cannot be interpreted. Other RC/compiled/logout paths remain unadmitted.
+Existing AEFP0006 receipts, aliases/offsets/final-close delivery, no replay and
+child denial remain binding; no new kernel operation or namespace grant follows.
+
+Apply the existing81920-byte Owner RX eligibility only to this additional closed
+profile. All other memory, stack/backing, request/mutation, input/capture/time and
+execution limits stay unchanged, as do old profiles. Fresh affected fits and
+linked source-reader inspection precede images. One guarded warm9/cold0 pair
+may establish remaining scoped workload fit: write exact `setopt no_beep;` plus
+LF, then prove login/RCS enabled, GLOBALRCS disabled and BEEP disabled after cold
+automatic sourcing. Keep no-network/one-use disposable media/finite attempts and
+known original-host cleanup. Stop/replan on any required-bound failure.
+
+Focused checks, separate review, actual trial success and required protected CI
+may qualify this checkpoint for delivery while141 remains open. No general RC
+file discovery, authentication/accounts, helper workload, general peak-demand,
+package or assembled R1 acceptance follows.

@@ -60,6 +60,8 @@ compile_error!("home reader requires redirection and cold reopen");
     not(native_zsh_home_redirection_reader)
 ))]
 compile_error!("cold home redirection requires the reader profile");
+#[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection)))]
+compile_error!("login startup requires its complete home redirection profile");
 #[cfg(native_zsh_home_redirection)]
 #[path = "zsh-home-redirection.rs"]
 mod home_redirection;
@@ -494,7 +496,7 @@ impl<T: Channel> Files<T> {
                 #[cfg(native_zsh_home_redirection)]
                 11 => fd(a) && (1..=16).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_redirection)]
-                12 => a <= 1 && b == 10 && c == 0o600 && d == 0,
+                12 => a <= 1 && b == home_redirection::ENTRY.len() as u64 && c == 0o600 && d == 0,
                 #[cfg(native_zsh_home_write)]
                 11 => fd(a) && (1..=PAYLOAD as u64).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_write)]
