@@ -2745,6 +2745,16 @@
       "invariants": "Default-off closed158 profile: parent-only exclusive /home/note creation, one1..16-byte write at offset0 through Rust Owner HOME custody, process-local0077 mask, AEFP0006 and reserved7, scoped stdio save/restore, no child note authority. Only selected writer/reader Owner RX81920; old73728 caps and all other state/stack/backing/request/mutation/time/authority limits stay unchanged.",
       "oracle": "Warm176 once-only foreground PTY bytes:077,WRITE0,NOTE0/PID/AETHER-HOME-158/prompt/exit0, exact9 engine; cold70 bytes:COLD0/PID/same16 bytes/prompt/exit0, exact0 engine. Both require v5 unused-helper close, healthy export/MODE0/two reclaims/halt/PASS and known original host cleanup. Qualified QEMU pair: warm40.437s/60 requests, cold26.701s/57 requests;176/70 known foreground PTY bytes, normal exits/export/MODE0/two reclaims/halt/PASS and known host cleanup.",
       "gaps": "Scoped158 design/resource/fit/checkpoint decisions leave141 and broader R1 open. No overwrite/truncate, generic file operations, mode readback, packages, authentication or indefinite session."
+    },
+    {
+      "id": "zsh-login-startup",
+      "reference": "userland/docs/proposals/ZSH-LOGIN-STARTUP.md",
+      "owner": "Aether sys-init/userland, issue160",
+      "budget_seconds": 360,
+      "command": "Focused actual Rust Files/Runtime and matched C provider startup/authority checks; fresh private --login-startup parent/helper/Owner fits and --login-startup-reader Owner fit; reviewed exact warm/cold pair.",
+      "invariants": "Closed160 profile reuses home redirection with parent-only16-byte /home/.zprofile, truthful real warm absence, validated cold automatic upstream source, retained Rust HOME custody; matched argv/env and existing80KiB eligibility only; numeric limits and old profiles unchanged.",
+      "oracle": "Warm228 known once-only PTY bytes:077,DEFAULT0/PID/home/root,WRITE0,PROFILE0/samePID/exact data; cold127:LOGIN0,PROFILE0/PID/home/root from actual automatic sourcing. Normal no-child cleanup/export/MODE0/two reclaims/halt/PASS and known original host cleanup required. Qualified QEMU pair: warm43.171s/61requests, cold29.340s/58requests; exact228/127bytes, automatic saved preference and all lifecycle/cleanup gates pass.",
+      "gaps": "Scoped160 paired startup qualification complete;141/general peaks/authentication/accounts/packages/assembled R1 remain open."
     }
   ]
 }

@@ -124,3 +124,28 @@ The same operator deadlines and original-process cleanup requirements apply.
 An existing note or failed/unknown mutation aborts this once-only experiment;
 prepare fresh media rather than reopen or replay it. General overwrite/truncate,
 packages, authentication and indefinite sessions retain separate gates.
+
+## Persisted login startup
+
+Issue160 adds a separate closed login-startup profile. Both provisioning and cold
+roles start real `zsh -d -il +m` with HOME=/home. The current directory and PWD
+remain `/`. The prompt remains `AETHER-ZSH> `. This is login-shell startup;
+account authentication is still outside this checkpoint.
+
+The sole admitted home configuration file is `/home/.zprofile`. The warm role
+starts with that file absent and permits its exclusive creation under umask0077,
+then one16-byte write of `setopt no_beep;` followed by LF. The cold Rust Owner
+checks the persisted file before Zsh opens and sources it automatically, before
+the first prompt. No operator `source` command is needed. Other startup files
+and arbitrary filesystem paths are not admitted by this profile.
+
+The bounded qualification uses the exact approved warm/cold commands linked in
+[issue160](https://github.com/gonz0w/Aether/issues/160#issuecomment-6712891650).
+It checks the real BEEP preference before creation and after cold startup,
+returned prompts and clean exit/export. The automated QEMU pair passed:
+warm43.171s/61requests and cold29.340s/58requests, with228/127 known foreground
+PTY bytes and known cleanup. Cold LOGIN0/PROFILE0 confirmed automatic startup
+and the saved preference, without an operator source command. See the owning
+issue for review and delivery. This does not claim human typing or authentication.
+Use the existing finite session and failure procedure above; a failed or uncertain
+disk is never replayed.

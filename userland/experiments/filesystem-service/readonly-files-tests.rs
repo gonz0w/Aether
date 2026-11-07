@@ -21,7 +21,7 @@ struct StorageState {
     probe_read_failure: u8,
     #[cfg(native_zsh_cold_reopen)]
     data_read_failure: u8,
-    #[cfg(native_zsh_cold_reopen)]
+    #[cfg(any(native_zsh_cold_reopen, native_zsh_login_startup))]
     wrong_kind: u64,
     #[cfg(native_zsh_home_redirection)]
     note: Vec<u8>,
@@ -70,7 +70,15 @@ impl p::Backend for Storage {
             #[cfg(any(native_zsh_home_write, native_zsh_file_exec))]
             (2, b"probe") => 6,
             #[cfg(native_zsh_home_redirection)]
-            (2, b"note") if s.note_exists => {
+            (2, name)
+                if name
+                    == if cfg!(native_zsh_login_startup) {
+                        b".zprofile".as_slice()
+                    } else {
+                        b"note".as_slice()
+                    }
+                    && s.note_exists =>
+            {
                 if s.note_lookup_failure {
                     return Err(p::Error::Backend(5));
                 }
@@ -78,7 +86,7 @@ impl p::Backend for Storage {
             }
             _ => return Err(p::Error::Backend(2)),
         };
-        #[cfg(native_zsh_cold_reopen)]
+        #[cfg(any(native_zsh_cold_reopen, native_zsh_login_startup))]
         if s.wrong_kind == id {
             return Ok(p::Node::new(id, 1, 0, p::Kind::Directory));
         }
@@ -207,7 +215,7 @@ impl p::Backend for Storage {
         #[cfg(native_zsh_home_redirection)]
         if matches!(
             (n.identity().0, &op),
-            (2, p::Namespace::Create { name: b"note", .. })
+            (2, p::Namespace::Create { name, .. }) if *name == if cfg!(native_zsh_login_startup) { b".zprofile".as_slice() } else { b"note".as_slice() }
         ) {
             let mut s = self.0.lock().unwrap();
             s.mutations += 1;

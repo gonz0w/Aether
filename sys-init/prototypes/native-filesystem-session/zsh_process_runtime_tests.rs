@@ -17,6 +17,24 @@ use std::{
     time::Duration,
     vec::Vec,
 };
+#[cfg(native_zsh_home_redirection)]
+const NOTE_PATH: &[u8] = if cfg!(native_zsh_login_startup) {
+    b"/home/.zprofile"
+} else {
+    b"/home/note"
+};
+#[cfg(native_zsh_home_redirection)]
+const NOTE_NAME: &[u8] = if cfg!(native_zsh_login_startup) {
+    b".zprofile"
+} else {
+    b"note"
+};
+#[cfg(native_zsh_home_redirection)]
+const NOTE_BYTES: &[u8] = if cfg!(native_zsh_login_startup) {
+    b"setopt no_beep;\n"
+} else {
+    b"AETHER-HOME-158\n"
+};
 const NSR: u64 = 0xd1000101;
 const NSW: u64 = 0xd1000102;
 const PR: u64 = 0xd1010101;
@@ -62,7 +80,7 @@ impl p::Backend for Storage {
             (2, b".terminfo") if self.made[0] => 3,
             (2, b"probe") => 6,
             #[cfg(native_zsh_home_redirection)]
-            (2, b"note") if self.note.is_some() => 7,
+            (2, name) if name == NOTE_NAME && self.note.is_some() => 7,
             (3, b"v") if self.made[1] => 4,
             (4, b"vt100") if self.made[2] => 5,
             _ => return Err(p::Error::Backend(2)),
@@ -151,7 +169,7 @@ impl p::Backend for Storage {
         #[cfg(native_zsh_home_redirection)]
         if matches!(
             (n.identity().0, &op),
-            (2, p::Namespace::Create { name: b"note", .. })
+            (2, p::Namespace::Create { name, .. }) if *name == NOTE_NAME
         ) {
             assert!(self.note.is_none());
             self.note = Some(Vec::new());
@@ -520,7 +538,7 @@ impl Fixture {
                 Storage {
                     probe_failure,
                     #[cfg(native_zsh_home_redirection_reader)]
-                    note: Some(b"AETHER-HOME-158\n".to_vec()),
+                    note: Some(NOTE_BYTES.to_vec()),
                     #[cfg(native_zsh_cold_reopen)]
                     made: [true; 3],
                     #[cfg(native_zsh_cold_reopen)]
@@ -2011,7 +2029,7 @@ impl Fixture {
 fn note_live_alias_refuses_fork_before_freeze_or_native_copy() {
     let mut h = Fixture::new();
     let r = h
-        .note_request(12, 1, [0, 10, 0o600, 0], b"/home/note")
+        .note_request(12, 1, [0, NOTE_PATH.len() as u64, 0o600, 0], NOTE_PATH)
         .unwrap();
     assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
     let raw = h.snapshot(false);
@@ -2049,26 +2067,24 @@ fn note_explicit_read_close_allows_healthy_existing_no_child_marker() {
     #[cfg(not(native_zsh_home_redirection_reader))]
     {
         let r = h
-            .note_request(12, seq, [0, 10, 0o600, 0], b"/home/note")
+            .note_request(12, seq, [0, NOTE_PATH.len() as u64, 0o600, 0], NOTE_PATH)
             .unwrap();
         seq += 1;
         let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
-        let r = h
-            .note_request(11, seq, [fd, 16, 0, 0], b"AETHER-HOME-158\n")
-            .unwrap();
+        let r = h.note_request(11, seq, [fd, 16, 0, 0], NOTE_BYTES).unwrap();
         seq += 1;
         assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
         h.note_request(5, seq, [fd, 0, 0, 0], b"").unwrap();
         seq += 1;
     }
     let r = h
-        .note_request(1, seq, [0, 10, 0, 0], b"/home/note")
+        .note_request(1, seq, [0, NOTE_PATH.len() as u64, 0, 0], NOTE_PATH)
         .unwrap();
     seq += 1;
     let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
     let r = h.note_request(2, seq, [fd, 16, 0, 0], b"").unwrap();
     seq += 1;
-    assert_eq!(&r[64..80], b"AETHER-HOME-158\n");
+    assert_eq!(&r[64..80], NOTE_BYTES);
     h.note_request(5, seq, [fd, 0, 0, 0], b"").unwrap();
     assert!(
         h.runtime
@@ -2083,4 +2099,41 @@ fn note_explicit_read_close_allows_healthy_existing_no_child_marker() {
             .windows(8)
             .any(|bytes| bytes == b"child=no")
     );
+}
+
+#[cfg(native_zsh_home_redirection)]
+#[test]
+fn note_launch_codec_matches_actual_login_selection_without_false_cwd() {
+    let mut raw = [0u8; 320];
+    encode_launch(&mut raw, 1, 2, 3).unwrap();
+    let values: [&[u8]; 8] = if cfg!(native_zsh_login_startup) {
+        [
+            b"zsh",
+            b"-d",
+            b"-il",
+            b"+m",
+            b"TERM=vt100",
+            b"LC_ALL=C",
+            b"HOME=/home",
+            b"PWD=/",
+        ]
+    } else {
+        [
+            b"zsh",
+            b"-f",
+            b"-i",
+            b"+m",
+            b"TERM=vt100",
+            b"LC_ALL=C",
+            b"HOME=/",
+            b"PWD=/",
+        ]
+    };
+    assert_eq!(u64::from_le_bytes(raw[16..24].try_into().unwrap()), 4);
+    assert_eq!(u64::from_le_bytes(raw[24..32].try_into().unwrap()), 4);
+    for (i, value) in values.iter().enumerate() {
+        let slot = &raw[32 + i * 32..64 + i * 32];
+        assert_eq!(&slot[..value.len()], *value);
+        assert!(slot[value.len()..].iter().all(|v| *v == 0));
+    }
 }

@@ -162,7 +162,7 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
     if (length == 256)
         return (int)libc_result(-ENAMETOOLONG, saved);
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
-    if (!strcmp(path, "/home/note")) {
+    if (!strcmp(path, AEFD_HOME_PROFILE_PATH)) {
 #ifdef AEFD_ZSH_HELPER_ENTRY
         return (int)libc_result(-EACCES, saved);
 #else
@@ -197,7 +197,11 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
         && strcmp(path, "/home/probe")
 #endif
     )
+#ifdef AEFD_ZSH_LOGIN_STARTUP_BINDINGS
+        return (int)libc_result(-EACCES, saved);
+#else
         return (int)libc_result(-ENOENT, saved);
+#endif
 #endif
     int64_t result =
         live() ? aefd_libc_open(&startup.context, path, flags & ~O_LARGEFILE)
@@ -481,8 +485,13 @@ int __wrap_main(int argc, char **argv)
     /* Zsh metafies argv in place, including each ASCII trailing NUL. Keep
      * pointees and vector writable through real main and checked exit. */
     char program[] = "zsh";
+#ifdef AEFD_ZSH_LOGIN_STARTUP_BINDINGS
+    char no_rcs[] = "-d";
+    char interactive[] = "-il";
+#else
     char no_rcs[] = "-f";
     char interactive[] = "-i";
+#endif
     char no_monitor[] = "+m";
     char *arguments[] = {program, no_rcs, interactive, no_monitor, NULL};
     __wrap__exit(__real_main(4, arguments));

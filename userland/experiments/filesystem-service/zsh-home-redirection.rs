@@ -2,8 +2,21 @@
 //! One parent-owned note, bound to its actual sole-table description and aliases.
 use super::*;
 use filesystem_client::{MutationFailure, MutationOutcome, MutationProgress};
-pub const ENTRY: &[u8] = b"/home/note";
-const BYTES: &[u8; 16] = b"AETHER-HOME-158\n";
+pub const ENTRY: &[u8] = if cfg!(native_zsh_login_startup) {
+    b"/home/.zprofile"
+} else {
+    b"/home/note"
+};
+const NAME: &[u8] = if cfg!(native_zsh_login_startup) {
+    b".zprofile"
+} else {
+    b"note"
+};
+const BYTES: &[u8; 16] = if cfg!(native_zsh_login_startup) {
+    b"setopt no_beep;\n"
+} else {
+    b"AETHER-HOME-158\n"
+};
 pub(super) struct Note {
     create_txg: u64,
     write_txg: u64,
@@ -101,12 +114,35 @@ impl<T: Channel> Files<T> {
         view: usize,
         cloexec: bool,
     ) -> descriptions::Result<i32, Error> {
+        #[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection_reader)))]
+        if view == 0 && self.note.phase == 0 {
+            // Only the canonical remote missing result leaves this startup probe
+            // live. Existing input is never published to the parser or adopted.
+            let source = &mut self.descriptions.source.client;
+            let home = source.home().map_err(Failure::Source)?;
+            return match source.lookup(home, NAME, 2) {
+                Err(Error::Remote(-2)) => Err(Failure::Source(Error::Remote(-2))),
+                Err(error) => {
+                    self.note.phase = 1;
+                    self.abort();
+                    Err(Failure::Source(error))
+                }
+                Ok(entry) => {
+                    self.note.phase = 1;
+                    let closed = source.close(entry.handle);
+                    // Contain unexpected input even if its individual close is
+                    // known successful; the selected startup must fail closed.
+                    self.abort();
+                    Err(Failure::Source(closed.err().unwrap_or(Error::Invalid)))
+                }
+            };
+        }
         if view != 0 || self.note.phase != 5 {
             return Err(Failure::BadFd);
         }
         let fd = self.descriptions.open_read_using(view, cloexec, |source| {
             let home = source.client.home()?;
-            let entry = source.client.lookup(home, b"note", 2)?;
+            let entry = source.client.lookup(home, NAME, 2)?;
             if entry.kind != Kind::File || entry.size != 16 {
                 return Err(Error::Protocol);
             }
@@ -143,7 +179,7 @@ impl<T: Channel> Files<T> {
         let result = (|| {
             let client = &mut self.descriptions.source.client;
             let home = client.home()?;
-            let file = client.lookup(home, b"note", 2)?;
+            let file = client.lookup(home, NAME, 2)?;
             if file.kind != Kind::File
                 || file.size != 16
                 || client.read(file.handle, 0, 16, workspace)? != 16
@@ -181,7 +217,7 @@ impl<T: Channel> Files<T> {
         let mut failure = Some(Failure::BadFd);
         if create {
             #[cfg(not(native_zsh_home_redirection_reader))]
-            if view == 0 && self.note.phase == 0 && workspace[..10] == *ENTRY {
+            if view == 0 && self.note.phase == 0 && workspace[..ENTRY.len()] == *ENTRY {
                 let mut mutation = None;
                 let mut completed = 0;
                 let phase = &mut self.note.phase;
@@ -189,17 +225,17 @@ impl<T: Channel> Files<T> {
                     .descriptions
                     .open_read_using(0, word(raw, 4) != 0, |source| {
                         let home = source.client.home()?;
-                        source.client.preflight_lookup(home, b"note", 4)?;
+                        source.client.preflight_lookup(home, NAME, 4)?;
                         *phase = 1; // mark the only create attempt before its effect
                         let done = source
                             .client
-                            .namespace(home, NamespaceMutation::Create(b"note"))
+                            .namespace(home, NamespaceMutation::Create(NAME))
                             .map_err(|e| {
                                 mutation = Some(e);
                                 e.error
                             })?;
                         completed = done.txg;
-                        let entry = source.client.lookup(home, b"note", 4)?;
+                        let entry = source.client.lookup(home, NAME, 4)?;
                         if entry.kind != Kind::File || entry.size != 0 {
                             return Err(Error::Protocol);
                         }

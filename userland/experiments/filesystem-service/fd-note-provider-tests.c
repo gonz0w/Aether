@@ -62,27 +62,37 @@ _Noreturn void __assert_fail(const char *expression, const char *file, int line,
 int main(void)
 {
     assert(!aefd_zsh_admit());
+#ifdef AEFD_ZSH_LOGIN_STARTUP_BINDINGS
+    /* Neither the previous profile nor unrelated RC discovery gains authority. */
+    for (unsigned i = 0; i < 4; i++) {
+        static const char *const denied[] = {"/home/note", "/home/.zshrc",
+                                             "/etc/zshenv", "/home/.zprofile.zwc"};
+        errno = 0;
+        assert(aether_zsh_open(denied[i], O_RDONLY, 0) == -1 && errno == EACCES);
+        assert(!f.requests);
+    }
+#endif
     assert(aefd_test_umask(01777) == 0077);
     assert(aefd_test_umask(0077) == 0777);
     assert(aefd_test_umask(0077) == 0077);
     for (int route = 0; route < 3; route++) {
         setup(0);
         errno = ERANGE;
-        assert(aether_zsh_open("/home/note", O_WRONLY | O_CREAT | O_EXCL,
+        assert(aether_zsh_open(AEFD_HOME_PROFILE_PATH, O_WRONLY | O_CREAT | O_EXCL,
                                0444) == -1 &&
                errno == EOPNOTSUPP);
         assert(!f.requests);
         errno = ERANGE;
         int fd;
         if (route == 0)
-            fd = aefd_test_open("/home/note",
+            fd = aefd_test_open(AEFD_HOME_PROFILE_PATH,
                                 O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0666);
         else if (route == 1)
             fd = aefd_test_open64(
-                "/home/note", O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0666);
+                AEFD_HOME_PROFILE_PATH, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0666);
         else
             fd = aether_zsh_open(
-                "/home/note",
+                AEFD_HOME_PROFILE_PATH,
                 O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY | O_CLOEXEC, 0666);
         assert(fd == 3 && errno == ERANGE && c.note_create.remote.txg == 91);
         unsigned before = f.requests;
@@ -110,7 +120,7 @@ int main(void)
     }
     setup(0);
     errno = 0;
-    assert(!aefd_test_fopen("/home/note", "wx") && errno == EOPNOTSUPP);
+    assert(!aefd_test_fopen(AEFD_HOME_PROFILE_PATH, "wx") && errno == EOPNOTSUPP);
     assert(!f.requests && !c.note_create_attempted);
     close_client();
     /* Fresh synthetic fork metadata must reject before guard/copy/dispatch. */
@@ -137,7 +147,7 @@ int main(void)
            fork_scope.boot.context.state == 4);
     setup(0);
     assert(aefd_test_umask(0) == 0077);
-    assert(aefd_test_open64("/home/note", O_WRONLY | O_CREAT | O_EXCL, 0666) ==
+    assert(aefd_test_open64(AEFD_HOME_PROFILE_PATH, O_WRONLY | O_CREAT | O_EXCL, 0666) ==
                -1 &&
            errno == EOPNOTSUPP);
     assert(!f.requests);

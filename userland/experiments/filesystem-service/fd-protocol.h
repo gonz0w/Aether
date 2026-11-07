@@ -5,6 +5,15 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef AEFD_ZSH_LOGIN_STARTUP_BINDINGS
+#ifndef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
+#error "login startup requires the closed home redirection provider"
+#endif
+#define AEFD_HOME_PROFILE_PATH "/home/.zprofile"
+#else
+#define AEFD_HOME_PROFILE_PATH "/home/note"
+#endif
+
 #if defined(AEFD_ZSH_HOME_REDIRECTION_BINDINGS) &&                             \
     defined(AEFD_ZSH_HOME_WRITE_BINDINGS)
 #error "home redirection excludes the historical helper-write profile"
@@ -251,7 +260,7 @@ static inline int aefd_name(unsigned char out[256], const unsigned char *name,
                                           "/home/.terminfo/./v/vt100"
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
                                           ,
-                                          "/home/note"
+                                          AEFD_HOME_PROFILE_PATH
 #endif
     };
     int found = 0;
