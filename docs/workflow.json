@@ -2725,6 +2725,16 @@
       "invariants": "Closed operator profile; exclusive6000/24000/30000 guest phases,330s/360s cold host bounds, pre-rescan event sequence, checked peers/RX/TX/export, private single foreground display and one-use stopped writer disk.",
       "oracle": "Foreground typed PID/value survives65s post-prompt idle; v5 unused-helper closure, normal export/MODE,14cleanup/two reclaims,halt>6000 with>=100idle ticks and known original-process cleanup.",
       "gaps": "Scoped154 focused checkpoint leaves141 open. Authentication, broader command/package and assembled R1 gates are separate."
+    },
+    {
+      "id": "zsh-interactive-session",
+      "reference": "userland/docs/ZSH-SERIAL.md",
+      "owner": "Aether userland/sys-init, issue156",
+      "budget_seconds": 360,
+      "command": "Focused private test_zsh_interactive.py byte/selection/ordering/negative-oracle checks; zsh_run.py --operator-interactive prepare/run with the unchanged operator image and exact stopped writer disk, after separate image and proposal review.",
+      "invariants": "Exact153-byte once-only foreground PTY stages; retained same parent, real SIGINT130, no interrupted command execution, sole sealed helper after its input stage; unchanged operator ticks/host limits/resources/media and known cleanup.",
+      "oracle": "EDIT PID156; AFTER130 samePID156; actual helper23/reclaim/prompt; STATUS23 samePID156; normal parent/engine, v4/C004/export/MODE0/21cleanup/3reclaims/halt/PASS and known host cleanup. Qualified once: writer37.792s then cold26.788s, PID9/value156, interrupt130/helper23,38requests,halt2001/21cleanup/3reclaims; actual foreground PTY input.",
+      "gaps": "Approved156 guarded-fit and focused checkpoint gate leaves141 open; no general peaks/job control/authentication/package/R1 acceptance."
     }
   ]
 }

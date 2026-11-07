@@ -635,3 +635,23 @@ helper results keep their existing meanings.
 
 Use [the local operator procedure](ZSH-SERIAL.md) for preparation, attachment,
 supported commands, clean exit and failure handling.
+
+## Interactive editing, interrupt and helper checkpoint
+
+[Issue156](https://github.com/gonz0w/Aether/issues/156) reuses the operator guest
+for one fixed foreground workload: Delete editing, a partial line cancelled by
+real parent SIGINT, observed status130 with preserved PID/value, then the held
+filesystem helper23 and normal v4 export/restore/reclaim shutdown. The exact153
+input bytes are bound separately in its one-use execution proposal. This adds
+no guest profile, grant, ABI, quota or general command execution.
+
+The fresh writer passed in37.792s; its exact stopped disk then passed the cold
+foreground trial in26.788s. Actual output was `EDIT 9 156`, `AFTER 130 9 156`
+and `STATUS 23 9 156`, each with a new prompt. The interrupted unfinished
+command did not run. The helper's3548 known-closed bytes/C004,38 filesystem
+requests, normal parent/engine export, MODE0,21 cleanup phases, three reclaims
+and halt2001 ticks passed with known host cleanup. Input was automated through
+the foreground display. Exact unchanged target fits were reused; the recreated
+kernels matched the accepted binaries. Focused checks and separate review
+qualify only this approved checkpoint while141 remains open. The prior65-second
+idle result remains issue154 evidence; authenticated login and R1 remain open.
