@@ -158,7 +158,11 @@ impl<K: AppControl> Channel for Namespace<K> {
         } else {
             let word = |i: usize| u64::from_le_bytes(frame[i * 8..i * 8 + 8].try_into().unwrap());
             let opcode = word(1);
-            if frame[..8] != *b"AFSRPC09" || !(1..=11).contains(&opcode) {
+            let home_cwd_observation = cfg!(native_zsh_home_cwd)
+                && opcode == 14
+                && frame[32..].iter().all(|byte| *byte == 0);
+            if frame[..8] != *b"AFSRPC09" || (!(1..=11).contains(&opcode) && !home_cwd_observation)
+            {
                 return Err(-22);
             }
             // SAFETY: same scoped exclusive loan as before(); body assembly is

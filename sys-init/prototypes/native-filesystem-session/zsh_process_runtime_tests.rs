@@ -68,6 +68,22 @@ fn node(id: u64, size: usize) -> p::Node {
     )
 }
 impl p::Backend for Storage {
+    #[cfg(native_zsh_home_cwd)]
+    fn directory_context(
+        &mut self,
+        root: p::Node,
+        at: p::Node,
+        out: &mut [u8; 256],
+    ) -> Result<(p::Node, usize), p::Error> {
+        let path: &[u8] = if at.identity().0 == root.identity().0 {
+            b"/\0"
+        } else {
+            b"/home\0"
+        };
+        out[..path.len()].copy_from_slice(path);
+        Ok((root, path.len()))
+    }
+
     fn root(&mut self) -> Result<p::Node, p::Error> {
         Ok(node(1, 0))
     }
@@ -2136,4 +2152,68 @@ fn note_launch_codec_matches_actual_login_selection_without_false_cwd() {
         assert_eq!(&slot[..value.len()], *value);
         assert!(slot[value.len()..].iter().all(|v| *v == 0));
     }
+}
+
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn note_cwd_profile_refuses_fork_before_any_native_copy_or_freeze() {
+    let mut h = Fixture::new();
+    let before = h.host.0.borrow().calls.len();
+    assert_eq!(h.runtime.zsh_fork(&mut [0; 4096]), Err(-95));
+    assert_eq!(h.host.0.borrow().calls.len(), before);
+    assert!(h.runtime.process.pristine());
+}
+#[cfg(native_zsh_home_cwd)]
+#[test]
+fn note_cwd_runtime_dispatch_observes_home_and_relative_read() {
+    let mut h = Fixture::new();
+    let r = h
+        .note_request(1, 1, [0, NOTE_PATH.len() as u64, 0, 0], NOTE_PATH)
+        .unwrap();
+    let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
+    h.note_request(2, 2, [fd, 16, 0, 0], b"").unwrap();
+    h.note_request(5, 3, [fd, 0, 0, 0], b"").unwrap();
+    let r = h.note_request(13, 4, [0, 5, 0, 0], b"/home").unwrap();
+    assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
+    let r = h.note_request(9, 5, [0; 4], b"").unwrap();
+    assert_eq!(u64::from_le_bytes(r[40..48].try_into().unwrap()), 6);
+    assert_eq!(&r[64..70], b"/home\0");
+    let r = h.note_request(1, 6, [0, 9, 0, 0], b".zprofile").unwrap();
+    let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
+    h.note_request(2, 7, [fd, 16, 0, 0], b"").unwrap();
+    h.note_request(5, 8, [fd, 0, 0, 0], b"").unwrap();
+    assert!(
+        h.runtime
+            .with_files(|files| Ok(files.note_complete()))
+            .unwrap()
+    );
+}
+
+#[cfg(native_zsh_home_redirection)]
+#[test]
+fn note_namespace_only_selected_zero_body_directory_observation_is_admitted() {
+    let mut h = Fixture::new();
+    let before = h.runtime.filesystem_requests;
+    h.runtime
+        .with_files(|files| {
+            files.configure(|io| {
+                for opcode in [12u64, 13, 14, 15] {
+                    if cfg!(native_zsh_home_cwd) && opcode == 14 {
+                        continue;
+                    }
+                    let mut raw = [0; 64];
+                    raw[..8].copy_from_slice(b"AFSRPC09");
+                    raw[8..16].copy_from_slice(&opcode.to_le_bytes());
+                    assert_eq!(io.send(&raw), Err(-22));
+                }
+                let mut raw = [0; 64];
+                raw[..8].copy_from_slice(b"AFSRPC09");
+                raw[8..16].copy_from_slice(&14u64.to_le_bytes());
+                raw[40..48].copy_from_slice(&1u64.to_le_bytes());
+                assert_eq!(io.send(&raw), Err(-22));
+                Ok(())
+            })
+        })
+        .unwrap();
+    assert_eq!(h.runtime.filesystem_requests, before);
 }

@@ -14,6 +14,9 @@ static struct {
     unsigned requests, closes, next;
     uint64_t mask;
     int mode;
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    unsigned cwd;
+#endif
 } f;
 static void answer(void)
 {
@@ -24,6 +27,53 @@ static void answer(void)
     aefd_put(h, 2, 31);
     aefd_put(h, 3, aefd_word(f.request, 3));
     f.length = 64;
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    if (op == 13) {
+        size_t n = (size_t)aefd_word(f.request, 5);
+        assert(!aefd_word(f.request, 4) && (n == 1 || n == 5) &&
+               !aefd_word(f.request, 6) && !aefd_word(f.request, 7));
+        assert(!memcmp(f.request + 64, n == 1 ? "/" : "/home", n));
+        for (size_t i = 64 + n; i < 128; i++)
+            assert(!f.request[i]);
+        if (f.mode == 24)
+            aefd_put(h, 1, (uint64_t)-13);
+        else
+            f.cwd = n == 5;
+        if (f.mode == 25)
+            aefd_put(h, 3, 999);
+        if (f.mode == 27)
+            aefd_put(h, 4, 1);
+        if (f.mode == 28)
+            aefd_put(h, 5, 64);
+    } else if (op == 9) {
+        assert(!aefd_word(f.request, 4) && !aefd_word(f.request, 5) &&
+               !aefd_word(f.request, 6) && !aefd_word(f.request, 7));
+        size_t n = f.cwd ? 6 : 2;
+        memcpy(b, f.cwd ? "/home" : "/", n);
+        aefd_put(h, 5, n);
+        f.length = 128;
+        if (f.mode == 20)
+            memcpy(b, "/else", 6);
+        if (f.mode == 21)
+            aefd_put(h, 5, 3);
+        if (f.mode == 22)
+            b[63] = 1;
+        if (f.mode == 23) {
+            aefd_put(h, 1, (uint64_t)-13);
+            aefd_put(h, 5, 0);
+            f.length = 64;
+        }
+    } else if (op == 1) {
+        size_t n = (size_t)aefd_word(f.request, 5);
+        assert(n == 9 || n == sizeof(AEFD_HOME_PROFILE_PATH) - 1);
+        assert(!memcmp(f.request + 64,
+                       n == 9 ? ".zprofile" : AEFD_HOME_PROFILE_PATH, n));
+        if (n == 9 && !f.cwd)
+            aefd_put(h, 1, (uint64_t)-13);
+        else
+            aefd_put(h, 4, 3);
+    } else
+#endif
     if (op == 12) {
         assert(aefd_word(f.request, 4) <= 1 && aefd_word(f.request, 5) ==
                    sizeof(AEFD_HOME_PROFILE_PATH) - 1);
@@ -69,6 +119,10 @@ static void answer(void)
         if (f.mode == 6)
             aefd_put(h, 1, (uint64_t)-13);
     }
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    if (f.mode == 29)
+        memcpy(h, "AEFP0006", 8);
+#endif
     f.requests++;
     f.read = 0;
 }
@@ -103,10 +157,18 @@ static int64_t native(void *unused, uint64_t op, uint64_t cap, uint64_t a,
         f.sent += n;
         if (f.sent >= 64) {
             uint64_t opcode = aefd_word(f.request, 1);
-            if (f.sent == (opcode == 12 || opcode == 11 ? 128U : 64U))
+            if (f.sent == (opcode == 12 || opcode == 11
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+                           || opcode == 13 || opcode == 1
+#endif
+                               ? 128U : 64U))
                 answer();
         }
     } else {
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+        if (f.mode == 26 && aefd_word(f.request, 1) == 13)
+            return 0;
+#endif
         if (f.mode == 2 && f.read >= 70)
             return 0;
         assert(f.read < f.length);

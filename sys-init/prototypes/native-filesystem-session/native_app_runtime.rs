@@ -1528,6 +1528,9 @@ impl<K: AppControl> Runtime<K> {
     #[cfg(native_zsh_process)]
     #[inline(never)]
     fn zsh_fork(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        if cfg!(native_zsh_home_cwd) {
+            return Err(-95);
+        }
         let expected = self.zsh_expected(false)?;
         let (snapshot, sequence) =
             zsh_process_frames::fork_request(&workspace[..368], expected).map_err(i64::from)?;

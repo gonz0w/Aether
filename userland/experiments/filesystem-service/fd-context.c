@@ -656,10 +656,62 @@ int64_t aefd_context_access(struct aefd_context *c, const unsigned char *path,
 {
     return query(c, 8, path, length, mode, NULL, NULL);
 }
+#ifndef AEFD_ZSH_HOME_CWD_BINDINGS
 int64_t aefd_context_root(struct aefd_context *c, unsigned char out[2])
 {
     return out ? query(c, 9, NULL, 0, 0, out, NULL) : -EFAULT;
 }
+#endif
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+int64_t aefd_context_home_chdir(struct aefd_context *c,
+                                const unsigned char *path, size_t length)
+{
+    if (!path)
+        return -EFAULT;
+    if (!((length == 1 && path[0] == '/') ||
+          (length == 5 && !memcmp(path, "/home", 5))))
+        return -EACCES;
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    if (!c->client.live || !c->client.workspace || !c->map.generation ||
+        c->map.generation != c->client.generation) {
+        aefd_client_abort(&c->client);
+        return end(c, -EIO);
+    }
+    uint64_t args[4] = {0, length, 0, 0};
+    struct aefd_reply reply;
+    int moved = aefd_client_exchange(&c->client, 13, args, path, length, &reply);
+    result = moved == 1 ? reply.status : moved < 0 ? -EIO : -EINVAL;
+    if (c->client.workspace)
+        memset(c->workspace, 0, AEFD_READ_MAX);
+    return end(c, result);
+}
+int64_t aefd_context_home_getcwd(struct aefd_context *c, unsigned char out[6])
+{
+    if (!out)
+        return -EFAULT;
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    if (!c->client.live || !c->client.workspace || !c->map.generation ||
+        c->map.generation != c->client.generation) {
+        aefd_client_abort(&c->client);
+        return end(c, -EIO);
+    }
+    uint64_t args[4] = {0};
+    struct aefd_reply reply;
+    int moved = aefd_client_exchange(&c->client, 9, args, NULL, 0, &reply);
+    result = moved == 1 ? reply.status : moved < 0 ? -EIO : -EINVAL;
+    if (!result) {
+        memcpy(out, c->workspace, reply.body);
+        result = (int64_t)reply.body;
+    }
+    if (c->client.workspace)
+        memset(c->workspace, 0, AEFD_READ_MAX);
+    return end(c, result);
+}
+#endif
 int64_t aefd_context_directory(struct aefd_context *c,
                                const unsigned char *path, size_t length,
                                struct aether_tinfo_directory_view *out)

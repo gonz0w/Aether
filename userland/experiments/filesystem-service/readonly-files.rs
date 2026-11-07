@@ -62,10 +62,17 @@ compile_error!("home reader requires redirection and cold reopen");
 compile_error!("cold home redirection requires the reader profile");
 #[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection)))]
 compile_error!("login startup requires its complete home redirection profile");
+#[cfg(all(
+    native_zsh_home_cwd,
+    not(all(native_zsh_login_startup, native_zsh_home_redirection_reader))
+))]
+compile_error!("home CWD requires the complete cold login reader profile");
 #[cfg(native_zsh_home_redirection)]
 #[path = "zsh-home-redirection.rs"]
 mod home_redirection;
-pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_redirection) {
+pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_cwd) {
+    b"AEFP0007"
+} else if cfg!(native_zsh_home_redirection) {
     b"AEFP0006"
 } else if cfg!(native_zsh_home_write) {
     b"AEFP0005"
@@ -218,6 +225,12 @@ impl<T: Channel> Files<T> {
         self.descriptions.source.client.cleanup()
     }
     pub fn abort(&mut self) -> [i64; 2] {
+        #[cfg(native_zsh_home_cwd)]
+        {
+            // An unconfirmed state-changing reply cannot reuse a past read's
+            // completion, even when namespace close itself is known clean.
+            self.note.phase = 1;
+        }
         #[cfg(native_zsh_file_exec)]
         self.file_exec.poison();
         #[cfg(native_zsh_home_write)]
@@ -418,7 +431,7 @@ impl<T: Channel> Files<T> {
             return Err(Error::Protocol);
         }
         #[cfg(native_zsh_home_redirection)]
-        if self.note_io_active() {
+        if cfg!(native_zsh_home_cwd) || self.note_io_active() {
             return Err(Error::Invalid);
         }
         self.descriptions
@@ -493,6 +506,8 @@ impl<T: Channel> Files<T> {
                 8 => matches!(a, 0 | 4) && (1..=255).contains(&b) && c == 0 && d == 0,
                 9 => a == 0 && b == 0 && c == 0 && d == 0,
                 10 => a == 0 && (1..=255).contains(&b) && c == 0 && d == 0,
+                #[cfg(native_zsh_home_cwd)]
+                13 => a == 0 && matches!(b, 1 | 5) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_redirection)]
                 11 => fd(a) && (1..=16).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_redirection)]
@@ -509,6 +524,7 @@ impl<T: Channel> Files<T> {
         }
         Ok(
             if matches!(word(raw, 1), 1 | 8 | 10)
+                || (cfg!(native_zsh_home_cwd) && word(raw, 1) == 13)
                 || ((cfg!(native_zsh_home_write) || cfg!(native_zsh_home_redirection))
                     && matches!(word(raw, 1), 11 | 12))
             {
@@ -601,6 +617,16 @@ impl<T: Channel> Files<T> {
                 workspace.fill(0);
                 result.map(|fd| fd as u64)
             }
+            #[cfg(native_zsh_home_cwd)]
+            1 if workspace[..b as usize] == *b".zprofile" => {
+                let value = if view == 0 && self.note.cwd_home {
+                    self.open_note_read(view, a != 0).map(|fd| fd as u64)
+                } else {
+                    Err(Failure::Source(Error::Remote(-13)))
+                };
+                workspace.fill(0);
+                value
+            }
             #[cfg(native_zsh_home_redirection)]
             1 if workspace[..b as usize] == *home_redirection::ENTRY => {
                 let value = self.open_note_read(view, a != 0).map(|fd| fd as u64);
@@ -608,6 +634,11 @@ impl<T: Channel> Files<T> {
                 value
             }
             1 => {
+                #[cfg(native_zsh_home_cwd)]
+                if workspace[0] != b'/' {
+                    workspace.fill(0);
+                    return (Err(Failure::Source(Error::Remote(-13))), 0);
+                }
                 let value = self
                     .descriptions
                     .open_read_in(view, &workspace[..b as usize], a != 0)
@@ -648,6 +679,18 @@ impl<T: Channel> Files<T> {
                 workspace.fill(0);
                 result.map(|()| 0).map_err(Failure::Source)
             }
+            #[cfg(native_zsh_home_cwd)]
+            13 => self
+                .change_home_cwd(view, b as usize, workspace)
+                .map(|()| 0),
+            #[cfg(native_zsh_home_cwd)]
+            9 => self
+                .observe_home_cwd(view, self.note.cwd_home, workspace)
+                .map(|length| {
+                    body = length;
+                    0
+                }),
+            #[cfg(not(native_zsh_home_cwd))]
             9 => {
                 workspace.fill(0);
                 self.descriptions

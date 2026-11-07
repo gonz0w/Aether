@@ -31,6 +31,12 @@ struct StorageState {
     note_failure: u8,
     #[cfg(native_zsh_home_redirection)]
     note_lookup_failure: bool,
+    #[cfg(native_zsh_home_cwd)]
+    note_lookup_denied: bool,
+    #[cfg(native_zsh_home_cwd)]
+    cwd_observations: Vec<u64>,
+    #[cfg(native_zsh_home_cwd)]
+    cwd_failure: u8,
     mutations: usize,
     lookups: usize,
     reads: usize,
@@ -53,6 +59,29 @@ fn node(id: u64, size: usize) -> p::Node {
     )
 }
 impl p::Backend for Storage {
+    #[cfg(native_zsh_home_cwd)]
+    fn directory_context(
+        &mut self,
+        root: p::Node,
+        at: p::Node,
+        out: &mut [u8; 256],
+    ) -> Result<(p::Node, usize), p::Error> {
+        let mut state = self.0.lock().unwrap();
+        state.cwd_observations.push(at.identity().0);
+        if state.cwd_failure == 1 {
+            return Err(p::Error::Backend(13));
+        }
+        let path: &[u8] = if state.cwd_failure == 2 {
+            b"/moved\0"
+        } else if at.identity().0 == root.identity().0 {
+            b"/\0"
+        } else {
+            b"/home\0"
+        };
+        out[..path.len()].copy_from_slice(path);
+        Ok((root, path.len()))
+    }
+
     fn root(&mut self) -> Result<p::Node, p::Error> {
         Ok(node(1, 0))
     }
@@ -79,6 +108,10 @@ impl p::Backend for Storage {
                     }
                     && s.note_exists =>
             {
+                #[cfg(native_zsh_home_cwd)]
+                if s.note_lookup_denied {
+                    return Err(p::Error::Backend(13));
+                }
                 if s.note_lookup_failure {
                     return Err(p::Error::Backend(5));
                 }

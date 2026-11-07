@@ -21,8 +21,10 @@ FILE *aefd_test_fopen(const char *, const char *);
 FILE *aefd_test_fdopen(int, const char *);
 size_t aefd_test_stdio_write(FILE *, const unsigned char *, size_t);
 int aefd_test_sigaction(int, const struct sigaction *, struct sigaction *);
+#ifndef AEFD_ZSH_HOME_CWD_BINDINGS
 static FILE stream;
 static unsigned char stdio_buffer[32];
+#endif
 FILE *aefd_test_fdopen(int fd, const char *mode)
 {
     (void)fd;
@@ -62,6 +64,107 @@ _Noreturn void __assert_fail(const char *expression, const char *file, int line,
 int main(void)
 {
     assert(!aefd_zsh_admit());
+#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+    setup(0);
+    f.cwd = 1;
+    char out[8];
+    memset(out, 99, sizeof out);
+    errno = EDOM;
+    assert(__wrap_getcwd(out, sizeof out) == out &&
+           !strcmp(out, "/home") && errno == EDOM && out[6] == 99);
+#ifndef AEFD_CWD_PREIMPLEMENT_TEST
+    setup(0);
+    assert(!memcmp(AEFD_MAGIC, "AEFP0007", 8));
+    uint64_t args[4] = {0};
+    struct aefd_reply reply;
+    assert(!aefd_client_exchange(&c.client, 7, args, NULL, 0, &reply));
+    args[1] = 5;
+    args[3] = 1;
+    assert(!aefd_client_exchange(&c.client, 13, args,
+                                 (const unsigned char *)"/home", 5, &reply));
+    assert(!f.requests && c.client.live);
+    unsigned before = f.requests;
+    errno = EDOM;
+    assert(__wrap_chdir("/home") == 0 && errno == EDOM && f.cwd == 1);
+    assert(f.requests == before + 1 && f.mask == 0x1234);
+    assert(__wrap_getcwd(out, sizeof out) == out && !strcmp(out, "/home"));
+    memset(out, 99, sizeof out);
+    before = f.requests;
+    errno = 0;
+    assert(!__wrap_getcwd(out, 2) && errno == ERANGE && out[0] == 99);
+    assert(c.client.live && f.requests == before + 1);
+    assert(!__wrap_getcwd(out, 0) && errno == EINVAL);
+    assert(!__wrap_getcwd((char *)&c, sizeof out) && errno == EFAULT);
+    assert(f.requests == before + 1);
+    errno = EDOM;
+    char *allocated = __wrap_getcwd(NULL, 0);
+    assert(allocated && !strcmp(allocated, "/home") && errno == EDOM);
+    free(allocated);
+    allocated = __wrap_getcwd(NULL, 12);
+    assert(allocated && !strcmp(allocated, "/home"));
+    free(allocated);
+    before = f.requests;
+    for (unsigned i = 0; i < 5; i++) {
+        static const char *const denied[] = {"", ".", "..", "/home/", "/else"};
+        assert(__wrap_chdir(denied[i]) == -1 && errno == EACCES);
+    }
+    assert(__wrap_chdir(NULL) == -1 && errno == EFAULT);
+    assert(__wrap_chdir((char *)&c) == -1 && errno == EFAULT);
+    assert(f.requests == before);
+    c.native.active = 1;
+    assert(__wrap_chdir("/") == -1 && errno == EBUSY && f.cwd == 1);
+    c.native.active = 0;
+    f.mode = 24;
+    assert(__wrap_chdir("/") == -1 && errno == EACCES && f.cwd == 1);
+    assert(c.client.live);
+    f.mode = 0;
+    assert(aether_zsh_open(".zprofile", O_RDONLY, 0) == 3);
+    assert(!aether_zsh_raw_close(3));
+    before = f.requests;
+    assert(aether_zsh_open(".zprofile", O_WRONLY | O_CREAT | O_EXCL, 0600) == -1 &&
+           errno == EOPNOTSUPP && f.requests == before);
+    assert(__wrap_chdir("/") == 0 && f.cwd == 0);
+    assert(__wrap_getcwd(out, sizeof out) == out && !strcmp(out, "/"));
+    assert(aether_zsh_open(".zprofile", O_RDONLY, 0) == -1 && errno == EACCES);
+    assert(c.client.live && f.cwd == 0);
+    close_client();
+    for (int mode = 20; mode <= 22; mode++) {
+        setup(mode);
+        f.cwd = 1;
+        memset(out, 99, sizeof out);
+        assert(!__wrap_getcwd(out, sizeof out) && errno == EIO && out[0] == 99);
+        assert(!c.client.live && f.closes == 2 && f.mask == 0x1234);
+        before = f.requests;
+        assert(__wrap_chdir("/") == -1 && f.requests == before);
+    }
+    setup(29);
+    memset(out, 99, sizeof out);
+    assert(!__wrap_getcwd(out, sizeof out) && errno == EIO && out[0] == 99);
+    assert(!c.client.live && f.closes == 2);
+    setup(23);
+    memset(out, 99, sizeof out);
+    assert(!__wrap_getcwd(out, sizeof out) && errno == EACCES && out[0] == 99);
+    assert(c.client.live);
+    close_client();
+    for (int mode = 25; mode <= 28; mode++) {
+        setup(mode);
+        assert(__wrap_chdir("/home") == -1 && errno == EIO);
+        assert(f.cwd == 1 && !c.client.live && f.closes == 2);
+        before = f.requests;
+        assert(__wrap_chdir("/home") == -1 && f.requests == before);
+    }
+    setup(0);
+    c.map.generation = 0;
+    assert(__wrap_chdir("/home") == -1 && errno == EIO && !f.requests);
+    assert(!c.client.live && f.closes == 2);
+    setup(0);
+    c.map.generation = 0;
+    assert(!__wrap_getcwd(out, sizeof out) && errno == EIO && !f.requests);
+    assert(!c.client.live && f.closes == 2);
+#endif
+    puts("home CWD actual wrapper/context/codec paths pass");
+    return 0;
+#else
 #ifdef AEFD_ZSH_LOGIN_STARTUP_BINDINGS
     /* Neither the previous profile nor unrelated RC discovery gains authority. */
     for (unsigned i = 0; i < 4; i++) {
@@ -155,4 +258,5 @@ int main(void)
     close_client();
     puts("note provider mode/open/open64/fopen/flush/raw-dup2/restore pass");
     return 0;
+#endif
 }
