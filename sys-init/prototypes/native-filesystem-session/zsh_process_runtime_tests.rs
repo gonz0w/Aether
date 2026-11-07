@@ -2154,7 +2154,7 @@ fn note_launch_codec_matches_actual_login_selection_without_false_cwd() {
     }
 }
 
-#[cfg(native_zsh_home_cwd)]
+#[cfg(all(native_zsh_home_cwd, not(native_zsh_home_cwd_exec)))]
 #[test]
 fn note_cwd_profile_refuses_fork_before_any_native_copy_or_freeze() {
     let mut h = Fixture::new();
@@ -2216,4 +2216,160 @@ fn note_namespace_only_selected_zero_body_directory_observation_is_admitted() {
         })
         .unwrap();
     assert_eq!(h.runtime.filesystem_requests, before);
+}
+
+#[cfg(native_zsh_home_cwd_exec)]
+impl Fixture {
+    fn note_source_for_fork(&mut self) {
+        let r = self
+            .note_request(1, 1, [0, NOTE_PATH.len() as u64, 0, 0], NOTE_PATH)
+            .unwrap();
+        let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
+        self.note_request(2, 2, [fd, 16, 0, 0], b"").unwrap();
+        self.note_request(5, 3, [fd, 0, 0, 0], b"").unwrap();
+        assert!(
+            self.runtime
+                .with_files(|files| Ok(files.note_fork_ready()))
+                .unwrap()
+        );
+    }
+    fn note_child_cwd_request(&mut self) -> Vec<u8> {
+        let binding = self.runtime.process.binding.unwrap();
+        let mut raw = [0; 64];
+        raw[..8].copy_from_slice(filesystem_readonly::MAGIC);
+        raw[8..16].copy_from_slice(&9u64.to_le_bytes());
+        raw[16..24].copy_from_slice(&binding.generation.to_le_bytes());
+        raw[24..32].copy_from_slice(&1u64.to_le_bytes());
+        self.runtime.file_header = raw;
+        self.clear();
+        self.runtime.file_request(&mut [0; 4096], true).unwrap();
+        self.output(self.runtime.process.ends[3].cap)
+    }
+}
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn note_cwd_exec_fork_child_dispatch_observes_inherited_home() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.note_request(13, 4, [0, 5, 0, 0], b"/home").unwrap();
+    let before = h.runtime.filesystem_requests;
+    h.fork(false);
+    assert_eq!(h.runtime.process.binding.unwrap().slot, 2);
+    let r = h.note_child_cwd_request();
+    assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
+    assert_eq!(u64::from_le_bytes(r[40..48].try_into().unwrap()), 6);
+    assert_eq!(&r[64..70], b"/home\0");
+    assert!(h.runtime.filesystem_requests > before);
+    assert_eq!(h.runtime.process.epoch, 1);
+}
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn note_cwd_exec_unsettled_fork_refuses_before_native_effects() {
+    // Initial phase5 and live read6 cannot be treated as a completed profile.
+    for reading in [false, true] {
+        let mut h = Fixture::new();
+        if reading {
+            h.note_request(1, 1, [0, NOTE_PATH.len() as u64, 0, 0], NOTE_PATH)
+                .unwrap();
+        }
+        let raw = h.snapshot(false);
+        let mut work = [0; 4096];
+        zsh_process_frames::encode_fork(
+            &raw,
+            h.runtime.zsh_expected(false).unwrap(),
+            1,
+            (&mut work[..368]).try_into().unwrap(),
+        )
+        .unwrap();
+        let before = h.host.0.borrow().calls.len();
+        assert_eq!(h.runtime.zsh_fork(&mut work), Err(-16));
+        assert_eq!(h.host.0.borrow().calls.len(), before);
+        assert!(h.runtime.process.pristine());
+    }
+}
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn note_cwd_exec_known_copy_refusal_does_not_publish_child_directory() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.note_request(13, 4, [0, 5, 0, 0], b"/home").unwrap();
+    h.host.0.borrow_mut().copy_result = -11;
+    let raw = h.snapshot(false);
+    let mut work = [0; 4096];
+    zsh_process_frames::encode_fork(
+        &raw,
+        h.runtime.zsh_expected(false).unwrap(),
+        1,
+        (&mut work[..368]).try_into().unwrap(),
+    )
+    .unwrap();
+    h.clear();
+    h.runtime.zsh_fork(&mut work).unwrap();
+    assert_eq!(
+        zsh_process_frames::decode_receipt(&h.output(PW), b"AEZFR001", 1).unwrap(),
+        -11
+    );
+    assert!(h.runtime.process.binding.is_none());
+    assert!(
+        h.runtime
+            .with_files(|files| Ok(files.note_fork_ready()))
+            .unwrap()
+    );
+    assert_eq!(h.runtime.process.lease, ReadLease::Parent);
+}
+
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn note_cwd_exec_actual_exec_wait_settlement_restores_parent_directory() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.note_request(13, 4, [0, 5, 0, 0], b"/home").unwrap();
+    let raw = h.fork(false);
+    let mut work = h.exec_request(&raw);
+    h.runtime.zsh_exec(&mut work).unwrap();
+    let r = h.note_child_cwd_request();
+    assert_eq!(&r[64..70], b"/home\0");
+    h.host.0.borrow_mut().ready = true;
+    h.runtime.zsh_terminal().unwrap();
+    h.host.0.borrow_mut().terminal = Some((24, 1, 1));
+    h.runtime.zsh_terminal().unwrap();
+    h.clear();
+    assert!(
+        h.runtime
+            .zsh_stream(false, &frame(68, u32::MAX, 0, 0))
+            .unwrap()
+    );
+    assert_eq!(h.runtime.process.wait_status, Some(5888));
+    assert!(h.runtime.process.reclaimed);
+    assert_eq!(h.runtime.process.lease, ReadLease::Parent);
+    assert!(h.runtime.process.binding.is_none());
+    let r = h.note_request(9, 5, [0; 4], b"").unwrap();
+    assert_eq!(&r[64..70], b"/home\0");
+}
+#[cfg(native_zsh_home_cwd_exec)]
+#[test]
+fn note_cwd_exec_unknown_copy_has_no_published_files_child() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.host.0.borrow_mut().copy_result = 1;
+    let raw = h.snapshot(false);
+    let mut work = [0; 4096];
+    zsh_process_frames::encode_fork(
+        &raw,
+        h.runtime.zsh_expected(false).unwrap(),
+        1,
+        (&mut work[..368]).try_into().unwrap(),
+    )
+    .unwrap();
+    h.clear();
+    assert_eq!(h.runtime.zsh_fork(&mut work), Err(-5));
+    assert!(h.runtime.process.binding.is_some());
+    let child = h.runtime.process.binding.unwrap();
+    assert!(
+        h.runtime
+            .with_files(|files| Ok(files.file_view(child).is_err()))
+            .unwrap()
+    );
+    assert!(!h.runtime.process.committed);
+    assert!(h.output(h.runtime.process.ends[3].cap).is_empty());
 }

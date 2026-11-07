@@ -67,6 +67,8 @@ compile_error!("login startup requires its complete home redirection profile");
     not(all(native_zsh_login_startup, native_zsh_home_redirection_reader))
 ))]
 compile_error!("home CWD requires the complete cold login reader profile");
+#[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
+compile_error!("home CWD exec requires the complete cold home CWD profile");
 #[cfg(native_zsh_home_redirection)]
 #[path = "zsh-home-redirection.rs"]
 mod home_redirection;
@@ -430,13 +432,23 @@ impl<T: Channel> Files<T> {
         {
             return Err(Error::Protocol);
         }
-        #[cfg(native_zsh_home_redirection)]
+        #[cfg(all(native_zsh_home_redirection, not(native_zsh_home_cwd_exec)))]
         if cfg!(native_zsh_home_cwd) || self.note_io_active() {
+            return Err(Error::Invalid);
+        }
+        #[cfg(native_zsh_home_cwd_exec)]
+        if !self.note_fork_ready() {
             return Err(Error::Invalid);
         }
         self.descriptions
             .inherit_view(0, 1)
             .map_err(|_| Error::Protocol)?;
+        #[cfg(native_zsh_home_cwd_exec)]
+        {
+            // Native copy is known admitted; only the exact published binding
+            // below authenticates this snapshot. Parent selectors remain local.
+            self.note.child_cwd_home = self.note.cwd_home;
+        }
         self.child = Some(child);
         self.child_epoch = child.epoch;
         self.child_next = 1;
@@ -483,6 +495,10 @@ impl<T: Channel> Files<T> {
             .map_err(|_| Error::Closed)?;
         self.child = None;
         self.child_next = 0;
+        #[cfg(native_zsh_home_cwd_exec)]
+        {
+            self.note.child_cwd_home = false;
+        }
         Ok(())
     }
     /// Validate complete fixed header before body assembly or source effects.
@@ -684,12 +700,19 @@ impl<T: Channel> Files<T> {
                 .change_home_cwd(view, b as usize, workspace)
                 .map(|()| 0),
             #[cfg(native_zsh_home_cwd)]
-            9 => self
-                .observe_home_cwd(view, self.note.cwd_home, workspace)
-                .map(|length| {
+            9 => {
+                let home = self.note.cwd_home;
+                #[cfg(native_zsh_home_cwd_exec)]
+                let home = if view == 1 {
+                    self.note.child_cwd_home
+                } else {
+                    home
+                };
+                self.observe_home_cwd(view, home, workspace).map(|length| {
                     body = length;
                     0
-                }),
+                })
+            }
             #[cfg(not(native_zsh_home_cwd))]
             9 => {
                 workspace.fill(0);

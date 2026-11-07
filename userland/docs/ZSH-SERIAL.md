@@ -169,3 +169,21 @@ foreground PTY bytes. The `/home` and `/` physical paths, relative read status0 
 read status1 passed with returned prompts, clean export and known cleanup. This is a
 fixed workload result; it does not claim a human typing or general CWD trial.
 The same finite session/failure procedure applies.
+
+## Home working directory and a persisted command
+
+The scoped [164 checkpoint](proposals/ZSH-HOME-CWD-EXEC.md) combines automatic
+persisted login startup, real parent home navigation and one external command.
+Use the managed `--home-cwd-exec` reader with its reviewed inputs and one unchanged
+fresh `--login-startup` writer. Keep the exact stopped writer disk and follow the
+same artifact/proposal review and cleanup procedure above. This managed profile
+has no manual selector; keep the existing operator mode for its accepted scope.
+
+The fixed regression changes to `/home`, runs `(pwd -P; exec -c /home/probe)`,
+then prints the collected status and parent PWD before `pwd -P` and `exit 0`.
+It passed with status23, the same parent PID9, `/home` before/in/after the child,
+returned prompts, normal export and complete cleanup. The child can observe its
+inherited directory; child directory changes and profile reads remain denied.
+Zsh's pwd can use cached state, so the qualification also uses the selected linked
+GETCWD route and actual C/Rust context/dispatch controls. This does not qualify
+arbitrary commands, child navigation, authentication or assembled R1.

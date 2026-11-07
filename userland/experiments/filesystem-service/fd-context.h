@@ -67,8 +67,10 @@ int64_t aefd_context_access(struct aefd_context *, const unsigned char *,
 int64_t aefd_context_root(struct aefd_context *, unsigned char[2]);
 #endif
 #ifdef AEFD_ZSH_HOME_CWD_BINDINGS
-/* Exact parent-only root/home operations. Caller output is disjoint stable
- * storage; GETCWD returns the actual NUL-inclusive2/6 count only on success. */
+/* Parent CHDIR and selected parent/child root/home observations. Rust owns
+ * exact-generation child eligibility; C stores no authoritative CWD. Caller
+ * output is disjoint stable storage; GETCWD returns the actual NUL-inclusive
+ * 2/6 count only on success. */
 int64_t aefd_context_home_chdir(struct aefd_context *, const unsigned char *,
                                 size_t);
 int64_t aefd_context_home_getcwd(struct aefd_context *, unsigned char[6]);

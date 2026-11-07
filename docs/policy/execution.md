@@ -6,6 +6,22 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Issue164 inherited home CWD and execution —2026-11-07
+
+Cam approved the [reviewed164 design and gates](https://github.com/gonz0w/Aether/issues/164#issuecomment-6714021252).
+Select one additional default-off cold composition with settled phase7 before
+copy, exact-binding child ROOT/HOME snapshot, actual held-directory GETCWD,
+no child CHDIR/profile READ/nested fork, preserved exec-generation snapshot and
+confirmed settlement. Keep AEFP0007, all old profiles/defaults and numeric limits.
+Existing81920-byte Owner RX eligibility applies only to this closed new profile.
+Fresh affected fits and separate reviews precede images. One unchanged160 fresh
+writer/new164 cold pair with the reviewed172-byte workload may establish remaining
+scoped workload fit. Focused delivery after success, separate reviews and required
+protected CI is approved while141 stays open. Retain combined actual-function,
+linked-route and native CWD evidence: physical pwd text alone is insufficient.
+Stop/replan on required-bound failure or a new consequential decision. No generic
+paths, additional child, packages, authentication or R1 claim follows.
+
 ## Current milestone execution direction —2026-11-01
 
 Cam approved the [fixed reader profile](https://github.com/gonz0w/Aether/issues/97#issuecomment-6563209702)

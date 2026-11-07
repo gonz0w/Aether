@@ -185,6 +185,8 @@ compile_error!("cold reopen requires the complete selected filesystem file-exec 
 compile_error!("idle exit requires the selected cold reopen profile");
 #[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection)))]
 compile_error!("login startup requires its complete home redirection profile");
+#[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
+compile_error!("home CWD exec requires the complete cold home CWD profile");
 #[cfg(all(native_zsh_operator, not(native_zsh_idle_exit)))]
 compile_error!("operator session requires the selected idle exit profile");
 
@@ -1528,7 +1530,7 @@ impl<K: AppControl> Runtime<K> {
     #[cfg(native_zsh_process)]
     #[inline(never)]
     fn zsh_fork(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
-        if cfg!(native_zsh_home_cwd) {
+        if cfg!(all(native_zsh_home_cwd, not(native_zsh_home_cwd_exec))) {
             return Err(-95);
         }
         let expected = self.zsh_expected(false)?;
@@ -1540,8 +1542,12 @@ impl<K: AppControl> Runtime<K> {
         {
             return Err(-16);
         }
-        #[cfg(native_zsh_home_redirection)]
+        #[cfg(all(native_zsh_home_redirection, not(native_zsh_home_cwd_exec)))]
         if self.with_files(|files| Ok(files.note_io_active()))? {
+            return Err(-16);
+        }
+        #[cfg(native_zsh_home_cwd_exec)]
+        if !self.with_files(|files| Ok(files.note_fork_ready()))? {
             return Err(-16);
         }
         let plan = zsh_stream_plan(snapshot.raw(), expected)?;
