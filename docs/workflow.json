@@ -2775,6 +2775,16 @@
       "invariants": "Cold-only matched AEFP0007: phase7 settled before copy; exact child binding ROOT/HOME snapshot retained across exec, cleared on settlement; child GETCWD actual held-directory observation only; deny child CHDIR/profile READ/nested fork. Existing80KiB eligibility, numeric limits and old profiles unchanged.",
       "oracle": "Warm228 approved bytes; cold172 once-only foreground PTY bytes: PROFILE0, HOME0 and physical/home, copied child physical/home then helper23, STATUS23/same parent PID/PWDhome and physical/home, prompts/normal exit/export/MODE0/three reclaims/halt/PASS and known host cleanup. CWD evidence combines actual-function controls, fresh linked route and native output. Actual reviewed corrected pair passes: writer42.480s/61requests and cold27.966s/68requests,PID9,helper/status23,pwdhome,three reclaims/halt2083/PASS and complete host cleanup.",
       "gaps": "Scoped164 fixed combined startup/CWD/helper qualification complete; first cold host-guard failure retained, corrected before fresh pair. Physical text alone is not actual-call proof.141,general paths,packages/authentication and assembledR1 remain open."
+    },
+    {
+      "id": "zsh-repeat-exec",
+      "reference": "userland/docs/proposals/ZSH-REPEAT-EXEC.md",
+      "owner": "Aether sys-init/userland, issue166",
+      "budget_seconds": 360,
+      "command": "Focused actual Rust second-exec lifetime/one-use/refusal and C sequential context checks; private --repeat-exec Owner fit with exact unchanged164 app/helper and engine applicability review; reviewed fresh160 writer/new166 cold pair.",
+      "invariants": "Exactly two sequential helper executions/native generations1/2, first success/full settlement/reclaim/restoredREADlease before second copy, one-use full probe revalidation only after saved672-byte exec request, no phase/poison/quota reset. Old profiles and numeric limits unchanged.",
+      "oracle": "162 once-only cold PTY bytes: HOME0,FIRST23,SECOND23/sameparentPIDhome, two distinct helper23/reclaim/prompt cycles, final physicalhome, normal export/MODE0/fourreclaims/halt/PASS and known originalhost cleanup. Prior164 startup/CWD evidence reused explicitly. Actual pair passes:writer39.679s/61requests,cold27.600s/75requests,PID9,child nativegens1/2,two helper23/prompt cycles,FIRST23/SECOND23,home,28cleanup/fourreclaims/halt2062/PASS and complete known host cleanup.",
+      "gaps": "Scoped166 two-command qualification complete; earlierRXoverflow/compile-onlyfailures retained and same-cap correction fits81056RX/3992Runtime/10536stack. Unchanged164 startup/CWD evidence reused; text alone is not actual-call proof.141/generalcommands/packages/authentication/assembledR1 remain open."
     }
   ]
 }

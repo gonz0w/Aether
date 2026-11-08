@@ -6,6 +6,8 @@ pub(super) struct FileExec {
     held: Option<Handle>,
     size: usize,
     phase: u8,
+    #[cfg(native_zsh_repeat_exec)]
+    repeated: bool,
 }
 impl FileExec {
     pub(super) const fn new() -> Self {
@@ -13,6 +15,8 @@ impl FileExec {
             held: None,
             size: 0,
             phase: 0,
+            #[cfg(native_zsh_repeat_exec)]
+            repeated: false,
         }
     }
     pub(super) fn poison(&mut self) {
@@ -89,6 +93,43 @@ impl<T: Channel> Files<T> {
         {
             return Err(Error::Invalid);
         }
+        self.validate_file_exec(image, workspace)
+    }
+    /// Trusted second exec only: this is not a child FILE rearm operation.
+    /// The exact admitted epoch2 and one-use marker survive native refusal.
+    #[cfg(native_zsh_repeat_exec)]
+    pub fn revalidate_file_exec(
+        &mut self,
+        child: Binding,
+        image: &[u8],
+        workspace: &mut [u8; PAYLOAD],
+    ) -> Result<(), Error> {
+        if self.retired
+            || self.pending
+            || self.child_pending
+            || !self.live(child)
+            || self.child != Some(child)
+            || child.slot != 2
+            || child.epoch != 2
+            || self.file_exec.phase != 2
+            || self.file_exec.held.is_some()
+            || self.file_exec.repeated
+            || self.descriptions.source.held.is_none()
+            || image.is_empty()
+            || image.len() > PAYLOAD
+        {
+            return Err(Error::Invalid);
+        }
+        // Mark before lookup/read/close, and never undo it after any result.
+        self.file_exec.repeated = true;
+        self.validate_file_exec(image, workspace)
+    }
+    #[cfg(native_zsh_cold_reopen)]
+    fn validate_file_exec(
+        &mut self,
+        image: &[u8],
+        workspace: &mut [u8; PAYLOAD],
+    ) -> Result<(), Error> {
         self.file_exec.phase = 3;
         let result = (|| {
             let client = &mut self.descriptions.source.client;
@@ -175,6 +216,10 @@ impl<T: Channel> Files<T> {
     }
     pub fn file_exec_consumed(&self) -> bool {
         self.file_exec_size().is_some()
+    }
+    #[cfg(native_zsh_repeat_exec)]
+    pub fn file_exec_repeated(&self) -> bool {
+        self.file_exec.repeated && self.file_exec_consumed()
     }
     #[cfg(native_zsh_idle_exit)]
     pub fn file_exec_unused_closed(&self) -> bool {

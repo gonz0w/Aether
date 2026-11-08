@@ -260,6 +260,7 @@ struct Host {
     closed: Vec<u64>,
     pair: u64,
     copy_result: i64,
+    child: u64,
     exec_result: i64,
     receipt: Status,
     ready: bool,
@@ -440,7 +441,7 @@ impl Control for Mock {
                 h.parent_gone = true;
                 (0, 0, 0)
             }
-            0x20007 if cap == CHILD => {
+            0x20007 if cap == h.child => {
                 if h.stop_result.0 == 0 && h.terminal.is_none() {
                     h.terminal = Some(h.stop_observation);
                 }
@@ -448,14 +449,14 @@ impl Control for Mock {
             }
             0x26002 if cap == 0xf001 => (0, 0, 0),
             0x100e7 if cap == 125 => (0, 0, 0),
-            0x20001 if cap == CHILD => {
+            0x20001 if cap == h.child => {
                 if h.gone {
                     (-9, 0, 0)
                 } else {
                     h.terminal.unwrap_or((0, u64::from(h.ready), 0))
                 }
             }
-            0x20002 if cap == CHILD => {
+            0x20002 if cap == h.child => {
                 h.gone = true;
                 (0, 0, 0)
             }
@@ -475,6 +476,14 @@ impl Control for Mock {
         let mut h = self.0.borrow_mut();
         assert_eq!((parent, slot, token), (PARENT, 2, 101));
         h.calls.push((0x23006, reader, writer));
+        #[cfg(native_zsh_repeat_exec)]
+        if h.copy_result > 1 {
+            h.child = h.copy_result as u64;
+            h.ready = false;
+            h.terminal = None;
+            h.gone = false;
+            h.receipt = (0, 0, 0);
+        }
         h.copy_result
     }
     fn serial(&mut self, writing: bool, bytes: &mut [u8]) -> i64 {
@@ -493,7 +502,7 @@ impl Control for Mock {
     }
     fn exec(&mut self, process: u64, token: u64, args: &[u8; 272]) -> i64 {
         assert!(!cfg!(native_zsh_file_exec), "NO_BOOT_HELPER_FALLBACK");
-        assert_eq!((process, token), (CHILD, 101));
+        assert_eq!((process, token), (self.0.borrow().child, 101));
         let mut h = self.0.borrow_mut();
         h.calls.push((0x23007, process, token));
         assert_eq!(u64::from_le_bytes(args[..8].try_into().unwrap()), 2);
@@ -505,7 +514,7 @@ impl Control for Mock {
     }
     #[cfg(native_zsh_file_exec)]
     fn exec_file(&mut self, process: u64, token: u64, args: &[u8; 272], image: &[u8]) -> i64 {
-        assert_eq!((process, token), (CHILD, 101));
+        assert_eq!((process, token), (self.0.borrow().child, 101));
         assert_eq!(
             args[..8],
             1u64.to_le_bytes(),
@@ -523,11 +532,11 @@ impl Control for Mock {
         h.exec_result
     }
     fn receipt(&mut self, process: u64) -> Status {
-        assert_eq!(process, CHILD);
+        assert_eq!(process, self.0.borrow().child);
         self.0.borrow().receipt
     }
     fn publish(&mut self, process: u64, token: u64) -> i64 {
-        assert_eq!((process, token), (CHILD, 101));
+        assert_eq!((process, token), (self.0.borrow().child, 101));
         self.0.borrow_mut().calls.push((0x23009, process, token));
         0
     }
@@ -601,6 +610,7 @@ impl Fixture {
             closed: Vec::new(),
             pair: 2,
             copy_result: CHILD as i64,
+            child: CHILD,
             exec_result: 0,
             receipt: (0, 0, 0),
             ready: false,
@@ -2372,4 +2382,204 @@ fn note_cwd_exec_unknown_copy_has_no_published_files_child() {
     );
     assert!(!h.runtime.process.committed);
     assert!(h.output(h.runtime.process.ends[3].cap).is_empty());
+}
+
+#[cfg(native_zsh_repeat_exec)]
+impl Fixture {
+    fn repeat_collect(&mut self) {
+        self.host.0.borrow_mut().ready = true;
+        self.runtime.zsh_terminal().unwrap();
+        self.host.0.borrow_mut().terminal = Some((24, 1, 1));
+        self.runtime.zsh_terminal().unwrap();
+        self.clear();
+        assert!(
+            self.runtime
+                .zsh_stream(false, &frame(68, u32::MAX, 0, 0))
+                .unwrap()
+        );
+        assert_eq!(self.runtime.process.wait_status, Some(5888));
+        assert!(self.runtime.process.reclaimed);
+        assert_eq!(self.runtime.process.lease, ReadLease::Parent);
+        assert!(self.runtime.process.binding.is_none());
+    }
+    fn repeat_fork(&mut self) -> [u8; 336] {
+        let epoch = self.runtime.process.epoch + 1;
+        let handle = 0xb0000000 | u64::from(epoch) << 8 | 3;
+        let pid = 3 + 7 * u32::from(epoch);
+        self.host.0.borrow_mut().copy_result = handle as i64;
+        let sequence = self.runtime.process.fork_sequence + 1;
+        let mut work = self.repeat_fork_work();
+        self.clear();
+        self.runtime.zsh_fork(&mut work).unwrap();
+        let child_writer = self.runtime.process.ends[3].cap;
+        let child = self.output(child_writer).try_into().unwrap();
+        self.clear();
+        self.runtime
+            .zsh_child_ready(
+                &zsh_process_frames::receipt(b"AEZFC001", sequence, i64::from(pid)).unwrap(),
+            )
+            .unwrap();
+        self.clear();
+        child
+    }
+    fn repeat_fork_work(&self) -> [u8; 4096] {
+        let raw = self.snapshot(false);
+        let mut work = [0; 4096];
+        zsh_process_frames::encode_fork(
+            &raw,
+            self.runtime.zsh_expected(false).unwrap(),
+            self.runtime.process.fork_sequence + 1,
+            (&mut work[..368]).try_into().unwrap(),
+        )
+        .unwrap();
+        work
+    }
+    fn repeat_exec(&mut self, raw: &[u8; 336]) -> Result<(), i64> {
+        let mut work = self.repeat_exec_request(raw);
+        self.runtime.zsh_exec(&mut work)
+    }
+    fn repeat_exec_request(&self, raw: &[u8; 336]) -> [u8; 4096] {
+        let mut work = self.exec_request(raw);
+        work[16..24].copy_from_slice(&(self.runtime.process.sequence + 1).to_le_bytes());
+        work
+    }
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_two_actual_exec_wait_lifetimes_keep_saved_request_and_parent() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.note_request(13, 4, [0, 5, 0, 0], b"/home").unwrap();
+    for epoch in 1..=2 {
+        let raw = h.repeat_fork();
+        let mut work = h.repeat_exec_request(&raw);
+        h.runtime.zsh_exec(&mut work).unwrap();
+        assert_eq!(h.runtime.process.binding.unwrap().epoch, epoch);
+        h.repeat_collect();
+    }
+    assert_eq!(
+        h.host
+            .0
+            .borrow()
+            .calls
+            .iter()
+            .filter(|x| x.0 == 0x2300b)
+            .count(),
+        2
+    );
+    let before = h.host.0.borrow().calls.len();
+    let mut third = h.repeat_fork_work();
+    assert_eq!(h.runtime.zsh_fork(&mut third), Err(-16));
+    assert_eq!(
+        h.host.0.borrow().calls.len(),
+        before,
+        "THIRD_DENIED_BEFORE_NATIVE_EFFECTS"
+    );
+    let r = h.note_request(9, 5, [0; 4], b"").unwrap();
+    assert_eq!(&r[64..70], b"/home\0");
+    h.prepare_healthy_oracle();
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+}
+
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_first_success_and_full_settlement_are_required_before_effects() {
+    for case in 0..7 {
+        let mut h = Fixture::new();
+        h.note_source_for_fork();
+        let raw = h.repeat_fork();
+        let mut work = h.repeat_exec_request(&raw);
+        h.runtime.zsh_exec(&mut work).unwrap();
+        h.repeat_collect();
+        match case {
+            0 => h.runtime.process.committed = false,
+            1 => h.runtime.process.exec_ready = false,
+            2 => h.runtime.process.terminal = Some(0),
+            3 => h.runtime.process.wait_status = None,
+            4 => h.runtime.process.reclaimed = false,
+            5 => {
+                h.runtime.process.ends[0].owned = true;
+                h.runtime.process.ends[0].attempted = false;
+            }
+            _ => {
+                h.runtime.process.ends[0].owned = true;
+                h.runtime.process.ends[0].attempted = true;
+                h.runtime.process.ends[0].status = -5;
+            }
+        }
+        let mut work = h.repeat_fork_work();
+        let before = h.host.0.borrow().calls.len();
+        assert_eq!(h.runtime.zsh_fork(&mut work), Err(-16));
+        assert_eq!(h.host.0.borrow().calls.len(), before);
+        assert_eq!(h.runtime.process.epoch, 1);
+    }
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_known_native_refusal_cannot_rearm_the_second_exec() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    let raw = h.repeat_fork();
+    h.repeat_exec(&raw).unwrap();
+    h.repeat_collect();
+    let raw = h.repeat_fork();
+    h.host.0.borrow_mut().exec_result = -11;
+    h.repeat_exec(&raw).unwrap();
+    assert!(!h.runtime.process.committed);
+    assert!(
+        h.runtime
+            .with_files(|f| Ok(f.file_exec_repeated()))
+            .unwrap()
+    );
+    let count = h
+        .host
+        .0
+        .borrow()
+        .calls
+        .iter()
+        .filter(|x| x.0 == 0x2300b)
+        .count();
+    assert!(h.repeat_exec(&raw).is_err());
+    assert_eq!(
+        h.host
+            .0
+            .borrow()
+            .calls
+            .iter()
+            .filter(|x| x.0 == 0x2300b)
+            .count(),
+        count
+    );
+    assert!(!h.runtime.process.committed);
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_final_oracle_rejects_pristine_or_only_first_success() {
+    for count in 0..2 {
+        let mut h = Fixture::new();
+        h.note_source_for_fork();
+        if count == 1 {
+            let raw = h.repeat_fork();
+            h.repeat_exec(&raw).unwrap();
+            h.repeat_collect();
+        }
+        h.prepare_healthy_oracle();
+        assert_eq!(h.runtime.write_native_oracle(&mut [0; 4096]), Err(-5));
+        assert!(h.host.0.borrow().serial_output.is_empty());
+    }
+}
+
+#[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_repeat_exec)))]
+#[test]
+fn note_cwd_exec_pristine_after_profile_retains_optional_idle_oracle() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    assert!(h.runtime.process.pristine());
+    h.prepare_healthy_oracle();
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    let expected = std::format!(
+        "\nAETHER ZSH OWNER v=5 requests={:02} child=none helper_unused_closed=1 mode_cleanup=0\n",
+        h.runtime.filesystem_requests
+    );
+    assert_eq!(h.host.0.borrow().serial_output, expected.as_bytes());
 }

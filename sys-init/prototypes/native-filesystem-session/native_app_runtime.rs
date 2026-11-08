@@ -185,6 +185,8 @@ compile_error!("cold reopen requires the complete selected filesystem file-exec 
 compile_error!("idle exit requires the selected cold reopen profile");
 #[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection)))]
 compile_error!("login startup requires its complete home redirection profile");
+#[cfg(all(native_zsh_repeat_exec, not(native_zsh_home_cwd_exec)))]
+compile_error!("repeat exec requires the complete cold home CWD exec profile");
 #[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
 compile_error!("home CWD exec requires the complete cold home CWD profile");
 #[cfg(all(native_zsh_operator, not(native_zsh_idle_exit)))]
@@ -239,7 +241,7 @@ impl<K: AppControl> ZshProcess<K> {
             cleanup_last: (-5, 0, 0),
         }
     }
-    #[cfg(native_zsh_idle_exit)]
+    #[cfg(all(native_zsh_idle_exit, any(not(native_zsh_repeat_exec), test)))]
     fn pristine(&self) -> bool {
         self.epoch == 0
             && self.fork_sequence == 0
@@ -260,6 +262,22 @@ impl<K: AppControl> ZshProcess<K> {
             && !self.reclaimed
             && self.cleanup_attempted == 0
             && self.cleanup_last == (-5, 0, 0)
+    }
+    #[cfg(native_zsh_repeat_exec)]
+    fn repeat_ready(&self) -> bool {
+        self.epoch == 1
+            && self.committed
+            && self.exec_ready
+            && self.terminal == Some(5888)
+            && self.wait_status == Some(5888)
+            && self.reclaimed
+            && self.lease == ReadLease::Parent
+            && self.binding.is_none()
+            && self.endpoints.is_none()
+            && self
+                .ends
+                .iter()
+                .all(|end| !end.owned || (end.attempted && end.status == 0))
     }
     fn identity(&self) -> Result<Identity, i64> {
         let binding = self.binding.ok_or(-9)?;
@@ -1542,6 +1560,16 @@ impl<K: AppControl> Runtime<K> {
         {
             return Err(-16);
         }
+        #[cfg(native_zsh_repeat_exec)]
+        if self.process.epoch > 1
+            || (self.process.epoch == 1
+                && (!self.process.repeat_ready()
+                    || !self.with_files(|files| {
+                        Ok(files.file_exec_consumed() && !files.file_exec_repeated())
+                    })?))
+        {
+            return Err(-16);
+        }
         #[cfg(all(native_zsh_home_redirection, not(native_zsh_home_cwd_exec)))]
         if self.with_files(|files| Ok(files.note_io_active()))? {
             return Err(-16);
@@ -1707,6 +1735,12 @@ impl<K: AppControl> Runtime<K> {
             #[cfg(native_zsh_file_exec)]
             {
                 let binding = self.process.binding.ok_or(-9)?;
+                #[cfg(native_zsh_repeat_exec)]
+                if binding.epoch == 2 {
+                    self.with_files(|files| {
+                        files.revalidate_file_exec(binding, FILE_EXEC_ELF, workspace)
+                    })?;
+                }
                 let size = self.with_files(|files| files.acquire_file_exec(binding, workspace))?;
                 self.bound.before(&mut self.kernel)?;
                 self.kernel.exec_file(
@@ -2349,9 +2383,12 @@ impl<K: AppControl> Runtime<K> {
         if !files.note_complete() {
             return Err(-5);
         }
-        #[cfg(native_zsh_idle_exit)]
+        #[cfg(all(native_zsh_idle_exit, not(native_zsh_repeat_exec)))]
         let no_child = self.process.pristine() && files.file_exec_unused_closed();
-        #[cfg(all(native_zsh_process, not(native_zsh_idle_exit)))]
+        #[cfg(any(
+            native_zsh_repeat_exec,
+            all(native_zsh_process, not(native_zsh_idle_exit))
+        ))]
         let no_child = false;
         #[cfg(native_zsh_process)]
         {
@@ -2379,8 +2416,12 @@ impl<K: AppControl> Runtime<K> {
                 return Err(-5);
             }
         }
-        #[cfg(native_zsh_idle_exit)]
+        #[cfg(all(native_zsh_idle_exit, not(native_zsh_repeat_exec)))]
         if !no_child && self.process.epoch != 1 {
+            return Err(-5);
+        }
+        #[cfg(native_zsh_repeat_exec)]
+        if self.process.epoch != 2 || !files.file_exec_repeated() {
             return Err(-5);
         }
         #[cfg(native_zsh_home_write)]

@@ -187,3 +187,21 @@ inherited directory; child directory changes and profile reads remain denied.
 Zsh's pwd can use cached state, so the qualification also uses the selected linked
 GETCWD route and actual C/Rust context/dispatch controls. This does not qualify
 arbitrary commands, child navigation, authentication or assembled R1.
+
+## Two sequential persisted commands
+
+The scoped [166 checkpoint](proposals/ZSH-REPEAT-EXEC.md) uses managed
+`--repeat-exec` reader inputs with one unchanged fresh `--login-startup` writer
+and its exact stopped disk. Follow the same artifact/proposal review and bounded
+cleanup procedure above. This reader keeps the existing numeric limits and has
+no manual selector.
+
+The fixed regression enters `/home`, executes `(exec -c /home/probe)`, prints
+FIRST status/PID/PWD, executes the same helper again, then prints SECOND status/
+PID/PWD and physical path before exit. Both commands returned23 and a fresh
+prompt in the same PID9/home session, with complete first-child cleanup before
+the second. Final export, MODE restoration, four reclaims and host cleanup pass.
+The second executable is fully revalidated through Rust-held HOME, once only;
+third/nested/concurrent children and child profile reads remain denied. This
+qualifies the fixed two-command session, not arbitrary command counts, utilities,
+initial HOME startup, authentication or assembledR1.
