@@ -793,3 +793,252 @@ fn repeat_unknown_second_acquire_close_contains_and_never_rearms() {
     );
     assert_eq!(h.requests(), requests);
 }
+
+#[cfg(native_zsh_operator_login)]
+fn operator_login_rpc(
+    h: &mut Harness,
+    op: u64,
+    args: [u64; 4],
+    body: &[u8],
+    remaining: u32,
+) -> ([u8; 64], Vec<u8>) {
+    let raw = cwd_frame(h, op, args);
+    let mut work = [0; 4096];
+    work[..body.len()].copy_from_slice(body);
+    let needed = h.files().body_length(binding(), &raw).unwrap();
+    let mut reply = h
+        .files()
+        .prepare_bounded(binding(), &raw, needed, &mut work, remaining)
+        .unwrap();
+    let head = *reply.header();
+    let bytes = reply.body_mut().to_vec();
+    reply.delivered();
+    (head, bytes)
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_initial_home_is_observed_once_and_failures_cannot_publish() {
+    let mut h = prepared();
+    let before = h.requests();
+    h.files().initialize_home_cwd(&mut [0; 4096]).unwrap();
+    assert_eq!(h.requests(), before + 1);
+    assert!(h.files().note.cwd_home);
+    assert_eq!(
+        h.files().initialize_home_cwd(&mut [0; 4096]),
+        Err(Error::Invalid)
+    );
+    for mode in [1, 2] {
+        let mut h = prepared();
+        h.state.lock().unwrap().cwd_failure = mode;
+        assert!(h.files().initialize_home_cwd(&mut [0; 4096]).is_err());
+        assert!(!h.files().note.cwd_home);
+        assert!(!h.files().note_complete());
+    }
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_denied_profile_open_preserves_completion_and_namespace() {
+    let mut h = sourced();
+    let before = h.requests();
+    let phase = h.files().note.phase;
+    let need = h.files().shutdown_budget() + 19;
+    let (r, _) = operator_login_rpc(&mut h, 1, [0, NOTE.len() as u64, 0, 0], NOTE, need - 1);
+    assert_eq!(word(&r, 1) as i64, -28);
+    assert_eq!(h.requests(), before);
+    assert_eq!(h.files().note.phase, phase);
+    assert!(h.files().note_complete());
+    let (r, _) = operator_login_rpc(&mut h, 1, [0, NOTE.len() as u64, 0, 0], NOTE, need);
+    assert_eq!(word(&r, 1), 0);
+    assert_eq!(h.requests(), before + 1);
+    assert!(!h.files().note_complete());
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_short_reads_and_eof_keep_actual_last_close_credit() {
+    let mut h = sourced();
+    let mut remaining = h.files().shutdown_budget() + 19;
+    let (r, _) = operator_login_rpc(&mut h, 1, [0, NOTE.len() as u64, 0, 0], NOTE, remaining);
+    let fd = word(&r, 4);
+    assert_eq!(word(&r, 1), 0);
+    remaining -= 1;
+    for expected in BYTES {
+        let before = h.requests();
+        // A competing CWD call cannot steal completion/EOF/close credit.
+        let (denied, _) = operator_login_rpc(&mut h, 9, [0; 4], &[], remaining);
+        assert_eq!(word(&denied, 1) as i64, -28);
+        assert_eq!(h.requests(), before);
+        let (r, b) = operator_login_rpc(&mut h, 2, [fd, 1, 0, 0], &[], remaining);
+        assert_eq!((word(&r, 1), word(&r, 4)), (0, 1));
+        assert_eq!(b[0], *expected);
+        remaining -= 1;
+    }
+    let (r, _) = operator_login_rpc(&mut h, 2, [fd, 1, 0, 0], &[], remaining);
+    assert_eq!((word(&r, 1), word(&r, 4)), (0, 0));
+    remaining -= 1;
+    assert_eq!(remaining, h.files().shutdown_budget());
+    let before = h.requests();
+    let (r, _) = operator_login_rpc(&mut h, 2, [fd, 1, 0, 0], &[], remaining);
+    assert_eq!(word(&r, 1) as i64, -28);
+    assert_eq!(h.requests(), before);
+    let (r, _) = operator_login_rpc(&mut h, 5, [fd, 0, 0, 0], &[], remaining);
+    assert_eq!(word(&r, 1), 0);
+    assert!(h.files().note_complete());
+    assert_eq!(h.requests(), before + 1);
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_zero_length_reads_and_aliases_do_not_spend_namespace_or_close_credit() {
+    let mut h = sourced();
+    let need = h.files().shutdown_budget() + 19;
+    let (r, _) = operator_login_rpc(&mut h, 1, [0, NOTE.len() as u64, 0, 0], NOTE, need);
+    let fd = word(&r, 4);
+    let before = h.requests();
+    let reserve = h.files().shutdown_budget() + h.files().note_completion_credit();
+    let (r, _) = operator_login_rpc(&mut h, 2, [fd, 0, 0, 0], &[], reserve);
+    assert_eq!((word(&r, 1), word(&r, 4)), (0, 0));
+    assert_eq!(h.requests(), before);
+    let (r, _) = operator_login_rpc(&mut h, 4, [fd, 10, 0, 0], &[], reserve);
+    assert_eq!(word(&r, 1), 0);
+    assert_eq!(
+        h.files().shutdown_budget() + h.files().note_completion_credit(),
+        reserve
+    );
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_each_epoch_revalidates_once_and_keeps_full_current_bytes() {
+    let (mut h, second) = repeat_second_files();
+    let image = b"same persisted sealed helper";
+    for epoch in 2..=4 {
+        let child = if epoch == 2 {
+            second
+        } else {
+            let previous = h.files().child.unwrap();
+            h.files().settle_child(previous).unwrap();
+            let next = Binding {
+                epoch,
+                handle: 0xb0000003 | u64::from(epoch) << 8,
+                generation: 61 + u64::from(epoch),
+                ..second
+            };
+            h.files().inherit_child(binding(), next).unwrap();
+            next
+        };
+        let before = h.requests();
+        h.files()
+            .revalidate_file_exec(child, image, &mut [0; 4096])
+            .unwrap();
+        assert_eq!(h.requests(), before + 4);
+        h.files().acquire_file_exec(child, &mut [0; 4096]).unwrap();
+        assert_eq!(h.requests(), before + 9);
+        assert!(h.files().file_exec_epoch_complete(epoch));
+        let after = h.requests();
+        assert!(
+            h.files()
+                .revalidate_file_exec(child, image, &mut [0; 4096])
+                .is_err()
+        );
+        assert_eq!(h.requests(), after);
+    }
+}
+
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_live_child_credit_cannot_be_spent_by_cwd_or_file_calls() {
+    let (mut h, child) = repeat_second_files();
+    assert_eq!(h.files().file_exec_credit(), 9);
+    let mut raw = [0; 64];
+    raw[..8].copy_from_slice(MAGIC);
+    for (i, v) in [9, child.generation, 1, 0, 0, 0, 0].into_iter().enumerate() {
+        put(&mut raw, i + 1, v);
+    }
+    let reserve = h.files().shutdown_budget() + 9;
+    let before = h.requests();
+    let mut work = [0; 4096];
+    let reply = h
+        .files()
+        .prepare_bounded(child, &raw, 0, &mut work, reserve)
+        .unwrap();
+    assert_eq!(word(reply.header(), 1) as i64, -28);
+    reply.delivered();
+    assert_eq!(h.requests(), before);
+    assert_eq!(h.files().file_exec_credit(), 9);
+    h.files()
+        .revalidate_file_exec(child, b"same persisted sealed helper", &mut [0; 4096])
+        .unwrap();
+    assert_eq!(h.files().file_exec_credit(), 5);
+    h.files().acquire_file_exec(child, &mut [0; 4096]).unwrap();
+    assert_eq!(h.files().file_exec_credit(), 0);
+}
+
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_changed_profile_bytes_or_early_eof_contain_without_credit_replay() {
+    for bad_eof in [false, true] {
+        let mut h = sourced();
+        let need = h.files().shutdown_budget() + 19;
+        let (r, _) = operator_login_rpc(&mut h, 1, [0, NOTE.len() as u64, 0, 0], NOTE, need);
+        let fd = word(&r, 4);
+        if bad_eof {
+            h.state.lock().unwrap().note.clear();
+        } else {
+            h.state.lock().unwrap().note[0] ^= 1;
+        }
+        let raw = cwd_frame(&mut h, 2, [fd, 1, 0, 0]);
+        let mut work = [0; 4096];
+        assert!(
+            h.files()
+                .prepare_bounded(binding(), &raw, 0, &mut work, need - 1)
+                .is_err()
+        );
+        assert_eq!(work, [0; 4096]);
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        assert!(!h.files().note_complete());
+    }
+}
+
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_write_denial_keeps_source_and_read_only_states_unchanged() {
+    for state in 0..5 {
+        let mut h = match state {
+            0 => Harness::new(),
+            3 => sourced(),
+            _ => prepared(),
+        };
+        let fd = if state == 2 {
+            word(&h.rpc(1, [0, NOTE.len() as u64, 0, 0], NOTE).0, 4)
+        } else {
+            3
+        };
+        if state == 4 {
+            h.files().abort();
+        }
+        let before = h.requests();
+        let phase = h.files().note.phase;
+        let completed = h.files().note_complete();
+        let mutations = h.state.lock().unwrap().mutations;
+        let raw = cwd_frame(&mut h, 11, [fd, 16, 0, 0]);
+        let mut work = [0; 4096];
+        work[..16].copy_from_slice(BYTES);
+        let result = h
+            .files()
+            .prepare_bounded(binding(), &raw, 64, &mut work, 96);
+        if state == 4 {
+            assert!(result.is_err());
+            drop(result);
+        } else {
+            let mut reply = result.unwrap();
+            assert_eq!(word(reply.header(), 1) as i64, -9);
+            assert_eq!(word(reply.header(), 5), 64);
+            let receipt: &[u8; 64] = reply.body_mut()[..64].try_into().unwrap();
+            assert_eq!(word(receipt, 0), 0);
+            assert_eq!(word(receipt, 6), 1);
+            reply.delivered();
+        }
+        assert_eq!(h.requests(), before);
+        assert_eq!(h.state.lock().unwrap().mutations, mutations);
+        assert_eq!(h.files().note.phase, phase);
+        assert_eq!(h.files().note_complete(), completed);
+    }
+}

@@ -484,6 +484,131 @@ static void repeat_command_cases(void)
         ++cases;
     }
 }
+/* Operator exit policy is Rust-owned. These actual C consumers remain usable
+ * before any child and after one or several completely reported child cycles.
+ */
+static void operator_parent_state(uint64_t counter)
+{
+    struct aefd_context *c = &x.f->boot.context;
+    unsigned char map[128], path[6];
+    assert(x.f->phase == AEFD_FORK_IDLE && x.f->counter == counter &&
+           x.f->boot.identity.slot == 1 && x.pid == 9 && x.parent == 7 &&
+           c->client.generation == 31 && c->client.live &&
+           c->native.factory == 0x76050001 &&
+           c->mode_control == AEFD_MODE_CONTROL && c->native.input == 71 &&
+           c->native.output == 72 && c->client.workspace == c->workspace &&
+           c->client.io.context == &c->native &&
+           c->session.client == &c->client && c->session.map == &c->map &&
+           !x.closes && x.mask == 0x1234);
+    assert(aefd_session_snapshot(&c->session, map, sizeof map, 0) == 0 &&
+           !memcmp(map, x.startup + 48, sizeof map));
+    x.mode = 7;
+    x.file_generation = 31;
+    x.cwd_response = 1;
+    x.offset = x.written = x.limit = 0;
+    assert(aefd_context_home_getcwd(c, path) == 6 && !memcmp(path, "/home", 6));
+    x.mode = 1;
+    x.offset = x.written = 0;
+    x.limit = 32;
+}
+static void operator_parent_wait(long pid)
+{
+    x.offset = x.written = 0;
+    memset(x.reply, 0, 32);
+    put32(x.reply, 0, (uint32_t)pid);
+    put32(x.reply, 4, 23U << 8);
+    int status = -1;
+    assert(aefd_test_waitpid(-1, &status, 11) == pid && status == 23 << 8);
+    x.offset = x.written = 0;
+}
+static void operator_session_cases(void)
+{
+    setup(1);
+    operator_parent_state(0);
+    ++cases;
+    for (unsigned epoch = 1; epoch <= 3; ++epoch) {
+        long pid = 3 + 7 * epoch;
+        arm();
+        assert(x.f->sequence == epoch);
+        assert(aefd_zsh_receipt_encode(x.reply, "AEZFR001", epoch, pid));
+        assert(aefd_fork_parent(x.f, pid) == pid);
+        operator_parent_wait(pid);
+        operator_parent_state(epoch);
+        ++cases;
+    }
+    /* A caller thawed with raw-11 consumes a real negative receipt, preserving
+     * its live parent context and monotonically consumed request sequence. */
+    arm();
+    assert(x.f->counter == 4);
+    assert(aefd_zsh_receipt_encode(x.reply, "AEZFR001", 4, -28));
+    errno = 71;
+    assert(aefd_fork_parent(x.f, -11) == -28 && errno == 71);
+    assert(x.f->status == -28);
+    operator_parent_state(4);
+    arm();
+    assert(x.f->counter == 5 && x.f->sequence == 5);
+    assert(aefd_zsh_receipt_encode(x.reply, "AEZFR001", 5, 31));
+    assert(aefd_fork_parent(x.f, 31) == 31);
+    operator_parent_wait(31);
+    operator_parent_state(5);
+    ++cases;
+    for (unsigned which = 0; which < 2; ++which) {
+        setup(1);
+        arm();
+        assert(aefd_zsh_receipt_encode(x.reply, "AEZFR001", which ? 1 : 2,
+                                       which ? 10 : -28));
+        errno = 71;
+        assert(aefd_fork_parent(x.f, -11) == -5 && errno == 71 &&
+               x.f->phase == AEFD_FORK_FAILED && x.closes == 2);
+        ++cases;
+    }
+    /* Actual reconstruction for a third native child receives new channels,
+     * table generation and private pointers; prior-generation data is stale. */
+    for (unsigned which = 0; which < 3; ++which) {
+        setup(0);
+        arm();
+        put32(x.child, 36, which == 2 ? 2 : 3);
+        aefd_put(x.child + 48, 1, 36);
+        x.mode = 2;
+        x.pid = 24;
+        x.parent = 9;
+        x.offset = x.written = 0;
+        x.limit = 336;
+        struct aefd_startup_auxv grants = {0x40000303, 101, 102};
+        assert(aefd_fork_child(x.f, grants, rebind, NULL) ==
+               (which == 2 ? -5 : 0));
+        if (which == 2) {
+            assert(x.f->phase == AEFD_FORK_FAILED && x.closes == 2);
+            ++cases;
+            continue;
+        }
+        struct aefd_context *c = &x.f->boot.context;
+        assert(x.f->boot.identity.epoch == 3 && c->native.input == 101 &&
+               c->native.output == 102 && !c->native.factory &&
+               !c->mode_control && c->client.generation == 36 &&
+               c->client.workspace == c->workspace &&
+               c->client.io.context == &c->native &&
+               c->session.client == &c->client && c->session.map == &c->map);
+        x.file_generation = 36;
+        x.stale_generation = 34;
+        x.mode = 7;
+        x.cwd_response = which ? 5 : 1;
+        x.offset = x.written = x.limit = 0;
+        unsigned char path[6];
+        memset(path, 0xa5, sizeof path);
+        int64_t result = aefd_context_home_getcwd(c, path);
+        if (which) {
+            assert(result == -5 && !c->client.live && x.closes == 2);
+            for (unsigned i = 0; i < sizeof path; ++i)
+                assert(path[i] == 0xa5);
+        } else {
+            assert(result == 6 && !memcmp(path, "/home", 6) && !x.closes);
+            aefd_client_abort(&c->client);
+            assert(x.closes == 2);
+        }
+        ++cases;
+    }
+}
 static void child_cwd_cases(void)
 {
     for (unsigned response = 0; response < 8; ++response) {
@@ -709,6 +834,7 @@ int main(int argc, char **argv)
 #ifdef AEFD_ZSH_HOME_CWD_EXEC_BINDINGS
     child_cwd_cases();
     repeat_command_cases();
+    operator_session_cases();
 #endif
     exec_cases();
     wait_cases();
