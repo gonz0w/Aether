@@ -67,6 +67,8 @@ compile_error!("login startup requires its complete home redirection profile");
     not(all(native_zsh_login_startup, native_zsh_home_redirection_reader))
 ))]
 compile_error!("home CWD requires the complete cold login reader profile");
+#[cfg(all(native_zsh_repeat_exec, not(native_zsh_home_cwd_exec)))]
+compile_error!("repeat exec requires the complete cold home CWD exec profile");
 #[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
 compile_error!("home CWD exec requires the complete cold home CWD profile");
 #[cfg(native_zsh_home_redirection)]

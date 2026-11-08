@@ -6,6 +6,26 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Issue166 two sequential commands —2026-11-07
+
+Cam approved the [reviewed166 design and gates](https://github.com/gonz0w/Aether/issues/166#issuecomment-6715306390).
+Select one additional closed profile: exactly two sequential helper executions,
+one live child, successful first terminal23/exec/wait/settlement/reclaim/READ-lease
+restoration before second admission, exact fresh generation2 and third/nested
+refusal before effects. The trusted second exec may fully revalidate the consumed
+probe only after saving its672-byte request outside workspace. Mark that attempt
+monotonically before effects, even on known later native refusal; no rearm, closed
+handle resurrection, poison/epoch/quota reset or child FILE-open authority follows.
+Keep old profiles, AEFP0007/helper/engine/kernel and all numeric limits unchanged.
+Existing81920-byte Owner RX eligibility applies only to this additional profile.
+Fresh affected fits and separate review precede images; unchanged artifacts may
+reuse exact applicability evidence. One unchanged160 fresh writer/new166 cold
+pair with the reviewed162-byte workload may establish remaining scoped workload
+fit. Focused delivery after success, separate reviews, normal hooks and required
+protected CI is approved while141 stays open. Stop/replan on a required-bound
+failure or consequential choice; no extra utility/initial HOME/general paths/
+packages/authentication or R1 claim.
+
 ## Issue164 inherited home CWD and execution —2026-11-07
 
 Cam approved the [reviewed164 design and gates](https://github.com/gonz0w/Aether/issues/164#issuecomment-6714021252).

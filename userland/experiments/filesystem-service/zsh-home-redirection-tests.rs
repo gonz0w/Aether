@@ -653,3 +653,143 @@ fn cwd_exec_stale_generation_unknown_reply_and_moved_object_retire() {
         assert!(!h.files().live(child));
     }
 }
+
+#[cfg(native_zsh_repeat_exec)]
+fn repeat_second_files() -> (Harness, Binding) {
+    let mut h = sourced();
+    let image = b"same persisted sealed helper";
+    h.state.lock().unwrap().probe = image.to_vec();
+    h.files().reopen_file_exec(image, &mut [0; 4096]).unwrap();
+    let first = child_binding();
+    h.files().inherit_child(binding(), first).unwrap();
+    h.files().acquire_file_exec(first, &mut [0; 4096]).unwrap();
+    let executed = h.files().exec_child(first, first.generation + 1).unwrap();
+    h.files().settle_child(executed).unwrap();
+    let second = Binding {
+        epoch: 2,
+        handle: 0xb0000203,
+        generation: 61,
+        ..first
+    };
+    h.files().inherit_child(binding(), second).unwrap();
+    (h, second)
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_exact_second_revalidation_is_fresh_closed_and_one_use() {
+    let (mut h, child) = repeat_second_files();
+    let image = b"same persisted sealed helper";
+    let before = h.requests();
+    let mut work = [0xa5; 4096];
+    h.files()
+        .revalidate_file_exec(child, image, &mut work)
+        .unwrap();
+    assert_eq!(work, [0; 4096]);
+    assert!(h.requests() > before);
+    assert!(!h.files().file_exec_consumed());
+    assert_eq!(
+        h.files().acquire_file_exec(child, &mut work),
+        Ok(image.len())
+    );
+    assert_eq!(&work[..image.len()], image);
+    assert!(h.files().file_exec_repeated());
+    let after = h.requests();
+    assert_eq!(
+        h.files().revalidate_file_exec(child, image, &mut work),
+        Err(Error::Invalid)
+    );
+    assert_eq!(h.requests(), after, "NO_SECOND_REVALIDATION_REARM");
+    assert_eq!(h.state.lock().unwrap().mutations, 0);
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_stale_parent_pending_and_wrong_epoch_deny_before_lookup() {
+    for case in 0..5 {
+        let (mut h, child) = repeat_second_files();
+        let mut caller = child;
+        match case {
+            0 => caller = binding(),
+            1 => caller = child_binding(),
+            2 => caller.generation += 1,
+            3 => h.files().pending = true,
+            _ => h.files().child_pending = true,
+        }
+        let before = h.requests();
+        assert!(
+            h.files()
+                .revalidate_file_exec(caller, b"same persisted sealed helper", &mut [0; 4096])
+                .is_err()
+        );
+        assert_eq!(h.requests(), before);
+        h.files().pending = false;
+        h.files().child_pending = false;
+        h.files()
+            .revalidate_file_exec(child, b"same persisted sealed helper", &mut [0; 4096])
+            .unwrap();
+    }
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_failed_validation_never_inherits_first_consumed_success_or_rearms() {
+    let expected = b"same persisted sealed helper";
+    for case in 0..8 {
+        let (mut h, child) = repeat_second_files();
+        {
+            let mut s = h.state.lock().unwrap();
+            match case {
+                0 => s.probe[0] ^= 1,
+                1 => {
+                    s.probe.pop();
+                }
+                2 => s.probe.push(0),
+                3 => s.wrong_kind = 6,
+                4..=6 => s.probe_read_failure = case - 3,
+                _ => (),
+            }
+        }
+        if case == 7 {
+            h.seen.lock().unwrap().bad_stat = true;
+        }
+        let mut work = [0xa5; 4096];
+        assert!(
+            h.files()
+                .revalidate_file_exec(child, expected, &mut work)
+                .is_err()
+        );
+        assert_eq!(work, [0; 4096]);
+        assert!(!h.files().file_exec_consumed());
+        assert_eq!(h.files().cleanup(), Some([0; 2]));
+        let requests = h.requests();
+        assert!(
+            h.files()
+                .revalidate_file_exec(child, expected, &mut work)
+                .is_err()
+        );
+        assert_eq!(h.requests(), requests);
+        assert_eq!(h.state.lock().unwrap().mutations, 0);
+    }
+}
+#[cfg(native_zsh_repeat_exec)]
+#[test]
+fn repeat_unknown_second_acquire_close_contains_and_never_rearms() {
+    let (mut h, child) = repeat_second_files();
+    let image = b"same persisted sealed helper";
+    h.files()
+        .revalidate_file_exec(child, image, &mut [0; 4096])
+        .unwrap();
+    {
+        let mut seen = h.seen.lock().unwrap();
+        seen.fail_close = seen.close_replies + 1;
+    }
+    let mut work = [0xa5; 4096];
+    assert!(h.files().acquire_file_exec(child, &mut work).is_err());
+    assert_eq!(work, [0; 4096]);
+    assert!(!h.files().file_exec_repeated());
+    let requests = h.requests();
+    assert!(
+        h.files()
+            .revalidate_file_exec(child, image, &mut work)
+            .is_err()
+    );
+    assert_eq!(h.requests(), requests);
+}
