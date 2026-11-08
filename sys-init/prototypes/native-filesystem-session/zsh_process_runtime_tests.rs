@@ -734,6 +734,10 @@ impl Fixture {
         runtime
             .with_files(|files| files.reopen_note(&mut [0; 4096]))
             .unwrap();
+        #[cfg(native_zsh_operator_login)]
+        runtime
+            .with_files(|files| files.initialize_home_cwd(&mut [0; 4096]))
+            .unwrap();
         Self {
             runtime,
             host,
@@ -2582,4 +2586,156 @@ fn note_cwd_exec_pristine_after_profile_retains_optional_idle_oracle() {
         h.runtime.filesystem_requests
     );
     assert_eq!(h.host.0.borrow().serial_output, expected.as_bytes());
+}
+
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_three_actual_cycles_keep_parent_and_saved_exec_request() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    for epoch in 1..=3 {
+        let before = h.runtime.filesystem_requests;
+        let raw = h.repeat_fork();
+        h.repeat_exec(&raw).unwrap();
+        assert_eq!(
+            h.runtime.filesystem_requests - before,
+            if epoch == 1 { 5 } else { 9 }
+        );
+        assert_eq!(h.runtime.process.binding.unwrap().epoch, epoch);
+        h.repeat_collect();
+    }
+    h.prepare_healthy_oracle();
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_startup_publishes_home_pwd() {
+    let mut out = [0; 320];
+    encode_launch(&mut out, 1, 2, 3).unwrap();
+    assert_eq!(&out[256..265], b"PWD=/home");
+}
+
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_zero_one_or_three_clean_exits_and_dirty_last_rejection() {
+    for count in [0, 1, 3] {
+        let mut h = Fixture::new();
+        h.note_source_for_fork();
+        for _ in 0..count {
+            let raw = h.repeat_fork();
+            h.repeat_exec(&raw).unwrap();
+            h.repeat_collect();
+        }
+        h.prepare_healthy_oracle();
+        h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+        let row = h.host.0.borrow().serial_output.clone();
+        assert!(row.starts_with(if count == 0 {
+            b"\nAETHER ZSH OWNER v=5"
+        } else {
+            b"\nAETHER ZSH OWNER v=4"
+        }));
+        if count > 0 {
+            h.clear();
+            h.host.0.borrow_mut().serial_output.clear();
+            h.runtime.process.reclaimed = false;
+            assert_eq!(h.runtime.write_native_oracle(&mut [0; 4096]), Err(-5));
+            assert!(h.host.0.borrow().serial_output.is_empty());
+        }
+    }
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_resource_refusal_thaws_parent_correlates_and_preserves_last_child() {
+    for count in [0, 1, 3] {
+        let mut h = Fixture::new();
+        h.note_source_for_fork();
+        for _ in 0..count {
+            let raw = h.repeat_fork();
+            h.repeat_exec(&raw).unwrap();
+            h.repeat_collect();
+        }
+        let epoch = h.runtime.process.epoch;
+        let sequence = h.runtime.process.fork_sequence + 1;
+        h.runtime.filesystem_requests = 90;
+        let before = h.host.0.borrow().calls.len();
+        let mut work = h.repeat_fork_work();
+        h.clear();
+        h.runtime.zsh_fork(&mut work).unwrap();
+        assert_eq!(
+            zsh_process_frames::decode_receipt(&h.output(PW), b"AEZFR001", sequence),
+            Ok(-28)
+        );
+        assert_eq!(h.runtime.process.fork_sequence, sequence);
+        assert_eq!(h.runtime.process.epoch, epoch);
+        assert_eq!(h.runtime.filesystem_requests, 90);
+        let calls = h.host.0.borrow().calls[before..].to_vec();
+        assert!(calls.contains(&(0x23004, PARENT, 0)));
+        assert!(calls.contains(&(0x23005, PARENT, 101)));
+        assert!(
+            !calls
+                .iter()
+                .any(|v| matches!(v.0, 0x24000 | 0x23006 | 0x2300b))
+        );
+        assert!(h.runtime.process.binding.is_none());
+        assert_eq!(h.runtime.process.lease, ReadLease::Parent);
+        // A new request consumes a fresh sequence; replay is rejected.
+        assert!(h.runtime.zsh_fork(&mut work).is_err());
+        h.prepare_healthy_oracle();
+        h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    }
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_epoch_limit_refuses_without_child_effects() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    let raw = h.repeat_fork();
+    h.repeat_exec(&raw).unwrap();
+    h.repeat_collect();
+    // Isolate the actual generation ceiling after proving a real settled lane.
+    h.runtime.process.epoch = 15;
+    let mut work = h.repeat_fork_work();
+    // The authenticated FileExec epoch remains1, so a forged ceiling cannot
+    // bypass the complete prior-generation guard or cause a freeze/copy.
+    let before = h.host.0.borrow().calls.len();
+    assert_eq!(h.runtime.zsh_fork(&mut work), Err(-16));
+    assert_eq!(h.host.0.borrow().calls.len(), before);
+}
+
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_actual_file_dispatch_preserves_reserved_shutdown_and_profile_completion() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.runtime.filesystem_requests = 93;
+    let r = h.note_request(13, 4, [0, 1, 0, 0], b"/").unwrap();
+    assert_eq!(u64::from_le_bytes(r[8..16].try_into().unwrap()) as i64, -28);
+    assert_eq!(h.runtime.filesystem_requests, 93);
+    assert!(h.runtime.with_files(|f| Ok(f.note_fork_ready())).unwrap());
+    h.prepare_healthy_oracle();
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+    assert_eq!(h.runtime.filesystem_requests, 96);
+}
+#[cfg(native_zsh_operator_login)]
+#[test]
+fn operator_login_fixed_control_shortage_refuses_before_channel_or_copy() {
+    let mut h = Fixture::new();
+    h.note_source_for_fork();
+    h.runtime.bound.left = 31;
+    let mut work = h.repeat_fork_work();
+    h.clear();
+    h.runtime.zsh_fork(&mut work).unwrap();
+    assert_eq!(
+        zsh_process_frames::decode_receipt(&h.output(PW), b"AEZFR001", 1),
+        Ok(-28)
+    );
+    assert_eq!(h.runtime.process.epoch, 0);
+    assert!(
+        !h.host
+            .0
+            .borrow()
+            .calls
+            .iter()
+            .any(|v| matches!(v.0, 0x24000 | 0x23006))
+    );
 }

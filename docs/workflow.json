@@ -2785,6 +2785,16 @@
       "invariants": "Exactly two sequential helper executions/native generations1/2, first success/full settlement/reclaim/restoredREADlease before second copy, one-use full probe revalidation only after saved672-byte exec request, no phase/poison/quota reset. Old profiles and numeric limits unchanged.",
       "oracle": "162 once-only cold PTY bytes: HOME0,FIRST23,SECOND23/sameparentPIDhome, two distinct helper23/reclaim/prompt cycles, final physicalhome, normal export/MODE0/fourreclaims/halt/PASS and known originalhost cleanup. Prior164 startup/CWD evidence reused explicitly. Actual pair passes:writer39.679s/61requests,cold27.600s/75requests,PID9,child nativegens1/2,two helper23/prompt cycles,FIRST23/SECOND23,home,28cleanup/fourreclaims/halt2062/PASS and complete known host cleanup.",
       "gaps": "Scoped166 two-command qualification complete; earlierRXoverflow/compile-onlyfailures retained and same-cap correction fits81056RX/3992Runtime/10536stack. Unchanged164 startup/CWD evidence reused; text alone is not actual-call proof.141/generalcommands/packages/authentication/assembledR1 remain open."
+    },
+    {
+      "id": "zsh-operator-login",
+      "reference": "userland/docs/proposals/ZSH-OPERATOR-LOGIN.md",
+      "owner": "Aether sys-init/userland; issue168",
+      "budget_seconds": 360,
+      "command": "Focused actual Rust initialHOME/optionalcount/per-epoch/dispatchquota/close-credit controls, actual C0/1/3context/refusal tests, private operator-login fit and exact unchanged-artifact applicability; one reviewed unchanged160 writer/new168 cold foreground trial.",
+      "invariants": "Closed168 actualheldHOME startup/PWD; manual and managed sameguest;0..resourceboundsequentialexistinghelper, completepriorstatus23/wait/READY/settlement/reclaim/READlease; monotonicattemptbeforeeffects with saved672request; realnegativefork/FILEreceipt preservesclose/shutdowncredits andsettlesexistingcallerfreeze. Oldprofiles/kernel/wire/helper/engine/numericlimits unchanged.",
+      "oracle": "Managed260 once-only foregroundPTY bytes: HOME0/home/beepoff, samePID/value168 across5sidle, threehelper23/reclaim/prompt andFIRST23/SECOND23/THIRD23 cycles, normalparent/engine/export/MODE0/fivereclaims/halt/PASS andknownoriginalhostcleanup. Manualhasno scriptedbyte/PID claim; native0/1/exhaustion notclaimed frommanagedtrial. Corrected actual pair:writer39.715s/61requests,cold32.436s/82requests,PID9/home/value168/5.012sidle,threehelper23/reclaim/prompt cycles,FIRST23/SECOND23/THIRD23,35cleanup/fivereclaims/halt2566/PASS andknownhostcleanup.",
+      "gaps": "Scoped168 corrected managed trial complete. Native0/1/exhaustion use actual-function coverage; no human typing claim. First54-byte diagnostic failure retains UNKNOWNguestexport/knownhostcleanup/discardedmedia; firstRXoverflow and same-cap WRITE specialization retained.32fixed-control preflight is not arbitraryschedule/completepeak proof.141/generalutilities/paths/mutations/packages/authentication/mediareusepolicy andassembledR1 remain open."
     }
   ]
 }

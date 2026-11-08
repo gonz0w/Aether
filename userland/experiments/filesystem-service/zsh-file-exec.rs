@@ -6,8 +6,10 @@ pub(super) struct FileExec {
     held: Option<Handle>,
     size: usize,
     phase: u8,
-    #[cfg(native_zsh_repeat_exec)]
+    #[cfg(all(native_zsh_repeat_exec, not(native_zsh_operator_login)))]
     repeated: bool,
+    #[cfg(native_zsh_operator_login)]
+    attempted_epoch: u8,
 }
 impl FileExec {
     pub(super) const fn new() -> Self {
@@ -15,8 +17,10 @@ impl FileExec {
             held: None,
             size: 0,
             phase: 0,
-            #[cfg(native_zsh_repeat_exec)]
+            #[cfg(all(native_zsh_repeat_exec, not(native_zsh_operator_login)))]
             repeated: false,
+            #[cfg(native_zsh_operator_login)]
+            attempted_epoch: 0,
         }
     }
     pub(super) fn poison(&mut self) {
@@ -95,8 +99,9 @@ impl<T: Channel> Files<T> {
         }
         self.validate_file_exec(image, workspace)
     }
-    /// Trusted second exec only: this is not a child FILE rearm operation.
-    /// The exact admitted epoch2 and one-use marker survive native refusal.
+    /// Trusted revalidation only, never a child FILE rearm operation. The old
+    /// profile permits epoch2 once; operator login permits each exact next epoch
+    /// once. Attempt markers survive native refusal and never move backwards.
     #[cfg(native_zsh_repeat_exec)]
     pub fn revalidate_file_exec(
         &mut self,
@@ -110,10 +115,14 @@ impl<T: Channel> Files<T> {
             || !self.live(child)
             || self.child != Some(child)
             || child.slot != 2
-            || child.epoch != 2
+            || if cfg!(native_zsh_operator_login) {
+                !(2..=15).contains(&child.epoch)
+            } else {
+                child.epoch != 2
+            }
             || self.file_exec.phase != 2
             || self.file_exec.held.is_some()
-            || self.file_exec.repeated
+            || self.file_exec_revalidation_used(child.epoch)
             || self.descriptions.source.held.is_none()
             || image.is_empty()
             || image.len() > PAYLOAD
@@ -121,7 +130,14 @@ impl<T: Channel> Files<T> {
             return Err(Error::Invalid);
         }
         // Mark before lookup/read/close, and never undo it after any result.
-        self.file_exec.repeated = true;
+        #[cfg(not(native_zsh_operator_login))]
+        {
+            self.file_exec.repeated = true;
+        }
+        #[cfg(native_zsh_operator_login)]
+        {
+            self.file_exec.attempted_epoch = child.epoch;
+        }
         self.validate_file_exec(image, workspace)
     }
     #[cfg(native_zsh_cold_reopen)]
@@ -176,6 +192,14 @@ impl<T: Channel> Files<T> {
         {
             return Err(Error::Invalid);
         }
+        #[cfg(native_zsh_operator_login)]
+        if self.file_exec.attempted_epoch > child.epoch {
+            return Err(Error::Invalid);
+        }
+        #[cfg(native_zsh_operator_login)]
+        {
+            self.file_exec.attempted_epoch = child.epoch;
+        }
         let held = self.file_exec.held.take().ok_or(Error::Invalid)?;
         let size = self.file_exec.size;
         self.file_exec.phase = 3;
@@ -219,7 +243,39 @@ impl<T: Channel> Files<T> {
     }
     #[cfg(native_zsh_repeat_exec)]
     pub fn file_exec_repeated(&self) -> bool {
-        self.file_exec.repeated && self.file_exec_consumed()
+        #[cfg(not(native_zsh_operator_login))]
+        let repeated = self.file_exec.repeated;
+        #[cfg(native_zsh_operator_login)]
+        let repeated = self.file_exec.attempted_epoch >= 2;
+        repeated && self.file_exec_consumed()
+    }
+    #[cfg(native_zsh_repeat_exec)]
+    fn file_exec_revalidation_used(&self, epoch: u8) -> bool {
+        #[cfg(not(native_zsh_operator_login))]
+        {
+            let _ = epoch;
+            self.file_exec.repeated
+        }
+        #[cfg(native_zsh_operator_login)]
+        {
+            self.file_exec.attempted_epoch.checked_add(1) != Some(epoch)
+        }
+    }
+    #[cfg(native_zsh_operator_login)]
+    pub fn file_exec_epoch_complete(&self, epoch: u8) -> bool {
+        self.file_exec_consumed() && self.file_exec.attempted_epoch == epoch
+    }
+    #[cfg(native_zsh_operator_login)]
+    pub(super) fn file_exec_held(&self) -> bool {
+        self.file_exec.held.is_some()
+    }
+    #[cfg(native_zsh_operator_login)]
+    pub(super) fn file_exec_credit(&self) -> u32 {
+        match self.child {
+            Some(_) if self.file_exec.held.is_some() => 5,
+            Some(child) if self.file_exec.attempted_epoch < child.epoch => 9,
+            _ => 0,
+        }
     }
     #[cfg(native_zsh_idle_exit)]
     pub fn file_exec_unused_closed(&self) -> bool {

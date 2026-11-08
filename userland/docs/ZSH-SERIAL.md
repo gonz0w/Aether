@@ -205,3 +205,41 @@ The second executable is fully revalidated through Rust-held HOME, once only;
 third/nested/concurrent children and child profile reads remain denied. This
 qualifies the fixed two-command session, not arbitrary command counts, utilities,
 initial HOME startup, authentication or assembledR1.
+
+## Home operator session
+
+The scoped [168 composition](proposals/ZSH-OPERATOR-LOGIN.md) passed its fixed
+foreground qualification.
+It uses `zsh-witness.py --operator-login` inputs and one unchanged fresh
+`--login-startup` writer, then that exact stopped disk. Follow the same separate
+image/proposal review and original-process cleanup procedure above.
+
+Use `zsh_run.py --operator-login-manual prepare` with the reader image/review and
+writer execution/hash, then its matching `run` command and decision identities.
+Attach using the exact printed Screen command. The guest must start in `/home`
+and read its persisted `.zprofile`; shell state stays in the same process.
+You may exit without running the helper, or run the existing helper sequentially:
+
+```zsh
+(exec -c /home/probe)
+print -r -- $?
+```
+
+Each admitted run returns23 and a prompt after full cleanup. Repeat only within
+the current resource/time bounds. Namespace requests and native generations are
+finite; a pre-effect resource refusal must preserve the parent and its shutdown
+credits. The generation ceiling15 does not promise15 runs. Builtins and existing
+root/home navigation/profile reads keep their scoped behavior. Other executables,
+child directory changes/profile opens and general file mutations are outside this
+profile. Exit with `exit 0` before the unchanged typing deadline and wait for
+normal export, MODE restoration, complete reclaims/halt and known host cleanup.
+
+The managed `--operator-login` frontend qualifies the same guest with fixed
+foreground input and three helper runs. It is separate from manual input; it
+must not be described as a human typing trial. Existing65-second idle evidence
+is reused explicitly; the new composition checks a brief5-second state-retention
+interval. The corrected trial passed with PID9/home, the saved preference, three status23/
+prompt cycles and normal export/MODE0/five reclaims/halt and known host cleanup.
+Use `[[ ! -o beep ]]` to query the saved setting; the optional options associative
+parameter module is excluded from this build. The first diagnostic failure and
+its discarded media remain recorded in issue168. Broader R1 remains open.

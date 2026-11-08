@@ -67,6 +67,11 @@ compile_error!("login startup requires its complete home redirection profile");
     not(all(native_zsh_login_startup, native_zsh_home_redirection_reader))
 ))]
 compile_error!("home CWD requires the complete cold login reader profile");
+#[cfg(all(native_zsh_operator_login, not(native_zsh_repeat_exec)))]
+compile_error!("operator login requires the complete repeat-exec profile");
+#[cfg(native_zsh_operator_login)]
+#[path = "zsh-operator-login.rs"]
+mod operator_login;
 #[cfg(all(native_zsh_repeat_exec, not(native_zsh_home_cwd_exec)))]
 compile_error!("repeat exec requires the complete cold home CWD exec profile");
 #[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
@@ -553,12 +558,34 @@ impl<T: Channel> Files<T> {
         )
     }
     /// Own the effect until the complete reply/header/body has been delivered.
+    #[cfg(any(not(native_zsh_operator_login), test))]
     pub fn prepare<'a>(
         &'a mut self,
         binding: Binding,
         raw: &[u8; FRAME],
         received: usize,
         workspace: &'a mut [u8; PAYLOAD],
+    ) -> Result<Reply<'a, T>, Error> {
+        self.prepare_inner(binding, raw, received, workspace, u32::MAX)
+    }
+    #[cfg(native_zsh_operator_login)]
+    pub fn prepare_bounded<'a>(
+        &'a mut self,
+        binding: Binding,
+        raw: &[u8; FRAME],
+        received: usize,
+        workspace: &'a mut [u8; PAYLOAD],
+        remaining: u32,
+    ) -> Result<Reply<'a, T>, Error> {
+        self.prepare_inner(binding, raw, received, workspace, remaining)
+    }
+    fn prepare_inner<'a>(
+        &'a mut self,
+        binding: Binding,
+        raw: &[u8; FRAME],
+        received: usize,
+        workspace: &'a mut [u8; PAYLOAD],
+        _remaining: u32,
     ) -> Result<Reply<'a, T>, Error> {
         let needed = self.body_length(binding, raw)?;
         let b = word(raw, 5) as usize;
@@ -576,7 +603,15 @@ impl<T: Channel> Files<T> {
         if matches!(word(raw, 1), 11 | 12) {
             return self.prepare_note(binding, raw, workspace);
         }
-        let (result, body) = self.execute(view, raw, workspace);
+        #[cfg(native_zsh_operator_login)]
+        let denied = self.operation_budget(view, raw, workspace) > _remaining;
+        #[cfg(not(native_zsh_operator_login))]
+        let denied = false;
+        let (result, body) = if denied {
+            (Err(Failure::Source(Error::Remote(-28))), 0)
+        } else {
+            self.execute(view, raw, workspace)
+        };
         if self.cleanup().is_some() {
             workspace.fill(0);
             self.abort();
@@ -677,9 +712,20 @@ impl<T: Channel> Files<T> {
                 }
                 #[cfg(native_zsh_home_redirection)]
                 let before = self.note_position(view, a as i32);
+                #[cfg(native_zsh_operator_login)]
+                if b == 0 {
+                    workspace.fill(0);
+                    return (self.descriptions.position_in(view, a as i32).map(|_| 0), 0);
+                }
                 let result = self
                     .descriptions
                     .read_in(view, a as i32, b as usize, workspace);
+                #[cfg(native_zsh_operator_login)]
+                if before.is_some() && result.is_err() {
+                    // An attempted source failure cannot leave a supposedly
+                    // funded immutable-profile completion available for retry.
+                    self.abort();
+                }
                 #[cfg(native_zsh_home_redirection)]
                 if let Ok(count) = result {
                     self.note_read(view, a as i32, before, count, workspace);

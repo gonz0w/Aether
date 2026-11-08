@@ -6,6 +6,32 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Issue168 home operator login — owner decision,2026-11-07
+
+Cam directly approved “Approve scoped #168 design and gates” for the reviewed
+[proposal](https://github.com/gonz0w/Aether/issues/168#issuecomment-6716001972),
+recorded in [the issue](https://github.com/gonz0w/Aether/issues/168#issuecomment-6716039590).
+Select one additional closed profile: actual held-HOME startup and truthful PWD,
+automatic persisted profile, manual serial input, zero or multiple sequential
+existing-helper runs with complete prior settlement/reclaim/parent lease, within
+existing generation/resource limits. Authorize monotonic per-epoch revalidation
+attempts before effects after saving the672-byte request outside workspace; no
+same-epoch rearm, poison/quota/history reset or new child FILE authority.
+Before effects fund complete operation/control/close/shutdown; deny through actual
+correlated fork/FILE receipts while preserving settled state. Settle only the
+caller's authenticated existing freeze through existing query/cancel/resume;
+no child/channel/copy/namespace obligation follows a resource refusal.
+Keep old profiles, kernel/wire/helper/engine and all numeric limits unchanged.
+Existing81920-byte Owner RX eligibility applies only to this closed profile;
+fresh affected fits and separate reviews precede images. One unchanged160 fresh
+writer/new cold foreground three-helper trial may establish remaining scoped fit.
+Zero/one exit and exhaustion use actual-function controls; no additional native
+campaign is selected. Focused delivery after success, separate review, normal
+hooks and required protected CI is approved while141 stays open. Routine work
+and GitHub delivery remain authorized. Stop/replan on required-bound failure,
+new consequential choice or hard blocker. No arbitrary paths/utilities/mutations,
+packages/authentication/general jobs, media-reuse policy change or R1 claim.
+
 ## Issue166 two sequential commands —2026-11-07
 
 Cam approved the [reviewed166 design and gates](https://github.com/gonz0w/Aether/issues/166#issuecomment-6715306390).

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 //! One parent-owned note, bound to its actual sole-table description and aliases.
 use super::*;
+#[cfg(not(native_zsh_operator_login))]
 use filesystem_client::{MutationFailure, MutationOutcome, MutationProgress};
 pub const ENTRY: &[u8] = if cfg!(native_zsh_login_startup) {
     b"/home/.zprofile"
@@ -23,6 +24,8 @@ pub(super) struct Note {
     pub(super) phase: u8,
     description: u8,
     count: u8,
+    #[cfg(native_zsh_operator_login)]
+    eof_observed: bool,
     #[cfg(native_zsh_home_cwd)]
     pub(super) cwd_home: bool,
     #[cfg(native_zsh_home_cwd_exec)]
@@ -36,6 +39,8 @@ impl Note {
             phase: 0,
             description: 255,
             count: 0,
+            #[cfg(native_zsh_operator_login)]
+            eof_observed: false,
             #[cfg(native_zsh_home_cwd)]
             cwd_home: false,
             #[cfg(native_zsh_home_cwd_exec)]
@@ -62,6 +67,7 @@ fn cause(error: Failure<Error>) -> (u64, i64) {
         },
     }
 }
+#[cfg(not(native_zsh_operator_login))]
 fn progress(failure: MutationFailure) -> (u64, u64, u64) {
     let (tag, txg, staged) = match failure.outcome {
         MutationOutcome::NotSent => (0, 0, 0),
@@ -80,6 +86,39 @@ fn progress(failure: MutationFailure) -> (u64, u64, u64) {
     )
 }
 impl<T: Channel> Files<T> {
+    #[cfg(native_zsh_operator_login)]
+    pub fn initialize_home_cwd(&mut self, workspace: &mut [u8; PAYLOAD]) -> Result<(), Error> {
+        if !self.live(self.binding)
+            || self.child.is_some()
+            || self.note.phase != 5
+            || self.note.count != 16
+            || self.note.cwd_home
+        {
+            return Err(Error::Invalid);
+        }
+        self.observe_home_cwd(0, true, workspace)
+            .map_err(|failure| match failure {
+                Failure::Source(error) => error,
+                _ => Error::Invalid,
+            })?;
+        self.note.cwd_home = true;
+        workspace.fill(0);
+        Ok(())
+    }
+    #[cfg(native_zsh_operator_login)]
+    pub(super) fn note_completion_credit(&self) -> u32 {
+        if self.note.phase == 6 {
+            u32::from(16 - self.note.count) + u32::from(!self.note.eof_observed)
+        } else {
+            0
+        }
+    }
+    #[cfg(native_zsh_operator_login)]
+    pub(super) fn note_read_uses_credit(&self, view: usize, fd: i32) -> bool {
+        self.note.phase == 6
+            && (self.note.count < 16 || !self.note.eof_observed)
+            && self.note_position(view, fd) == Some(u64::from(self.note.count))
+    }
     #[cfg(native_zsh_home_cwd)]
     pub(super) fn observe_home_cwd(
         &mut self,
@@ -241,6 +280,10 @@ impl<T: Channel> Files<T> {
         self.note.description = self.descriptions.binding_in(view, fd)?.1.description;
         self.note.phase = 6;
         self.note.count = 0;
+        #[cfg(native_zsh_operator_login)]
+        {
+            self.note.eof_observed = false;
+        }
         Ok(fd)
     }
     pub(super) fn note_read(
@@ -257,7 +300,21 @@ impl<T: Channel> Files<T> {
                 && count <= 16 - offset
                 && workspace[..count] == BYTES[offset..offset + count]
             {
+                #[cfg(native_zsh_operator_login)]
+                if count == 0 && offset < 16 {
+                    self.abort();
+                    return;
+                }
+                #[cfg(native_zsh_operator_login)]
+                if count == 0 {
+                    self.note.eof_observed = true;
+                }
                 self.note.count += count as u8;
+            } else {
+                #[cfg(native_zsh_operator_login)]
+                if before == Some(offset as u64) {
+                    self.abort();
+                }
             }
         }
     }
@@ -303,8 +360,14 @@ impl<T: Channel> Files<T> {
         let view = self.view(binding).ok_or(Error::Protocol)?;
         let create = word(raw, 1) == 12;
         let mut receipt = [0u64; 8];
+        #[cfg(not(native_zsh_operator_login))]
         let mut value = 0;
+        #[cfg(native_zsh_operator_login)]
+        let value = 0;
+        #[cfg(not(native_zsh_operator_login))]
         let mut failure = Some(Failure::BadFd);
+        #[cfg(native_zsh_operator_login)]
+        let failure = Some(Failure::BadFd);
         if create {
             #[cfg(not(native_zsh_home_redirection_reader))]
             if view == 0 && self.note.phase == 0 && workspace[..ENTRY.len()] == *ENTRY {
@@ -386,49 +449,55 @@ impl<T: Channel> Files<T> {
                 }
             }
         } else {
-            let fd = word(raw, 4) as i32;
-            if view == 0 && self.note.phase == 2 && self.note_write_fd(view, fd) {
-                let index = self.note_index(view, fd).ok_or(Error::Protocol)?;
-                let file = self.descriptions.descriptions[index].ok_or(Error::Protocol)?;
-                failure = Some(Failure::Invalid);
-                if file.offset == 0 {
-                    self.note.phase = 3; // one attempt, before the source effect
-                    match self.descriptions.source.client.write(
-                        file.handle,
-                        0,
-                        &workspace[..word(raw, 5) as usize],
-                    ) {
-                        Ok(done) => {
-                            self.note.write_txg = done.txg;
-                            self.note.count = done.bytes as u8;
-                            self.note.phase = 4;
-                            self.descriptions.descriptions[index] =
-                                Some(descriptions::Description {
-                                    offset: done.bytes as u64,
-                                    ..file
-                                });
-                            value = done.bytes as u64;
-                            receipt = [14, 0, done.txg, value, 0, 0, 0, 0];
-                            failure = None;
-                        }
-                        Err(m) => {
-                            self.mutation_failure = Some(m);
-                            failure = Some(Failure::Source(m.error));
-                            let (flags, txg, staged) = progress(m);
-                            let (kind, val) = cause(Failure::Source(m.error));
-                            let close = m.cleanup.unwrap_or([0; 2]);
-                            receipt = [
-                                flags | 8,
-                                0,
-                                txg,
-                                staged,
-                                close[0] as u64,
-                                close[1] as u64,
-                                kind,
-                                val as u64,
-                            ];
-                            if m.cleanup.is_some() {
-                                self.abort();
+            // This closed cold reader cannot CREATE the writable phase2.
+            // Preserve the negative receipt below without retaining a mutation
+            // implementation that no admitted operator state can reach.
+            #[cfg(not(native_zsh_operator_login))]
+            {
+                let fd = word(raw, 4) as i32;
+                if view == 0 && self.note.phase == 2 && self.note_write_fd(view, fd) {
+                    let index = self.note_index(view, fd).ok_or(Error::Protocol)?;
+                    let file = self.descriptions.descriptions[index].ok_or(Error::Protocol)?;
+                    failure = Some(Failure::Invalid);
+                    if file.offset == 0 {
+                        self.note.phase = 3; // one attempt, before the source effect
+                        match self.descriptions.source.client.write(
+                            file.handle,
+                            0,
+                            &workspace[..word(raw, 5) as usize],
+                        ) {
+                            Ok(done) => {
+                                self.note.write_txg = done.txg;
+                                self.note.count = done.bytes as u8;
+                                self.note.phase = 4;
+                                self.descriptions.descriptions[index] =
+                                    Some(descriptions::Description {
+                                        offset: done.bytes as u64,
+                                        ..file
+                                    });
+                                value = done.bytes as u64;
+                                receipt = [14, 0, done.txg, value, 0, 0, 0, 0];
+                                failure = None;
+                            }
+                            Err(m) => {
+                                self.mutation_failure = Some(m);
+                                failure = Some(Failure::Source(m.error));
+                                let (flags, txg, staged) = progress(m);
+                                let (kind, val) = cause(Failure::Source(m.error));
+                                let close = m.cleanup.unwrap_or([0; 2]);
+                                receipt = [
+                                    flags | 8,
+                                    0,
+                                    txg,
+                                    staged,
+                                    close[0] as u64,
+                                    close[1] as u64,
+                                    kind,
+                                    val as u64,
+                                ];
+                                if m.cleanup.is_some() {
+                                    self.abort();
+                                }
                             }
                         }
                     }

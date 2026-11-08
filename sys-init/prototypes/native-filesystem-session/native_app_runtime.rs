@@ -185,6 +185,8 @@ compile_error!("cold reopen requires the complete selected filesystem file-exec 
 compile_error!("idle exit requires the selected cold reopen profile");
 #[cfg(all(native_zsh_login_startup, not(native_zsh_home_redirection)))]
 compile_error!("login startup requires its complete home redirection profile");
+#[cfg(all(native_zsh_operator_login, not(native_zsh_repeat_exec)))]
+compile_error!("operator login requires the complete repeat-exec profile");
 #[cfg(all(native_zsh_repeat_exec, not(native_zsh_home_cwd_exec)))]
 compile_error!("repeat exec requires the complete cold home CWD exec profile");
 #[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
@@ -241,10 +243,13 @@ impl<K: AppControl> ZshProcess<K> {
             cleanup_last: (-5, 0, 0),
         }
     }
-    #[cfg(all(native_zsh_idle_exit, any(not(native_zsh_repeat_exec), test)))]
+    #[cfg(all(
+        native_zsh_idle_exit,
+        any(not(native_zsh_repeat_exec), native_zsh_operator_login, test)
+    ))]
     fn pristine(&self) -> bool {
         self.epoch == 0
-            && self.fork_sequence == 0
+            && (cfg!(native_zsh_operator_login) || self.fork_sequence == 0)
             && self.sequence == 0
             && self.children == Children::new()
             && self.binding.is_none()
@@ -265,8 +270,11 @@ impl<K: AppControl> ZshProcess<K> {
     }
     #[cfg(native_zsh_repeat_exec)]
     fn repeat_ready(&self) -> bool {
-        self.epoch == 1
-            && self.committed
+        (if cfg!(native_zsh_operator_login) {
+            (1..=15).contains(&self.epoch)
+        } else {
+            self.epoch == 1
+        }) && self.committed
             && self.exec_ready
             && self.terminal == Some(5888)
             && self.wait_status == Some(5888)
@@ -709,6 +717,8 @@ impl<K: AppControl> Runtime<K> {
             self.with_files(|files| files.reopen_file_exec(FILE_EXEC_ELF, workspace))?;
             #[cfg(native_zsh_home_redirection_reader)]
             self.with_files(|files| files.reopen_note(workspace))?;
+            #[cfg(native_zsh_operator_login)]
+            self.with_files(|files| files.initialize_home_cwd(workspace))?;
         }
         let mut bindings = [Binding::default(); 16];
         bindings[1] = Binding {
@@ -1295,6 +1305,8 @@ impl<K: AppControl> Runtime<K> {
         self.zsh_live(child)?;
         #[cfg(not(native_zsh_process))]
         self.mode_peer_live()?;
+        #[cfg(native_zsh_operator_login)]
+        let remaining = 96u32.checked_sub(self.filesystem_requests).ok_or(-5)?;
         let files = unsafe { self.files.assume_init_mut() };
         files
             .configure(|io| {
@@ -1310,8 +1322,13 @@ impl<K: AppControl> Runtime<K> {
             })
             .map_err(fs_errno)?;
         let result = (|| {
+            #[cfg(not(native_zsh_operator_login))]
             let mut reply = files
                 .prepare(binding, &header, length, workspace)
+                .map_err(fs_errno)?;
+            #[cfg(native_zsh_operator_login)]
+            let mut reply = files
+                .prepare_bounded(binding, &header, length, workspace, remaining)
                 .map_err(fs_errno)?;
             let mut bytes = *reply.header();
             #[cfg(any(native_zsh_home_write, native_zsh_home_redirection))]
@@ -1560,13 +1577,22 @@ impl<K: AppControl> Runtime<K> {
         {
             return Err(-16);
         }
-        #[cfg(native_zsh_repeat_exec)]
+        #[cfg(all(native_zsh_repeat_exec, not(native_zsh_operator_login)))]
         if self.process.epoch > 1
             || (self.process.epoch == 1
                 && (!self.process.repeat_ready()
                     || !self.with_files(|files| {
                         Ok(files.file_exec_consumed() && !files.file_exec_repeated())
                     })?))
+        {
+            return Err(-16);
+        }
+        #[cfg(native_zsh_operator_login)]
+        let previous_epoch = self.process.epoch;
+        #[cfg(native_zsh_operator_login)]
+        if previous_epoch != 0
+            && (!self.process.repeat_ready()
+                || !self.with_files(|files| Ok(files.file_exec_epoch_complete(previous_epoch)))?)
         {
             return Err(-16);
         }
@@ -1583,6 +1609,23 @@ impl<K: AppControl> Runtime<K> {
             .validate_context(Caller::Parent, &plan)
             .map_err(i64::from)?;
         self.zsh_validate_files(false, snapshot.raw())?;
+        #[cfg(native_zsh_operator_login)]
+        {
+            let cost = self.with_files(|files| Ok(files.fork_budget(previous_epoch)))?;
+            // Fixed control baseline:11 ordinary controls with observation (22),
+            // six prepaid child cleanup leaves plus two cleanup observations (8),
+            // and the known-refusal cancel+observation (2). Transport progress,
+            // additional polling and tick deadlines retain the existing Bound.
+            if self.process.epoch == 15
+                || self
+                    .filesystem_requests
+                    .checked_add(cost)
+                    .is_none_or(|n| n > 96)
+                || self.bound.left < 32
+            {
+                return self.zsh_refuse_fork(sequence, expected.identity.handle, workspace);
+            }
+        }
         let freeze = self.zsh_frozen(expected.identity.handle)?;
         let epoch = self
             .process
@@ -1654,6 +1697,24 @@ impl<K: AppControl> Runtime<K> {
         let out: &mut [u8; 336] = (&mut workspace[32..368]).try_into().unwrap();
         zsh_rebind_snapshot(out, id, expected.identity.pid, binding.generation)?;
         self.zsh_io(true, out, true)?;
+        workspace.fill(0);
+        Ok(())
+    }
+    #[cfg(native_zsh_operator_login)]
+    fn zsh_refuse_fork(
+        &mut self,
+        sequence: u64,
+        parent: u64,
+        workspace: &mut [u8; 4096],
+    ) -> Result<(), i64> {
+        // The caller parked after sending this request. Settle only that exact
+        // freeze; no child/channel/copy or namespace attempt has occurred.
+        let freeze = self.zsh_frozen(parent)?;
+        zero(self.ctl(0x23005, parent, freeze)?.0)?;
+        self.process.fork_sequence = sequence;
+        let mut reply =
+            zsh_process_frames::receipt(b"AEZFR001", sequence, -28).map_err(i64::from)?;
+        self.zsh_io(false, &mut reply, true)?;
         workspace.fill(0);
         Ok(())
     }
@@ -1736,7 +1797,7 @@ impl<K: AppControl> Runtime<K> {
             {
                 let binding = self.process.binding.ok_or(-9)?;
                 #[cfg(native_zsh_repeat_exec)]
-                if binding.epoch == 2 {
+                if binding.epoch == 2 || (cfg!(native_zsh_operator_login) && binding.epoch > 2) {
                     self.with_files(|files| {
                         files.revalidate_file_exec(binding, FILE_EXEC_ELF, workspace)
                     })?;
@@ -2383,10 +2444,13 @@ impl<K: AppControl> Runtime<K> {
         if !files.note_complete() {
             return Err(-5);
         }
-        #[cfg(all(native_zsh_idle_exit, not(native_zsh_repeat_exec)))]
+        #[cfg(all(
+            native_zsh_idle_exit,
+            any(not(native_zsh_repeat_exec), native_zsh_operator_login)
+        ))]
         let no_child = self.process.pristine() && files.file_exec_unused_closed();
         #[cfg(any(
-            native_zsh_repeat_exec,
+            all(native_zsh_repeat_exec, not(native_zsh_operator_login)),
             all(native_zsh_process, not(native_zsh_idle_exit))
         ))]
         let no_child = false;
@@ -2420,8 +2484,14 @@ impl<K: AppControl> Runtime<K> {
         if !no_child && self.process.epoch != 1 {
             return Err(-5);
         }
-        #[cfg(native_zsh_repeat_exec)]
+        #[cfg(all(native_zsh_repeat_exec, not(native_zsh_operator_login)))]
         if self.process.epoch != 2 || !files.file_exec_repeated() {
+            return Err(-5);
+        }
+        #[cfg(native_zsh_operator_login)]
+        if !no_child
+            && (!self.process.repeat_ready() || !files.file_exec_epoch_complete(self.process.epoch))
+        {
             return Err(-5);
         }
         #[cfg(native_zsh_home_write)]
@@ -2996,7 +3066,11 @@ pub fn encode_launch(
         } else {
             b"HOME=/".as_slice()
         },
-        b"PWD=/",
+        if cfg!(native_zsh_operator_login) {
+            b"PWD=/home".as_slice()
+        } else {
+            b"PWD=/".as_slice()
+        },
     ]
     .iter()
     .enumerate()
