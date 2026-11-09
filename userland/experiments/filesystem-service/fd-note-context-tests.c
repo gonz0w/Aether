@@ -9,7 +9,16 @@
 static struct aefd_context c;
 #endif
 static struct {
-    unsigned char request[128], reply[128];
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+    unsigned char request[AEFD_FRAME + AEFD_NOTE_WRITE_MAX];
+    unsigned char note_bytes[AEFD_NOTE_WRITE_MAX];
+    size_t note_length;
+    unsigned note_writes, terminal_writes;
+    int create_errno, write_errno;
+#else
+    unsigned char request[128];
+#endif
+    unsigned char reply[128];
     size_t sent, read, length;
     unsigned requests, closes, next;
     uint64_t mask;
@@ -65,9 +74,16 @@ static void answer(void)
         }
     } else if (op == 1) {
         size_t n = (size_t)aefd_word(f.request, 5);
-        assert(n == 9 || n == sizeof(AEFD_HOME_PROFILE_PATH) - 1);
-        assert(!memcmp(f.request + 64,
-                       n == 9 ? ".zprofile" : AEFD_HOME_PROFILE_PATH, n));
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        if (n == sizeof(AEFD_NOTE_CREATE_PATH) - 1)
+            assert(!memcmp(f.request + 64, AEFD_NOTE_CREATE_PATH, n));
+        else
+#endif
+        {
+            assert(n == 9 || n == sizeof(AEFD_HOME_PROFILE_PATH) - 1);
+            assert(!memcmp(f.request + 64,
+                           n == 9 ? ".zprofile" : AEFD_HOME_PROFILE_PATH, n));
+        }
         if (n == 9 && !f.cwd)
             aefd_put(h, 1, (uint64_t)-13);
         else
@@ -76,17 +92,28 @@ static void answer(void)
 #endif
     if (op == 12) {
         assert(aefd_word(f.request, 4) <= 1 && aefd_word(f.request, 5) ==
-                   sizeof(AEFD_HOME_PROFILE_PATH) - 1);
+                   sizeof(AEFD_NOTE_CREATE_PATH) - 1);
         assert(aefd_word(f.request, 6) == 0600 && !aefd_word(f.request, 7));
-        assert(!memcmp(f.request + 64, AEFD_HOME_PROFILE_PATH,
-                       sizeof(AEFD_HOME_PROFILE_PATH) - 1));
-        for (unsigned i = 64 + sizeof(AEFD_HOME_PROFILE_PATH) - 1; i < 128; i++)
+        assert(!memcmp(f.request + 64, AEFD_NOTE_CREATE_PATH,
+                       sizeof(AEFD_NOTE_CREATE_PATH) - 1));
+        for (unsigned i = 64 + sizeof(AEFD_NOTE_CREATE_PATH) - 1; i < 128; i++)
             assert(!f.request[i]);
         aefd_put(h, 4, 3);
         aefd_put(h, 5, 64);
         aefd_put(b, 0, 6);
         aefd_put(b, 1, 91);
         f.length = 128;
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        if (f.create_errno) {
+            aefd_put(h, 1, (uint64_t)-f.create_errno);
+            aefd_put(h, 4, 0);
+            aefd_put(b, 0, 0);
+            aefd_put(b, 1, 0);
+            aefd_put(b, 2, f.create_errno == ENOSPC ? 9 : 12);
+            if (f.create_errno != ENOSPC)
+                aefd_put(b, 3, (uint64_t)-f.create_errno);
+        }
+#endif
         if (f.mode == 3) {
             aefd_put(h, 1, (uint64_t)-13);
             aefd_put(h, 4, 0);
@@ -104,16 +131,34 @@ static void answer(void)
         if (f.mode == 5)
             aefd_put(h, 3, 999);
     } else if (op == 11) {
-        assert(aefd_word(f.request, 4) == 4 && aefd_word(f.request, 5) == 16);
-        assert(!memcmp(f.request + 64, "AETHER-HOME-158\n", 16));
-        for (unsigned i = 80; i < 128; i++)
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        size_t expected = f.note_length;
+        assert(!memcmp(f.request + 64, f.note_bytes, expected));
+        ++f.note_writes;
+#else
+        size_t expected = 16;
+        assert(!memcmp(f.request + 64, "AETHER-HOME-158\n", expected));
+#endif
+        assert(aefd_word(f.request, 4) == 4 &&
+               aefd_word(f.request, 5) == expected);
+        for (size_t i = 64 + expected; i < f.sent; ++i)
             assert(!f.request[i]);
-        aefd_put(h, 4, 16);
+        aefd_put(h, 4, expected);
         aefd_put(h, 5, 64);
         aefd_put(b, 0, 14);
         aefd_put(b, 2, 92);
-        aefd_put(b, 3, 16);
+        aefd_put(b, 3, expected);
         f.length = 128;
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        if (f.write_errno) {
+            aefd_put(h, 1, (uint64_t)-f.write_errno);
+            aefd_put(h, 4, 0);
+            memset(b, 0, 64);
+            aefd_put(b, 6, 9);
+        } else if (f.mode == 30) {
+            aefd_put(h, 4, expected - 1);
+        }
+#endif
     } else {
         assert(op == 5);
         if (f.mode == 6)
@@ -152,16 +197,41 @@ static int64_t native(void *unused, uint64_t op, uint64_t cap, uint64_t a,
     assert(cap == (op == 0x24001 ? 71 : 72));
     size_t n = b < 7 ? (size_t)b : 7;
     if (op == 0x24002) {
-        assert(f.sent + n <= 128);
+        assert(f.sent + n <= sizeof(f.request));
         memcpy(f.request + f.sent, (void *)(uintptr_t)a, n);
         f.sent += n;
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        if (f.sent == 32 && memcmp(f.request, AEFD_MAGIC, 8)) {
+            assert(aether_fs_session_u32(f.request + 4) == 0x7a010001 &&
+                   aether_fs_session_u32(f.request + 8) == 1);
+            uint32_t operation = aether_fs_session_u32(f.request);
+            uint32_t length = aether_fs_session_u32(f.request + 12);
+            memset(f.reply, 0, 32);
+            if (operation == 2) {
+                assert(length == 16 &&
+                       !memcmp(f.request + 16, f.note_bytes, 16));
+                aefd_put(f.reply, 0, 16);
+                ++f.terminal_writes;
+            } else {
+                assert(operation == 3 && !length);
+            }
+            f.length = 32;
+            f.read = 0;
+        }
+#endif
         if (f.sent >= 64) {
             uint64_t opcode = aefd_word(f.request, 1);
-            if (f.sent == (opcode == 12 || opcode == 11
+            size_t goal = opcode == 12 || opcode == 11
 #ifdef AEFD_ZSH_HOME_CWD_BINDINGS
-                           || opcode == 13 || opcode == 1
+                                  || opcode == 13 || opcode == 1
 #endif
-                               ? 128U : 64U))
+                              ? 128U
+                              : 64U;
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+            if (opcode == 11)
+                goal = 64 + (f.note_length + 63U) / 64U * 64U;
+#endif
+            if (f.sent == goal)
                 answer();
         }
     } else {
@@ -203,18 +273,21 @@ static void setup(int mode)
     assert(!aefd_context_init(&c, native, NULL, 71, 72, raw, 128, 31, sources,
                               history, 0));
 }
+#ifndef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
 static int create(void)
 {
     return (int)aefd_context_create_note(
         &c, (const unsigned char *)AEFD_HOME_PROFILE_PATH,
         sizeof(AEFD_HOME_PROFILE_PATH) - 1, 1, 0600);
 }
+#endif
 static void close_client(void)
 {
     aefd_client_abort(&c.client);
     assert(f.closes == 2);
     assert(f.mask == 0x1234);
 }
+#ifndef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
 int main(void)
 {
     setup(0);
@@ -296,3 +369,4 @@ int main(void)
     puts("note context create/alias/redirect/restore/unknown containment pass");
     return 0;
 }
+#endif

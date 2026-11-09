@@ -2,6 +2,9 @@
 #ifndef AETHER_FD_CONTEXT_H
 #define AETHER_FD_CONTEXT_H
 #include "fd-native.h"
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+#include <sys/uio.h>
+#endif
 /* Place outside the small init stack: this object contains4096 workspace bytes.
  * Fresh zeroed, stable exclusive storage, all input/output ranges disjoint from
  * context and each other. Never memcpy/move an admitted context: internal
@@ -21,7 +24,9 @@ struct aefd_context {
     struct aefd_write_result note_write;
     struct aefd_redirect_result note_redirect;
     uint16_t note_writers;
+#ifndef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
     int note_create_attempted, note_write_attempted;
+#endif
 #endif
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
     /* Local correlated observations survive finish; they grant no authority. */
@@ -99,6 +104,11 @@ int64_t aefd_context_getcwd(struct aefd_context *, unsigned char[256]);
 int64_t aefd_context_read(struct aefd_context *, int, unsigned char *, size_t);
 int64_t aefd_context_write(struct aefd_context *, int, const unsigned char *,
                            size_t);
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+/* Validated disjoint iovecs and their checked sum from the private Zsh adapter. */
+int64_t aefd_context_zsh_vector_write(struct aefd_context *, int,
+                                     const struct iovec *, int, size_t);
+#endif
 int64_t aefd_context_dup(struct aefd_context *, int, int, int);
 int64_t aefd_context_replace(struct aefd_context *, int, int);
 struct aefd_redirect_result aefd_context_redirect(struct aefd_context *, int,

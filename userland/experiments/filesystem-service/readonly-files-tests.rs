@@ -37,6 +37,12 @@ struct StorageState {
     cwd_observations: Vec<u64>,
     #[cfg(native_zsh_home_cwd)]
     cwd_failure: u8,
+    #[cfg(native_zsh_operator_note)]
+    scratch: Option<Vec<u8>>,
+    #[cfg(native_zsh_operator_note)]
+    scratch_lookup_error: i32,
+    #[cfg(native_zsh_operator_note)]
+    scratch_read_error: i32,
     mutations: usize,
     lookups: usize,
     reads: usize,
@@ -51,6 +57,7 @@ fn node(id: u64, size: usize) -> p::Node {
         if id == 5
             || (cfg!(any(native_zsh_home_write, native_zsh_file_exec)) && id == 6)
             || (cfg!(native_zsh_home_redirection) && id == 7)
+            || (cfg!(native_zsh_operator_note) && id == 8)
         {
             p::Kind::File
         } else {
@@ -117,6 +124,17 @@ impl p::Backend for Storage {
                 }
                 7
             }
+            #[cfg(native_zsh_operator_note)]
+            (2, b"note") => {
+                if s.scratch_lookup_error != 0 {
+                    return Err(p::Error::Backend(s.scratch_lookup_error));
+                }
+                return s
+                    .scratch
+                    .as_ref()
+                    .map(|bytes| node(8, bytes.len()))
+                    .ok_or(p::Error::Backend(2));
+            }
             _ => return Err(p::Error::Backend(2)),
         };
         #[cfg(any(native_zsh_cold_reopen, native_zsh_login_startup))]
@@ -172,6 +190,15 @@ impl p::Backend for Storage {
         let data = &s.data;
         #[cfg(native_zsh_home_redirection)]
         let data = if at.identity().0 == 7 { &s.note } else { data };
+        #[cfg(native_zsh_operator_note)]
+        let data = if at.identity().0 == 8 {
+            if s.scratch_read_error != 0 {
+                return Err(p::Error::Backend(s.scratch_read_error));
+            }
+            s.scratch.as_ref().unwrap()
+        } else {
+            data
+        };
         let start = (offset as usize).min(data.len());
         let count = out.len().min(data.len() - start);
         out[..count].copy_from_slice(&data[start..start + count]);
@@ -228,6 +255,20 @@ impl p::Backend for Storage {
                 }),
             };
         }
+        #[cfg(native_zsh_operator_note)]
+        if n.identity().0 == 8 {
+            assert_eq!(offset, 0);
+            let mut s = self.0.lock().unwrap();
+            assert!(s.scratch.as_ref().unwrap().is_empty());
+            s.mutations += 1;
+            s.scratch = Some(data.to_vec());
+            return Ok(p::Completion {
+                error: 0,
+                txg: s.mutations as u64,
+                bytes_staged: data.len() as u64,
+                state: 2,
+            });
+        }
         assert_eq!((n.identity().0, offset), (5, 0));
         let mut s = self.0.lock().unwrap();
         s.mutations += 1;
@@ -276,6 +317,30 @@ impl p::Backend for Storage {
                     state: 2,
                 }),
             };
+        }
+        #[cfg(native_zsh_operator_note)]
+        if matches!(
+            (n.identity().0, &op),
+            (2, p::Namespace::Create { name: b"note", .. })
+        ) {
+            let mut s = self.0.lock().unwrap();
+            assert!(s.scratch.is_none());
+            s.mutations += 1;
+            if s.note_failure == 3 {
+                return Ok(p::Completion {
+                    error: 17,
+                    txg: 0,
+                    bytes_staged: 0,
+                    state: 0,
+                });
+            }
+            s.scratch = Some(Vec::new());
+            return Ok(p::Completion {
+                error: 0,
+                txg: s.mutations as u64,
+                bytes_staged: 0,
+                state: 2,
+            });
         }
         let index = match (n.identity().0, op) {
             (
@@ -1359,3 +1424,7 @@ fn unused_helper_close_requires_the_validated_held_reference_and_known_success()
 #[cfg(native_zsh_home_redirection)]
 #[path = "zsh-home-redirection-tests.rs"]
 mod home_redirection_tests;
+
+#[cfg(native_zsh_operator_note)]
+#[path = "zsh-operator-note-tests.rs"]
+mod operator_note_tests;

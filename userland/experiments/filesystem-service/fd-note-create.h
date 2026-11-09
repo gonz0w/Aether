@@ -62,9 +62,17 @@ static inline int aefd_note_create_decode(const unsigned char header[64],
         int64_t status;
         uint64_t kind = tag == 6 ? r.post_kind : r.mutation_kind;
         int64_t value = tag == 6 ? r.post_value : r.mutation_value;
-        if (r.fd || !kind || kind > (tag == 0 ? 9U : 12U) ||
+        if (r.fd || !kind || kind > 12 ||
             !aefd_write_status(kind, value, &status) || r.status != status)
             return 0;
+        if (tag == 0 && kind > 9) {
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+            if (kind != 12 || value < -4095)
+                return 0;
+#else
+            return 0;
+#endif
+        }
         if (tag == 0) {
             if (cleanup || r.txg || r.post_kind || r.post_value)
                 return 0;

@@ -21,7 +21,8 @@ FILE *aefd_test_fopen(const char *, const char *);
 FILE *aefd_test_fdopen(int, const char *);
 size_t aefd_test_stdio_write(FILE *, const unsigned char *, size_t);
 int aefd_test_sigaction(int, const struct sigaction *, struct sigaction *);
-#ifndef AEFD_ZSH_HOME_CWD_BINDINGS
+#if !defined(AEFD_ZSH_HOME_CWD_BINDINGS) ||                                  \
+    defined(AEFD_ZSH_OPERATOR_NOTE_BINDINGS)
 static FILE stream;
 static unsigned char stdio_buffer[32];
 #endif
@@ -61,10 +62,110 @@ _Noreturn void __assert_fail(const char *expression, const char *file, int line,
     fflush(NULL);
     _Exit(99);
 }
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+static void operator_setup(int mode)
+{
+    setup(mode);
+    aefd_shell_external_startup()->identity.slot = 1;
+    for (size_t i = 0; i < sizeof(f.note_bytes); ++i)
+        f.note_bytes[i] = (unsigned char)('a' + i % 26);
+}
+static void operator_write(size_t length, size_t buffered)
+{
+    operator_setup(0);
+    f.note_length = length;
+    const char *note = AEFD_NOTE_CREATE_PATH;
+    int flags = O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY;
+    f.create_errno = ENOSPC;
+    assert(aefd_test_open(note, flags, 0666) == -1 && errno == ENOSPC);
+    assert(c.client.live && f.requests == 1);
+    f.create_errno = 0;
+    errno = EDOM;
+    int fd = aefd_test_open(note, flags, 0666);
+    assert(fd == 3 && errno == EDOM && c.note_create.remote.txg == 91);
+    assert(aether_zsh_raw_fcntl(1, F_DUPFD, 10) == 10);
+    assert(aefd_test_dup2(fd, 1) == 1 && c.map.slots[1].selector == 4);
+    assert(!aether_zsh_raw_close(fd));
+
+    unsigned before = f.requests;
+    struct iovec oversize[2] = {{f.note_bytes, sizeof(f.note_bytes)},
+                               {f.note_bytes, 1}};
+    assert(aether_zsh_vector_write(1, oversize, 2) == -1 && errno == EINVAL);
+    assert(f.requests == before && c.client.live && !f.note_writes);
+    struct iovec overlap = {&c, 1};
+    assert(aether_zsh_vector_write(1, &overlap, 1) == -1 && errno == EFAULT);
+    assert(f.requests == before);
+
+    f.write_errno = ENOSPC;
+    const struct iovec vector = {f.note_bytes, length};
+    assert(aether_zsh_vector_write(1, &vector, 1) == -1 && errno == ENOSPC);
+    assert(c.client.live && f.note_writes == 1);
+    f.write_errno = 0;
+    memset(&stream, 0, sizeof(stream));
+    stream.fd = 1;
+    stream.buf = stdio_buffer;
+    stream.buf_size = sizeof(stdio_buffer);
+    memcpy(stdio_buffer, f.note_bytes, buffered);
+    stream.wbase = stdio_buffer;
+    stream.wpos = stdio_buffer + buffered;
+    errno = EDOM;
+    assert(aefd_test_stdio_write(&stream, f.note_bytes + buffered,
+                                  length - buffered) == length - buffered);
+    assert(errno == EDOM && c.note_write.remote.count == length &&
+           c.note_write.remote.staged == length && c.note_write.remote.txg == 92);
+    assert(f.note_writes == 2 && f.requests == before + 2);
+    assert(aefd_test_dup2(10, 1) == 1 && !c.note_writers);
+    assert(!aether_zsh_raw_close(10));
+    assert(aether_zsh_vector_write(1, oversize, 2) == 16);
+    assert(f.terminal_writes == 1 && f.note_writes == 2);
+    close_client();
+}
+static void operator_note_cases(void)
+{
+    operator_setup(0);
+    const char *note = AEFD_NOTE_CREATE_PATH;
+    int flags = O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY;
+    assert(aefd_test_open("note", flags, 0666) == -1 && errno == EACCES);
+    assert(aefd_test_open(AEFD_HOME_PROFILE_PATH, flags, 0666) == -1 &&
+           errno == EOPNOTSUPP);
+    assert(aefd_test_open(note, flags | O_TRUNC, 0666) == -1 &&
+           errno == EOPNOTSUPP);
+    assert(aefd_test_open(note, O_WRONLY | O_NOCTTY, 0) == -1 &&
+           errno == EOPNOTSUPP);
+    assert(aefd_test_open(note, flags, 0444) == -1 && errno == EOPNOTSUPP);
+    aefd_shell_external_startup()->identity.slot = 2;
+    assert(aefd_test_open(note, flags, 0666) == -1 && errno == EACCES);
+    assert(aefd_test_open(note, O_RDONLY, 0) == -1 && errno == EACCES);
+    assert(!f.requests);
+    aefd_shell_external_startup()->identity.slot = 1;
+    f.create_errno = EEXIST;
+    assert(aefd_test_open(note, flags, 0666) == -1 && errno == EEXIST);
+    assert(c.client.live && !f.closes && c.note_create.remote.flags == 0);
+    int read_fd = aefd_test_open(note, O_RDONLY, 0);
+    assert(read_fd == 3 && !aether_zsh_raw_close(read_fd));
+    assert(f.requests == 3 && c.client.live);
+    close_client();
+
+    operator_write(1, 0);
+    operator_write(AEFD_NOTE_WRITE_MAX, 7);
+
+    operator_setup(30);
+    f.note_length = 1;
+    int fd = aefd_test_open(note, flags, 0666);
+    assert(fd == 3 && aefd_test_dup2(fd, 1) == 1);
+    const struct iovec single = {f.note_bytes, 1};
+    assert(aether_zsh_vector_write(1, &single, 1) == -1 && errno == EIO);
+    assert(f.note_writes == 1 && !c.client.live && f.closes == 2);
+    puts("operator note flags, preflight, 1/256-byte stdio, bounds and receipts pass");
+}
+#endif
 int main(void)
 {
     assert(!aefd_zsh_admit());
-#ifdef AEFD_ZSH_HOME_CWD_BINDINGS
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+    operator_note_cases();
+    return 0;
+#elif defined(AEFD_ZSH_HOME_CWD_BINDINGS)
     setup(0);
     f.cwd = 1;
     char out[8];

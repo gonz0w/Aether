@@ -415,6 +415,7 @@ const combined_profile = @hasDecl(@import("build_options"), "native_fs_session")
 const combined_init = @hasDecl(@import("build_options"), "native_fs_session_init") and @import("build_options").native_fs_session_init;
 const combined_owner_data = @hasDecl(@import("build_options"), "native_fs_owner_data") and @import("build_options").native_fs_owner_data;
 const combined_owner_stack = @hasDecl(@import("build_options"), "native_fs_owner_stack") and @import("build_options").native_fs_owner_stack;
+const combined_operator_note = @hasDecl(@import("build_options"), "native_zsh_operator_note") and @import("build_options").native_zsh_operator_note;
 const combined_application_profile = @hasDecl(@import("build_options"), "native_fs_application_profile") and @import("build_options").native_fs_application_profile;
 comptime {
     if (af09_enabled and (!combined_profile or !combined_init or !combined_owner_stack or combined_application_profile or @import("build_options").native_service_lifetime))
@@ -942,13 +943,13 @@ fn select() *const Frame {
 pub fn start(pbase: u64, vbase: u64, envelope: []const u8, hhdm: u64, map: *const @import("../../limine.zig").MemoryResponse) noreturn {
     // Reject the selected complete composition before reservation or device setup.
     if (combined_application_profile) {
-        _ = (if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else FsSession.parseApplication(envelope)) catch @panic("invalid filesystem application envelope");
+        _ = (if (combined_operator_note) FsSession.parseOperatorNoteApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else FsSession.parseApplication(envelope)) catch @panic("invalid filesystem application envelope");
     }
     require(envelope.len > 40);
     if (mktemp_reader) require(std.mem.eql(u8, envelope[0..8], "AENBD002"));
     const service_block = @import("build_options").native_service_block;
     const service_channel = @import("build_options").native_service_channel;
-    const service_magic = if (combined_profile) (if (combined_application_profile) FsSession.application_magic else if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
+    const service_magic = if (combined_profile) (if (combined_operator_note) FsSession.operator_note_magic else if (combined_application_profile) FsSession.application_magic else if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
     if (service_memory) require(std.mem.eql(u8, envelope[0..8], if (service_channel) service_magic else if (service_block) "AENBD002" else "AENSUP01"));
     const direct_native = std.mem.eql(u8, envelope[0..8], "AENATC01") or
         std.mem.eql(u8, envelope[0..8], "AENSUP01") or
@@ -2244,7 +2245,7 @@ fn startSupervised(envelope: []const u8) noreturn {
     require(envelope.len >= 48);
     var supervisor_code: []const u8 = undefined;
     if (combined_profile) {
-        const bundle = (if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
+        const bundle = (if (combined_operator_note) FsSession.parseOperatorNoteApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
         engine_len = bundle.engine.len;
         @memcpy(engine_bytes[0..engine_len], bundle.engine);
         engine_image = parseStartup(engine_bytes[0..engine_len]) catch @panic("invalid filesystem engine ELF");

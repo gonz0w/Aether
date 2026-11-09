@@ -163,6 +163,9 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
         return (int)libc_result(-ENAMETOOLONG, saved);
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
     if (!strcmp(path, AEFD_HOME_PROFILE_PATH)
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        || !strcmp(path, AEFD_NOTE_CREATE_PATH)
+#endif
 #ifdef AEFD_ZSH_HOME_CWD_BINDINGS
         || !strcmp(path, ".zprofile")
 #endif
@@ -173,8 +176,16 @@ int aether_zsh_open(const char *path, int flags, mode_t mode)
         int admitted = flags & ~O_LARGEFILE;
         if (!live())
             return (int)libc_result(-EBADF, saved);
-#ifndef AEFD_ZSH_HOME_CWD_BINDINGS
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        int scratch = !strcmp(path, AEFD_NOTE_CREATE_PATH);
+        if (scratch && startup.identity.slot != 1)
+            return (int)libc_result(-EACCES, saved);
+        if (scratch && (admitted & O_CREAT)) {
+#elif !defined(AEFD_ZSH_HOME_CWD_BINDINGS)
         if (admitted & O_CREAT) {
+#endif
+#if defined(AEFD_ZSH_OPERATOR_NOTE_BINDINGS) ||                                \
+    !defined(AEFD_ZSH_HOME_CWD_BINDINGS)
             unsigned effective = (unsigned)mode & ~(unsigned)note_umask;
             int allowed = O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY | O_CLOEXEC;
             if ((admitted & ~allowed) ||
@@ -297,11 +308,24 @@ long aether_zsh_vector_write(int fd, const struct iovec *parts, int count)
 {
     int saved = errno;
     long result = -EINVAL;
-    if (count < 0 || count > 2 || (count && !parts))
+    if (count < 0 || count > 2)
         goto done;
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+    if (count && !outside_context(parts, (size_t)count * sizeof(*parts))) {
+        result = -EFAULT;
+        goto done;
+    }
+#else
+    if (count && !parts)
+        goto done;
+#endif
     size_t total = 0;
     for (int i = 0; i < count; ++i) {
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        if (!outside_context(parts[i].iov_base, parts[i].iov_len)) {
+#else
         if (parts[i].iov_len && !parts[i].iov_base) {
+#endif
             result = -EFAULT;
             goto done;
         }
@@ -309,6 +333,11 @@ long aether_zsh_vector_write(int fd, const struct iovec *parts, int count)
             goto done;
         total += parts[i].iov_len;
     }
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+    result = live() ? aefd_context_zsh_vector_write(&startup.context, fd, parts,
+                                                    count, total)
+                    : -EBADF;
+#else
     unsigned char bytes[16] = {0};
     size_t limit = total < sizeof(bytes) ? total : sizeof(bytes), used = 0;
     for (int i = 0; i < count && used < limit; ++i) {
@@ -322,13 +351,9 @@ long aether_zsh_vector_write(int fd, const struct iovec *parts, int count)
                          limit);
     if (!result && limit)
         result = -EIO;
+#endif
 done:
-    if (result < 0) {
-        errno = result >= -4095 ? (int)-result : EIO;
-        return -1;
-    }
-    errno = saved;
-    return result;
+    return libc_result(result, saved);
 }
 #ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
 static size_t path_length(const char *path)

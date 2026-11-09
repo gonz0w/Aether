@@ -2795,6 +2795,16 @@
       "invariants": "Closed168 actualheldHOME startup/PWD; manual and managed sameguest;0..resourceboundsequentialexistinghelper, completepriorstatus23/wait/READY/settlement/reclaim/READlease; monotonicattemptbeforeeffects with saved672request; realnegativefork/FILEreceipt preservesclose/shutdowncredits andsettlesexistingcallerfreeze. Oldprofiles/kernel/wire/helper/engine/numericlimits unchanged.",
       "oracle": "Managed260 once-only foregroundPTY bytes: HOME0/home/beepoff, samePID/value168 across5sidle, threehelper23/reclaim/prompt andFIRST23/SECOND23/THIRD23 cycles, normalparent/engine/export/MODE0/fivereclaims/halt/PASS andknownoriginalhostcleanup. Manualhasno scriptedbyte/PID claim; native0/1/exhaustion notclaimed frommanagedtrial. Corrected actual pair:writer39.715s/61requests,cold32.436s/82requests,PID9/home/value168/5.012sidle,threehelper23/reclaim/prompt cycles,FIRST23/SECOND23/THIRD23,35cleanup/fivereclaims/halt2566/PASS andknownhostcleanup.",
       "gaps": "Scoped168 corrected managed trial complete. Native0/1/exhaustion use actual-function coverage; no human typing claim. First54-byte diagnostic failure retains UNKNOWNguestexport/knownhostcleanup/discardedmedia; firstRXoverflow and same-cap WRITE specialization retained.32fixed-control preflight is not arbitraryschedule/completepeak proof.141/generalutilities/paths/mutations/packages/authentication/mediareusepolicy andassembledR1 remain open."
+    },
+    {
+      "id": "zsh-operator-note",
+      "reference": "userland/docs/proposals/ZSH-OPERATOR-NOTE.md",
+      "owner": "Aether sys-init/userland; issue170",
+      "budget_seconds": 360,
+      "command": "Focused cold engine, Rust Owner and C descriptor checks; fresh operator-note Owner, app and engine fits; guarded seed, save and cold readback.",
+      "invariants": "Closed parent-only exclusive note custody with one 1\u2013256 byte write; real close, export and per-edge media claims; selected 88 KiB Owner RX inside existing backing.",
+      "oracle": "Seed export, saved and compared 256 bytes, one helper23 and two mutations; exact stopped disk cold readback compares all bytes and observes zero mutations with clean export.",
+      "gaps": "Scoped checkpoint; issue141 and assembled R1 remain open."
     }
   ]
 }

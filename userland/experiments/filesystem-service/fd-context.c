@@ -164,9 +164,11 @@ int64_t aefd_context_create_note(struct aefd_context *c,
     int64_t result = begin(c);
     if (result)
         return result;
+#ifndef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
     if (c->note_create_attempted)
         return end(c, -16);
     c->note_create_attempted = 1;
+#endif
     result = aefd_table_create_note(&c->map, &c->client, name, length, cloexec,
                                     mode, &c->note_create);
     if (result >= 0) {
@@ -243,6 +245,48 @@ int64_t aefd_context_read(struct aefd_context *c, int fd, unsigned char *out,
 #endif
     return end(c, aefd_session_read(&c->session, fd, out, length));
 }
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+static int64_t write_note(struct aefd_context *c, struct aefd_binding binding,
+                          const unsigned char *in, size_t length)
+{
+    if (!note_writer(c, binding))
+        return -EROFS;
+    if (!in || !length || length > AEFD_NOTE_WRITE_MAX)
+        return -EINVAL;
+    int64_t result =
+        aefd_file_write(&c->client, binding.selector, in, length, &c->note_write);
+    note_refresh(c);
+    return result;
+}
+int64_t aefd_context_zsh_vector_write(struct aefd_context *c, int fd,
+                                     const struct iovec *parts, int count,
+                                     size_t total)
+{
+    int64_t result = begin(c);
+    if (result)
+        return result;
+    struct aefd_binding binding;
+    result = aefd_session_binding(&c->session, fd, &binding);
+    if (result)
+        return end(c, result);
+    int file = binding.kind == AEFD_BIND_FILE;
+    if (file && total > AEFD_NOTE_WRITE_MAX)
+        return end(c, -EINVAL);
+    size_t limit = !file && total > 16 ? 16 : total;
+    unsigned char bytes[AEFD_NOTE_WRITE_MAX];
+    size_t used = 0;
+    for (int i = 0; i < count && used < limit; ++i) {
+        size_t n =
+            parts[i].iov_len < limit - used ? parts[i].iov_len : limit - used;
+        if (n)
+            memcpy(bytes + used, parts[i].iov_base, n);
+        used += n;
+    }
+    result = file ? write_note(c, binding, bytes, limit)
+                  : aefd_session_write(&c->session, fd, bytes, limit);
+    return end(c, !result && limit ? -EIO : result);
+}
+#endif
 int64_t aefd_context_write(struct aefd_context *c, int fd,
                            const unsigned char *in, size_t length)
 {
@@ -269,6 +313,9 @@ int64_t aefd_context_write(struct aefd_context *c, int fd,
     if (result)
         return end(c, result);
     if (b.kind == AEFD_BIND_FILE) {
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+        return end(c, write_note(c, b, in, length));
+#else
         if (!note_writer(c, b))
             return end(c, -30);
         if (!in || !length || length > 16)
@@ -280,6 +327,7 @@ int64_t aefd_context_write(struct aefd_context *c, int fd,
             aefd_file_write(&c->client, b.selector, in, length, &c->note_write);
         note_refresh(c);
         return end(c, result);
+#endif
     }
 #endif
     return end(c, aefd_session_write(&c->session, fd, in, length));

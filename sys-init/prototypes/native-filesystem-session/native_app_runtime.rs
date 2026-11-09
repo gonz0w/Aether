@@ -1616,6 +1616,10 @@ impl<K: AppControl> Runtime<K> {
             // six prepaid child cleanup leaves plus two cleanup observations (8),
             // and the known-refusal cancel+observation (2). Transport progress,
             // additional polling and tick deadlines retain the existing Bound.
+            #[cfg(native_zsh_operator_note)]
+            if self.with_files(|files| Ok(files.scratch_active()))? {
+                return self.zsh_refuse_fork(sequence, expected.identity.handle, -16, workspace);
+            }
             if self.process.epoch == 15
                 || self
                     .filesystem_requests
@@ -1623,7 +1627,7 @@ impl<K: AppControl> Runtime<K> {
                     .is_none_or(|n| n > 96)
                 || self.bound.left < 32
             {
-                return self.zsh_refuse_fork(sequence, expected.identity.handle, workspace);
+                return self.zsh_refuse_fork(sequence, expected.identity.handle, -28, workspace);
             }
         }
         let freeze = self.zsh_frozen(expected.identity.handle)?;
@@ -1705,6 +1709,7 @@ impl<K: AppControl> Runtime<K> {
         &mut self,
         sequence: u64,
         parent: u64,
+        status: i64,
         workspace: &mut [u8; 4096],
     ) -> Result<(), i64> {
         // The caller parked after sending this request. Settle only that exact
@@ -1713,7 +1718,7 @@ impl<K: AppControl> Runtime<K> {
         zero(self.ctl(0x23005, parent, freeze)?.0)?;
         self.process.fork_sequence = sequence;
         let mut reply =
-            zsh_process_frames::receipt(b"AEZFR001", sequence, -28).map_err(i64::from)?;
+            zsh_process_frames::receipt(b"AEZFR001", sequence, status).map_err(i64::from)?;
         self.zsh_io(false, &mut reply, true)?;
         workspace.fill(0);
         Ok(())

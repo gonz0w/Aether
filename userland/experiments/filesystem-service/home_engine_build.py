@@ -16,6 +16,7 @@ TERMINFO_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_six')
 TERMINFO_SEVEN_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_seven')
 TERMINFO_NINE_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_nine')
 COLD_REOPEN_PROFILE = (*PROFILE[:-1], 'fs_home_cold_reopen')
+COLD_NOTE_PROFILE = (*PROFILE[:-1], 'fs_home_cold_note')
 DRAIN_CASES = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
                'partial_ack', 'exit_deadline', 'pending_fragment')
 CRATES = (
@@ -44,7 +45,13 @@ def drain_selection(drain_case):
     return 0 if drain_case == 'none' else DRAIN_CASES.index(drain_case) + 1
 
 
-def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False):
+def select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id):
+    return (COLD_NOTE_PROFILE if cold_note else COLD_REOPEN_PROFILE if cold_reopen
+            else TERMINFO_NINE_PROFILE if terminfo_nine else TERMINFO_SEVEN_PROFILE if terminfo_seven
+            else TERMINFO_PROFILE if terminfo_six else DRAIN_PROFILE if case_id else PROFILE)
+
+
+def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False):
     case_id = drain_selection(drain_case)
     if type(terminfo_six) is not bool or terminfo_six and case_id:
         raise ValueError('AF09 terminfo-six requires its closed non-drain selection')
@@ -54,8 +61,9 @@ def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo
         raise ValueError('AF09 terminfo-nine requires its closed exact-nine selection')
     if type(cold_reopen) is not bool or cold_reopen and (terminfo_six or terminfo_seven or terminfo_nine or case_id):
         raise ValueError('AF09 cold-reopen requires its closed non-provisioning selection')
-    selected = (COLD_REOPEN_PROFILE if cold_reopen else TERMINFO_NINE_PROFILE if terminfo_nine else TERMINFO_SEVEN_PROFILE if terminfo_seven
-                else TERMINFO_PROFILE if terminfo_six else DRAIN_PROFILE if case_id else PROFILE)
+    if type(cold_note) is not bool or cold_note and (cold_reopen or terminfo_six or terminfo_seven or terminfo_nine or case_id):
+        raise ValueError('AF09 cold note requires its closed selection')
+    selected = select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id)
     if tuple(profile) != selected:
         raise ValueError('AF09 profile must match every explicit selected flag')
     return selected
@@ -75,7 +83,7 @@ def validate_symbols(service, launch):
         raise ValueError('AF09 old service/launch symbol')
 
 
-def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False):
+def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False):
     """Return service/launch object Paths; caller owns work and cleanup.
 
     This follows the existing five-crate native metadata-service object recipe.
@@ -84,10 +92,10 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
     alternate native-service entry and does not reuse an older service object.
     """
     case_id = drain_selection(drain_case)
-    selected = (COLD_REOPEN_PROFILE if cold_reopen else TERMINFO_NINE_PROFILE if terminfo_nine else TERMINFO_SEVEN_PROFILE if terminfo_seven
-                else TERMINFO_PROFILE if terminfo_six else DRAIN_PROFILE if case_id else PROFILE)
+    selected = select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id)
     profile = validate_profile(selected, drain_case=drain_case, terminfo_six=terminfo_six,
-                               terminfo_seven=terminfo_seven, terminfo_nine=terminfo_nine, cold_reopen=cold_reopen)
+                               terminfo_seven=terminfo_seven, terminfo_nine=terminfo_nine, cold_reopen=cold_reopen,
+                               cold_note=cold_note)
     folder = work / 'home-engine-rust'
     folder.mkdir()
     pins_path = R / 'docs/evidence/filesystem-transport-2026-10-19/inputs.json'
@@ -136,6 +144,8 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
         record['home_engine_rust']['terminfo_nine'] = True
     if cold_reopen:
         record['home_engine_rust']['cold_reopen'] = True
+    if cold_note:
+        record['home_engine_rust']['cold_note'] = True
     if case_id:
         record['home_engine_rust'].update(drain_case=drain_case, drain_case_id=case_id)
     env = proc.clean_env(work)
@@ -211,6 +221,8 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
             result['terminfo_nine'] = True
         if cold_reopen:
             result['cold_reopen'] = True
+        if cold_note:
+            result['cold_note'] = True
         if case_id:
             result.update(drain_case=drain_case, drain_case_id=case_id)
         return result

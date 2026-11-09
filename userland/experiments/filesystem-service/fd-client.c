@@ -290,7 +290,7 @@ int aefd_client_write(struct aefd_client *client, int fd,
     if (!aefd_file_selector((uint64_t)fd) || !bytes || !count ||
         count > AEFD_READ_MAX
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
-        || count > 16
+        || count > AEFD_NOTE_WRITE_MAX
 #endif
 #ifdef AEFD_ZSH_HOME_WRITE_BINDINGS
         || count != 16 || memcmp(bytes, "AETHER-ZSH-HOME\n", 16)
@@ -364,8 +364,8 @@ int aefd_client_note_create(struct aefd_client *client,
         *out = r;
         return -1;
     }
-    if (!name || length != sizeof(AEFD_HOME_PROFILE_PATH) - 1 ||
-        memcmp(name, AEFD_HOME_PROFILE_PATH, sizeof(AEFD_HOME_PROFILE_PATH) - 1) ||
+    if (!name || length != sizeof(AEFD_NOTE_CREATE_PATH) - 1 ||
+        memcmp(name, AEFD_NOTE_CREATE_PATH, length) ||
         cloexec < 0 || cloexec > 1 || mode != 0600) {
         *out = r;
         return 0;
@@ -395,7 +395,13 @@ int aefd_client_note_create(struct aefd_client *client,
     r.status = r.remote.status;
     ++client->sequence;
     memset(client->workspace, 0, AEFD_READ_MAX);
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+    /* A complete tag-zero denial describes no effect and needs no retirement.
+     * The Owner alone remembers whether a mutating attempt was consumed. */
+    if (r.status && r.remote.flags) {
+#else
     if (r.status || (r.remote.flags & 16U)) {
+#endif
         aefd_client_abort(client);
         r.file_closed = 1;
         r.file_cleanup = client->closed;

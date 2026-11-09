@@ -8,6 +8,7 @@ public source distributions omit that private prerequisite. An optional --eviden
 PATH retains only the compact JSON result there. Help/version and versioned JSON
 results use stdout; diagnostics use stderr. Output is ASCII without styling.
 Use --ordering-only for the diagnosed final-zero ordering regression only.
+Use --note-only for the cold note result, launcher and actual importer ordering.
 Exits: 0 pass/help/version, 1 check failure, 2 missing prerequisite, 64 usage.
 """
 import argparse
@@ -42,16 +43,22 @@ class Parser(argparse.ArgumentParser):
         self.exit(64, '[FAILED] ' + ascii(message)[1:-1] + '\n')
 
 
-def check_ordering(run, work, tools, common, flags, sdk, report):
+def check_ordering(run, work, tools, common, flags, sdk, report, *, note=False):
     rust = tools['rustc']['path']
-    run('order-rust-results-build', [rust, *common, '--cfg', 'fs_home_cold_reopen', '--test',
+    engine = 'fs_home_cold_note' if note else 'fs_home_cold_reopen'
+    run('order-rust-results-build', [rust, *common, '--cfg', engine, '--test',
         S / 'home-native-result.rs', '-o', work / 'order-results'])
     run('order-rust-results', [work / 'order-results', '--test-threads=1'])
-    for name, cfg in (('cold', 'fs_home_cold_reopen'), ('writer', 'fs_home_terminfo_seven')):
+    profiles = (('note', engine),) if note else (('cold', engine), ('writer', 'fs_home_terminfo_seven'))
+    for name, cfg in profiles:
         run('order-launch-' + name + '-build', [rust, *common, *flags, '--cfg', cfg, '--test',
             S / 'launch-home-owner.rs', '-o', work / ('order-launch-' + name)])
-        case = ('tests::cold_reopen_requires_exact_zero_and_all_completion_obligations' if name == 'cold'
-                else 'tests::terminfo_seven_requires_exact_count_and_complete_clean_result')
+        cases = {
+            'cold': 'tests::cold_reopen_requires_exact_zero_and_all_completion_obligations',
+            'writer': 'tests::terminfo_seven_requires_exact_count_and_complete_clean_result',
+            'note': 'tests::cold_note_reports_exact_completed_count_only_after_valid_teardown',
+        }
+        case = cases[name]
         run('order-launch-' + name, [work / ('order-launch-' + name), '--exact', case, '--test-threads=1'])
     source = (S / 'native-home.rs').read_text()
     start = source.index('    // Only the complete final zero-mutation report')
@@ -62,7 +69,7 @@ def check_ordering(run, work, tools, common, flags, sdk, report):
     producer.write_text('#[path = ' + json.dumps(str(S / 'home-native-result.rs')) + '] pub mod result;\n'
         'use result::*;\nfn settle(output: &mut HomeResult, clean: bool) {\n' + block + '}\n'
         '#[path = ' + json.dumps(str(S / 'home-cold-producer-tests.rs')) + '] mod tests;\n')
-    run('order-producer-build', [rust, *common, '--cfg', 'fs_home_cold_reopen', '--test',
+    run('order-producer-build', [rust, *common, '--cfg', engine, '--test',
         producer, '-o', work / 'order-producer'])
     run('order-producer', [work / 'order-producer', '--exact',
         'tests::producer_discharges_only_complete_healthy_zero_after_settlement', '--test-threads=1'])
@@ -85,19 +92,46 @@ def check_ordering(run, work, tools, common, flags, sdk, report):
     include = [S / 'home-native-host', S, work, R / 'user/storage/service-runtime',
                R / 'user/storage/openzfs-volume', R / 'user/storage/openzfs-elapsed',
                R / 'userland/experiments/native-service-runtime', R / 'userland/experiments/native-utc']
-    for name, extra in (('cold', ['-DAETHER_FS_HOME_COLD_REOPEN']), ('writer', [])):
-        run('order-c-predicate-' + name + '-build', [tools['clang']['path'], '-std=c17', '-Wall', '-Wextra', '-Werror',
-            '-isysroot', sdk, *['-I' + str(p) for p in include], *extra,
-            S / 'home-cold-result-tests.c', '-o', work / ('order-predicate-' + name)])
-        run('order-c-predicate-' + name, [work / ('order-predicate-' + name)])
+    selections = (('note', ['-DAETHER_FS_HOME_COLD_NOTE']),) if note else (
+        ('cold', ['-DAETHER_FS_HOME_COLD_REOPEN']), ('writer', []))
+    for name, extra in selections:
+        if not note:
+            run('order-c-predicate-' + name + '-build', [tools['clang']['path'], '-std=c17', '-Wall', '-Wextra', '-Werror',
+                '-isysroot', sdk, *['-I' + str(p) for p in include], *extra,
+                S / 'home-cold-result-tests.c', '-o', work / ('order-predicate-' + name)])
+            run('order-c-predicate-' + name, [work / ('order-predicate-' + name)])
         binary = work / ('order-lifecycle-' + name)
         run('order-lifecycle-' + name + '-build', [tools['clang']['path'], '-std=c17', '-D_DEFAULT_SOURCE',
             '-Wall', '-Wextra', '-Werror', '-isysroot', sdk,
             '-DAETHER_FS_HOST_BLOCK_CLOSE=home_host_block_close',
             '-include', S / 'home-native-host/home-native-host.h', *['-I' + str(p) for p in include],
             *extra, *generated, S / 'home-cold-order-tests.c', '-o', binary])
-        for case in ((0, 1, 9, 11, 18, 21, 26, 27, 28, 29) if name == 'cold' else (0, 1)):
+        cases = range(8) if note else (0, 1, 9, 11, 18, 21, 26, 27, 28, 29) if name == 'cold' else (0, 1)
+        for case in cases:
             run('order-lifecycle-' + name + '-' + str(case), [binary, str(case)])
+
+
+def check_bootstrap(run, work, rust, common, flags, report, engine):
+    run('metadata-build', [rust, *common, *flags, '--crate-type=lib', '--crate-name=filesystem_metadata',
+        S / 'metadata-lib.rs', '-o', work / 'libfilesystem_metadata.rlib'])
+    run('policy-build', [rust, *common, *flags, '--crate-type=lib', '--crate-name=filesystem_policy',
+        '--extern', 'filesystem_metadata=' + str(work / 'libfilesystem_metadata.rlib'),
+        '-Ldependency=' + str(work), S / 'owner.rs', '-o', work / 'libfilesystem_policy.rlib'])
+    source = (S / 'native-home.rs').read_text()
+    begin = source.index('fn bootstrap<')
+    end = source.index('/// Trusted synchronous importer', begin)
+    bootstrap = source[begin:end]
+    report['bootstrap_body_sha256'] = hashlib.sha256(bootstrap.encode()).hexdigest()
+    wrapper = work / 'bootstrap.rs'
+    wrapper.write_text('pub mod filesystem_bridge { pub use filesystem_policy as policy; }\n'
+        'use filesystem_policy::{Owner, Error, Handle, Kind, Rights, Session};\n'
+        '#[path = ' + json.dumps(str(S / 'home-native-result.rs')) + '] pub mod result;\n'
+        'use result::*;\n' + bootstrap + '\n#[path = '
+        + json.dumps(str(S / 'home-cold-bootstrap-tests.rs')) + '] mod tests;\n')
+    run('bootstrap-build', [rust, *common, *flags, '--cfg', engine,
+        '--extern', 'filesystem_policy=' + str(work / 'libfilesystem_policy.rlib'),
+        '-Ldependency=' + str(work), '--test', wrapper, '-o', work / 'bootstrap'])
+    run('bootstrap', [work / 'bootstrap', '--test-threads=1'])
 
 
 def main():
@@ -106,8 +140,11 @@ def main():
     parser.add_argument('--inputs', type=Path,
                         default=R / 'userland/docs/evidence/filesystem-transport-2026-10-19/inputs.json',
                         help='retained filesystem-transport tool JSON (private prerequisite)')
-    parser.add_argument('--ordering-only', action='store_true',
-                        help='check only final-zero ordering and generated lifecycle consumers')
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument('--ordering-only', action='store_true',
+                           help='check only final-zero ordering and generated lifecycle consumers')
+    selection.add_argument('--note-only', action='store_true',
+                           help='check cold note result, launcher and generated lifecycle consumers')
     parser.add_argument('--evidence', type=Path)
     args = parser.parse_args()
     try:
@@ -119,7 +156,7 @@ def main():
             + str(args.inputs) + '; use --inputs PATH to the retained input JSON') from error
     report = dict(schema='aether-home-cold-reopen-check-v1', rows=[], native_executed=False,
                   scope=('Actual final-zero predicates/producer settlement and generated importer/engine; host substitutions only.'
-                         if args.ordering_only else
+                         if args.ordering_only or args.note_only else
                          'Actual current bootstrap body, C/Rust result predicates and launcher; typed host storage only.'))
     deadline = time.monotonic() + 300
     started = time.monotonic()
@@ -150,7 +187,7 @@ def main():
                        'home_native', 'home_activation')
             flags = [item for name in profile for item in ('--cfg', 'fs_' + name)]
             rust = tools['rustc']['path']
-            if not args.ordering_only:
+            if not (args.ordering_only or args.note_only):
                 run('builder-selectors', ['/usr/bin/python3', '-B', S / 'home_engine_build_tests.py'])
                 run('rust-results-build', [rust, *common, '--cfg', 'fs_home_cold_reopen', '--test',
                     S / 'home-native-result.rs', '-o', work / 'results'])
@@ -171,29 +208,13 @@ def main():
                         '-o', work / 'rejected.rmeta'], expected=1)
                     if b'fs_home_cold_reopen requires its closed' not in refused.stderr:
                         raise RuntimeError('wrong mixed-profile rejection: ' + mixed)
-                run('metadata-build', [rust, *common, *flags, '--crate-type=lib', '--crate-name=filesystem_metadata',
-                    S / 'metadata-lib.rs', '-o', work / 'libfilesystem_metadata.rlib'])
-                run('policy-build', [rust, *common, *flags, '--crate-type=lib', '--crate-name=filesystem_policy',
-                    '--extern', 'filesystem_metadata=' + str(work / 'libfilesystem_metadata.rlib'),
-                    '-Ldependency=' + str(work), S / 'owner.rs', '-o', work / 'libfilesystem_policy.rlib'])
-                source = (S / 'native-home.rs').read_text()
-                begin = source.index('fn bootstrap<')
-                end = source.index('/// Trusted synchronous importer', begin)
-                bootstrap = source[begin:end]
-                report['bootstrap_body_sha256'] = hashlib.sha256(bootstrap.encode()).hexdigest()
-                wrapper = work / 'bootstrap.rs'
-                wrapper.write_text('pub mod filesystem_bridge { pub use filesystem_policy as policy; }\n'
-                    'use filesystem_policy::{Owner, Error, Handle, Kind, Rights, Session};\n'
-                    '#[path = ' + json.dumps(str(S / 'home-native-result.rs')) + '] pub mod result;\n'
-                    'use result::*;\n' + bootstrap + '\n#[path = '
-                    + json.dumps(str(S / 'home-cold-bootstrap-tests.rs')) + '] mod tests;\n')
-                run('bootstrap-build', [rust, *common, *flags, '--cfg', 'fs_home_cold_reopen',
-                    '--extern', 'filesystem_policy=' + str(work / 'libfilesystem_policy.rlib'),
-                    '-Ldependency=' + str(work), '--test', wrapper, '-o', work / 'bootstrap'])
-                run('bootstrap', [work / 'bootstrap', '--test-threads=1'])
+                check_bootstrap(run, work, rust, common, flags, report, 'fs_home_cold_reopen')
             else:
                 sdk = run('order-host-sdk', ['/usr/bin/xcrun', '--show-sdk-path']).stdout.decode().strip()
-                check_ordering(run, work, tools, common, flags, sdk, report)
+                if args.note_only:
+                    run('builder-selectors', ['/usr/bin/python3', '-B', S / 'home_engine_build_tests.py'])
+                    check_bootstrap(run, work, rust, common, flags, report, 'fs_home_cold_note')
+                check_ordering(run, work, tools, common, flags, sdk, report, note=args.note_only)
         report['status'] = 'pass'
     except BaseException as error:
         report['status'] = 'failed'

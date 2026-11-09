@@ -72,6 +72,11 @@ compile_error!("operator login requires the complete repeat-exec profile");
 #[cfg(native_zsh_operator_login)]
 #[path = "zsh-operator-login.rs"]
 mod operator_login;
+#[cfg(all(native_zsh_operator_note, not(native_zsh_operator_login)))]
+compile_error!("operator note requires the complete operator login profile");
+#[cfg(native_zsh_operator_note)]
+#[path = "zsh-operator-note.rs"]
+mod operator_note;
 #[cfg(all(native_zsh_repeat_exec, not(native_zsh_home_cwd_exec)))]
 compile_error!("repeat exec requires the complete cold home CWD exec profile");
 #[cfg(all(native_zsh_home_cwd_exec, not(native_zsh_home_cwd)))]
@@ -164,6 +169,8 @@ pub struct Files<T: Channel> {
     child_epoch: u8,
     #[cfg(native_zsh_home_redirection)]
     note: home_redirection::Note,
+    #[cfg(native_zsh_operator_note)]
+    scratch: operator_note::Scratch,
     namespace_epoch: u64,
     next: u64,
     pending: bool,
@@ -204,6 +211,8 @@ impl<T: Channel> Files<T> {
             }
             #[cfg(native_zsh_home_redirection)]
             core::ptr::addr_of_mut!((*pointer).note).write(home_redirection::Note::new());
+            #[cfg(native_zsh_operator_note)]
+            core::ptr::addr_of_mut!((*pointer).scratch).write(operator_note::Scratch::new());
             core::ptr::addr_of_mut!((*pointer).namespace_epoch).write(epoch);
             core::ptr::addr_of_mut!((*pointer).next).write(1);
             core::ptr::addr_of_mut!((*pointer).pending).write(false);
@@ -447,6 +456,10 @@ impl<T: Channel> Files<T> {
         if !self.note_fork_ready() {
             return Err(Error::Invalid);
         }
+        #[cfg(native_zsh_operator_note)]
+        if self.scratch_active() {
+            return Err(Error::Invalid);
+        }
         self.descriptions
             .inherit_view(0, 1)
             .map_err(|_| Error::Protocol)?;
@@ -531,10 +544,20 @@ impl<T: Channel> Files<T> {
                 10 => a == 0 && (1..=255).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_cwd)]
                 13 => a == 0 && matches!(b, 1 | 5) && c == 0 && d == 0,
-                #[cfg(native_zsh_home_redirection)]
+                #[cfg(all(native_zsh_home_redirection, not(native_zsh_operator_note)))]
                 11 => fd(a) && (1..=16).contains(&b) && c == 0 && d == 0,
-                #[cfg(native_zsh_home_redirection)]
+                #[cfg(all(native_zsh_home_redirection, not(native_zsh_operator_note)))]
                 12 => a <= 1 && b == home_redirection::ENTRY.len() as u64 && c == 0o600 && d == 0,
+                #[cfg(native_zsh_operator_note)]
+                11 => fd(a) && (1..=operator_note::LIMIT as u64).contains(&b) && c == 0 && d == 0,
+                #[cfg(native_zsh_operator_note)]
+                12 => {
+                    a <= 1
+                        && (b == operator_note::ENTRY.len() as u64
+                            || b == home_redirection::ENTRY.len() as u64)
+                        && c == 0o600
+                        && d == 0
+                }
                 #[cfg(native_zsh_home_write)]
                 11 => fd(a) && (1..=PAYLOAD as u64).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_write)]
@@ -599,9 +622,13 @@ impl<T: Channel> Files<T> {
         if word(raw, 1) == 11 {
             return self.prepare_home_write(binding, raw, workspace);
         }
-        #[cfg(native_zsh_home_redirection)]
+        #[cfg(all(native_zsh_home_redirection, not(native_zsh_operator_note)))]
         if matches!(word(raw, 1), 11 | 12) {
             return self.prepare_note(binding, raw, workspace);
+        }
+        #[cfg(native_zsh_operator_note)]
+        if matches!(word(raw, 1), 11 | 12) {
+            return self.prepare_scratch_mutation(binding, raw, workspace, _remaining);
         }
         #[cfg(native_zsh_operator_login)]
         let denied = self.operation_budget(view, raw, workspace) > _remaining;
@@ -686,6 +713,11 @@ impl<T: Channel> Files<T> {
                 workspace.fill(0);
                 value
             }
+            #[cfg(native_zsh_operator_note)]
+            1 if workspace[..b as usize] == *operator_note::ENTRY => {
+                workspace.fill(0);
+                self.open_scratch_read(view, a != 0).map(|fd| fd as u64)
+            }
             1 => {
                 #[cfg(native_zsh_home_cwd)]
                 if workspace[0] != b'/' {
@@ -700,6 +732,11 @@ impl<T: Channel> Files<T> {
                 value
             }
             2 => {
+                #[cfg(native_zsh_operator_note)]
+                if self.scratch_write_fd(view, a as i32) {
+                    workspace.fill(0);
+                    return (Err(Failure::BadFd), 0);
+                }
                 #[cfg(native_zsh_home_redirection)]
                 if self.note_write_fd(view, a as i32) {
                     workspace.fill(0);
@@ -809,6 +846,10 @@ impl<T: Channel> Files<T> {
                 if opcode == 3 && self.note_write_fd(view, a as i32) {
                     return (Err(Failure::Invalid), 0);
                 }
+                #[cfg(native_zsh_operator_note)]
+                if opcode == 3 && self.scratch_write_fd(view, a as i32) {
+                    return (Err(Failure::Invalid), 0);
+                }
                 match opcode {
                     3 => self.descriptions.seek_in(
                         view,
@@ -828,7 +869,11 @@ impl<T: Channel> Files<T> {
                         let closing_home = self.is_home_file(view, a as i32);
                         #[cfg(native_zsh_home_redirection)]
                         let note_position = self.note_position(view, a as i32);
+                        #[cfg(native_zsh_operator_note)]
+                        let scratch = self.scratch_index(view, a as i32);
                         let result = self.descriptions.close_in(view, a as i32).map(|()| 0);
+                        #[cfg(native_zsh_operator_note)]
+                        self.scratch_closed(scratch);
                         #[cfg(native_zsh_home_redirection)]
                         self.note_closed(note_position, result.is_ok());
                         #[cfg(native_zsh_home_write)]

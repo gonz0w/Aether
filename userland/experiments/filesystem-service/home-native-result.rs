@@ -235,7 +235,7 @@ impl HomeResult {
     }
     /// Complete healthy cold teardown only. ORDERED may still be set while the
     /// producer checks this predicate; no other flag is ignored.
-    #[cfg(fs_home_cold_reopen)]
+    #[cfg(any(fs_home_cold_reopen, fs_home_cold_note))]
     pub fn cold_final_zero(&self) -> bool {
         self.version == 1
             && self.bytes == 320
@@ -256,9 +256,21 @@ impl HomeResult {
             && self.service.bytes_staged == 0
             && self.service.state == 0
     }
+    #[cfg(fs_home_cold_note)]
+    fn cold_note_progress(&self) -> bool {
+        let service = &self.service;
+        match self.mutation_attempts {
+            0 => self.cold_final_zero(),
+            1 => service.state == 2 && service.txg != 0 && service.bytes_staged == 0,
+            2 => {
+                service.state == 2 && service.txg != 0 && (1..=256).contains(&service.bytes_staged)
+            }
+            _ => false,
+        }
+    }
     pub fn requires_ordering(&self) -> bool {
         let active = self.flags & ACTIVATION != 0;
-        #[cfg(fs_home_cold_reopen)]
+        #[cfg(any(fs_home_cold_reopen, fs_home_cold_note))]
         let active = active && !self.cold_final_zero();
         active || self.mkdir.requires_ordering() || self.create.requires_ordering()
     }
@@ -285,11 +297,26 @@ impl HomeResult {
         {
             return false;
         }
-        if cfg!(fs_home_cold_reopen)
-            && (!self.mkdir.is_zero()
-                || !self.create.is_zero()
-                || self.mutation_attempts != 0
-                || self.service.state != 0)
+        if cfg!(any(fs_home_cold_reopen, fs_home_cold_note))
+            && (!self.mkdir.is_zero() || !self.create.is_zero())
+        {
+            return false;
+        }
+        if cfg!(fs_home_cold_reopen) && (self.mutation_attempts != 0 || self.service.state != 0) {
+            return false;
+        }
+        #[cfg(fs_home_cold_note)]
+        if self.mutation_attempts > 2
+            || self.mutation_attempts > self.service.requests
+            || self.service.bytes_staged > 256
+            || self.phase == 0
+                && self.service.ready == 1
+                && self.service.requests != 0
+                && self.service.stop == 0
+                && self.service.error == 0
+                && self.service.reader_close == 0
+                && self.service.writer_close == 0
+                && !self.cold_note_progress()
         {
             return false;
         }
@@ -303,7 +330,7 @@ impl HomeResult {
             return false;
         }
         let active = self.flags & ACTIVATION != 0;
-        let phase_valid = if cfg!(fs_home_cold_reopen) {
+        let phase_valid = if cfg!(any(fs_home_cold_reopen, fs_home_cold_note)) {
             match self.phase {
                 0 => active && self.service.stop != 4,
                 2 | 3 | 5 | 7 | 8 => !active,
@@ -341,7 +368,7 @@ impl HomeResult {
             return false;
         }
         if self.flags & ACTIVATION != 0 {
-            if (!cfg!(fs_home_cold_reopen)
+            if (!cfg!(any(fs_home_cold_reopen, fs_home_cold_note))
                 && (self.mkdir.returned != 1 || self.create.returned != 1))
                 || !matches!(self.phase, 0 | 9)
             {
@@ -591,5 +618,75 @@ mod cold_tests {
             }
             assert!(!bad.valid(), "COLD_FINAL_INVALID:{case}");
         }
+    }
+}
+
+#[cfg(all(test, fs_home_cold_note))]
+mod cold_note_tests {
+    use super::*;
+
+    fn complete(attempts: u64, state: u64, txg: u64, bytes_staged: u64) -> HomeResult {
+        HomeResult {
+            flags: ENTRY
+                | CALLBACK
+                | ACCEPTED
+                | CLOSE_ATTEMPTED
+                | ACTIVATION
+                | if attempts == 0 { 0 } else { ORDERED },
+            mutation_attempts: attempts,
+            service: ServiceResult {
+                ready: 1,
+                requests: 20,
+                txg,
+                bytes_staged,
+                state,
+                ..ServiceResult::default()
+            },
+            ..HomeResult::initial()
+        }
+    }
+
+    #[test]
+    fn final_count_and_completion_must_agree() {
+        for (attempts, state, txg, staged, expected) in [
+            (0, 0, 0, 0, true),
+            (1, 2, 800, 0, true),
+            (2, 2, 801, 1, true),
+            (2, 2, 801, 256, true),
+            (1, 0, 0, 0, false),
+            (1, 2, 800, 1, false),
+            (2, 2, 801, 0, false),
+            (2, 2, 801, 257, false),
+            (2, 2, 0, 256, false),
+            (3, 2, 802, 256, false),
+        ] {
+            let h = complete(attempts, state, txg, staged);
+            assert_eq!(
+                h.valid(),
+                expected,
+                "NOTE_RESULT:{attempts}:{state}:{txg}:{staged}"
+            );
+            if expected {
+                assert_eq!(h.requires_ordering(), attempts != 0);
+            }
+        }
+    }
+
+    #[test]
+    fn dirty_or_uncertain_completion_never_discharges_ordering() {
+        let mut h = complete(1, 3, 0, 0);
+        h.service.stop = 5;
+        h.service.error = -5;
+        assert!(h.valid() && h.requires_ordering());
+        h.flags &= !ORDERED;
+        assert!(!h.valid());
+        let mut h = complete(0, 0, 0, 0);
+        h.service.writer_close = -5;
+        h.service.error = -5;
+        assert!(h.requires_ordering() && !h.valid());
+        h.flags |= ORDERED;
+        assert!(h.valid());
+        h.create.provider = 2;
+        assert!(!h.valid());
     }
 }

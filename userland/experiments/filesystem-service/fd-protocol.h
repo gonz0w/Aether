@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(AEFD_ZSH_OPERATOR_NOTE_BINDINGS) &&                               \
+    !defined(AEFD_ZSH_HOME_CWD_EXEC_BINDINGS)
+#error "operator note requires the closed home CWD execution provider"
+#endif
 #if defined(AEFD_ZSH_HOME_CWD_EXEC_BINDINGS) &&                                \
     !defined(AEFD_ZSH_HOME_CWD_BINDINGS)
 #error "home CWD execution requires the closed home CWD provider"
@@ -213,6 +217,13 @@
 #endif
 #define AEFD_FRAME 64U
 #define AEFD_READ_MAX 4096U
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+#define AEFD_NOTE_CREATE_PATH "/home/note"
+#define AEFD_NOTE_WRITE_MAX 256U
+#else
+#define AEFD_NOTE_CREATE_PATH AEFD_HOME_PROFILE_PATH
+#define AEFD_NOTE_WRITE_MAX 16U
+#endif
 
 static inline int aefd_file_selector(uint64_t value)
 {
@@ -275,6 +286,9 @@ static inline int aefd_name(unsigned char out[256], const unsigned char *name,
                                           AEFD_HOME_PROFILE_PATH
 #ifdef AEFD_ZSH_HOME_CWD_BINDINGS
                                           , ".zprofile"
+#endif
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+                                          , AEFD_NOTE_CREATE_PATH
 #endif
 #endif
     };
