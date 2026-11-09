@@ -9,8 +9,24 @@ struct State {
     corrupt: u8,
     calls: usize,
     closes: Vec<u64>,
+    #[cfg(fs_home_cold_note)]
+    output: Vec<[u8; 8]>,
+    #[cfg(fs_home_cold_note)]
+    short_output: bool,
 }
 std::thread_local! {static STATE:RefCell<State>=RefCell::new(State::default());}
+#[cfg(fs_home_cold_note)]
+pub fn note_output(record: &[u8; 8]) -> i64 {
+    STATE.with(|s| {
+        let mut state = s.borrow_mut();
+        state.output.push(*record);
+        if state.short_output {
+            7
+        } else {
+            8
+        }
+    })
+}
 pub unsafe fn getauxval(_tag: usize) -> usize {
     0
 }
@@ -48,22 +64,24 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     state.home.error_kind = 0;
     state.home.flags = 63;
     state.home.mutation_attempts = STATE.with(|s| {
-        s.borrow().attempts.unwrap_or(if cfg!(fs_home_cold_reopen) {
-            0
-        } else if cfg!(fs_home_terminfo_nine) {
-            9
-        } else if cfg!(fs_home_terminfo_seven) {
-            7
-        } else if cfg!(fs_home_terminfo_six) {
-            6
-        } else if cfg!(fs_home_probe_three) {
-            3
-        } else {
-            2
-        })
+        s.borrow()
+            .attempts
+            .unwrap_or(if cfg!(any(fs_home_cold_reopen, fs_home_cold_note)) {
+                0
+            } else if cfg!(fs_home_terminfo_nine) {
+                9
+            } else if cfg!(fs_home_terminfo_seven) {
+                7
+            } else if cfg!(fs_home_terminfo_six) {
+                6
+            } else if cfg!(fs_home_probe_three) {
+                3
+            } else {
+                2
+            })
     });
     state.phases = 8191;
-    #[cfg(not(fs_home_cold_reopen))]
+    #[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note)))]
     {
         state.home.mkdir = BootstrapReceipt {
             provider: 1,
@@ -103,6 +121,18 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
     {
         state.home.flags &= !ORDERED;
     }
+    #[cfg(fs_home_cold_note)]
+    match state.home.mutation_attempts {
+        0 => state.home.flags &= !ORDERED,
+        1 | 2 => {
+            state.home.service.state = 2;
+            state.home.service.txg = 800;
+            if state.home.mutation_attempts == 2 {
+                state.home.service.bytes_staged = 256;
+            }
+        }
+        _ => {}
+    }
     match STATE.with(|s| s.borrow().corrupt) {
         0 => {}
         1 => state.home.create.returned_error = 5,
@@ -124,7 +154,7 @@ pub unsafe fn aether_fs_home_engine_run(_grant: u64, state: *mut HomeLaunchState
         }
         12 => state.home.service.bytes_staged = 1,
         13 => {
-            if cfg!(fs_home_cold_reopen) {
+            if cfg!(any(fs_home_cold_reopen, fs_home_cold_note)) {
                 state.home.flags |= ORDERED;
             } else {
                 state.home.flags &= !ORDERED;
@@ -228,7 +258,7 @@ fn launch_requires_complete_valid_evidence_and_only_closes_proven_handback() {
         state.phases = 0;
         // Cold final-zero success intentionally has no ORDERED bit. Mode5
         // clears that bit, so it is a negative only for the warm profiles.
-        let expected = if mode == 5 && cfg!(fs_home_cold_reopen) {
+        let expected = if mode == 5 && cfg!(any(fs_home_cold_reopen, fs_home_cold_note)) {
             0
         } else {
             code
@@ -259,6 +289,7 @@ fn malformed_launch_prefix_cannot_enter_callback() {
 
 #[cfg(not(any(
     fs_home_cold_reopen,
+    fs_home_cold_note,
     fs_home_terminfo_six,
     fs_home_terminfo_seven,
     fs_home_terminfo_nine
@@ -461,5 +492,44 @@ fn terminfo_nine_requires_exact_count_and_complete_clean_result() {
         let mut selected = state();
         selected.phases = 0;
         assert_eq!(run(&mut selected), expected, "HOME_TERMINFO_NINE");
+    }
+}
+
+#[cfg(fs_home_cold_note)]
+#[test]
+fn cold_note_reports_exact_completed_count_only_after_valid_teardown() {
+    for attempts in [0, 1, 2, 3] {
+        for corrupt in [0, 6, 11, 14, 15] {
+            for short_output in [false, true] {
+                STATE.with(|s| {
+                    *s.borrow_mut() = State {
+                        mode: 4,
+                        attempts: Some(attempts),
+                        corrupt,
+                        short_output,
+                        ..State::default()
+                    }
+                });
+                let mut selected = state();
+                selected.phases = 0;
+                let emit = attempts <= 2 && corrupt == 0;
+                assert_eq!(
+                    run(&mut selected),
+                    if emit && !short_output { 0 } else { 5 },
+                    "COLD_NOTE_LAUNCH:{attempts}:{corrupt}:{short_output}"
+                );
+                STATE.with(|s| {
+                    let s = s.borrow();
+                    if emit {
+                        assert_eq!(
+                            s.output.as_slice(),
+                            &[[170 + attempts as u8, 0, 0, 0, 0, 0, 0, 0]]
+                        );
+                    } else {
+                        assert!(s.output.is_empty());
+                    }
+                });
+            }
+        }
     }
 }

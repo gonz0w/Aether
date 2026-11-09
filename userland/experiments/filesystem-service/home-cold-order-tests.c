@@ -167,6 +167,29 @@ int aether_fs_home_launch_serve(void *spa,
     out->home = healthy();
 #ifdef AETHER_FS_HOME_COLD_REOPEN
     corrupt(&out->home, cold_case);
+#elif defined(AETHER_FS_HOME_COLD_NOTE)
+    if (cold_case) {
+        out->home.flags |= AETHER_FS_HOME_ORDER_REQUIRED;
+        out->home.mutation_attempts = cold_case == 1 ? 1 : 2;
+        out->home.service.state = 2;
+        out->home.service.txg = 800;
+        if (cold_case != 1)
+            out->home.service.bytes_staged = 256;
+    }
+    if (cold_case == 4)
+        out->home.service.bytes_staged = 257;
+    if (cold_case == 5) {
+        out->home.service.state = 3;
+        out->home.service.txg = 0;
+        out->home.service.bytes_staged = 0;
+        out->home.service.stop = 5;
+        out->home.service.error = -5;
+        return 5;
+    }
+    if (cold_case == 6)
+        out->home.flags &= ~UINT64_C(2);
+    if (cold_case == 7)
+        out->home.service.bytes_staged = 1;
 #else
     out->home.flags |= 2;
     out->home.mutation_attempts = 7;
@@ -198,6 +221,14 @@ int main(int argc, char **argv)
             assert(needed);
         }
     }
+#elif defined(AETHER_FS_HOME_COLD_NOTE)
+    /* Positive outcomes each require the actual selected counter/order predicate.
+     * A mismatched completed count and an uncertain zero-TXG result fail it. */
+    if (cold_case) {
+        atomic_store(&pool_epoch, cold_case == 1 ? 1 : 2);
+        atomic_store(&pool_completed, cold_case == 3 || cold_case == 5
+                                          ? 1 : atomic_load(&pool_epoch));
+    }
 #else
     /* A real writer still must satisfy the positive ordered witness. */
     if (cold_case == 0) {
@@ -212,6 +243,13 @@ int main(int argc, char **argv)
     int clean = healthy_case || cold_case == 27;
     assert(result == (healthy_case ? 0 : 5));
     assert(ordered == (unsigned)!clean);
+#elif defined(AETHER_FS_HOME_COLD_NOTE)
+    int clean = cold_case != 3 && cold_case != 5;
+    int expected = cold_case == 3 || cold_case == 5 ? 5
+                   : cold_case == 4 || cold_case == 6 ? EPROTO
+                   : 0;
+    assert(result == expected);
+    assert(ordered == (unsigned)(cold_case != 0));
 #else
     int clean = cold_case == 0;
     assert(result == (clean ? 0 : 5));

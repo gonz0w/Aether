@@ -6,6 +6,7 @@ use core::ffi::c_void;
     fs_home_terminfo_nine,
     any(
         fs_home_cold_reopen,
+        fs_home_cold_note,
         fs_home_probe_three,
         fs_home_terminfo_six,
         fs_home_terminfo_seven,
@@ -14,7 +15,7 @@ use core::ffi::c_void;
 ))]
 compile_error!("fs_home_terminfo_nine requires its closed warm exact-nine selection");
 #[cfg(all(
-    fs_home_terminfo_nine,
+    any(fs_home_terminfo_nine, fs_home_cold_note),
     not(all(
         fs_namespace,
         fs_lifetimes,
@@ -33,9 +34,11 @@ compile_error!("fs_home_terminfo_nine requires its closed warm exact-nine select
         fs_home_activation
     ))
 ))]
-compile_error!("fs_home_terminfo_nine requires the complete HOME feature closure");
+compile_error!(
+    "fs_home_terminfo_nine and fs_home_cold_note require the complete HOME feature closure"
+);
 #[cfg(all(
-    fs_home_cold_reopen,
+    any(fs_home_cold_reopen, fs_home_cold_note),
     any(
         fs_home_probe_three,
         fs_home_terminfo_six,
@@ -44,6 +47,8 @@ compile_error!("fs_home_terminfo_nine requires the complete HOME feature closure
     )
 ))]
 compile_error!("fs_home_cold_reopen requires its closed non-provisioning selection");
+#[cfg(all(fs_home_cold_reopen, fs_home_cold_note))]
+compile_error!("fs_home_cold_note and fs_home_cold_reopen are separate selections");
 #[cfg(all(
     fs_home_terminfo_seven,
     any(fs_home_terminfo_six, fs_home_probe_three, fs_af09_drain)
@@ -118,6 +123,21 @@ unsafe fn close(endpoint: u64) -> i64 {
 }
 #[cfg(test)]
 use tests::close;
+#[cfg(all(fs_home_cold_note, not(test)))]
+fn note_output(record: &[u8; 8]) -> i64 {
+    let status: i64;
+    // SAFETY: existing stdout copies this initialized record synchronously.
+    unsafe {
+        core::arch::asm!("int 0x81", inlateout("rax") 0x10001u64 => status,
+            in("rdi") 1u64, inlateout("rsi") record.as_ptr()=>_,
+            inlateout("rdx") record.len()=>_, inlateout("r10") 0u64=>_,
+            inlateout("r8") 0u64=>_, inlateout("r9") 0u64=>_,
+            lateout("rcx") _, lateout("r11") _);
+    }
+    status
+}
+#[cfg(all(fs_home_cold_note, test))]
+use tests::note_output;
 fn provisioned(reader: u64, writer: u64) -> bool {
     reader & 255 == 1
         && writer & 255 == 2
@@ -180,7 +200,7 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         | ACCEPTED
         | CLOSE_ATTEMPTED
         | ACTIVATION
-        | if cfg!(fs_home_cold_reopen) {
+        | if cfg!(fs_home_cold_reopen) || cfg!(fs_home_cold_note) && home.mutation_attempts == 0 {
             0
         } else {
             ORDERED
@@ -207,6 +227,15 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         || !progress_valid
     {
         return 5;
+    }
+    #[cfg(fs_home_cold_note)]
+    {
+        // Counts 0–2 are already validated. Emit exactly one observation after
+        // verified export and teardown; a missing observation fails this exit.
+        let record = [170 + home.mutation_attempts as u8, 0, 0, 0, 0, 0, 0, 0];
+        if note_output(&record) != 8 {
+            return 5;
+        }
     }
     0
 }

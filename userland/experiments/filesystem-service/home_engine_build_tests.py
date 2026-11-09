@@ -129,6 +129,26 @@ class NativeBuildContract(unittest.TestCase):
                 process.clean_env.assert_not_called()
                 process.run.assert_not_called()
 
+    def test_cold_note_is_closed_and_rejects_before_effects(self):
+        expected = (*PROFILE[:-1], 'fs_home_cold_note')
+        self.assertEqual(builder['COLD_NOTE_PROFILE'], expected)
+        self.assertEqual(builder['validate_profile'](expected, cold_note=True), expected)
+        with self.assertRaisesRegex(ValueError, 'AF09 profile'):
+            builder['validate_profile'](builder['COLD_REOPEN_PROFILE'], cold_note=True)
+        for extra in (dict(cold_note=1), *(
+            dict(cold_note=True, **flags) for flags in (
+                dict(cold_reopen=True), dict(terminfo_six=True), dict(terminfo_seven=True),
+                dict(terminfo_nine=True), dict(drain_case='stream'),
+            )
+        )):
+            with self.subTest(extra=extra), tempfile.TemporaryDirectory() as directory:
+                process = mock.Mock()
+                with self.assertRaisesRegex(ValueError, 'closed'):
+                    builder['build'](Path(directory), process, {}, 0, {}, **extra)
+                self.assertEqual(list(Path(directory).iterdir()), [])
+                process.clean_env.assert_not_called()
+                process.run.assert_not_called()
+
     def test_exact_profile_and_object_exports(self):
         self.assertEqual(builder['validate_profile'](PROFILE), PROFILE)
         builder['validate_symbols'](SERVICE, LAUNCH)

@@ -33,6 +33,8 @@ impl<T: Channel> Files<T> {
         }
         let completion = self.note_completion_credit();
         let cost = match op {
+            #[cfg(native_zsh_operator_note)]
+            1 if workspace[..b] == *operator_note::ENTRY => 2,
             1 if workspace[..b] == *home_redirection::ENTRY || workspace[..b] == *b".zprofile" => {
                 // Lookup, new description's close,16 one-byte reads and EOF.
                 19

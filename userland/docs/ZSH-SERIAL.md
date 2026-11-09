@@ -243,3 +243,31 @@ prompt cycles and normal export/MODE0/five reclaims/halt and known host cleanup.
 Use `[[ ! -o beep ]]` to query the saved setting; the optional options associative
 parameter module is excluded from this build. The first diagnostic failure and
 its discarded media remain recorded in issue168. Broader R1 remains open.
+
+## Save a short note
+
+The scoped [issue170 composition](proposals/ZSH-OPERATOR-NOTE.md) uses
+`zsh-witness.py --operator-note`. On an approved disposable lineage, use
+`zsh_run.py --operator-note-manual prepare` with the image review and exact
+stopped seed identities. Use the matching `run` command and attach with the
+printed Screen command. Open an unused `/home/note` exclusively and write
+1–256 bytes with one builtin.
+
+```zsh
+setopt noclobber
+text='a note for the next boot'
+print -rn -- "$text" > /home/note
+value=$(</home/note)
+print -r -- "$value"
+```
+
+Exit with `exit 0` to export the pool. To cold boot the saved note, use
+`--operator-note-manual-readback` with the same reviewed image and the exact
+successful stopped save identities. Each edge has its own single-use claim.
+Run `value=$(</home/note)` and `print -r -- "$value"` at the new prompt.
+Existing notes are read-only. Repeating the creation fails and preserves their
+bytes. Zsh command substitution strips trailing
+newlines from its returned value.
+
+The managed `--operator-note-save` and `--operator-note-readback` trial passed
+with fixed 256-byte input. The manual selectors have focused host coverage.

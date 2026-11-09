@@ -5,6 +5,9 @@
 #include "filesystem-engine.h"
 #include <stddef.h>
 #include <stdint.h>
+#if defined(AETHER_FS_HOME_COLD_REOPEN) && defined(AETHER_FS_HOME_COLD_NOTE)
+#error "Cold reopen and cold note are separate selections"
+#endif
 
 struct aether_fs_bootstrap_receipt {
     uint64_t provider, returned, error_kind;
@@ -128,7 +131,7 @@ aether_fs_home_receipt_order(const struct aether_fs_bootstrap_receipt *r,
         *protocol = 1;
     return !valid || (r->provider != 0 && !unassigned);
 }
-#ifdef AETHER_FS_HOME_COLD_REOPEN
+#if defined(AETHER_FS_HOME_COLD_REOPEN) || defined(AETHER_FS_HOME_COLD_NOTE)
 /* Final success only; this does not make an incomplete/unknown record clean. */
 static inline int
 aether_fs_home_cold_final_zero(const struct aether_fs_home_result *h)
@@ -174,18 +177,34 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 h->flags == 48 && !close_attempted &&
                 !h->service.reader_close && !h->service.writer_close;
     }
-#ifndef AETHER_FS_HOME_COLD_REOPEN
+#if !defined(AETHER_FS_HOME_COLD_REOPEN) && !defined(AETHER_FS_HOME_COLD_NOTE)
     if (h->create.returned || active)
         valid = valid && h->mkdir.returned == 1;
 #else
     /* Receipt validation above checks every zero carrier field. */
     valid = valid && !h->mkdir.provider && !h->mkdir.returned &&
-            !h->create.provider && !h->create.returned &&
-            !h->mutation_attempts && !h->service.state;
+            !h->create.provider && !h->create.returned;
+#ifdef AETHER_FS_HOME_COLD_REOPEN
+    valid = valid && !h->mutation_attempts && !h->service.state;
+#else
+    valid = valid && h->mutation_attempts <= 2 &&
+            h->mutation_attempts <= h->service.requests &&
+            h->service.bytes_staged <= 256;
+    if (!h->phase && h->service.ready == 1 && h->service.requests &&
+        !h->service.stop && !h->service.error && !h->service.reader_close &&
+        !h->service.writer_close) {
+        if (!h->mutation_attempts)
+            valid = valid && aether_fs_home_cold_final_zero(h);
+        else
+            valid = valid && h->service.state == 2 && h->service.txg &&
+                    (h->mutation_attempts == 1 ? !h->service.bytes_staged
+                                              : h->service.bytes_staged != 0);
+    }
+#endif
 #endif
     if (active)
         valid = valid && accepted &&
-#ifndef AETHER_FS_HOME_COLD_REOPEN
+#if !defined(AETHER_FS_HOME_COLD_REOPEN) && !defined(AETHER_FS_HOME_COLD_NOTE)
                 h->create.returned == 1 &&
 #endif
                 (h->phase == 0 || h->phase == 9) && h->service.ready <= 1 &&
@@ -209,7 +228,7 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 (h->service.stop == 2 || h->service.stop == 5) &&
                 h->service.error && !h->service.txg && !h->service.bytes_staged;
     }
-#ifdef AETHER_FS_HOME_COLD_REOPEN
+#if defined(AETHER_FS_HOME_COLD_REOPEN) || defined(AETHER_FS_HOME_COLD_NOTE)
     if (accepted) {
         switch (h->phase) {
         case 0:
@@ -268,7 +287,7 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 !s->requests && !s->stop && !s->error && !s->txg &&
                 !s->bytes_staged && !s->state;
     }
-#ifdef AETHER_FS_HOME_COLD_REOPEN
+#if defined(AETHER_FS_HOME_COLD_REOPEN) || defined(AETHER_FS_HOME_COLD_NOTE)
     order |= active && !aether_fs_home_cold_final_zero(h);
 #else
     order |= active;

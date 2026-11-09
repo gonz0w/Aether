@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 //! One parent-owned note, bound to its actual sole-table description and aliases.
 use super::*;
-#[cfg(not(native_zsh_operator_login))]
+#[cfg(any(not(native_zsh_operator_login), native_zsh_operator_note))]
 use filesystem_client::{MutationFailure, MutationOutcome, MutationProgress};
 pub const ENTRY: &[u8] = if cfg!(native_zsh_login_startup) {
     b"/home/.zprofile"
@@ -67,7 +67,7 @@ fn cause(error: Failure<Error>) -> (u64, i64) {
         },
     }
 }
-#[cfg(not(native_zsh_operator_login))]
+#[cfg(any(not(native_zsh_operator_login), native_zsh_operator_note))]
 fn progress(failure: MutationFailure) -> (u64, u64, u64) {
     let (tag, txg, staged) = match failure.outcome {
         MutationOutcome::NotSent => (0, 0, 0),
@@ -219,6 +219,9 @@ impl<T: Channel> Files<T> {
             } else if self.descriptions.descriptions[self.note.description as usize].is_none() {
                 self.note.phase = match (self.note.phase, position) {
                     (4, 16) => 5,
+                    #[cfg(native_zsh_operator_note)]
+                    (6, 16) if self.note.eof_observed => 8,
+                    #[cfg(not(native_zsh_operator_note))]
                     (6, 16) => 8,
                     _ => 1,
                 };
@@ -350,6 +353,7 @@ impl<T: Channel> Files<T> {
         }
         result
     }
+    #[cfg(not(native_zsh_operator_note))]
     #[inline(never)]
     pub(super) fn prepare_note<'a>(
         &'a mut self,
@@ -357,17 +361,13 @@ impl<T: Channel> Files<T> {
         raw: &[u8; FRAME],
         workspace: &'a mut [u8; PAYLOAD],
     ) -> Result<Reply<'a, T>, Error> {
+        #[cfg(not(native_zsh_operator_login))]
         let view = self.view(binding).ok_or(Error::Protocol)?;
         let create = word(raw, 1) == 12;
-        let mut receipt = [0u64; 8];
         #[cfg(not(native_zsh_operator_login))]
-        let mut value = 0;
+        let (mut value, mut failure, mut receipt) = (0, Some(Failure::BadFd), [0; 8]);
         #[cfg(native_zsh_operator_login)]
-        let value = 0;
-        #[cfg(not(native_zsh_operator_login))]
-        let mut failure = Some(Failure::BadFd);
-        #[cfg(native_zsh_operator_login)]
-        let failure = Some(Failure::BadFd);
+        let (value, failure, receipt) = (0, Some(Failure::BadFd), [0; 8]);
         if create {
             #[cfg(not(native_zsh_home_redirection_reader))]
             if view == 0 && self.note.phase == 0 && workspace[..ENTRY.len()] == *ENTRY {
@@ -504,6 +504,127 @@ impl<T: Channel> Files<T> {
                 }
             }
         }
+        self.finish_note_reply(binding, raw, workspace, value, failure, receipt)
+    }
+
+    #[cfg(native_zsh_operator_note)]
+    #[inline(never)]
+    pub(super) fn prepare_scratch_mutation<'a>(
+        &'a mut self,
+        binding: Binding,
+        raw: &[u8; FRAME],
+        workspace: &'a mut [u8; PAYLOAD],
+        remaining: u32,
+    ) -> Result<Reply<'a, T>, Error> {
+        let create = word(raw, 1) == 12;
+        let fd = word(raw, 4) as i32;
+        let length = word(raw, 5) as usize;
+        let mut receipt = [0; 8];
+        let mut value = 0;
+        let mut failure = Some(Failure::BadFd);
+        let allowed = binding == self.binding
+            && if create {
+                workspace[..length] == *operator_note::ENTRY
+            } else {
+                self.scratch_write_fd(0, fd)
+            };
+        if allowed {
+            // Fund existing-object lookup and close independently. Absence
+            // also needs CREATE and open lookup before a later consuming close.
+            let reserve =
+                self.shutdown_budget() + self.note_completion_credit() + self.file_exec_credit();
+            if remaining < reserve + if create { 2 } else { 1 } {
+                failure = Some(Failure::Source(Error::Full));
+            } else {
+                let (result, txg, mutation) = if create {
+                    self.scratch_create(word(raw, 4) != 0, remaining >= reserve + 4)
+                } else {
+                    self.scratch_write(fd, &workspace[..length])
+                };
+                failure = result.err();
+                if mutation.is_some() {
+                    self.mutation_failure = mutation;
+                }
+                match result {
+                    Ok(done) => {
+                        value = done;
+                        receipt = if create {
+                            [6, txg, 0, 0, 0, 0, 0, 0]
+                        } else {
+                            [14, 0, txg, done, 0, 0, 0, 0]
+                        };
+                    }
+                    Err(error) if create && txg != 0 => {
+                        let close = self.abort();
+                        let (kind, val) = cause(error);
+                        receipt = [
+                            22,
+                            txg,
+                            0,
+                            0,
+                            close[0] as u64,
+                            close[1] as u64,
+                            kind,
+                            val as u64,
+                        ];
+                    }
+                    Err(Failure::Source(error)) => {
+                        if let Some(mutation) = mutation {
+                            let (flags, txg, staged) = progress(mutation);
+                            let (kind, val) = cause(Failure::Source(error));
+                            let close = mutation.cleanup.unwrap_or([0; 2]);
+                            receipt = if create {
+                                [
+                                    flags,
+                                    txg,
+                                    kind,
+                                    val as u64,
+                                    close[0] as u64,
+                                    close[1] as u64,
+                                    0,
+                                    0,
+                                ]
+                            } else {
+                                [
+                                    if flags == 0 { 0 } else { flags | 8 },
+                                    0,
+                                    txg,
+                                    staged,
+                                    close[0] as u64,
+                                    close[1] as u64,
+                                    kind,
+                                    val as u64,
+                                ]
+                            };
+                            if mutation.cleanup.is_some() {
+                                self.abort();
+                            }
+                        } else if self.cleanup().is_some() {
+                            // Lookup/close loss before CREATE conveys no
+                            // mutation receipt, and cannot become EEXIST.
+                            workspace.fill(0);
+                            self.abort();
+                            return Err(Error::Closed);
+                        }
+                    }
+                    Err(_) => (),
+                }
+            }
+        }
+        self.finish_note_reply(binding, raw, workspace, value, failure, receipt)
+    }
+
+    fn finish_note_reply<'a>(
+        &'a mut self,
+        binding: Binding,
+        raw: &[u8; FRAME],
+        workspace: &'a mut [u8; PAYLOAD],
+        value: u64,
+        failure: Option<Failure<Error>>,
+        mut receipt: [u64; 8],
+    ) -> Result<Reply<'a, T>, Error> {
+        let view = self.view(binding).ok_or(Error::Protocol)?;
+        let create = word(raw, 1) == 12;
         if receipt[0] == 0 {
             let (kind, val) = cause(failure.unwrap_or(Failure::Invalid));
             if create {

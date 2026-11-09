@@ -100,7 +100,7 @@ static inline int aefd_write_decode(const unsigned char header[64],
         .error_kind = aefd_word(body, 6),
         .error_value = aefd_write_signed(aefd_word(body, 7))};
 #ifdef AEFD_ZSH_HOME_REDIRECTION_BINDINGS
-    if (requested > 16 || r.offset)
+    if (requested > AEFD_NOTE_WRITE_MAX || r.offset)
         return 0;
 #endif
     uint64_t tag = r.flags & 7U;
@@ -120,8 +120,16 @@ static inline int aefd_write_decode(const unsigned char header[64],
             r.status != status || r.count)
             return 0;
         if (tag == 0) {
-            if (r.txg || r.staged || (r.error_kind >= 10 && r.error_kind <= 12))
-                return 0;
+#ifdef AEFD_ZSH_OPERATOR_NOTE_BINDINGS
+            /* Remote preflight errno has no mutation or cleanup fields. */
+            if (r.error_kind == 12) {
+                if (r.flags || r.txg || r.staged || r.error_value < -4095)
+                    return 0;
+            } else
+#endif
+                if (r.txg || r.staged ||
+                    (r.error_kind >= 10 && r.error_kind <= 12))
+                    return 0;
         } else {
             if (!has_offset || !has_cleanup ||
                 r.offset > (uint64_t)INT64_MAX - requested)

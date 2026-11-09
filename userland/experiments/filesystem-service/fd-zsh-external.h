@@ -6,8 +6,9 @@
 #endif
 #include <sys/types.h>
 #include <sys/uio.h>
-/* Private current-Zsh entry/scoped stdio adapter. At most two readable iovecs;
- * returns libc -1/errno or at most16 accepted source bytes. */
+/* Private current-Zsh entry/scoped stdio adapter. At most two readable iovecs.
+ * Terminal and legacy profiles accept a prefix of up to 16 bytes. The closed
+ * operator-note FILE route admits at most 256 bytes in one exact write. */
 long aether_zsh_vector_write(int, const struct iovec *, int);
 /* Scoped pinned-musl consumers, not a public readv implementation. Read one
  * prefix of the first nonempty iovec, at most4096 bytes; validate both spans

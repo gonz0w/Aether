@@ -6,6 +6,19 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Issue170 persistent operator note — owner decision, 2026-11-09
+
+Cam approved the [reviewed proposal](https://github.com/gonz0w/Aether/issues/170#issuecomment-6720480196)
+in the [owning issue](https://github.com/gonz0w/Aether/issues/170#issuecomment-6744762467).
+Select the closed parent-only exclusive note profile with an 88 KiB Owner RX
+ceiling inside the existing backing. The approved cohort is one unchanged
+issue160 seed, one save boot, and one cold readback. Each uses the existing
+330-second workload, 360-second total, 9-second stop and 60-second first
+prompt limits. Run sequentially with no network or retry. Bind each next boot
+to the successful export and known stop of its predecessor with a separate
+single-use media claim. Fresh affected fits, separate reviews, successful trial
+and required CI qualify scoped delivery while issue141 stays open.
+
 ## Issue168 home operator login — owner decision,2026-11-07
 
 Cam directly approved “Approve scoped #168 design and gates” for the reviewed

@@ -60,7 +60,10 @@ fn node(id: u64, size: usize) -> p::Node {
         id,
         1,
         size as u64,
-        if matches!(id, 5 | 6) || (cfg!(native_zsh_home_redirection) && id == 7) {
+        if matches!(id, 5 | 6)
+            || (cfg!(native_zsh_home_redirection) && id == 7)
+            || (cfg!(native_zsh_operator_note) && id == 8)
+        {
             p::Kind::File
         } else {
             p::Kind::Directory
@@ -97,6 +100,8 @@ impl p::Backend for Storage {
             (2, b"probe") => 6,
             #[cfg(native_zsh_home_redirection)]
             (2, name) if name == NOTE_NAME && self.note.is_some() => 7,
+            #[cfg(native_zsh_operator_note)]
+            (2, b"note") => 8,
             (3, b"v") if self.made[1] => 4,
             (4, b"vt100") if self.made[2] => 5,
             _ => return Err(p::Error::Backend(2)),
@@ -2738,4 +2743,54 @@ fn operator_login_fixed_control_shortage_refuses_before_channel_or_copy() {
             .iter()
             .any(|v| matches!(v.0, 0x24000 | 0x23006))
     );
+}
+
+#[cfg(native_zsh_operator_note)]
+#[test]
+fn operator_note_fork_refuses_with_a_live_description_and_recovers_after_close() {
+    let mut h = Fixture::new();
+    let profile = h
+        .note_request(1, 1, [0, NOTE_PATH.len() as u64, 0, 0], NOTE_PATH)
+        .unwrap();
+    let profile_fd = u64::from_le_bytes(profile[32..40].try_into().unwrap());
+    h.note_request(2, 2, [profile_fd, 16, 0, 0], b"").unwrap();
+    h.note_request(2, 3, [profile_fd, 1, 0, 0], b"").unwrap();
+    h.note_request(5, 4, [profile_fd, 0, 0, 0], b"").unwrap();
+    let path = b"/home/note";
+    let r = h
+        .note_request(1, 5, [0, path.len() as u64, 0, 0], path)
+        .unwrap();
+    assert_eq!(i64::from_le_bytes(r[8..16].try_into().unwrap()), 0);
+    let fd = u64::from_le_bytes(r[32..40].try_into().unwrap());
+    let mut raw = h.snapshot(false);
+    raw[124..128].copy_from_slice(&[3, fd as u8, 0, 0]);
+    let mut work = [0; 4096];
+    zsh_process_frames::encode_fork(
+        &raw,
+        h.runtime.zsh_expected(false).unwrap(),
+        1,
+        (&mut work[..368]).try_into().unwrap(),
+    )
+    .unwrap();
+    let before = h.runtime.filesystem_requests;
+    let calls = h.host.0.borrow().calls.len();
+    h.clear();
+    h.runtime.zsh_fork(&mut work).unwrap();
+    assert_eq!(
+        zsh_process_frames::decode_receipt(&h.output(PW), b"AEZFR001", 1),
+        Ok(-16)
+    );
+    assert_eq!(h.runtime.filesystem_requests, before);
+    assert_eq!(h.runtime.process.epoch, 0);
+    assert!(
+        !h.host.0.borrow().calls[calls..]
+            .iter()
+            .any(|v| matches!(v.0, 0x24000 | 0x23006))
+    );
+    h.note_request(5, 6, [fd, 0, 0, 0], b"").unwrap();
+    let child = h.repeat_fork();
+    h.repeat_exec(&child).unwrap();
+    h.repeat_collect();
+    h.prepare_healthy_oracle();
+    h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
 }

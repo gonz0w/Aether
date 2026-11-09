@@ -42,6 +42,10 @@ pub fn build(b: *std.Build) void {
     options.addOption(bool, "native_zsh_operator", native_zsh_operator);
     const native_zsh_home_redirection = b.option(bool, "native-zsh-home-redirection", "Private parent home redirection with the selected 80 KiB Rust Owner") orelse false;
     options.addOption(bool, "native_zsh_home_redirection", native_zsh_home_redirection);
+    const native_zsh_operator_note = b.option(bool, "native-zsh-operator-note", "Private persistent operator note with the selected 88 KiB Rust Owner") orelse false;
+    if (native_zsh_operator_note and !native_zsh_home_redirection)
+        @panic("Zsh operator note requires the selected home-redirection operator closure");
+    options.addOption(bool, "native_zsh_operator_note", native_zsh_operator_note);
     const native_zsh_terminfo = b.option(bool, "native-zsh-terminfo", "Private large-Zsh MODE/SIGINT composition with retained Owner namespace custody") orelse false;
     options.addOption(bool, "native_zsh_terminfo", native_zsh_terminfo);
     const block_test = b.option([]const u8, "block-test", "Disposable disk bring-up: write or verify");
