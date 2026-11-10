@@ -271,6 +271,7 @@ struct Host {
     ready: bool,
     terminal: Option<Status>,
     gone: bool,
+    fail_child_reclaim: bool,
     parent_terminal: bool,
     parent_gone: bool,
     stop_result: Status,
@@ -462,6 +463,9 @@ impl Control for Mock {
                 }
             }
             0x20002 if cap == h.child => {
+                if h.fail_child_reclaim {
+                    return (-5, 0, 0);
+                }
                 h.gone = true;
                 (0, 0, 0)
             }
@@ -621,6 +625,7 @@ impl Fixture {
             ready: false,
             terminal: None,
             gone: false,
+            fail_child_reclaim: false,
             parent_terminal: false,
             parent_gone: false,
             stop_result: (0, 0, 0),
@@ -1216,6 +1221,53 @@ fn failed_wait_delivery_keeps_reserved_status_child_lease_and_no_reclaim() {
     assert_ne!(h.runtime.process.lease, ReadLease::Parent);
     assert_eq!(h.runtime.process.children.wait(-1, true), Err(-16));
 }
+#[cfg(native_zsh_file_exec)]
+#[test]
+fn delivered_exit23_does_not_prove_child_reclaim() {
+    let mut h = Fixture::new();
+    #[cfg(native_zsh_home_cwd_exec)]
+    h.note_source_for_fork();
+    let raw = h.fork(false);
+    let mut work = h.exec_request(&raw);
+    h.runtime.zsh_exec(&mut work).unwrap();
+    h.host.0.borrow_mut().ready = true;
+    h.runtime.zsh_terminal().unwrap();
+    assert!(h.runtime.process.exec_ready);
+    let child = h.runtime.process.child().unwrap();
+    let binding = h.runtime.process.binding.unwrap();
+    h.host.0.borrow_mut().terminal = Some((24, 1, 1));
+    h.runtime.zsh_terminal().unwrap();
+    h.clear();
+    h.host.0.borrow_mut().fail_child_reclaim = true;
+
+    let wait = frame(68, u32::MAX, 0, 0);
+    assert_eq!(h.runtime.zsh_stream(false, &wait), Err(-5));
+    let reply = h.output(PW);
+    assert_eq!(reply.len(), 32);
+    assert_eq!((result(&reply), result(&reply[4..])), (child.pid, 23 << 8));
+    assert_eq!(&reply[8..], &[0; 24]);
+    assert_eq!(h.runtime.process.wait_status, Some(23 << 8));
+    assert!(!h.runtime.process.reclaimed);
+    assert_eq!(h.runtime.process.binding, Some(binding));
+    assert_eq!(h.runtime.process.lease, ReadLease::Child(child));
+    assert!(!h.host.0.borrow().gone);
+    assert!(!h.runtime.process.children.reclaimed_exact(child));
+
+    h.clear();
+    assert!(h.runtime.zsh_stream(false, &wait).unwrap());
+    assert_eq!(result(&h.output(PW)), -10);
+    assert_eq!(
+        h.host
+            .0
+            .borrow()
+            .calls
+            .iter()
+            .filter(|call| **call == (0x20002, CHILD, 0))
+            .count(),
+        1
+    );
+}
+
 #[test]
 fn stale_malformed_copy_unknown_and_reserve_exhaustion_have_no_fabricated_commit() {
     for mode in 0..4 {

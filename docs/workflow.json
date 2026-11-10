@@ -2805,6 +2805,16 @@
       "invariants": "Closed parent-only exclusive note custody with one 1\u2013256 byte write; real close, export and per-edge media claims; selected 88 KiB Owner RX inside existing backing.",
       "oracle": "Seed export, saved and compared 256 bytes, one helper23 and two mutations; exact stopped disk cold readback compares all bytes and observes zero mutations with clean export.",
       "gaps": "Scoped checkpoint; issue141 and assembled R1 remain open."
+    },
+    {
+      "id": "persistent-runner-host",
+      "reference": "userland/docs/RUNNER-INTEGRATION.md",
+      "owner": "userland and sys-init, issues #13 and #20",
+      "budget_seconds": 60,
+      "command": "Run the C17 host commands in RUNNER-INTEGRATION.md and the focused native-app Runtime host collection cases.",
+      "invariants": "Exact parsed probe with copied argv and explicit I/O references, one admission, matched child identity and separate cleanup, no replay.",
+      "oracle": "Exit 23 with known cleanup; matched status with failed cleanup and uncertain delivery or collection cannot report success.",
+      "gaps": "Host composition only. Persistent native execution and public runner assembly remain open."
     }
   ]
 }
