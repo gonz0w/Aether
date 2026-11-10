@@ -147,3 +147,38 @@ help/error outcomes are waiting for the explicit output-role/lifecycle extension
 and new owner evidence bundle. No sibling edit, message or pin update was made.
 UL-059 is waiting for that named prerequisite; local UL-067 work can proceed while
 UL-069 stays deferred. Reassess against the returned bytes, not a milestone label.
+
+## Persistent runner host composition
+
+The [#13 checkpoint](https://github.com/gonz0w/Aether/issues/13) shares its
+startup and uncertain-result checks with #20. The standalone runner host
+path decodes copied startup bytes with the existing parser and submits
+`probe` with no additional arguments and with `LC_ALL=C`. Its typed Owner
+boundary carries explicit input and output grant references. The
+Owner must bind the name to the held executable and validate the references.
+
+The host runner accepts a normal child exit after matching the admitted slot
+and generation and verifying a separate cleanup result. It retains known
+terminal facts on cleanup failure and forbids replay after uncertain admission
+or collection. The legacy receipt format and the existing Zsh entry retain
+their own paths. The present Zsh wait reply arrives before Owner cleanup.
+The native runner still needs an exact startup binding and a way to observe
+completed cleanup. The host controls use an explicit typed Owner fixture.
+
+From the repository root, run the C host controls with a C17 compiler.
+
+```sh
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+runner=userland/experiments/command-runner
+cc -std=c17 -Wall -Wextra -Werror -Wpedantic \
+  "$runner/runner-parse.c" "$runner/filesystem-runner.c" \
+  "$runner/filesystem-runner-controls.c" -o "$work/check"
+"$work/check"
+```
+
+With the existing cold file-exec Runtime host harness, select
+`zsh_process_runtime_tests::delivered_exit23_does_not_prove_child_reclaim`,
+`zsh_process_runtime_tests::real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease`,
+and `zsh_process_runtime_tests::failed_wait_delivery_keeps_reserved_status_child_lease_and_no_reclaim`.
+These exercise actual Owner collection separately from the C fixture.
