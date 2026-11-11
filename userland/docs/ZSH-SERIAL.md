@@ -246,6 +246,9 @@ its discarded media remain recorded in issue168. Broader R1 remains open.
 
 ## Save a short note
 
+For the maintained cold boot from supplied offline inputs, use the
+[sys-init persistent Zsh recipe](../../sys-init/docs/PERSISTENT-ZSH.md).
+
 The scoped [issue170 composition](proposals/ZSH-OPERATOR-NOTE.md) uses
 `zsh-witness.py --operator-note`. On an approved disposable lineage, use
 `zsh_run.py --operator-note-manual prepare` with the image review and exact
