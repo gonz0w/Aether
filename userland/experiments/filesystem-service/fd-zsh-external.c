@@ -499,7 +499,7 @@ int aether_zsh_directory_probe(const char *path,
     return (int)libc_result(result, saved);
 }
 #endif
-#ifndef AEFD_ZSH_HELPER_ENTRY
+#if !defined(AEFD_ZSH_HELPER_ENTRY) && !defined(AEFD_FILESYSTEM_RUNNER_BINDINGS)
 static int bootstrap(void)
 {
     struct sigaction action = {0};
@@ -572,4 +572,4 @@ int __wrap_main(int argc, char **argv)
     char *arguments[] = {program, no_rcs, interactive, no_monitor, NULL};
     __wrap__exit(__real_main(4, arguments));
 }
-#endif /* !AEFD_ZSH_HELPER_ENTRY */
+#endif /* Zsh parent entry */

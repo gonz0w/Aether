@@ -2815,6 +2815,16 @@
       "invariants": "Exact parsed probe with copied argv and explicit I/O references, one admission, matched child identity and separate cleanup, no replay.",
       "oracle": "Exit 23 with known cleanup; matched status with failed cleanup and uncertain delivery or collection cannot report success.",
       "gaps": "Host composition only. Persistent native execution and public runner assembly remain open."
+    },
+    {
+      "id": "persistent-runner-native",
+      "reference": "userland/docs/RUNNER-INTEGRATION.md",
+      "owner": "userland and sys-init, issues #13 and #20",
+      "budget_seconds": 360,
+      "command": "Focused runner startup/close and Runtime collection host controls, fresh artifact fits, one guarded seed and one cold runner.",
+      "invariants": "Copied native argv, stdin and stdout only, one sealed probe, actual post-collection stdout close before runner exit 23.",
+      "oracle": "Exact stopped disk handoff, child and parent exit 23, three reclaims, zero-mutation cold export, MODE restoration, clean halt and known host cleanup.",
+      "gaps": "Scoped runner checkpoint. Full #20, general runner execution and assembled R1 remain open."
     }
   ]
 }
