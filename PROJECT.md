@@ -60,7 +60,7 @@ queue. This is a scoped policy change, not a file-order precedence rule.
 ## Method and local contracts
 
 Use the [Agent Temper method](.agent-temper/METHOD.md), pinned at
-`5222ac45c9edaa23c188816c7727fc70780a95a8`. Its
+`bc4ae7f68ee346b9970f07c7c4bff020120f0278`. Its
 [source record](.agent-temper/SOURCE.md), [complete manifest](.agent-temper/SHA256SUMS)
 and [license](.agent-temper/LICENSE) identify the unchanged import. This consumer
 selects the [GitHub profile](.agent-temper/profiles/github.md) for work routing
@@ -191,3 +191,9 @@ See the canonical [routing policy](docs/policy/routing.md#codex-routing-selectio
 ## Terra product routing update — 2026-10-27
 
 See the canonical [routing policy](docs/policy/routing.md#terra-product-routing-update--2026-10-27).
+
+## Artifact retention
+
+Follow the adopted [artifact lifecycle](.agent-temper/docs/reference/artifact-lifecycle.md) and the project's
+existing output, evidence, recovery and approval rules. Record a bounded
+retention decision in the owning issue before substantial generated output.
