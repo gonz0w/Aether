@@ -27,8 +27,10 @@ supporting evidence only. They do not show bin/pkg-mgr executing on Aether.
 
 ## Test sequence and independent oracles
 
-Use the exact init/import/list/files/verify/run command sequence already documented
-in AETHER-RELEASE, with the selected native inputs. Record every command, exit
+Use the init/list/files/verify/run sequence in AETHER-RELEASE with the selected
+native inputs. For import, use the explicit native command and owner-supplied
+pins in [Native bytecount admission](NATIVE-PACKAGE-PREREQUISITES.md#native-bytecount-admission).
+Record every command, exit
 status and stdout/stderr independently. Keep observation logs outside the package
 root where the image's granted facilities permit; otherwise document the logging
 boundary before interpreting a missing result.

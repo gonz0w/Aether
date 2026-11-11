@@ -22,9 +22,10 @@ hash() { sh "$verifier" hash-file "$1"; }
 field() {
     KEY=$2 awk 'BEGIN{k=ENVIRON["KEY"]} index($0,k "=")==1 {n++; v=substr($0,length(k)+2)} END {if(n!=1 || v=="") exit 1; print v}' "$1"
 }
-test "$#" -ge 3 || fail 'usage: binary.sh export ROOT NAME | import/recover/preflight ROOT BUNDLE DESCRIPTOR-SHA256 EXPECTED-COMPILER-TARGET'
+test "$#" -ge 3 || fail 'usage: binary.sh export ROOT NAME | import/recover/preflight ROOT BUNDLE DESCRIPTOR-SHA256 EXPECTED-COMPILER-TARGET | native-import ROOT BUNDLE DESCRIPTOR-SHA256 TARGET-SHA256'
 command=$1; ROOT=$2; export ROOT; shift 2
 sdk=no
+native=no
 expected_profile=
 case $command in
     sdk-export)
@@ -33,6 +34,9 @@ case $command in
     sdk-import|sdk-recover)
         test "$#" -eq 3 && is_hash "$2" && is_hash "$3" || exit 64
         sdk=yes; command=${command#sdk-}; expected_profile=$3 ;;
+    native-import)
+        test "$#" -eq 3 && is_hash "$2" && is_hash "$3" || exit 64
+        native=yes; command=import ;;
     export) test "$#" -eq 1 && id "$1" || exit 64; name=$1 ;;
     import|recover|preflight) test "$#" -eq 3 && is_hash "$2" && id "$3" || exit 64 ;;
     *) exit 64 ;;
@@ -69,6 +73,7 @@ descriptor() {
     dependencies_digest=$(hash "$1/dependencies.tsv") || return "$?"
     transport_format=local-binary-directory-v2
     if test "$sdk" = yes; then transport_format=local-sdk-directory-v1; fi
+    if test "$native" = yes; then transport_format=local-native-directory-v1; fi
     printf 'format=%s\nrecord_sha256=%s\ntarget_sha256=%s\nmodes_sha256=%s\ndependencies_sha256=%s\n' \
         "$transport_format" "$record_digest" "$target_digest" "$modes_digest" "$dependencies_digest"
     printf 'authenticity=not-proven\nservice_activation=unsupported\n'
@@ -167,12 +172,33 @@ for entry in "$bundle"/* "$bundle"/.[!.]* "$bundle"/..?*; do
 done
 for file in artifact.kv package.tsv target.kv modes.tsv dependencies.tsv; do regular "$bundle/$file"; done
 if ! { test -d "$bundle/files" && ! test -L "$bundle/files"; }; then fail 'missing blob directory'; fi
-test "$(hash "$bundle/artifact.kv")" = "$expected_digest" || fail 'descriptor pin mismatch'
+payload_dir=$bundle/files
+if test "$native" = yes; then
+    # All admission and registration reads use the same private metadata copy.
+    mkdir "$scratch/intake"
+    for file in artifact.kv package.tsv target.kv modes.tsv dependencies.tsv; do
+        cp "$bundle/$file" "$scratch/intake/$file"
+    done
+    bundle=$scratch/intake
+fi
+observed_descriptor=$(hash "$bundle/artifact.kv") || fail 'cannot hash bundle descriptor'
+test "$observed_descriptor" = "$expected_digest" || fail 'descriptor pin mismatch'
 descriptor "$bundle" > "$scratch/descriptor"
 cmp -s "$scratch/descriptor" "$bundle/artifact.kv" || fail 'descriptor/content mismatch'
 if test "$sdk" = yes; then
     observed_profile=$(hash "$bundle/target.kv") || fail 'cannot hash SDK profile'
     test "$observed_profile" = "$expected_profile" || fail 'SDK profile pin mismatch'
+elif test "$native" = yes; then
+    observed_target=$(hash "$bundle/target.kv") || fail 'cannot hash native target'
+    test "$observed_target" = "$expected_target" || fail 'native target pin mismatch'
+    native_source=$(field "$bundle/target.kv" source_sha256) || fail 'missing native source identity'
+    native_tools=$(field "$bundle/target.kv" tools_sha256) || fail 'missing native tools identity'
+    if ! { is_hash "$native_source" && is_hash "$native_tools"; }; then fail 'invalid native build identity'; fi
+    {
+        printf 'format=aether-native-target-v1\ntarget=x86_64-aether\nruntime=aether-native-v1\n'
+        printf 'source_sha256=%s\ntools_sha256=%s\nmodes=recorded-0000-0777\n' "$native_source" "$native_tools"
+    } > "$scratch/target"
+    cmp -s "$scratch/target" "$bundle/target.kv" || fail 'incompatible native target/runtime'
 else
     os=$(uname -s); arch=$(uname -m)
     target_record "$os" "$arch" "$expected_target" > "$scratch/target"
@@ -188,6 +214,12 @@ if test "$sdk" = yes; then
     test "$name" = aether-musl-sdk || fail 'unsupported SDK package name'
     test ! -s "$scratch/deps" && test ! -s "$bundle/dependencies.tsv" || fail 'SDK dependencies unsupported'
 fi
+if test "$native" = yes; then
+    record_source=$(field "$scratch/build.kv" source_hash) || fail 'missing package source identity'
+    test "$record_source" = "$native_source" || fail 'target and package source identities differ'
+    test "$name" = bytecount || fail 'unsupported native package name'
+    test ! -s "$scratch/deps" && test ! -s "$bundle/dependencies.tsv" || fail 'native dependencies unsupported'
+fi
 # Modes/dependency rows must match record order exactly; no extra path or owner.
 awk -F '\t' '$1=="file" {print $5 "\t" $4}' "$bundle/package.tsv" > "$scratch/record-modes"
 cmp -s "$scratch/record-modes" "$bundle/modes.tsv" || fail 'mode table differs from package record'
@@ -197,7 +229,7 @@ while IFS="$tab" read -r dependency digest; do
     regular "$ROOT/state/packages/$dependency.tsv"
     test "$(hash "$ROOT/state/packages/$dependency.tsv")" = "$digest" || fail 'dependency record mismatch'
 done < "$bundle/dependencies.tsv"
-for blob in "$bundle/files"/* "$bundle/files"/.[!.]* "$bundle/files"/..?*; do
+for blob in "$payload_dir"/* "$payload_dir"/.[!.]* "$payload_dir"/..?*; do
     test -e "$blob" || continue
     digest=${blob##*/}
     is_hash "$digest" || fail 'invalid blob name'
@@ -210,18 +242,18 @@ cp "$ROOT/.pkg-mgr-root" "$candidate/.pkg-mgr-root"
 cp -R "$ROOT/state" "$candidate/state"
 mkdir -p "$candidate/stage/$name"
 while IFS="$tab" read -r digest _size path; do
-    regular "$bundle/files/$digest"
-    test "$(hash "$bundle/files/$digest")" = "$digest" || fail 'payload hash mismatch'
+    regular "$payload_dir/$digest"
+    test "$(hash "$payload_dir/$digest")" = "$digest" || fail 'payload hash mismatch'
     destination=$candidate/stage/$name/$path
     mkdir -p "$(dirname "$destination")"
-    cp "$bundle/files/$digest" "$destination"
+    cp "$payload_dir/$digest" "$destination"
 done < "$scratch/manifest.tsv"
 while IFS="$tab" read -r mode path; do chmod "$mode" "$candidate/stage/$name/$path"; done < "$bundle/modes.tsv"
 if test "$sdk" = yes; then
     stage=$candidate/stage/$name; record=$bundle/package.tsv
     sdk_identity
     cmp -s "$sdk_metadata/sdk-target.kv" "$bundle/target.kv" || fail 'SDK target differs from bound profile'
-else
+elif test "$native" = no; then
     host=$candidate/stage/$name/usr/local/share/pkg-mgr/$name/host.kv
     regular "$host"
     os=$(field "$host" host_os); arch=$(field "$host" host_arch); triple=$(field "$host" compiler_target)
@@ -306,6 +338,8 @@ mv "$candidate/state/packages/$name.tsv" "$ROOT/state/packages/$name.tsv"
 new_stage=
 if test "$sdk" = yes; then
     printf 'sdk-imported\t%s\t%s\n' "$name" "$expected_digest" || exit 1
+elif test "$native" = yes; then
+    printf 'native-imported\t%s\t%s\n' "$name" "$expected_digest" || exit 1
 else
     printf 'imported\t%s\n' "$name"
 fi

@@ -21,7 +21,7 @@ this local bundle is a bounded native package-engine probe, not a distribution p
 2. `sh mk/state.sh init "$root"` calls check-root in state mode and publishes an
    empty state directory. The root must already exist; do not confuse initialization
    with creation of a caller-authorized directory.
-3. CLI import calls [binary.sh](../mk/binary.sh), which validates current state,
+3. Native import calls [binary.sh](../mk/binary.sh), which validates current state,
    bundle records, hashes, dependencies and identities, reconstructs a disposable
    candidate and calls [state.sh](../mk/state.sh) registration/verification.
 4. CLI list/files/verify use state.sh, [state-schema.awk](../mk/state-schema.awk)
@@ -53,7 +53,6 @@ selected source, recipe, helper or tool change; this is not a universal syscall 
 | find | `-type`, `-links +1`, `-name`, `-path`, `-print`, boolean grouping/negation and batched `-exec sh ... {} +`; enumerate dot entries and distinguish failed traversal from an empty tree |
 | id, ls, stat | `id -u` and `ls -nd` must agree on root owner; ls exposes mode 0700 and unsupported ACL suffix. File mode helper tries `stat -f '%Lp'`, then `stat -c '%a'`; one form must report exact ordinary bits. These are concrete current compatibility seams |
 | mkdir, mktemp, cp, chmod, mv, rm | `mkdir -m 700/-p`; exclusive mktemp file/directory templates including `-d`; ordinary and recursive copy; exact numeric chmod; rename/move and `rm -f/-rf` cleanup with observable errors |
-| uname | `uname -s/-m` are consumed by current admission. Owner-supplied identity is required; making these resemble a host does not qualify a native payload |
 | SHA-256 provider | Select a pinned working provider: sha256sum, shasum `-a 256`, sha256 (`-q` then named output), or openssl `dgst -sha256`. Detection order matters; failure of a selected provider must reject, not silently fall through. One provider suffices; transitive runtime dependencies belong to its selected build |
 
 PATH, readable HOME distinct from root, current directory, writable private TMPDIR
@@ -94,14 +93,42 @@ I/O are handled. Startup/libc/compiler-runtime closure and target ABI still belo
 to its exact target build. Preserve [its license](../recipes/bytecount/LICENSE).
 A shell-looking prompt or a read/write probe does not qualify the full tool closure.
 
-## Known admission blocker and owner handoff
+## Native bytecount admission
 
-binary.sh currently emits `host-binary-target-v1`, compares uname/compiler target
-against target.kv and the bound host.kv observation, and requires runtime `host-only`.
-A native bundle therefore needs an agreed native identity/admission change and
-matching producer evidence. Do not relabel native execution as host-only, forge
-host observations or bypass these checks. The eventual change needs positive and
-wrong-runtime/target/record/bundle rejection cases before native acceptance.
+The package owner supplies the expected descriptor and native target SHA-256
+digests separately from the bundle. The descriptor format
+`local-native-directory-v1` binds the package record, target record, modes and
+dependencies. The package record binds each payload's path, size, digest and mode. Its
+source hash must agree with the target record.
+The target record is canonical and contains these ordered lines:
+
+```text
+format=aether-native-target-v1
+target=x86_64-aether
+runtime=aether-native-v1
+source_sha256=<64 lowercase hexadecimal digits>
+tools_sha256=<64 lowercase hexadecimal digits>
+modes=recorded-0000-0777
+```
+
+The source digest identifies the reviewed bytecount source and the tools digest
+identifies the reviewed build tool receipt. The owner checks those identities
+and the target artifact before handing the pins to the importer. Use the first
+bundle with `sh mk/binary.sh native-import ROOT BUNDLE DESCRIPTOR_SHA256
+TARGET_SHA256`. The bundle path is absolute. The explicit native command checks
+the two pins and accepts only dependency-free bytecount. It uses the existing
+private candidate and package registration checks before publishing. The native
+path does not consume host observations or run uname. The host import command
+continues to require `host-binary-target-v1` and its manifest-bound host record.
+
+Use an operator-controlled bundle and a single writer to the private root.
+Import publishes the stage and record with separate renames. An interruption can
+leave an unregistered stage. Treat it as retained state and inspect it before
+another import. The existing recovery command uses the host admission contract.
+
+Run `sh tests/binary-package.sh` for the existing host transport checks and the
+synthetic native admission and rejection controls. Target artifact inspection and
+the composed native execution/reboot trial have separate acceptance.
 
 Aether's reviewed roadmap still requests actual shell/tools, filesystem and
 artifact/publication contracts. Userland's M3 useful-shell milestone and UL-059/067
