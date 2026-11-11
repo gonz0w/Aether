@@ -714,3 +714,74 @@ test ! -s "$scratch/out"
 snapshot > "$scratch/after-preflight"
 cmp "$scratch/before-preflight" "$scratch/after-preflight"
 printf 'Update ownership conflict rejected without target mutation\n'
+
+# Exercise the native admission boundary with a synthetic payload. The native
+# bytecount producer and boot trial have separate artifact evidence.
+native_root=$scratch/native-root
+native_bundle=$scratch/native-bundle
+native_stage=$source_root/stage/bytecount
+init "$native_root"
+mkdir -p "$native_stage/usr/local/bin" "$native_bundle/files"
+printf 'synthetic native payload\n' > "$native_stage/usr/local/bin/bytecount"
+chmod 0755 "$native_stage/usr/local/bin/bytecount"
+manifest=$scratch/native.manifest
+sh mk/verify-metadata.sh manifest "$native_stage" "$manifest" >/dev/null
+source_hash=$(hash recipes/bytecount/bytecount.c)
+SOURCE_HASH=$source_hash REF=${manifest#"$repo/"} awk '
+ /^package_name=/ {print "package_name=bytecount"; next}
+ /^source_hash=/ {print "source_hash=" ENVIRON["SOURCE_HASH"]; next}
+ /^recipe_path=/ {print "recipe_path=recipes/bytecount/package.mk"; next}
+ /^materials_ref=/ {print "materials_ref=recipes/bytecount/source.kv"; next}
+ /^material_path=/ {print "material_path=recipes/bytecount/bytecount.c"; next}
+ /^manifest_ref=/ {print "manifest_ref=" ENVIRON["REF"]; next}
+ {print}' fixtures/metadata-boundary/build-input.kv > "$scratch/native.input"
+sh mk/verify-metadata.sh build-record "$scratch/native.input" "$scratch/native.build" >/dev/null 2>&1
+: > "$native_bundle/dependencies.tsv"
+sh mk/state.sh register "$source_root" "$manifest" "$scratch/native.build" "$native_bundle/dependencies.tsv" >/dev/null
+cp "$source_root/state/packages/bytecount.tsv" "$native_bundle/package.tsv"
+printf '0755\tusr/local/bin/bytecount\n' > "$native_bundle/modes.tsv"
+payload_hash=$(hash "$native_stage/usr/local/bin/bytecount")
+cp "$native_stage/usr/local/bin/bytecount" "$native_bundle/files/$payload_hash"
+tools_hash=$(hash "$scratch/native.input")
+printf 'format=aether-native-target-v1\ntarget=x86_64-aether\nruntime=aether-native-v1\n' > "$native_bundle/target.kv"
+printf 'source_sha256=%s\ntools_sha256=%s\nmodes=recorded-0000-0777\n' "$source_hash" "$tools_hash" >> "$native_bundle/target.kv"
+target_pin=$(hash "$native_bundle/target.kv")
+native_descriptor() {
+    printf 'format=local-native-directory-v1\nrecord_sha256=%s\ntarget_sha256=%s\nmodes_sha256=%s\ndependencies_sha256=%s\n' \
+        "$(hash "$native_bundle/package.tsv")" "$(hash "$native_bundle/target.kv")" \
+        "$(hash "$native_bundle/modes.tsv")" "$(hash "$native_bundle/dependencies.tsv")" > "$native_bundle/artifact.kv"
+    printf 'authenticity=not-proven\nservice_activation=unsupported\n' >> "$native_bundle/artifact.kv"
+}
+native_descriptor
+native_pin=$(hash "$native_bundle/artifact.kv")
+native_import() { sh mk/binary.sh native-import "$native_root" "$native_bundle" "$1" "$2"; }
+snapshot "$native_root" > "$scratch/native-before"
+reject native_import "$tools_hash" "$target_pin"
+reject native_import "$native_pin" "$tools_hash"
+reject sh mk/binary.sh import "$native_root" "$native_bundle" "$native_pin" test-host-v1
+cp "$native_bundle/target.kv" "$scratch/native-target"
+for variant in 's/runtime=aether-native-v1/runtime=host-only/' 's/target=x86_64-aether/target=x86_64-other/' 's/^source_sha256=./source_sha256=f/'; do
+    sed "$variant" "$scratch/native-target" > "$native_bundle/target.kv"
+    native_descriptor
+    if cmp -s "$scratch/native-target" "$native_bundle/target.kv"; then exit 1; fi
+    reject native_import "$(hash "$native_bundle/artifact.kv")" "$target_pin"
+done
+sed 's/runtime=aether-native-v1/runtime=host-only/' "$scratch/native-target" > "$native_bundle/target.kv"
+native_descriptor
+reject native_import "$(hash "$native_bundle/artifact.kv")" "$(hash "$native_bundle/target.kv")"
+sed 's/^source_sha256=./source_sha256=f/' "$scratch/native-target" > "$native_bundle/target.kv"
+native_descriptor
+reject native_import "$(hash "$native_bundle/artifact.kv")" "$(hash "$native_bundle/target.kv")"
+grep 'target and package source identities differ' "$scratch/err" >/dev/null
+cp "$scratch/native-target" "$native_bundle/target.kv"
+native_descriptor
+printf tampered >> "$native_bundle/files/$payload_hash"
+reject native_import "$native_pin" "$target_pin"
+cp "$native_stage/usr/local/bin/bytecount" "$native_bundle/files/$payload_hash"
+snapshot "$native_root" > "$scratch/native-after"
+cmp "$scratch/native-before" "$scratch/native-after"
+native_import "$native_pin" "$target_pin" > "$scratch/native-receipt"
+printf 'native-imported\tbytecount\t%s\n' "$native_pin" > "$scratch/native-expected"
+cmp "$scratch/native-expected" "$scratch/native-receipt"
+sh mk/state.sh verify "$native_root" >/dev/null
+printf 'Native bytecount metadata admission and pre-publication denials passed\n'

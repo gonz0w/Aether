@@ -94,6 +94,7 @@
         "tests/sdk-transport.py"
       ],
       "references": [
+        "docs/NATIVE-PACKAGE-PREREQUISITES.md",
         "docs/BINARY-PACKAGE.md",
         "docs/IMPORT-RECOVERY.md",
         "docs/UPDATE-PREFLIGHT.md",
