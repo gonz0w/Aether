@@ -182,3 +182,34 @@ With the existing cold file-exec Runtime host harness, select
 `zsh_process_runtime_tests::real_pipe_exec_ready_wait_delivery_reclaim_and_parent_lease`,
 and `zsh_process_runtime_tests::failed_wait_delivery_keeps_reserved_status_child_lease_and_no_reclaim`.
 These exercise actual Owner collection separately from the C fixture.
+
+## Native persistent runner
+
+The approved #13 and #20 composition starts the standalone runner with
+`aether-run probe`. The Rust Owner maps the copied command to the sealed
+`/home/probe` payload. The app receives input and output references and the
+child gets the selected argv and environment through the existing loader.
+
+The runner treats its child's wait status as provisional until the Owner
+has reclaimed the child and replied to the last stdout close. The selected
+Owner verifies that it delivered this close reply after collection before it
+accepts the runner's normal exit 23. The same wait status with failed reclaim
+leads to containment.
+
+The private seed uses `zsh-witness.py --login-startup` and
+`zsh_run.py --login-startup` with the rebuilt payload. The cold runner uses
+`zsh-witness.py --cold-reopen` and `filesystem_runner_run.py prepare` with
+the reviewed image and exact stopped seed record. The matching `run` command
+uses the reviewed proposal and a single-use media claim. The cold workload
+needs no serial input.
+
+To check the selected C entry with a host transport fixture, run this from
+the repository root.
+
+```sh
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+base=userland/experiments
+cc -std=c17 -Wall -Wextra -Werror -Wpedantic   -DAEFD_FILESYSTEM_RUNNER_BINDINGS -DAEFD_ZSH_PROCESS_BINDINGS   -DAEFD_EXTERNAL_STARTUP "$base/filesystem-service/filesystem-runner-native-controls.c"   "$base/command-runner/runner-parse.c" "$base/command-runner/filesystem-runner.c"   -o "$work/check"
+"$work/check"
+```

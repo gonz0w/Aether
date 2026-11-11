@@ -193,6 +193,21 @@ compile_error!("repeat exec requires the complete cold home CWD exec profile");
 compile_error!("home CWD exec requires the complete cold home CWD profile");
 #[cfg(all(native_zsh_operator, not(native_zsh_idle_exit)))]
 compile_error!("operator session requires the selected idle exit profile");
+#[cfg(all(
+    native_filesystem_runner,
+    any(
+        not(all(native_zsh_cold_reopen, native_tty_mode_probe)),
+        native_zsh_idle_exit,
+        native_zsh_home_redirection,
+        native_zsh_repeat_exec
+    )
+))]
+compile_error!("filesystem runner requires the cold external file-exec profile");
+
+#[cfg(native_filesystem_runner)]
+const RUNNER_EXIT: i32 = 23;
+#[cfg(native_filesystem_runner)]
+const RUNNER_WAIT_STATUS: i32 = RUNNER_EXIT << 8;
 
 #[cfg(native_zsh_process)]
 struct ZshProcess<K: AppControl> {
@@ -214,6 +229,8 @@ struct ZshProcess<K: AppControl> {
     wait_status: Option<i32>,
     terminal: Option<i32>,
     reclaimed: bool,
+    #[cfg(native_filesystem_runner)]
+    stdout_closed_after_reclaim: bool,
     cleanup_attempted: u8,
     cleanup_last: Status,
 }
@@ -239,6 +256,8 @@ impl<K: AppControl> ZshProcess<K> {
             wait_status: None,
             terminal: None,
             reclaimed: false,
+            #[cfg(native_filesystem_runner)]
+            stdout_closed_after_reclaim: false,
             cleanup_attempted: 0,
             cleanup_last: (-5, 0, 0),
         }
@@ -361,7 +380,11 @@ impl<K: AppControl> Runtime<K> {
                     None
                 },
                 Some(console(1)),
-                Some(console(2)),
+                if cfg!(native_filesystem_runner) {
+                    None
+                } else {
+                    Some(console(2))
+                },
             ],
             [SessionPipe::new(), SessionPipe::new()],
         )
@@ -426,7 +449,15 @@ impl<K: AppControl> Runtime<K> {
     #[inline(never)]
     pub fn initialize_in_place(slot: &mut MaybeUninit<Self>, kernel: K) -> Result<&mut Self, i64> {
         let streams = State::new(
-            [Some(console(0)), Some(console(1)), Some(console(2))],
+            [
+                Some(console(0)),
+                Some(console(1)),
+                if cfg!(native_filesystem_runner) {
+                    None
+                } else {
+                    Some(console(2))
+                },
+            ],
             [SessionPipe::new(), SessionPipe::new()],
         )
         .map_err(i64::from)?;
@@ -726,11 +757,13 @@ impl<K: AppControl> Runtime<K> {
             selector: 1,
             cloexec: 0,
         };
-        bindings[2] = Binding {
-            kind: 1,
-            selector: 2,
-            cloexec: 0,
-        };
+        if !cfg!(native_filesystem_runner) {
+            bindings[2] = Binding {
+                kind: 1,
+                selector: 2,
+                cloexec: 0,
+            };
+        }
         #[cfg(any(
             native_tty_byte_probe,
             native_tty_descriptor_probe,
@@ -757,7 +790,9 @@ impl<K: AppControl> Runtime<K> {
                 if terminal.classify(*caller, reference).map_err(tty_errno)? != role {
                     return Err(-9);
                 }
-                bindings[selector].kind = 4;
+                if !cfg!(native_filesystem_runner) || selector != 2 {
+                    bindings[selector].kind = 4;
+                }
             }
         }
         let mut sources = [Source::default(); 7];
@@ -770,7 +805,9 @@ impl<K: AppControl> Runtime<K> {
             sources[0] = console(0);
         }
         sources[1] = console(1);
-        sources[2] = console(2);
+        if !cfg!(native_filesystem_runner) {
+            sources[2] = console(2);
+        }
         #[cfg(any(native_tty_duplex_probe, native_tty_mode_probe))]
         {
             let (terminal, references, caller) = self.tty.as_ref().ok_or(-9)?;
@@ -778,7 +815,7 @@ impl<K: AppControl> Runtime<K> {
                 terminal,
                 references,
                 *caller,
-                &sources[..3].try_into().unwrap(),
+                &[sources[0], sources[1], console(2)],
             )?;
         }
         let plan = Plan {
@@ -1574,6 +1611,7 @@ impl<K: AppControl> Runtime<K> {
         if sequence != self.process.fork_sequence.checked_add(1).ok_or(-28)?
             || self.process.binding.is_some()
             || self.process.lease != ReadLease::Parent
+            || cfg!(native_filesystem_runner) && self.process.fork_sequence != 0
         {
             return Err(-16);
         }
@@ -1944,6 +1982,9 @@ impl<K: AppControl> Runtime<K> {
     fn zsh_stream(&mut self, child: bool, frame: &[u8; 32]) -> Result<bool, i64> {
         let op = u32_at(frame, 0);
         let selector = u32_at(frame, 8) as usize;
+        if cfg!(native_filesystem_runner) && op != 68 && (!(1..=3).contains(&op) || selector >= 2) {
+            return Err(-13);
+        }
         #[cfg(native_zsh_operator)]
         let idle_sequence = if !child
             && op == 1
@@ -1965,6 +2006,10 @@ impl<K: AppControl> Runtime<K> {
         if op == 68 {
             if child || frame[12..] != [0; 20] {
                 return Err(-22);
+            }
+            #[cfg(native_filesystem_runner)]
+            if selector != 0 || u32_at(frame, 4) as i32 != self.process.child()?.pid {
+                return Err(-13);
             }
             let wait = self
                 .process
@@ -2131,6 +2176,19 @@ impl<K: AppControl> Runtime<K> {
                 self.zsh_io(child, &mut reply, true)?;
                 if !child && op == 3 && selector < 3 && u32_at(&reply, 0) == 0 {
                     self.closed[selector] = true;
+                    #[cfg(native_filesystem_runner)]
+                    if selector == 1
+                        && self.process.epoch == 1
+                        && self.process.reclaimed
+                        && self.process.wait_status == Some(RUNNER_WAIT_STATUS)
+                        && self.process.terminal == Some(RUNNER_WAIT_STATUS)
+                        && self.process.committed
+                        && self.process.exec_ready
+                        && self.process.binding.is_none()
+                        && self.process.lease == ReadLease::Parent
+                    {
+                        self.process.stdout_closed_after_reclaim = true;
+                    }
                 }
                 Ok(true)
             }
@@ -2166,7 +2224,11 @@ impl<K: AppControl> Runtime<K> {
             if count == 0 {
                 if !child
                     && at == 0
-                    && self.closed == [true; DESCRIPTORS]
+                    && (if cfg!(native_filesystem_runner) {
+                        self.closed[..] == [true, true, false]
+                    } else {
+                        self.closed == [true; DESCRIPTORS]
+                    })
                     && self.process.binding.is_none()
                 {
                     return Ok(Some(false));
@@ -2222,6 +2284,9 @@ impl<K: AppControl> Runtime<K> {
                 return result.map(|()| Some(true));
             }
             if frame[..8] == filesystem_readonly::MAGIC[..] {
+                if cfg!(native_filesystem_runner) {
+                    return Err(-13);
+                }
                 self.file_header.fill(0);
                 self.file_header[..16].copy_from_slice(&frame[..16]);
                 let mut tail = [0; 48];
@@ -2327,7 +2392,21 @@ impl<K: AppControl> Runtime<K> {
         Ok(())
     }
 
+    #[cfg(native_filesystem_runner)]
+    fn runner_terminal(&mut self) -> Result<(), i64> {
+        if !self.process.stdout_closed_after_reclaim {
+            return Err(-5);
+        }
+        self.terminal_status(self.app, i64::from(RUNNER_EXIT) + 1)?;
+        if !matches!(self.observed_terminal[0], Some((_, 1, 1))) {
+            return Err(-5);
+        }
+        Ok(())
+    }
     fn terminal_zero(&mut self, handle: u64) -> Result<(), i64> {
+        self.terminal_status(handle, 1)
+    }
+    fn terminal_status(&mut self, handle: u64, expected: i64) -> Result<(), i64> {
         loop {
             let state = self.ctl(0x20001, handle, 0)?;
             if state.0 < 0 {
@@ -2336,7 +2415,7 @@ impl<K: AppControl> Runtime<K> {
             if state.0 > 0 {
                 self.observed_terminal[usize::from(handle == self.engine)] = Some(state);
                 // Kernel RAX is retained status+1; RDX is readiness, R8 kind.
-                return if state.0 == 1 && state.2 == 1 {
+                return if state.0 == expected && state.2 == 1 {
                     Ok(())
                 } else {
                     Err(-5)
@@ -2371,6 +2450,9 @@ impl<K: AppControl> Runtime<K> {
         #[cfg(native_zsh_operator)]
         self.operator_dispatch()?;
         while self.request(workspace)? {}
+        #[cfg(native_filesystem_runner)]
+        self.runner_terminal()?;
+        #[cfg(not(native_filesystem_runner))]
         self.terminal_zero(self.app)?;
         #[cfg(native_zsh_operator)]
         self.operator_teardown()?;
@@ -2418,6 +2500,15 @@ impl<K: AppControl> Runtime<K> {
     #[cfg(native_zsh_filesystem)]
     #[inline(never)]
     fn write_native_oracle(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
+        #[cfg(native_filesystem_runner)]
+        let healthy_terminals = self.process.stdout_closed_after_reclaim
+            && matches!(self.observed_terminal[0], Some((24, 1, 1)))
+            && matches!(self.observed_terminal[1], Some((1, _, 1)));
+        #[cfg(not(native_filesystem_runner))]
+        let healthy_terminals = self
+            .observed_terminal
+            .iter()
+            .all(|state| matches!(state, Some((1, _, 1))));
         if !(14..=96).contains(&self.filesystem_requests)
             || self.app != 0
             || self.engine != 0
@@ -2428,10 +2519,7 @@ impl<K: AppControl> Runtime<K> {
             || self.bound.failed != 0
             || self.namespace_prepaid != [0; 2]
             || self.mode.as_ref().and_then(tty_mode::State::cleanup_result) != Some(0)
-            || self
-                .observed_terminal
-                .iter()
-                .any(|state| !matches!(state, Some((1, _, 1))))
+            || !healthy_terminals
             || self
                 .ends
                 .iter()
@@ -2511,7 +2599,9 @@ impl<K: AppControl> Runtime<K> {
         } else {
             files.file_exec_size().ok_or(-5)?
         };
-        #[cfg(native_zsh_file_exec)]
+        #[cfg(native_filesystem_runner)]
+        const ROW: &[u8] = b"\nAETHER RUNNER OWNER v=1 requests=00 child_status=5888 parent_status=23 stdout_closed_after_reclaim=1 file_exec_bytes=0000 mode_cleanup=0\n";
+        #[cfg(all(native_zsh_file_exec, not(native_filesystem_runner)))]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=0000 file_exec_closed=1 image_receipt=49156 mode_cleanup=0\n";
         #[cfg(all(
             native_zsh_process,
@@ -2529,10 +2619,18 @@ impl<K: AppControl> Runtime<K> {
         #[cfg(not(native_zsh_idle_exit))]
         let row = ROW;
         workspace[..row.len()].copy_from_slice(row);
-        workspace[31] = b'0' + (self.filesystem_requests / 10) as u8;
-        workspace[32] = b'0' + (self.filesystem_requests % 10) as u8;
+        let requests_at = if cfg!(native_filesystem_runner) {
+            34
+        } else {
+            31
+        };
+        workspace[requests_at] = b'0' + (self.filesystem_requests / 10) as u8;
+        workspace[requests_at + 1] = b'0' + (self.filesystem_requests % 10) as u8;
         #[cfg(native_zsh_file_exec)]
         if !no_child {
+            #[cfg(native_filesystem_runner)]
+            const AT: usize = b"\nAETHER RUNNER OWNER v=1 requests=00 child_status=5888 parent_status=23 stdout_closed_after_reclaim=1 file_exec_bytes=".len();
+            #[cfg(not(native_filesystem_runner))]
             const AT: usize = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=".len();
             for (index, divisor) in [1000, 100, 10, 1].into_iter().enumerate() {
                 workspace[AT + index] = b'0' + ((file_exec_size / divisor) % 10) as u8;
@@ -2676,6 +2774,11 @@ impl<K: AppControl> Runtime<K> {
 #[cfg(native_zsh_process)]
 fn zsh_stream_plan(raw: &[u8; 336], expected: zsh_process_frames::Expected) -> Result<Plan, i64> {
     zsh_process_frames::snapshot(raw, expected).map_err(i64::from)?;
+    if cfg!(native_filesystem_runner)
+        && (raw[112..120] != [4, 0, 0, 0, 4, 1, 0, 0] || raw[120..176] != [0; 56])
+    {
+        return Err(-13);
+    }
     let mut plan = Plan {
         identity: expected.identity,
         shell: if expected.identity.slot == 1 {
@@ -2937,7 +3040,16 @@ fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
         && raw[48..54] == *b"status"
         && raw[54..] == [0; 218]
 }
-#[cfg(native_zsh_file_exec)]
+#[cfg(native_filesystem_runner)]
+fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
+    u64::from_le_bytes(raw[..8].try_into().unwrap()) == 1
+        && u64::from_le_bytes(raw[8..16].try_into().unwrap()) == 1
+        && raw[16..21] == *b"probe"
+        && raw[21..144] == [0; 123]
+        && raw[144..152] == *b"LC_ALL=C"
+        && raw[152..] == [0; 120]
+}
+#[cfg(all(native_zsh_file_exec, not(native_filesystem_runner)))]
 fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
     u64::from_le_bytes(raw[..8].try_into().unwrap()) == 1
         && raw[8..16] == [0; 8]
@@ -3026,7 +3138,9 @@ pub fn encode_launch(
     });
     out[8..16].copy_from_slice(&320u64.to_le_bytes());
     out[16..24].copy_from_slice(
-        &(if cfg!(native_zsh_filesystem) {
+        &(if cfg!(native_filesystem_runner) {
+            2u64
+        } else if cfg!(native_zsh_filesystem) {
             4u64
         } else {
             3u64
@@ -3034,7 +3148,9 @@ pub fn encode_launch(
         .to_le_bytes(),
     );
     out[24..32].copy_from_slice(
-        &(if cfg!(native_zsh_filesystem) {
+        &(if cfg!(native_filesystem_runner) {
+            0u64
+        } else if cfg!(native_zsh_filesystem) {
             4u64
         } else {
             1u64
@@ -3050,7 +3166,12 @@ pub fn encode_launch(
     ] {
         out[32 + slot * 32..][..text.len()].copy_from_slice(text);
     }
-    #[cfg(native_zsh_filesystem)]
+    #[cfg(native_filesystem_runner)]
+    {
+        out[32..42].copy_from_slice(b"aether-run");
+        out[64..69].copy_from_slice(b"probe");
+    }
+    #[cfg(all(native_zsh_filesystem, not(native_filesystem_runner)))]
     for (slot, text) in [
         b"zsh".as_slice(),
         if cfg!(native_zsh_login_startup) {

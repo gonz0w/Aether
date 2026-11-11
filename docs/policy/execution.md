@@ -6,6 +6,16 @@ Existing owner change authority and all applicable contracts remain in force.
 Commands and literal repository paths below keep their original working directory;
 only Markdown links were rebased for this file.
 
+## Issues 13 and 20 native runner decision
+
+Cam approved the [scoped design](https://github.com/gonz0w/Aether/issues/13#issuecomment-6756288340).
+The [approval record](https://github.com/gonz0w/Aether/issues/13#issuecomment-6782579953)
+selects a standalone runner with two I/O grants and one sealed probe. Accept
+the runner's normal exit 23 only after child collection and a delivered
+post-collection stdout close. Qualify one seed and one cold boot of its stopped
+disposable disk within existing limits. Fresh fits, focused controls, separate
+reviews and required CI qualify this checkpoint while issue141 remains open.
+
 ## Issue170 persistent operator note — owner decision, 2026-11-09
 
 Cam approved the [reviewed proposal](https://github.com/gonz0w/Aether/issues/170#issuecomment-6720480196)

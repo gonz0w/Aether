@@ -286,7 +286,7 @@ struct Host {
     wake: Status,
     #[cfg(native_zsh_operator)]
     engine_state: Status,
-    #[cfg(native_zsh_operator)]
+    #[cfg(any(native_zsh_operator, native_filesystem_runner))]
     parent_state: Option<Status>,
     #[cfg(native_zsh_operator)]
     output_blocked: bool,
@@ -426,7 +426,7 @@ impl Control for Mock {
             0x23004 => (101, 0, 0),
             0x23005 | 0x1fffe => (0, 0, 0),
             0x20001 if cap == PARENT => {
-                #[cfg(native_zsh_operator)]
+                #[cfg(any(native_zsh_operator, native_filesystem_runner))]
                 if let Some(state) = h.parent_state {
                     return state;
                 }
@@ -529,8 +529,12 @@ impl Control for Mock {
             1u64.to_le_bytes(),
             "SAVED_ARGUMENTS_SURVIVE_FILE_READ"
         );
-        assert_eq!(&args[16..27], b"/home/probe");
-        assert!(args[27..].iter().all(|byte| *byte == 0));
+        if cfg!(native_filesystem_runner) {
+            assert!(zsh_helper_arguments(args));
+        } else {
+            assert_eq!(&args[16..27], b"/home/probe");
+            assert!(args[27..].iter().all(|byte| *byte == 0));
+        }
         assert_eq!(image, FILE_EXEC_ELF, "ACTUAL_ACQUIRED_FILE_SNAPSHOT");
         let mut h = self.0.borrow_mut();
         h.calls.push((0x2300b, process, token));
@@ -640,7 +644,7 @@ impl Fixture {
             wake: (0, 1, 1),
             #[cfg(native_zsh_operator)]
             engine_state: (0, 1, 0),
-            #[cfg(native_zsh_operator)]
+            #[cfg(any(native_zsh_operator, native_filesystem_runner))]
             parent_state: None,
             #[cfg(native_zsh_operator)]
             output_blocked: false,
@@ -788,7 +792,8 @@ impl Fixture {
             sources: [Source::default(); 7],
             history: [0; 2],
         };
-        for i in 0..3 {
+        let descriptors = if cfg!(native_filesystem_runner) { 2 } else { 3 };
+        for i in 0..descriptors {
             p.bindings[i] = Binding {
                 kind: 4,
                 selector: i as u8,
@@ -961,7 +966,13 @@ impl Fixture {
         if cfg!(native_zsh_file_exec) {
             work[368..379].copy_from_slice(b"/home/probe");
             work[400..408].copy_from_slice(&1u64.to_le_bytes());
-            work[416..427].copy_from_slice(b"/home/probe");
+            if cfg!(native_filesystem_runner) {
+                work[408..416].copy_from_slice(&1u64.to_le_bytes());
+                work[416..421].copy_from_slice(b"probe");
+                work[544..552].copy_from_slice(b"LC_ALL=C");
+            } else {
+                work[416..427].copy_from_slice(b"/home/probe");
+            }
         } else {
             work[368..382].copy_from_slice(b"/inputs/helper");
             work[400..408].copy_from_slice(&2u64.to_le_bytes());
@@ -2845,4 +2856,134 @@ fn operator_note_fork_refuses_with_a_live_description_and_recovers_after_close()
     h.repeat_collect();
     h.prepare_healthy_oracle();
     h.runtime.write_native_oracle(&mut [0; 4096]).unwrap();
+}
+
+#[cfg(native_filesystem_runner)]
+fn runner_exited_child(h: &mut Fixture) -> ChildIdentity {
+    let raw = h.fork(false);
+    let mut request = h.exec_request(&raw);
+    h.runtime.zsh_exec(&mut request).unwrap();
+    let child = h.runtime.process.child().unwrap();
+    h.host.0.borrow_mut().terminal = Some((24, 1, 1));
+    h.clear();
+    child
+}
+
+#[cfg(native_filesystem_runner)]
+#[test]
+fn filesystem_runner_launch_and_exec_are_exact() {
+    let mut record = [0; 320];
+    encode_launch(&mut record, 8, 9, 10).unwrap();
+    assert_eq!(&record[..8], b"AENAP002");
+    assert_eq!(result(&record[16..]), 2);
+    assert_eq!(&record[20..32], &[0; 12]);
+    assert_eq!(&record[32..43], b"aether-run\0");
+    assert_eq!(&record[64..70], b"probe\0");
+    assert_eq!(&record[70..288], &[0; 218]);
+
+    let mut h = Fixture::new();
+    let raw = h.fork(false);
+    assert_eq!(&raw[112..120], &[4, 0, 0, 0, 4, 1, 0, 0]);
+    assert_eq!(&raw[120..176], &[0; 56]);
+    let mut bad = h.exec_request(&raw);
+    bad[544] = b'X';
+    h.runtime.zsh_exec(&mut bad).unwrap();
+    let writer = h.runtime.process.ends[3].cap;
+    assert_eq!(
+        zsh_process_frames::decode_receipt(&h.output(writer), b"AEZER001", 2),
+        Ok(-13)
+    );
+    assert!(!h.host.0.borrow().calls.iter().any(|call| call.0 == 0x2300b));
+}
+
+#[cfg(native_filesystem_runner)]
+#[test]
+fn filesystem_runner_denies_unselected_file_mode_and_stream_roles() {
+    let mut h = Fixture::new();
+    let calls = h.host.0.borrow().calls.len();
+    assert_eq!(
+        h.runtime
+            .zsh_stream(false, &frame(0x10, tty_mode::CONTROL, 0, 0)),
+        Err(-13)
+    );
+    assert_eq!(
+        h.runtime.zsh_stream(false, &frame(3, 0x7a020001, 2, 0)),
+        Err(-13)
+    );
+    assert_eq!(h.host.0.borrow().calls.len(), calls);
+    let mut file = [0; 64];
+    file[..8].copy_from_slice(filesystem_readonly::MAGIC);
+    let requests = h.runtime.filesystem_requests;
+    h.feed(PR, &file);
+    assert_eq!(h.runtime.zsh_poll(false, &mut [0; 4096]), Err(-13));
+    assert_eq!(h.host.0.borrow().input[&PR].len(), 48);
+    assert_eq!(h.runtime.filesystem_requests, requests);
+    assert!(h.output(PW).is_empty());
+}
+
+#[cfg(native_filesystem_runner)]
+#[test]
+fn filesystem_runner_stdout_close_follows_exact_wait_and_reclaim() {
+    let mut h = Fixture::new();
+    let child = runner_exited_child(&mut h);
+    let wait = frame(68, child.pid as u32, 0, 0);
+    let close = frame(3, 0x7a010001, 1, 0);
+    h.feed(PR, &wait);
+    h.feed(PR, &close);
+    let mut work = [0; 4096];
+    assert_eq!(h.runtime.request(&mut work), Ok(true));
+    assert_eq!(h.output(PW).len(), 32);
+    assert_eq!(result(&h.output(PW)), child.pid);
+    assert!(h.runtime.process.reclaimed);
+    assert_eq!(h.runtime.process.lease, ReadLease::Parent);
+    assert_eq!(h.runtime.runner_terminal(), Err(-5));
+    assert_eq!(h.runtime.request(&mut work), Ok(true));
+    assert_eq!(&h.output(PW)[32..], &[0; 32]);
+    h.host.0.borrow_mut().parent_state = Some((24, 1, 1));
+    assert_eq!(h.runtime.runner_terminal(), Ok(()));
+    assert_eq!(h.runtime.observed_terminal[0], Some((24, 1, 1)));
+}
+
+#[cfg(native_filesystem_runner)]
+#[test]
+fn filesystem_runner_early_and_partial_stdout_close_do_not_accept_exit() {
+    for early in [true, false] {
+        let mut h = Fixture::new();
+        let child = runner_exited_child(&mut h);
+        let mut work = [0; 4096];
+        let close = frame(3, 0x7a010001, 1, 0);
+        if early {
+            h.feed(PR, &close);
+            assert_eq!(h.runtime.request(&mut work), Ok(true));
+        }
+        h.feed(PR, &frame(68, child.pid as u32, 0, 0));
+        assert_eq!(h.runtime.request(&mut work), Ok(true));
+        if !early {
+            h.clear();
+            h.host.0.borrow_mut().fail_write = Some((PW, 16));
+            h.feed(PR, &close);
+            assert_eq!(h.runtime.request(&mut work), Err(-5));
+            assert_eq!(h.output(PW).len(), 16);
+        }
+        assert!(h.runtime.process.reclaimed);
+        h.host.0.borrow_mut().parent_state = Some((24, 1, 1));
+        assert_eq!(h.runtime.runner_terminal(), Err(-5));
+    }
+}
+
+#[cfg(native_filesystem_runner)]
+#[test]
+fn filesystem_runner_failed_reclaim_leaves_queued_close_unconsumed() {
+    let mut h = Fixture::new();
+    let child = runner_exited_child(&mut h);
+    h.host.0.borrow_mut().fail_child_reclaim = true;
+    h.feed(PR, &frame(68, child.pid as u32, 0, 0));
+    h.feed(PR, &frame(3, 0x7a010001, 1, 0));
+    assert_eq!(h.runtime.request(&mut [0; 4096]), Err(-5));
+    assert_eq!(h.output(PW).len(), 32);
+    assert_eq!(result(&h.output(PW)[4..]), RUNNER_WAIT_STATUS);
+    assert_eq!(h.host.0.borrow().input[&PR].len(), 32);
+    assert_eq!(h.runtime.process.lease, ReadLease::Child(child));
+    assert!(!h.runtime.process.reclaimed);
+    assert_eq!(h.runtime.runner_terminal(), Err(-5));
 }
