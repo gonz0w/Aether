@@ -163,9 +163,9 @@ def written_native_media_snapshot(path, expected_sha256=None):
     return result
 
 
-def prepare_native_fixture(output):
+def prepare_native_fixture(output, archive=FIXTURE):
     """One native READ region, fixed guards; dispose the intermediate raw copy."""
-    raw = Path(prepare_fixture(output)['output'])
+    raw = Path(prepare_fixture(output, archive=archive)['output'])
     disk = Path(output) / 'native-namespace.raw'
     try:
         with raw.open('rb') as source, disk.open('xb') as destination:
