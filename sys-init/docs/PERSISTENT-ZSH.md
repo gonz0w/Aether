@@ -18,8 +18,8 @@ files and a private directory for disposable outputs.
 | Note image | `zsh-operator-note-2026-11-09-v1` and `fs-launch-operator-note-2026-11-09-v1` |
 | Seed disk | The pinned upstream `testpool_zstd.tar.gz` identified by `scripts/openzfs_namespace.py` |
 
-The builder checks the seals and complete envelope. Clean-checkout input
-acquisition and rebuilding the supplied seals are tracked in [#177](https://github.com/gonz0w/Aether/issues/177).
+The builder checks the seals and complete envelope. To produce inputs from
+a clean checkout, use the [R1 source build](R1-ZSH-SOURCE.md).
 
 ```sh
 python3 -B sys-init/scripts/build-persistent-zsh.py seed "$work/seed-image" \

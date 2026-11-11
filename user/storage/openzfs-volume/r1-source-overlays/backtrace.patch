@@ -1,0 +1,9 @@
+--- a/lib/libspl/backtrace.c
++++ b/lib/libspl/backtrace.c
+@@ -299,5 +299,6 @@
+ void
+ libspl_backtrace(int fd __maybe_unused)
+ {
++	spl_bt_write(fd, "[ERROR] openzfs: Traceback unavailable in native profile.\n");
+ }
+ #endif

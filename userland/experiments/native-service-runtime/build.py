@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import shutil
 import sys
 import tarfile
@@ -12,6 +13,8 @@ import types
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
+SOURCE_SDK_SHA256 = '42d77bdc51cad2eb2f05a5cc39d63f675d5897681d688c37c623024658ff0e14'
+MUSL_SHA256 = 'd585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a'
 
 
 def display(value):
@@ -37,20 +40,23 @@ def need(condition, message):
         raise ValueError(message)
 
 
-def build(sdk, output):
-    sdk, output = sdk.resolve(), output.resolve()
-    need(output.is_relative_to(ROOT / 'build') and not output.exists(),
-         'output must be fresh under build')
-    output.mkdir()
-    helper = ROOT / 'experiments/command-runner/process.py'
-    need(sha(helper) == '9f0c0464c10fa23bfc7c3c91fe26b04e5ab063ca058eeb6d41542d98c6186e4e',
-         'owned process helper pin')
-    proc = types.ModuleType('owned')
-    exec(compile(helper.read_bytes(), str(helper), 'exec'), proc.__dict__)
-    lock = json.loads((sdk / 'tools.lock.json').read_text())
-    tools = lock['tools']
-    for name in ('clang', 'lld', 'ar', 'nm'):
-        need(sha(Path(tools[name]['path'])) == tools[name]['sha256'], name)
+def source_sdk_members(sdk):
+    stage = sdk / 'stage/usr'
+    need(stage.is_dir() and stage.resolve() == stage, 'missing source-built SDK stage')
+    members = {}
+    for path in sorted(stage.rglob('*')):
+        need(not path.is_symlink(), 'symlink in source-built SDK stage')
+        if path.is_dir():
+            continue
+        need(path.is_file() and len(members) < 231, 'source-built SDK file inventory')
+        members[path.relative_to(stage).as_posix()] = sha(path)
+    rows = ''.join(f'{digest}  {name}\n' for name, digest in members.items())
+    need(hashlib.sha256(rows.encode('ascii')).hexdigest() == SOURCE_SDK_SHA256,
+         'source-built SDK stage differs')
+    return members
+
+
+def sealed_sdk(sdk):
     seal = sdk / 'SHA256SUMS'
     need(sha(seal) == 'f6bc6d6da3b051e1e4617e60ae256cbd35d193b608631ac29f7c42dbe73b13dc',
          'selected guarded SDK seal')
@@ -73,6 +79,33 @@ def build(sdk, output):
     need(receipt.get('libc_patches'), 'strict/error guards required')
     archive = sdk / 'musl-1.2.6.tar.gz'
     need(sha(archive) == receipt['source_sha256'], 'upstream source')
+    return sha(seal), sha(receipt_path), sealed, archive
+
+
+def build(sdk, output, *, tools_lock=None, musl_archive=None):
+    sdk, output = sdk.resolve(), output.resolve()
+    need(output.is_relative_to(ROOT / 'build') and not output.exists(),
+         'output must be fresh under build')
+    output.mkdir()
+    helper = ROOT / 'experiments/command-runner/process.py'
+    need(sha(helper) == '9f0c0464c10fa23bfc7c3c91fe26b04e5ab063ca058eeb6d41542d98c6186e4e',
+         'owned process helper pin')
+    proc = types.ModuleType('owned')
+    exec(compile(helper.read_bytes(), str(helper), 'exec'), proc.__dict__)
+    source_build = tools_lock is not None
+    lock_path = tools_lock if source_build else sdk / 'tools.lock.json'
+    tools = json.loads(lock_path.read_text())['tools']
+    for name in ('clang', 'lld', 'ar', 'nm'):
+        need(sha(Path(tools[name]['path'])) == tools[name]['sha256'], name)
+    if source_build:
+        sealed = source_sdk_members(sdk)
+        archive = musl_archive
+        need(sha(archive) == MUSL_SHA256, 'source musl archive differs')
+        sdk_identity = {'sdk_stage_sha256': SOURCE_SDK_SHA256, 'sdk_members': sealed}
+    else:
+        seal_sha, receipt_sha, sealed, archive = sealed_sdk(sdk)
+        sdk_identity = {'sdk_seal_sha256': seal_sha, 'sdk_receipt_sha256': receipt_sha,
+                        'sdk_members': sealed}
     selection = {
         'pthread': 'src/thread/pthread_create.c',
         'join': 'src/thread/pthread_join.c',
@@ -176,11 +209,37 @@ def build(sdk, output):
           '-std=c17', '-D_GNU_SOURCE', '-O2', '-Wall', '-Wextra', '-Werror',
           '-ffreestanding', '-fno-builtin', '-fstack-protector-strong', '-nostdinc',
           '-DAETHER_LONG_WAITS', '-Dhidden=__attribute__((__visibility__("hidden")))']
+    if source_build:
+        cc += [f'-ffile-prefix-map={output}=/build/aether/runtime',
+               f'-ffile-prefix-map={sdk}=/build/aether/sdk',
+               f'-ffile-prefix-map={ROOT.parent}=/src/aether']
+    utc_cc = [option for option in cc if not str(option).startswith('-Dhidden=')]
+    utc_cc += ['-isystem', sdk / 'stage/usr/include', '-I', HERE]
     for directory in ('src/include', 'src/internal', 'arch/x86_64', 'arch/generic'):
         cc += ['-isystem', headers / directory]
     cc += ['-isystem', sdk / 'stage/usr/include', '-I', HERE]
+    overlays = {}
+    if source_build:
+        sys.path.insert(0, str(ROOT.parent / 'scripts'))
+        from openzfs_failure import instrument_backend
+
+        utc = HERE.parent / 'native-utc'
+        patch_clock = runpy.run_path(str(utc / 'build.py'))['patch_real_time']
+        generated = output / 'overlays'
+        generated.mkdir()
+        backend, _ = instrument_backend((HERE / 'backend.c').read_text())
+        overlays['backend'] = generated / 'backend.c'
+        overlays['backend'].write_text(backend)
+        overlays['real_time'] = generated / 'real_time.c'
+        overlays['real_time'].write_text(patch_clock((HERE / 'real_time.c').read_text()))
+        for name in ('calendar', 'utc', 'wrappers'):
+            overlays[name] = utc / (name + '.c')
+        utc_cc += ['-I', utc]
     objects = []
-    for name, relative in list(selection.items()) + [('backend', None), ('real_time', None)]:
+    sources = list(selection.items()) + [('backend', None), ('real_time', None)]
+    if source_build:
+        sources.extend((name, None) for name in ('calendar', 'utc', 'wrappers'))
+    for name, relative in sources:
         flags = []
         if relative:
             flags += ['-Wno-unused-parameter', '-Wno-cast-function-type-mismatch']
@@ -194,17 +253,19 @@ def build(sdk, output):
             flags += ['-Dweak_alias(old,new)=' if name == 'join' else
                       '-Dweak_alias(old,new)=extern __typeof(old) new __attribute__((__weak__,__alias__(#old)))']
         obj = output / (name + '.o')
-        run(name, cc + flags + ['-c', headers / relative if relative else HERE / (name + '.c'),
-                                '-o', obj])
+        source = headers / relative if relative else overlays.get(name, HERE / (name + '.c'))
+        compiler = utc_cc if source_build and name in ('real_time', 'calendar', 'utc', 'wrappers') else cc
+        run(name, compiler + flags + ['-c', source, '-o', obj])
         objects.append(obj)
     supplemental = output / 'libaether_runtime.a'
     run('archive', [tools['ar']['path'], 'rcs', supplemental, *objects])
     symbols = run('symbols', [tools['nm']['path'], '--defined-only', supplemental]).stdout
     (output / 'build.json').write_text(json.dumps({
-        'profile': 'native-service-runtime-v0', 'status': 'built, execution required',
+        'profile': 'r1-source-runtime-v1' if source_build else 'native-service-runtime-v0',
+        'overlays': {name: sha(path) for name, path in overlays.items()},
+        'status': 'built, execution required',
         'sources': {p.name: sha(p) for p in HERE.iterdir() if p.is_file()},
-        'sdk_seal_sha256': sha(seal), 'sdk_members': sealed,
-        'sdk_receipt_sha256': sha(receipt_path), 'base_libc_sha256': sha(sdk / 'stage/usr/lib/libc.a'),
+        **sdk_identity, 'base_libc_sha256': sha(sdk / 'stage/usr/lib/libc.a'),
         'upstream_sha256': sha(archive), 'tools': tools, 'patches': patches,
         'originals': originals, 'supplemental_sha256': sha(supplemental),
         'required_link': ['--whole-archive', 'libaether_runtime.a', '--no-whole-archive', 'libc.a'],
@@ -217,9 +278,14 @@ if __name__ == '__main__':
     parser = Parser(description=__doc__)
     parser.add_argument('--sdk', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--tools-lock', type=Path)
+    parser.add_argument('--musl-archive', type=Path)
     parser.add_argument('--version', action='version', version='aether-service-runtime 0')
     args = parser.parse_args()
+    if (args.tools_lock is None) != (args.musl_archive is None):
+        parser.error('--tools-lock and --musl-archive must be supplied together')
     try:
-        print(display(build(args.sdk, args.output)))
+        print(display(build(args.sdk, args.output, tools_lock=args.tools_lock,
+                            musl_archive=args.musl_archive)))
     except (OSError, ValueError, KeyError) as error:
         parser.exit(1, display(error) + '\n')

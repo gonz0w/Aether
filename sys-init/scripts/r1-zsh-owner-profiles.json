@@ -1,0 +1,51 @@
+{
+  "shared": [
+    ["filesystem_metadata","userland/experiments/filesystem-service/metadata-lib.rs","2021",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],[]],
+    ["filesystem_policy","userland/experiments/filesystem-service/owner.rs","2021",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_metadata"]],
+    ["filesystem_service","userland/experiments/filesystem-service/service.rs","2021",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_policy"]],
+    ["filesystem_client","userland/experiments/filesystem-service/client.rs","2021",["fs_in_place","fs_home_in_place","fs_paths","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_service"]],
+    ["abi29_dispatch_core","sys-init/prototypes/native-filesystem-session/lib.rs","2024",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],[]],
+    ["fork_streams","sys-init/prototypes/native-filesystem-session/fork_streams.rs","2024",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["fd_startup"]],
+    ["af07_transport","sys-init/prototypes/native-filesystem-session/af07_transport.rs","2024",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_service"]],
+    ["owner_control","sys-init/prototypes/native-filesystem-session/owner_control.rs","2024",["native_tty_canonical_probe","native_tty_signal_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["af07_transport"]],
+    ["owner_region","sys-init/prototypes/native-filesystem-session/owner_region.rs","2024",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],[]],
+    ["serial_tty","userland/experiments/serial-tty/tty.rs","2024",["native_tty_canonical_probe","native_tty_signal_probe"],[]],
+    ["owner_entry","sys-init/prototypes/native-filesystem-session/owner_entry.rs","2024",["fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],[]]
+  ],
+  "roles": {
+    "seed": [
+      "filesystem_metadata",
+      "filesystem_policy",
+      "filesystem_service",
+      "filesystem_client",
+      "abi29_dispatch_core",
+      ["fd_startup","sys-init/prototypes/native-filesystem-session/fd_startup.rs","2024",["native_zsh_login_startup","native_zsh_home_redirection","native_zsh_file_exec","native_zsh_process","native_zsh_filesystem","native_tty_canonical_probe","native_tty_signal_probe","native_tty_mode_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["abi29_dispatch_core"]],
+      "fork_streams",
+      "af07_transport",
+      "owner_control",
+      "owner_region",
+      "serial_tty",
+      ["filesystem_readonly","userland/experiments/filesystem-service/readonly-files.rs","2024",["native_zsh_filesystem","native_zsh_operator","native_zsh_login_startup","native_zsh_home_redirection","native_zsh_idle_exit","native_zsh_file_exec","native_zsh_process","fs_in_place","fs_home_in_place","fs_paths","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_client","filesystem_service"]],
+      ["native_app_runtime","sys-init/prototypes/native-filesystem-session/native_app_runtime.rs","2024",["native_zsh_login_startup","native_zsh_home_redirection","native_zsh_operator","native_zsh_idle_exit","native_zsh_file_exec","native_zsh_process","native_zsh_filesystem","native_tty_canonical_probe","native_tty_signal_probe","native_tty_mode_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_readonly","serial_tty","abi29_dispatch_core","fd_startup","fork_streams","af07_transport","owner_control","filesystem_service"]],
+      "owner_entry",
+      [null,"sys-init/prototypes/native-filesystem-session/native_app_owner.rs","2024",["native_zsh_login_startup","native_zsh_home_redirection","native_zsh_operator","native_zsh_idle_exit","native_zsh_file_exec","native_zsh_process","native_zsh_filesystem","native_tty_canonical_probe","native_tty_signal_probe","native_tty_mode_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_readonly","serial_tty","filesystem_metadata","filesystem_policy","filesystem_service","filesystem_client","abi29_dispatch_core","fd_startup","fork_streams","af07_transport","owner_control","owner_region","native_app_runtime","owner_entry"]]
+    ],
+    "note": [
+      "filesystem_metadata",
+      "filesystem_policy",
+      "filesystem_service",
+      "filesystem_client",
+      "abi29_dispatch_core",
+      ["fd_startup","sys-init/prototypes/native-filesystem-session/fd_startup.rs","2024",["native_zsh_home_redirection_reader","native_zsh_operator_note","native_zsh_operator_login","native_zsh_repeat_exec","native_zsh_home_cwd_exec","native_zsh_home_cwd","native_zsh_login_startup","native_zsh_home_redirection","native_zsh_cold_reopen","native_zsh_file_exec","native_zsh_process","native_zsh_filesystem","native_tty_canonical_probe","native_tty_signal_probe","native_tty_mode_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["abi29_dispatch_core"]],
+      "fork_streams",
+      "af07_transport",
+      "owner_control",
+      "owner_region",
+      "serial_tty",
+      ["filesystem_readonly","userland/experiments/filesystem-service/readonly-files.rs","2024",["native_zsh_operator","native_zsh_home_redirection_reader","native_zsh_operator_note","native_zsh_operator_login","native_zsh_repeat_exec","native_zsh_home_cwd_exec","native_zsh_home_cwd","native_zsh_login_startup","native_zsh_home_redirection","native_zsh_idle_exit","native_zsh_cold_reopen","native_zsh_filesystem","native_zsh_file_exec","native_zsh_process","fs_in_place","fs_home_in_place","fs_paths","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_client","filesystem_service"]],
+      ["native_app_runtime","sys-init/prototypes/native-filesystem-session/native_app_runtime.rs","2024",["native_zsh_home_redirection_reader","native_zsh_operator_note","native_zsh_operator_login","native_zsh_repeat_exec","native_zsh_home_cwd_exec","native_zsh_home_cwd","native_zsh_login_startup","native_zsh_home_redirection","native_zsh_operator","native_zsh_idle_exit","native_zsh_cold_reopen","native_zsh_file_exec","native_zsh_process","native_zsh_filesystem","native_tty_canonical_probe","native_tty_signal_probe","native_tty_mode_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_readonly","serial_tty","abi29_dispatch_core","fd_startup","fork_streams","af07_transport","owner_control","filesystem_service"]],
+      "owner_entry",
+      [null,"sys-init/prototypes/native-filesystem-session/native_app_owner.rs","2024",["native_zsh_home_redirection_reader","native_zsh_operator_note","native_zsh_operator_login","native_zsh_repeat_exec","native_zsh_home_cwd_exec","native_zsh_home_cwd","native_zsh_login_startup","native_zsh_home_redirection","native_zsh_operator","native_zsh_idle_exit","native_zsh_cold_reopen","native_zsh_file_exec","native_zsh_process","native_zsh_filesystem","native_tty_canonical_probe","native_tty_signal_probe","native_tty_mode_probe","fs_namespace","fs_lifetimes","fs_mixed","fs_wait","fs_bulk","fs_runtime","fs_activation","fs_names","fs_directories","fs_metadata","fs_directory_contexts","fs_home","fs_home_wire"],["filesystem_readonly","serial_tty","filesystem_metadata","filesystem_policy","filesystem_service","filesystem_client","abi29_dispatch_core","fd_startup","fork_streams","af07_transport","owner_control","owner_region","native_app_runtime","owner_entry"]]
+    ]
+  }
+}

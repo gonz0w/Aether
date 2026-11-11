@@ -83,7 +83,7 @@ def validate_symbols(service, launch):
         raise ValueError('AF09 old service/launch symbol')
 
 
-def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False):
+def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False, source_toolchain=None):
     """Return service/launch object Paths; caller owns work and cleanup.
 
     This follows the existing five-crate native metadata-service object recipe.
@@ -98,10 +98,15 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
                                cold_note=cold_note)
     folder = work / 'home-engine-rust'
     folder.mkdir()
-    pins_path = R / 'docs/evidence/filesystem-transport-2026-10-19/inputs.json'
-    if sha(pins_path) != 'f200c7507b7fc300f9d4303191b0196acfa35dc7f9cffecd51e6a21e7933c82d':
-        raise ValueError('AF09 native Rust dependency manifest')
-    pins = json.loads(pins_path.read_text())
+    if source_toolchain is None:
+        pins_path = R / 'docs/evidence/filesystem-transport-2026-10-19/inputs.json'
+        if sha(pins_path) != 'f200c7507b7fc300f9d4303191b0196acfa35dc7f9cffecd51e6a21e7933c82d':
+            raise ValueError('AF09 native Rust dependency manifest')
+        pins = json.loads(pins_path.read_text())
+    else:
+        if not (terminfo_nine or cold_note):
+            raise ValueError('source toolchain is limited to the two R1 profiles')
+        pins_path, pins = source_toolchain
     for name in ('rustc', 'clippy-driver', 'lld', 'nm', 'readelf'):
         selected = pins['tools'][name]
         if sha(selected['path']) != selected['sha256']:
@@ -131,6 +136,9 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
             raise ValueError('AF09 inconsistent native Rust input: ' + path)
         retained[path] = digest
     flags = [*BASE, *[arg for name in profile for arg in ('--cfg', name)]]
+    if source_toolchain is not None:
+        flags.extend((f'--remap-path-prefix={work}=/build/aether/openzfs',
+                      f'--remap-path-prefix={R.parent}=/src/aether'))
     record['home_engine_rust'] = dict(profile=list(profile), flags=flags, sources=sources,
         tools={name: dict(tools[name]) for name in ('rustc', 'clippy-driver', 'lld', 'nm', 'readelf')},
         native_libraries=dict(libraries), service_result_bytes=320, launch_state_bytes=384,
@@ -157,7 +165,8 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
         child_env = dict(env)
         if str(argv[0]) in [tools[name]['path'] for name in ('rustc', 'clippy-driver')]:
             child_env['DYLD_LIBRARY_PATH'] = str(Path(tools['rustc']['path']).parent.parent / 'lib')
-        result = proc.run(list(map(str, argv)), cwd=R, env=child_env, work=work,
+        result = proc.run(list(map(str, argv)), cwd=work if source_toolchain else R,
+                          env=child_env, work=work,
             label=label, timeout=min(180, remaining))
         record.setdefault('rows', []).append(dict(label=label, expected_exit=0, process=result.record,
             stdout=result.stdout.decode(errors='replace')[-7000:], stderr=result.stderr.decode(errors='replace')[-7000:]))

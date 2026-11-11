@@ -1,0 +1,15 @@
+--- a/lib/libtpool/thread_pool.c
++++ b/lib/libtpool/thread_pool.c
+@@ -153,7 +153,11 @@
+ 			} else {
+ 				struct timespec ts;
+ 
+-				clock_gettime(CLOCK_REALTIME, &ts);
++				if (clock_gettime(CLOCK_REALTIME, &ts) != 0 ||
++				    ts.tv_sec < 0 || ts.tv_nsec < 0 ||
++				    ts.tv_nsec >= NANOSEC ||
++				    tpool->tp_linger > LLONG_MAX - ts.tv_sec)
++					_Exit(125);
+ 				ts.tv_sec += tpool->tp_linger;
+ 
+ 				if (pthread_cond_timedwait(&tpool->tp_workcv,

@@ -1,0 +1,214 @@
+--- a/Src/exec.c
++++ b/Src/exec.c
+@@ -677,96 +677,16 @@
+     return NULL;
+ }
+ 
+-/* execute an external command */
+-
+-/**/
+-static void
+-#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
+-__attribute__((noinline))
+-#endif
+-execute(LinkList args, int flags, int defpath)
++/* Keep command-search scratch off the direct external-command route. */
++
++static void __attribute__((noinline))
++execute_path(LinkList args, int defpath, char *arg0, char **argv, char **newenvp)
+ {
+     Cmdnam cn;
+-    char buf[MAXCMDLEN], buf2[MAXCMDLEN];
+-    char *s, *z, *arg0;
+-    char **argv, **pp, **newenvp = NULL;
++    char buf[MAXCMDLEN];
++    char *z;
++    char **pp;
+     int eno = 0, ee;
+-
+-    arg0 = (char *) peekfirst(args);
+-    if (isset(RESTRICTED) && (strchr(arg0, '/') || defpath)) {
+-	zerr("%s: restricted", arg0);
+-	_exit(1);
+-    }
+-
+-    /* If the parameter STTY is set in the command's environment, *
+-     * we first run the stty command with the value of this       *
+-     * parameter as it arguments. If the parameter is empty, we   *
+-     * do nothing, but this causes the terminal settings to be    *
+-     * restored later which can be useful.                        */
+-    if ((s = STTYval) && *s && isatty(0) && (GETPGRP() == getpid())) {
+-	char *t = tricat("stty", " ", s);
+-
+-	STTYval = 0;	/* this prevents infinite recursion */
+-	zsfree(s);
+-	execstring(t, 1, 0, "stty");
+-	zsfree(t);
+-    } else if (s) {
+-	STTYval = 0;
+-	zsfree(s);
+-    }
+-
+-    /* If ARGV0 is in the commands environment, we use *
+-     * that as argv[0] for this external command       */
+-    if (unset(RESTRICTED) && (z = zgetenv("ARGV0"))) {
+-	setdata(firstnode(args), (void *) ztrdup(z));
+-	/*
+-	 * Note we don't do anything with the parameter structure
+-	 * for ARGV0: that's OK since we're about to exec or exit
+-	 * on failure.
+-	 */
+-#ifdef USE_SET_UNSET_ENV
+-	unsetenv("ARGV0");
+-#else
+-	delenvvalue(z - 6);
+-#endif
+-    } else if (flags & BINF_DASH) {
+-    /* Else if the pre-command `-' was given, we add `-' *
+-     * to the front of argv[0] for this command.         */
+-	sprintf(buf2, "-%s", arg0);
+-	setdata(firstnode(args), (void *) ztrdup(buf2));
+-    }
+-
+-    argv = makecline(args);
+-    if (flags & BINF_CLEARENV)
+-	newenvp = blank_env;
+-
+-    /*
+-     * Note that we don't close fd's attached to process substitution
+-     * here, which should be visible to external processes.
+-     */
+-    closem(FDT_XTRACE, 0);
+-#ifndef FD_CLOEXEC
+-    if (SHTTY != -1) {
+-	close(SHTTY);
+-	SHTTY = -1;
+-    }
+-#endif
+-    child_unblock();
+-    if ((int) ztrlen(arg0) >= PATH_MAX) {
+-	zerr("command too long: %s", arg0);
+-	_exit(127);
+-    }
+-    for (s = arg0; *s; s++)
+-	if (*s == '/') {
+-	    int lerrno = zexecve(arg0, argv, newenvp);
+-	    if (arg0 == s || unset(PATHDIRS) ||
+-		(arg0[0] == '.' && (arg0 + 1 == s ||
+-				    (arg0[1] == '.' && arg0 + 2 == s)))) {
+-		zerr("%e: %s", lerrno, arg0);
+-		_exit((lerrno == EACCES || lerrno == ENOEXEC) ? 126 : 127);
+-	    }
+-	    break;
+-	}
+ 
+     /* for command -p, search the default path */
+     if (defpath) {
+@@ -863,6 +783,107 @@
+     else
+ 	zerr("command not found: %s", arg0);
+     _exit((eno == EACCES || eno == ENOEXEC) ? 126 : 127);
++}
++
++/* Preserve pre-command `-' formatting without reserving it for every exec. */
++
++static char * __attribute__((noinline))
++execute_dash(char *arg0)
++{
++    char buf[MAXCMDLEN];
++
++    sprintf(buf, "-%s", arg0);
++    return ztrdup(buf);
++}
++
++/* execute an external command */
++
++/**/
++static void
++#ifdef AEFD_ZSH_FILESYSTEM_BINDINGS
++__attribute__((noinline))
++#endif
++execute(LinkList args, int flags, int defpath)
++{
++    char *s, *z, *arg0;
++    char **argv, **newenvp = NULL;
++
++    arg0 = (char *) peekfirst(args);
++    if (isset(RESTRICTED) && (strchr(arg0, '/') || defpath)) {
++	zerr("%s: restricted", arg0);
++	_exit(1);
++    }
++
++    /* If the parameter STTY is set in the command's environment, *
++     * we first run the stty command with the value of this       *
++     * parameter as it arguments. If the parameter is empty, we   *
++     * do nothing, but this causes the terminal settings to be    *
++     * restored later which can be useful.                        */
++    if ((s = STTYval) && *s && isatty(0) && (GETPGRP() == getpid())) {
++	char *t = tricat("stty", " ", s);
++
++	STTYval = 0;	/* this prevents infinite recursion */
++	zsfree(s);
++	execstring(t, 1, 0, "stty");
++	zsfree(t);
++    } else if (s) {
++	STTYval = 0;
++	zsfree(s);
++    }
++
++    /* If ARGV0 is in the commands environment, we use *
++     * that as argv[0] for this external command       */
++    if (unset(RESTRICTED) && (z = zgetenv("ARGV0"))) {
++	setdata(firstnode(args), (void *) ztrdup(z));
++	/*
++	 * Note we don't do anything with the parameter structure
++	 * for ARGV0: that's OK since we're about to exec or exit
++	 * on failure.
++	 */
++#ifdef USE_SET_UNSET_ENV
++	unsetenv("ARGV0");
++#else
++	delenvvalue(z - 6);
++#endif
++    } else if (flags & BINF_DASH) {
++    /* Else if the pre-command `-' was given, we add `-' *
++     * to the front of argv[0] for this command.         */
++	setdata(firstnode(args), (void *) execute_dash(arg0));
++    }
++
++    argv = makecline(args);
++    if (flags & BINF_CLEARENV)
++	newenvp = blank_env;
++
++    /*
++     * Note that we don't close fd's attached to process substitution
++     * here, which should be visible to external processes.
++     */
++    closem(FDT_XTRACE, 0);
++#ifndef FD_CLOEXEC
++    if (SHTTY != -1) {
++	close(SHTTY);
++	SHTTY = -1;
++    }
++#endif
++    child_unblock();
++    if ((int) ztrlen(arg0) >= PATH_MAX) {
++	zerr("command too long: %s", arg0);
++	_exit(127);
++    }
++    for (s = arg0; *s; s++)
++	if (*s == '/') {
++	    int lerrno = zexecve(arg0, argv, newenvp);
++	    if (arg0 == s || unset(PATHDIRS) ||
++		(arg0[0] == '.' && (arg0 + 1 == s ||
++				    (arg0[1] == '.' && arg0 + 2 == s)))) {
++		zerr("%e: %s", lerrno, arg0);
++		_exit((lerrno == EACCES || lerrno == ENOEXEC) ? 126 : 127);
++	    }
++	    break;
++	}
++
++    execute_path(args, defpath, arg0, argv, newenvp);
+ }
+ 
+ #define RET_IF_COM(X) { if (iscom(X)) return docopy ? dupstring(X) : arg0; }

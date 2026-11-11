@@ -1,9 +1,12 @@
 """Create a UEFI-only optical image from the kernel and pinned boot inputs."""
+import hashlib
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 from deps import DEPS, ROOT, LOCK, verify
 
 
@@ -33,10 +36,17 @@ def build(kernel, output, user, display, lifecycle, smp_supervisor, native_c=Non
         shutil.copyfile(DEPS / "limine/LICENSE", tree / "boot/LICENSE-Limine.txt")
         shutil.copyfile(DEPS / "limine/limine-uefi-cd.bin", tree / "boot/limine-uefi-cd.bin")
         # No host disk/device access and no BIOS installation step.
-        subprocess.run(["xorriso", "-as", "mkisofs", "-R", "-J", "-V", "AETHER",
-                        "-eltorito-alt-boot", "-e", "boot/limine-uefi-cd.bin", "-no-emul-boot",
-                        "-efi-boot-part", "--efi-boot-image", "--protective-msdos-label",
-                        "-o", str(output), str(tree)], check=True, stdout=subprocess.DEVNULL)
+        command = ["xorriso", "-as", "mkisofs", "-R", "-J", "-V", "AETHER",
+                   "-eltorito-alt-boot", "-e", "boot/limine-uefi-cd.bin", "-no-emul-boot",
+                   "-efi-boot-part", "--efi-boot-image", "--protective-msdos-label"]
+        if native_c is not None and os.environ.get("AETHER_R1_SOURCE_IMAGE") == "1":
+            date = "2026010100000000"
+            with Path(native_c).open("rb") as stream:
+                digest = hashlib.file_digest(stream, "sha256").digest()
+            command += ["--modification-date=" + date, "--set_all_file_dates", date,
+                        "--gpt_disk_guid", str(uuid.UUID(bytes=digest[:16], version=5))]
+        subprocess.run([*command, "-o", str(output), str(tree)],
+                       check=True, stdout=subprocess.DEVNULL)
     print("Image:", output)
 
 

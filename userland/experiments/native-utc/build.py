@@ -37,6 +37,17 @@ class Parser(argparse.ArgumentParser):
         super().error(display(message))
 
 
+def patch_real_time(original):
+    old = '    if (id != CLOCK_MONOTONIC) {\n'
+    new = ('    if (id == CLOCK_REALTIME) {\n'
+           '        int error = aether_utc_read(out);\n'
+           '        if (error) { errno = error; return -1; }\n'
+           '        return 0;\n'
+           '    }\n' + old)
+    need(original.count(old) == 1, 'elapsed clock anchor')
+    return '#include "utc.h"\n' + original.replace(old, new)
+
+
 def build(delivery, output):
     delivery, output = delivery.resolve(), output.resolve()
     need(output.is_relative_to(ROOT / 'build') and not output.exists(),
@@ -68,14 +79,7 @@ def build(delivery, output):
     for name in ('adapter.h', 'runtime.h', 'real_time.h'):
         shutil.copyfile(delivery / 'source/experiments/native-service-runtime' / name, source / name)
     original = (delivery / 'source/experiments/native-service-runtime/real_time.c').read_text()
-    old = '    if (id != CLOCK_MONOTONIC) {\n'
-    new = ('    if (id == CLOCK_REALTIME) {\n'
-           '        int error = aether_utc_read(out);\n'
-           '        if (error) { errno = error; return -1; }\n'
-           '        return 0;\n'
-           '    }\n' + old)
-    need(original.count(old) == 1, 'elapsed clock anchor')
-    patched = '#include "utc.h"\n' + original.replace(old, new)
+    patched = patch_real_time(original)
     (source / 'real_time.c').write_text(patched)
     proc = types.ModuleType('owned')
     exec(compile(helper.read_bytes(), str(helper), 'exec'), proc.__dict__)
