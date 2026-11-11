@@ -165,6 +165,31 @@ def compile_provider(name, src, output, flags):
         {"PATH": f"{LLVM}:/usr/bin:/bin", "LC_ALL": "C"})
 
 
+def compile_staged_fork(musl, provider, internal):
+    original = musl / "src/process/_Fork.c"
+    text = original.read_text()
+    anchor = "ret = __syscall(SYS_fork);"
+    if (digest(original) != "3821faa03c1718620f1f4804133aa7473065c2f34f9cb49708b7930787e0e9e5"
+            or text.count(anchor) != 1 or text.count("__post_Fork(ret);") != 1):
+        raise SystemExit("pinned upstream musl _Fork seam is missing or changed")
+    arch = SDK / "musl-1.2.6/arch/x86_64"
+    if digest(arch / "syscall_arch.h") != "dbb8acfc335a8e2231556cca2fd55b5efaecba31a48f5cd4ea95a5eff13d2d30":
+        raise SystemExit("guarded SDK architecture syscall header changed")
+    source, obj = provider / "_Fork.c", provider / "_Fork.o"
+    source.write_text("long __aether_fork_stage(void);\n" + text.replace(anchor, "ret = __aether_fork_stage();"))
+    # Preserve the original musl child repair, but use Aether's trap transport.
+    compile_provider("_Fork", source, obj, ["-I" + str(arch),
+                     *(f for f in internal if f not in ("-Wextra", "-Werror"))])
+    code = run([TOOLS["objdump"], "-dr", obj], provider,
+               {"PATH": f"{LLVM}:/usr/bin:/bin", "LC_ALL": "C"}).decode("ascii")
+    if (not re.search(r"\bint\s+\$(?:0x81|129)\b", code)
+            or not re.search(r"\bmovl\s+\$(?:0x100da|65754), %eax", code, re.I)
+            or re.search(r"^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2}\s+)+syscall\b", code, re.M)
+            or code.count("__aether_fork_stage") != 1):
+        raise SystemExit("staged _Fork must call Aether staging and use the Aether child TID trap")
+    return obj
+
+
 def build_zsh_profile(label, profile, roots, musl, nc, work, probe_object, sdk_lib, sdk_inc, exec_derived):
     zsh = work / ("zsh-" + label)
     provider = work / ("providers-" + label)
@@ -202,17 +227,7 @@ def build_zsh_profile(label, profile, roots, musl, nc, work, probe_object, sdk_l
     rebind = provider / "rebind.o"
     compile_provider("rebind", ROOT / "user/native-connections/rebind.c", rebind,
                      [*internal, "-I" + str(musl / "src/internal"), "-DREBIND_LIBC_REPAIR"])
-    fork_c = provider / "_Fork.c"
-    original_fork = musl / "src/process/_Fork.c"
-    fork_text = original_fork.read_text()
-    if digest(original_fork) != "3821faa03c1718620f1f4804133aa7473065c2f34f9cb49708b7930787e0e9e5" or fork_text.count("ret = __syscall(SYS_fork);") != 1:
-        raise SystemExit("pinned upstream musl _Fork seam is missing or changed")
-    fork_text = 'long __aether_fork_stage(void);\n' + fork_text.replace(
-        "ret = __syscall(SYS_fork);", "ret = __aether_fork_stage();")
-    fork_c.write_text(fork_text)
-    fork_o = provider / "_Fork.o"
-    compile_provider("_Fork", fork_c, fork_o, [f for f in internal if f not in ("-Wextra", "-Werror")])
-    entries.extend((rebind, fork_o))
+    entries.extend((rebind, compile_staged_fork(musl, provider, internal)))
 
     configure_flags = [f for f in common if f not in
                        ("-DAEFD_ZSH_DIAGNOSTIC", "-DAEFD_ZSH_OPERATOR_NOTE_BINDINGS")]
@@ -338,18 +353,7 @@ def build_helper_profile(label, profile, musl, work, sdk_lib, sdk_inc):
     rebind = provider / "rebind.o"
     compile_provider("rebind", ROOT / "user/native-connections/rebind.c", rebind,
                      [*internal, "-I" + str(musl / "src/internal"), "-DREBIND_LIBC_REPAIR"])
-    original_fork = musl / "src/process/_Fork.c"
-    if digest(original_fork) != "3821faa03c1718620f1f4804133aa7473065c2f34f9cb49708b7930787e0e9e5":
-        raise SystemExit("pinned upstream musl _Fork source changed")
-    fork_source = original_fork.read_text()
-    if fork_source.count("ret = __syscall(SYS_fork);") != 1:
-        raise SystemExit("expected one staged musl Fork substitution")
-    fork_source = 'long __aether_fork_stage(void);\n' + fork_source.replace(
-        "ret = __syscall(SYS_fork);", "ret = __aether_fork_stage();")
-    staged_fork = provider / "_Fork.c"
-    staged_fork.write_text(fork_source)
-    fork = provider / "_Fork.o"
-    compile_provider("_Fork", staged_fork, fork, [f for f in internal if f not in ("-Wextra", "-Werror")])
+    fork = compile_staged_fork(musl, provider, internal)
 
     helper_main = directory / "helper-main.o"
     payload = ROOT / "user/native-command/dash-helper-inputs/helper.c"
@@ -566,7 +570,7 @@ def main():
     if not SOURCE_ARCHIVES.is_dir():
         raise SystemExit(f"offline source archive directory missing: {SOURCE_ARCHIVES}")
     lock = json.loads(args.tools_lock.read_text())
-    required = ("clang", "lld", "ar", "ranlib", "nm", "make")
+    required = ("clang", "lld", "ar", "ranlib", "nm", "objdump", "make")
     for name in required:
         entry = lock["tools"].get(name)
         if entry is None:
