@@ -1,0 +1,23 @@
+{
+  "roles": {
+    "note": {
+      "envelope": "be04304f06bf6fe873b742844a0c030c2712715b3a1ba40957a567e5413a8e5c",
+      "members": {
+        "filesystem.elf": "05506262c00b6d4e4ce258fc0fa87c73899523f09f64a646134fc6fd4cbb000a",
+        "helper.elf": "7e2d16dcb7db84dabcdf727fcbe7fae287995e6caebc2ff8c8b00f648ee933c6",
+        "owner.bin": "7c2402416001f4bdde0e74aae4d653cc8d4d6d6884004b9aca90f90a56b35409",
+        "zsh.elf": "38bea157a757b5695a7a793f4c5b1e2ff34fac606f72ef05086309abac3ad9f7"
+      }
+    },
+    "seed": {
+      "envelope": "ffcdeda772bfdd2bb5504862e32d335f028ac7fb2b5775616d0555d130f382bc",
+      "members": {
+        "filesystem.elf": "6eb5ffd4b2f297e41e2558b7c660477849de3844fb9ce2f65a3f90d981ef13c9",
+        "helper.elf": "5cfeea94377d5587138eb64e34dc30788580cc0ebb9db582d2e3590021635177",
+        "owner.bin": "b9e501fc029fa2e03ff769c3ff577839a3116f5638428efc837b999db8473ff7",
+        "zsh.elf": "52e919dbd7687791e68c05c93fb2111c2e402a46cac7d0b1729430a2cc52983b"
+      }
+    }
+  },
+  "schema": "aether-r1-source-zsh-v1"
+}

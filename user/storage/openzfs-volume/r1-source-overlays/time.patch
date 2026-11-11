@@ -1,0 +1,69 @@
+--- a/lib/libspl/include/sys/time.h
++++ b/lib/libspl/include/sys/time.h
+@@ -29,6 +29,8 @@
+ #define	_LIBSPL_SYS_TIME_H
+ 
+ #include <time.h>
++#include <limits.h>
++#include <stdlib.h>
+ #include <sys/types.h>
+ #include_next <sys/time.h>
+ 
+@@ -83,34 +85,48 @@
+ static inline void
+ gethrestime(inode_timespec_t *ts)
+ {
+-	struct timeval tv;
+-	(void) gettimeofday(&tv, NULL);
++	struct timespec tv;
++	if (clock_gettime(CLOCK_REALTIME, &tv) != 0 || tv.tv_sec < 0 ||
++	    tv.tv_nsec < 0 || tv.tv_nsec >= NANOSEC)
++		_Exit(125);
+ 	ts->tv_sec = tv.tv_sec;
+-	ts->tv_nsec = tv.tv_usec * NSEC_PER_USEC;
++	ts->tv_nsec = (tv.tv_nsec / NSEC_PER_USEC) * NSEC_PER_USEC;
+ }
+ 
+ static inline uint64_t
+ gethrestime_sec(void)
+ {
+-	struct timeval tv;
+-	(void) gettimeofday(&tv, NULL);
++	struct timespec tv;
++	if (clock_gettime(CLOCK_REALTIME, &tv) != 0 || tv.tv_sec < 0 ||
++	    tv.tv_nsec < 0 || tv.tv_nsec >= NANOSEC)
++		_Exit(125);
+ 	return (tv.tv_sec);
+ }
+ 
+ static inline hrtime_t
+ getlrtime(void)
+ {
+-	struct timeval tv;
+-	(void) gettimeofday(&tv, NULL);
++	struct timespec tv;
++	if (clock_gettime(CLOCK_REALTIME, &tv) != 0 || tv.tv_sec < 0 ||
++	    tv.tv_nsec < 0 || tv.tv_nsec >= NANOSEC)
++		_Exit(125);
++	if ((uint64_t)tv.tv_sec >
++	    (LLONG_MAX - (uint64_t)(tv.tv_nsec / NSEC_PER_USEC) * NSEC_PER_USEC) / NANOSEC)
++		_Exit(125);
+ 	return ((((uint64_t)tv.tv_sec) * NANOSEC) +
+-	    ((uint64_t)tv.tv_usec * NSEC_PER_USEC));
++	    ((uint64_t)(tv.tv_nsec / NSEC_PER_USEC) * NSEC_PER_USEC));
+ }
+ 
+ static inline hrtime_t
+ gethrtime(void)
+ {
+ 	struct timespec ts;
+-	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
++	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0 || ts.tv_sec < 0 ||
++	    ts.tv_nsec < 0 || ts.tv_nsec >= NANOSEC)
++		_Exit(125);
++	if ((uint64_t)ts.tv_sec >
++	    (LLONG_MAX - (uint64_t)ts.tv_nsec) / NANOSEC)
++		_Exit(125);
+ 	return ((((uint64_t)ts.tv_sec) * NANOSEC) + ts.tv_nsec);
+ }
+ 

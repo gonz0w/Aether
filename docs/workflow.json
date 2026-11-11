@@ -220,6 +220,16 @@
     }
   },
   "tools": {
+    "scripts/r1_openzfs_support.py": {
+      "reference": "sys-init/docs/R1-ZSH-SOURCE.md",
+      "manual": "excluded-internal",
+      "reason": "Build-only tool in the documented R1 source workflow."
+    },
+    "scripts/r1_openzfs_engine.py": {
+      "reference": "sys-init/docs/R1-ZSH-SOURCE.md",
+      "manual": "excluded-internal",
+      "reason": "Build-only tool in the documented R1 source workflow."
+    },
     "scripts/check_workflow.py": {
       "reference": "docs/DEVELOPMENT.md",
       "manual": "blocked-not-written",
@@ -2815,6 +2825,16 @@
       "invariants": "Fixed offline roles, one attempt per stage, exact stopped disk lineage, no network, engine readiness before shell admission.",
       "oracle": "Cold note readback at the serial prompt with clean export and exact reclaims; startup refusal with no app admission and separate observed guest and host cleanup.",
       "gaps": "Supplied offline inputs; clean-checkout acquisition is issue177. Broader assembly and recovery remain in issue16."
+    },
+    {
+      "id": "persistent-sys-init-zsh-source",
+      "reference": "sys-init/docs/R1-ZSH-SOURCE.md",
+      "owner": "sys-init and userland, issue177",
+      "budget_seconds": 360,
+      "command": "Follow the pinned source steps in R1-ZSH-SOURCE.md twice in independent checkouts, then use the persistent serial recipe on reviewed images.",
+      "invariants": "Two fixed source roles; normalized paths; both build roots match the locked envelope; identical capability and resource profiles.",
+      "oracle": "Matching boot artifact hashes and actual loader geometry; exact stopped disk lineage and 256-byte readback at the cold serial prompt with known cleanup.",
+      "gaps": "Broader assembly and recovery remain in issue16."
     },
     {
       "id": "persistent-runner-host",

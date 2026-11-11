@@ -1,0 +1,11 @@
+--- a/module/zfs/vdev_file.c
++++ b/module/zfs/vdev_file.c
+@@ -56,7 +56,7 @@
+ void
+ vdev_file_init(void)
+ {
+-	vdev_file_taskq = taskq_create("z_vdev_file", MAX(boot_ncpus, 16),
++	vdev_file_taskq = taskq_create("z_vdev_file", 1,
+ 	    minclsyspri, boot_ncpus, INT_MAX, TASKQ_DYNAMIC);
+ 
+ 	VERIFY(vdev_file_taskq);

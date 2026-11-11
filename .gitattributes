@@ -5,3 +5,5 @@
 # The derived sources retain their pinned style and strict compiler/source checks.
 userland/experiments/filesystem-service/fd-tinfo-directory.patch whitespace=-blank-at-eol,-space-before-tab
 userland/experiments/filesystem-service/zsh-execute-stack.patch whitespace=-blank-at-eol,-space-before-tab
+userland/experiments/filesystem-service/zsh-execute-external.patch whitespace=-blank-at-eol,-space-before-tab
+user/storage/openzfs-volume/r1-source-overlays/*.patch whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

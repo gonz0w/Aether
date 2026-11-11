@@ -1,0 +1,31 @@
+--- a/lib/libspl/assert.c
++++ b/lib/libspl/assert.c
+@@ -71,6 +71,9 @@
+ void
+ libspl_set_assert_ok(boolean_t val)
+ {
++#ifdef AETHER_NATIVE_PROFILE
++	if (val) _Exit(125);
++#endif
+ 	libspl_assert_ok = val;
+ }
+ 
+@@ -81,6 +84,12 @@
+ libspl_assertf(const char *file, const char *func, int line,
+     const char *format, ...)
+ {
++#ifdef AETHER_NATIVE_PROFILE
++	(void) file; (void) func; (void) line; (void) format;
++	static const char diagnostic[] = "[ERROR] openzfs: Assertion failed; traceback unavailable.\n";
++	(void) write(STDERR_FILENO, diagnostic, sizeof (diagnostic)-1);
++	_Exit(125);
++#else
+ 	pthread_mutex_lock(&assert_lock);
+ 
+ 	va_list args;
+@@ -113,4 +122,5 @@
+ 	}
+ #endif
+ 	abort();
++#endif
+ }

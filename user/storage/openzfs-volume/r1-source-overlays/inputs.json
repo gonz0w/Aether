@@ -1,0 +1,55 @@
+{
+  "kernel": {
+    "source": "lib/libzpool/kernel.c",
+    "sha256": "f947a4d08e88270d2d65e89bd041065db0f5085095502b3e5ac1818553ec42a8",
+    "adapted_sha256": "0009a198c38bb45f261359565434c53f894092c2c9242b54a0e1319998764faf",
+    "patch": "kernel.patch"
+  },
+  "thread-pool": {
+    "source": "lib/libtpool/thread_pool.c",
+    "sha256": "6deab1172be5458ab5f6e4aba80e241750391048d143ac07e07fd1de3fceaaff",
+    "adapted_sha256": "2777669a32fab1feb1128dcc9b996cbe504230ce9d7d6b59040d2662ce032484",
+    "patch": "thread-pool.patch"
+  },
+  "assert": {
+    "source": "lib/libspl/assert.c",
+    "sha256": "e7b7b75052ab0df32e08f47e1675a1acd8ee7eb364b6ccf3a99efbca34950bbe",
+    "adapted_sha256": "5e7898c3d2cc087a56dc902f3ad67a11d86d7122dc3a0e79554d055838c6b671",
+    "patch": "assert.patch"
+  },
+  "time": {
+    "source": "lib/libspl/include/sys/time.h",
+    "sha256": "b67cffea47645633e54ffced78c9bc62dcb67b1093c1a22744677d55c960643d",
+    "adapted_sha256": "a8b600d9a69e96ebdc49357d104b3ebd1339e9967dc245ba71b7b17ca43d4331",
+    "patch": "time.patch"
+  },
+  "umem": {
+    "source": "lib/libspl/include/umem.h",
+    "sha256": "027a852e93db4991ccb75d4209f78fae9ade003062873bf79c1e4219dda83423",
+    "adapted_sha256": "027a852e93db4991ccb75d4209f78fae9ade003062873bf79c1e4219dda83423"
+  },
+  "taskq": {
+    "source": "lib/libzpool/taskq.c",
+    "sha256": "fdde4e17f5ea711df7a505c8f4e628747f4b134f5ba7817f76a00650e4a6056b",
+    "adapted_sha256": "2da87448a61e23c513f92a281677c7f0a5bf7721c59ec8284b8c9fab4016c96c",
+    "patch": "taskq.patch"
+  },
+  "vdev": {
+    "source": "module/zfs/vdev_file.c",
+    "sha256": "4c4cdad96332904f46508bedd1c4044a083e0b4008feb7ed02bf65fdb1e96ca4",
+    "adapted_sha256": "35d677c8c833f43d3f94051145a9ab132a35b8757df71115f002c23951948c29",
+    "patch": "vdev.patch"
+  },
+  "backtrace": {
+    "source": "lib/libspl/backtrace.c",
+    "sha256": "627009111d6c296adb7b24ae5979575f1931fb63291fb7acc69608c22d436696",
+    "adapted_sha256": "b8c0b66b72c68da0a7e8667d7b79507fd801ef779b12610bf1d0082ff4007d29",
+    "patch": "backtrace.patch"
+  },
+  "abd": {
+    "source": "lib/libzpool/abd_os.c",
+    "sha256": "9dba7a588c5573854b6b69fcdbb5181d39a17f017e9991386fb4c8e1a87ba4a0",
+    "adapted_sha256": "c2083513af64d3edf7748ca7ddcf484bc4aa7fb74ce6b074aba706c597401e36",
+    "patch": "abd.patch"
+  }
+}

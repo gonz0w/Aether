@@ -2,10 +2,12 @@
 """Focused controls for the sealed persistent Zsh image inputs."""
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
 sys.path.insert(0, str(SCRIPTS))
@@ -54,6 +56,34 @@ class SealInputs(unittest.TestCase):
         self.member.symlink_to(other)
         with self.assertRaisesRegex(ValueError, 'symlink component'):
             self.read()
+
+
+class SourceInputs(unittest.TestCase):
+    def test_exact_role_payloads_and_envelope_are_both_required(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            blobs = {'filesystem.elf': b'engine', 'zsh.elf': b'Zsh',
+                     'helper.elf': b'helper', 'owner.bin': b'owner'}
+            for name, raw in blobs.items():
+                (root / name).write_bytes(raw)
+            with patch.object(IMAGE, 'digest', return_value='expected'):
+                envelope = IMAGE.pack_envelope('seed', blobs['filesystem.elf'], blobs, 'expected')
+            lock = root / 'lock.json'
+            role = {'members': {name: IMAGE.digest(raw) for name, raw in blobs.items()},
+                    'envelope': IMAGE.digest(envelope)}
+            lock.write_text(json.dumps({'schema': 'aether-r1-source-zsh-v1',
+                                        'roles': {'seed': role}}))
+            with patch.object(IMAGE, 'SOURCE_ARTIFACT_LOCK', lock):
+                self.assertEqual(IMAGE.source_envelope('seed', root)[0], envelope)
+                (root / 'helper.elf').write_bytes(b'changed helper')
+                with self.assertRaisesRegex(ValueError, 'source-built seed input differs'):
+                    IMAGE.source_envelope('seed', root)
+                (root / 'helper.elf').write_bytes(blobs['helper.elf'])
+                role['envelope'] = '0' * 64
+                lock.write_text(json.dumps({'schema': 'aether-r1-source-zsh-v1',
+                                            'roles': {'seed': role}}))
+                with self.assertRaisesRegex(ValueError, 'envelope'):
+                    IMAGE.source_envelope('seed', root)
 
 
 if __name__ == '__main__':

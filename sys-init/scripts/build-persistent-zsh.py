@@ -20,6 +20,7 @@ from bounded_tools import run_tool
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = 'aether-persistent-zsh-image-v1'
 MAX_MEMBER = 16 * 1024 * 1024
+SOURCE_ARTIFACT_LOCK = Path(__file__).with_name('r1-zsh-artifacts.json')
 # The accepted #170 seal manifests identify all inputs and notices for each role.
 PROFILES = {
     'seed': {
@@ -135,6 +136,30 @@ def envelope(role, app_root, engine_root):
     profile = PROFILES[role]
     app = read_seal(app_root, profile['app'], {'zsh.elf', 'helper.elf', 'owner.bin'})
     engine = read_seal(engine_root, profile['engine'], {'filesystem.elf'})['filesystem.elf']
+    return pack_envelope(role, engine, app, profile['envelope'])
+
+
+def source_envelope(role, inputs):
+    lock_bytes = read_member(SOURCE_ARTIFACT_LOCK.parent, SOURCE_ARTIFACT_LOCK.name, 65536)
+    lock = json.loads(lock_bytes)
+    if lock.get('schema') != 'aether-r1-source-zsh-v1':
+        raise ValueError('invalid R1 source artifact lock')
+    role_lock = lock['roles'][role]
+    names = {'zsh.elf', 'helper.elf', 'owner.bin', 'filesystem.elf'}
+    if set(role_lock['members']) != names:
+        raise ValueError('incomplete R1 source artifact lock')
+    payloads = {}
+    for name in sorted(names):
+        raw = read_member(inputs, name)
+        if digest(raw) != role_lock['members'][name]:
+            raise ValueError(f'source-built {role} input differs: {name}')
+        payloads[name] = raw
+    engine = payloads.pop('filesystem.elf')
+    return pack_envelope(role, engine, payloads, role_lock['envelope']), digest(lock_bytes)
+
+
+def pack_envelope(role, engine, app, expected):
+    profile = PROFILES[role]
     shell, helper, owner = (app[name] for name in ('zsh.elf', 'helper.elf', 'owner.bin'))
     if (not 0 < len(engine) <= 8388608 or not 0 < len(shell) <= 1572864
             or not 0 < len(helper) <= 1572864 or not 0 < len(owner) <= profile['owner_limit']
@@ -145,7 +170,7 @@ def envelope(role, app_root, engine_root):
               + bytes(range(80)) + shell + shell + helper + owner)
     raw = struct.pack('<8sII', profile['magic'], len(engine), len(nested)) + bytes(range(32))
     raw += engine + nested
-    if digest(raw) != profile['envelope']:
+    if digest(raw) != expected:
         raise ValueError(f'composed envelope does not match the accepted {role} bytes')
     return raw
 
@@ -181,14 +206,58 @@ def tool_pins(args):
     return {name: {'path': str(path), 'sha256': identity(path)} for name, path in paths.items()}
 
 
+def check_source_geometry(role, work, zig, environment):
+    view = work / 'kernel-view'
+    view.mkdir()
+    for name in ('native_fs_session.zig', 'native_elf.zig', 'native_launch.zig', 'arch'):
+        (view / name).symlink_to(ROOT / 'kernel' / name)
+    (view / 'facade.zig').write_text(
+        'pub const session=@import("native_fs_session.zig");\n'
+        'pub const elf=@import("native_elf.zig");\n'
+        'pub const launch=@import("native_launch.zig");\n')
+    parser = 'parseOperatorNoteApplication' if role == 'note' else 'parseHomeRedirectionApplication'
+    check = work / 'check-source-image.zig'
+    check.write_text('''
+const std = @import("std");
+const kernel = @import("kernel");
+pub fn main() !void {
+    const raw = @embedFile("envelope.bin");
+    const bundle = try kernel.session.PARSER(raw);
+    const engine = try kernel.elf.parseWithLimits(bundle.engine, kernel.elf.large_limits);
+    const engine_pages = try kernel.launch.backingPages(&engine);
+    if (engine_pages > 8192) return error.EngineBacking;
+    var pages: [3]usize = undefined;
+    for (bundle.session.images, 0..) |bytes, index| {
+        const app = try kernel.elf.parseApplication(bytes);
+        pages[index] = try kernel.launch.backingPages(&app);
+        if (pages[index] > 640) return error.ApplicationBacking;
+    }
+    std.debug.print("engine_pages={d} app_pages={any} owner_bytes={d}\\n",
+        .{ engine_pages, pages, bundle.session.supervisor.len });
+}
+'''.replace('PARSER', parser))
+    output = run_tool(
+        [zig, 'run', '-OReleaseSafe', '--cache-dir', str(work / 'cache'),
+         '--global-cache-dir', str(work / 'global'), '--dep', 'kernel',
+         '-Mroot=' + str(check), '-Mkernel=' + str(view / 'facade.zig')],
+        environment, work / 'source-geometry.log', timeout=60, cwd=work)
+    shutil.rmtree(view)
+    return output.decode('ascii').strip()
+
+
 def build(args, work, report):
     packed = work / 'envelope.bin'
-    packed.write_bytes(envelope(args.role, args.app_seal.resolve(strict=True),
-                                args.engine_seal.resolve(strict=True)))
+    if args.source_inputs is None:
+        raw = envelope(args.role, args.app_seal.resolve(strict=True),
+                       args.engine_seal.resolve(strict=True))
+        report.update(app_seal_sha256=PROFILES[args.role]['app'],
+                      engine_seal_sha256=PROFILES[args.role]['engine'])
+    else:
+        raw, lock_sha = source_envelope(args.role, args.source_inputs.resolve(strict=True))
+        report['source_artifact_lock_sha256'] = lock_sha
+    packed.write_bytes(raw)
     report.update(
         envelope_sha256=identity(packed),
-        app_seal_sha256=PROFILES[args.role]['app'],
-        engine_seal_sha256=PROFILES[args.role]['engine'],
         boot_inputs=boot_pins(),
         kernel_sources=kernel_sources(),
         tools=tool_pins(args),
@@ -220,6 +289,9 @@ def build(args, work, report):
                                      timeout=10, limit=4096, cwd=ROOT).decode('ascii').strip()
     if report['zig_version'] != '0.16.0':
         raise ValueError('Zig version must be 0.16.0')
+    if args.source_inputs is not None:
+        environment.update(AETHER_R1_SOURCE_IMAGE='1', TZ='UTC')
+        report['source_geometry'] = check_source_geometry(args.role, work, zig, environment)
     command = [zig, 'build', '-p', str(work / 'image'),
                '--cache-dir', str(work / 'cache'), '--global-cache-dir', str(work / 'global'),
                '-Dsmp=false', f'-Dnative-c-image={packed}']
@@ -233,6 +305,8 @@ def build(args, work, report):
     if (kernel_sources() != report['kernel_sources'] or boot_pins() != report['boot_inputs']
             or tool_pins(args) != tools or identity(packed) != report['envelope_sha256']):
         raise ValueError('kernel sources or build inputs changed during image preparation')
+    if args.source_inputs is not None and identity(SOURCE_ARTIFACT_LOCK) != report['source_artifact_lock_sha256']:
+        raise ValueError('source artifact lock changed during image preparation')
     iso, kernel = work / 'image/aether.iso', work / 'image/bin/aether'
     if not iso.is_file() or not kernel.is_file():
         raise ValueError('build did not produce the required kernel and ISO')
@@ -247,9 +321,16 @@ def main():
     parser.add_argument('--version', action='version', version=SCHEMA)
     parser.add_argument('role', choices=PROFILES)
     parser.add_argument('work', type=Path, help='new output directory')
-    for name in ('app-seal', 'engine-seal', 'zig', 'rustc', 'xorriso'):
+    for name in ('zig', 'rustc', 'xorriso'):
         parser.add_argument(f'--{name}', required=True, type=Path)
+    for name in ('app-seal', 'engine-seal', 'source-inputs'):
+        parser.add_argument(f'--{name}', type=Path)
     args = parser.parse_args()
+    if args.source_inputs is None:
+        if args.app_seal is None or args.engine_seal is None:
+            parser.error('supply both seals, or use --source-inputs')
+    elif args.app_seal is not None or args.engine_seal is not None:
+        parser.error('source inputs cannot be combined with seals')
     try:
         work = args.work.parent.resolve(strict=True) / args.work.name
         work.mkdir(mode=0o700)

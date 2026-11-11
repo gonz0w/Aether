@@ -17,14 +17,24 @@ parser.add_argument("--fault-first", action="store_true", help="build a delibera
 parser.add_argument("--supervised", action="store_true", help="build the native service lifecycle fixture")
 parser.add_argument("--io", action="store_true", help="build the bounded descriptor facade and I/O probe")
 parser.add_argument("--memory", action="store_true", help="add native-memory v1 to the I/O fixture")
+parser.add_argument("--source-build", action="store_true", help="normalize paths for the R1 source build")
+parser.add_argument("--tools-lock", type=Path, help="explicit tool lock for the R1 source build")
+parser.add_argument("--output", type=Path, help="fresh source-build output directory")
+parser.add_argument("--musl-archive", type=Path, help="pinned upstream archive for the R1 source build")
 args = parser.parse_args()
+if args.source_build != (args.tools_lock is not None and args.musl_archive is not None):
+    parser.error("source build requires both --tools-lock and --musl-archive")
+if not args.source_build and any(value is not None for value in (args.tools_lock, args.musl_archive, args.output)):
+    parser.error("explicit inputs require --source-build")
+if args.source_build and not args.io: parser.error("source build requires the selected --io SDK")
 if args.memory and not args.io: parser.error("--memory requires --io")
 if args.io and (args.supervised or args.fault_first): parser.error("choose one probe variant")
 if args.supervised and args.fault_first: parser.error("choose one variant")
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
-LOCK = json.loads((HERE.parent / "musl-reference/tools.lock.json").read_text())
+LOCK_PATH = args.tools_lock if args.source_build else HERE.parent / "musl-reference/tools.lock.json"
+LOCK = json.loads(LOCK_PATH.read_text())
 SOURCE = json.loads((ROOT / "docs/research/musl-1.2.6-evidence.json").read_text())
 
 
@@ -42,10 +52,16 @@ for name, item in LOCK["tools"].items():
     p = Path(item["path"])
     require(digest(p) == item["sha256"], "Tool changed: " + name)
     tools[name] = str(p)
-archive = ROOT / "build/musl-audit/musl-1.2.6.tar.gz"
+archive = args.musl_archive if args.source_build else ROOT / "build/musl-audit/musl-1.2.6.tar.gz"
 require(digest(archive) == SOURCE["sha256"], "Source archive hash mismatch")
 (ROOT / "build").mkdir(exist_ok=True)
-out = Path(tempfile.mkdtemp(prefix="native-c-", dir=ROOT / "build"))
+if args.output is None:
+    out = Path(tempfile.mkdtemp(prefix="native-c-", dir=ROOT / "build"))
+else:
+    out = args.output.resolve()
+    require(out.is_relative_to(ROOT / "build") and out != ROOT / "build",
+            "source output must be a fresh directory under userland/build")
+    out.mkdir(mode=0o700)
 require(not any(c.isspace() for c in str(out)), "musl configure requires a path without whitespace in this experiment")
 print("Output: " + str(out), flush=True)
 for name in ("empty-root", "obj", "stage", "tmp"):
@@ -70,6 +86,9 @@ def run(label, args, cwd=out, expected=0, run_env=None):
 
 cc = [tools["clang"], "--no-default-config", "--target=x86_64-linux-musl",
       "--sysroot=" + str(out / "empty-root"), "-fuse-ld=" + tools["lld"]]
+if args.source_build:
+    cc[-1:-1] = [f"-ffile-prefix-map={out}=/build/aether",
+                  f"-ffile-prefix-map={ROOT.parent}=/src/aether"]
 flags = ["-nostdlib", "-static", "-Wl,-z,noexecstack", "-Wl,--no-undefined"]
 run("sdk-link", cc + flags + ["-ffreestanding", "-fno-stack-protector",
     "-Wl,-e,aether_probe_add", str(ROOT / "experiments/c-object/probe.c"),
@@ -153,6 +172,17 @@ run("configure", [str(source / "configure"), "--target=x86_64-linux-musl",
 run("make", [tools["make"], "-j8"], out / "obj", run_env=build_env)
 run("stage", [tools["make"], "DESTDIR=" + str(out / "stage"), "install"], out / "obj", run_env=build_env)
 lib = out / "stage/usr/lib"
+if args.source_build:
+    sdk = out / "stage/usr"
+    files = {path.relative_to(sdk).as_posix(): digest(path)
+             for path in sorted(sdk.rglob("*")) if path.is_file()}
+    rows = "".join(f"{sha}  {name}\n" for name, sha in files.items())
+    evidence = {"source_sha256": digest(archive),
+                "sdk_stage_sha256": hashlib.sha256(rows.encode("ascii")).hexdigest(),
+                "libc_archive_sha256": files["lib/libc.a"], "members": files}
+    (out / "sdk.json").write_text(json.dumps(evidence, indent=2) + "\n")
+    print("PASS: built the guarded R1 SDK", flush=True)
+    raise SystemExit(0)
 io_obj = []
 if args.io:
     io_obj = [str(out / "native_io.o")]

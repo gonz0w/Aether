@@ -1,0 +1,14 @@
+--- a/lib/libzpool/taskq.c
++++ b/lib/libzpool/taskq.c
+@@ -400,9 +400,9 @@
+ system_taskq_init(void)
+ {
+ 	VERIFY0(pthread_key_create(&taskq_tsd, NULL));
+-	system_taskq = taskq_create("system_taskq", 64, maxclsyspri, 4, 512,
++	system_taskq = taskq_create("system_taskq", 1, maxclsyspri, 4, 512,
+ 	    TASKQ_DYNAMIC | TASKQ_PREPOPULATE);
+-	system_delay_taskq = taskq_create("delay_taskq", 4, maxclsyspri, 4,
++	system_delay_taskq = taskq_create("delay_taskq", 1, maxclsyspri, 4,
+ 	    512, TASKQ_DYNAMIC | TASKQ_PREPOPULATE);
+ }
+ 
