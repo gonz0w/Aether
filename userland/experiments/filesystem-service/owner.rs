@@ -20,6 +20,21 @@ pub use namespace_policy::{Identity, Mutation, Namespace};
     not(all(fs_home, fs_runtime, fs_mixed, fs_namespace, fs_directories))
 ))]
 compile_error!("fs_home_native requires matched home runtime namespace policy");
+#[cfg(all(fs_package_bytecount_cold, not(fs_package_bytecount)))]
+compile_error!("cold bytecount requires the dedicated package engine");
+#[cfg(all(fs_package_bytecount, not(fs_home_native)))]
+compile_error!("package bytecount requires the bounded home transport");
+#[cfg(all(
+    fs_package_bytecount,
+    any(fs_home_probe_three, fs_home_terminfo_six, fs_home_terminfo_seven,
+        fs_home_terminfo_nine, fs_home_cold_reopen, fs_home_cold_note, fs_af09_drain)
+))]
+compile_error!("package bytecount requires its dedicated seed or cold selection");
+#[cfg(fs_package_bytecount)]
+#[path = "package-bytecount-policy.rs"]
+mod package_bytecount_policy;
+#[cfg(fs_package_bytecount)]
+pub use package_bytecount_policy::{PACKAGE_BYTECOUNT_BYTES, PACKAGE_MUTATIONS};
 #[cfg(fs_metadata)]
 #[path = "metadata-policy.rs"]
 mod metadata_policy;
@@ -36,6 +51,9 @@ pub const MAX_HANDLES: usize = 16;
 pub type MutationCount = usize;
 #[cfg(not(fs_runtime))]
 pub type MutationCount = u8;
+#[cfg(fs_package_bytecount)]
+pub const MUTATION_LIMIT: MutationCount = PACKAGE_MUTATIONS;
+#[cfg(not(fs_package_bytecount))]
 pub const MUTATION_LIMIT: MutationCount = if cfg!(fs_home_native) {
     9
 } else if cfg!(fs_runtime) {
@@ -255,6 +273,8 @@ pub struct Owner<B: Backend, C: Clock> {
     #[cfg(fs_namespace)]
     identity: Option<Identity>,
     backend: Option<B>,
+    #[cfg(fs_package_bytecount)]
+    package_root: Option<Node>,
     root: Node,
     epoch: u64,
     // Zero means permanently exhausted, never a wrapping/reusable serial.
@@ -289,6 +309,8 @@ impl<B: Backend, C: Clock> Owner<B, C> {
             #[cfg(fs_namespace)]
             identity: None,
             backend: Some(backend),
+            #[cfg(fs_package_bytecount)]
+            package_root: None,
             root,
             epoch,
             next_serial: 1,
@@ -543,6 +565,10 @@ impl<B: Backend, C: Clock> Owner<B, C> {
         if bytes.len() > MAX_READ || offset > file.node.size || end > i64::MAX as u64 {
             return Err(Error::Invalid);
         }
+        #[cfg(fs_package_bytecount)]
+        if bytes.is_empty() {
+            return Err(Error::Denied);
+        }
         if bytes.is_empty() {
             return Ok(Written {
                 bytes: 0,
@@ -560,6 +586,8 @@ impl<B: Backend, C: Clock> Owner<B, C> {
         if self.write_used {
             return Err(Error::WriteLimit);
         }
+        #[cfg(fs_package_bytecount)]
+        self.package_write(file.node, offset, bytes)?;
         let utc = self.clock.utc()?;
         if utc.seconds > i64::MAX as u64 || utc.nanoseconds >= 1_000_000_000 {
             return Err(Error::Clock);

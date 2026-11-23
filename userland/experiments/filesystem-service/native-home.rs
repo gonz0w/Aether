@@ -2,7 +2,7 @@
 //! Native engine entry for the bounded service; requires matched provisioning.
 #![no_std]
 #[cfg(all(
-    any(fs_home_cold_reopen, fs_home_cold_note),
+    any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount),
     any(
         fs_home_probe_three,
         fs_home_terminfo_six,
@@ -22,12 +22,14 @@ compile_error!("fs_home_terminfo_six is incompatible with old-three or AF09 drai
 #[cfg(not(test))]
 use core::arch::asm;
 use core::{ffi::c_void, ptr::NonNull};
-#[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note)))]
+#[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold)))]
 use filesystem_bridge::policy::{Completion, Mutation, NamespaceObservation};
 use filesystem_bridge::{
-    policy::{Error, Handle, Identity, Kind, Owner, Rights, Session},
+    policy::{Error, Handle, Identity, Owner, Rights, Session},
     Spa,
 };
+#[cfg(any(not(fs_package_bytecount), fs_package_bytecount_cold))]
+use filesystem_bridge::policy::Kind;
 use filesystem_service::{
     channel::{Framed, Io},
     Stop,
@@ -209,7 +211,7 @@ fn fail(out: &mut HomeResult, phase: u64, error: Error) {
     out.phase = phase;
     (out.error_kind, out.error_value) = error_fields(error);
 }
-#[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note)))]
+#[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold)))]
 fn retain(
     receipt: &mut BootstrapReceipt,
     observation: NamespaceObservation,
@@ -249,6 +251,7 @@ fn retain(
     }
     observation.result
 }
+#[cfg(not(fs_package_bytecount))]
 fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy::Clock>(
     owner: &mut Owner<B, C>,
     peer: u64,
@@ -256,7 +259,7 @@ fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy
 ) -> Result<(Session, Handle), (u64, Error)> {
     let rights = Rights::new(15).map_err(|e| (3, e))?;
     let admin = owner.attach(peer, rights).map_err(|e| (3, e))?;
-    #[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note)))]
+    #[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold)))]
     {
         let observed = owner.namespace_observed(
             peer,
@@ -276,7 +279,7 @@ fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy
     owner
         .validate_home_source(peer, admin.session, home.handle)
         .map_err(|e| (5, e))?;
-    #[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note)))]
+    #[cfg(not(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold)))]
     {
         let observed =
             owner.namespace_observed(peer, admin.session, home.handle, Mutation::Create(b"probe"));
@@ -311,6 +314,45 @@ fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy
         .close(peer, admin.session, probe.handle)
         .map_err(|e| (8, e))?;
     Ok((admin.session, home.handle))
+}
+#[cfg(fs_package_bytecount)]
+fn bootstrap<B: filesystem_bridge::policy::Backend, C: filesystem_bridge::policy::Clock>(
+    owner: &mut Owner<B, C>,
+    peer: u64,
+    out: &mut HomeResult,
+) -> Result<(Session, Handle), (u64, Error)> {
+    let rights = Rights::new(15).map_err(|e| (3, e))?;
+    let admin = owner.attach(peer, rights).map_err(|e| (3, e))?;
+    #[cfg(not(fs_package_bytecount_cold))]
+    {
+        let observed = owner.namespace_observed(
+            peer, admin.session, admin.root.handle, Mutation::MakeDirectory(b"pkg"));
+        let outcome = retain(&mut out.mkdir, observed);
+        if out.mkdir.requires_ordering() {
+            out.flags |= ORDERED;
+        }
+        outcome.map_err(|e| (4, e))?;
+    }
+    #[cfg(fs_package_bytecount_cold)]
+    let _ = out;
+    let package = owner
+        .lookup(peer, admin.session, admin.root.handle, b"pkg", rights)
+        .map_err(|e| (5, e))?;
+    owner.select_package_root(peer, admin.session, package.handle).map_err(|e| (5, e))?;
+    #[cfg(fs_package_bytecount_cold)]
+    for (name, bytes) in [
+        (&b"bytecount"[..], filesystem_bridge::policy::PACKAGE_BYTECOUNT_BYTES),
+        (&b"input"[..], 6),
+        (&b"output"[..], 2),
+    ] {
+        let file = owner.lookup(peer, admin.session, package.handle, name,
+            Rights::new(3).map_err(|e| (7, e))?).map_err(|e| (7, e))?;
+        if file.kind != Kind::File || file.size != bytes as u64 {
+            return Err((7, Error::InvalidMetadata));
+        }
+        owner.close(peer, admin.session, file.handle).map_err(|e| (8, e))?;
+    }
+    Ok((admin.session, package.handle))
 }
 /// Trusted synchronous importer only; this is never a client RPC.
 /// # Safety

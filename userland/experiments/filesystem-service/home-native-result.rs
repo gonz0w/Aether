@@ -6,6 +6,12 @@ pub const ACCEPTED: u64 = 4;
 pub const CLOSE_ATTEMPTED: u64 = 8;
 pub const CALLBACK: u64 = 16;
 pub const ENTRY: u64 = 32;
+const fn mutation_limit() -> u64 {
+    if cfg!(fs_package_bytecount_cold) { 1 }
+    else if cfg!(fs_package_bytecount) { 17 }
+    else { 9 }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct BootstrapReceipt {
@@ -285,7 +291,7 @@ impl HomeResult {
                 != ENTRY | ACCEPTED | CLOSE_ATTEMPTED
             || self.phase > 9
             || self.error_kind > 16
-            || self.mutation_attempts > 9
+            || self.mutation_attempts > mutation_limit()
             || !self.mkdir.valid()
             || !self.create.valid()
         {
@@ -297,7 +303,7 @@ impl HomeResult {
         {
             return false;
         }
-        if cfg!(any(fs_home_cold_reopen, fs_home_cold_note))
+        if cfg!(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold))
             && (!self.mkdir.is_zero() || !self.create.is_zero())
         {
             return false;
@@ -320,6 +326,9 @@ impl HomeResult {
         {
             return false;
         }
+        if cfg!(fs_package_bytecount) && !self.create.is_zero() {
+            return false;
+        }
         if self.create.returned != 0 && self.mkdir.returned != 1 {
             return false;
         }
@@ -330,7 +339,7 @@ impl HomeResult {
             return false;
         }
         let active = self.flags & ACTIVATION != 0;
-        let phase_valid = if cfg!(any(fs_home_cold_reopen, fs_home_cold_note)) {
+        let phase_valid = if cfg!(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold)) {
             match self.phase {
                 0 => active && self.service.stop != 4,
                 2 | 3 | 5 | 7 | 8 => !active,
@@ -368,8 +377,9 @@ impl HomeResult {
             return false;
         }
         if self.flags & ACTIVATION != 0 {
-            if (!cfg!(any(fs_home_cold_reopen, fs_home_cold_note))
-                && (self.mkdir.returned != 1 || self.create.returned != 1))
+            if (!cfg!(any(fs_home_cold_reopen, fs_home_cold_note, fs_package_bytecount_cold))
+                && (self.mkdir.returned != 1
+                    || (!cfg!(fs_package_bytecount) && self.create.returned != 1)))
                 || !matches!(self.phase, 0 | 9)
             {
                 return false;
@@ -396,7 +406,7 @@ impl HomeResult {
             || self.service.state == 1
                 && (!matches!(self.service.stop, 2 | 5) || self.service.error == 0)
             || self.service.ready == 0 && self.service.requests != 0
-            || active && self.mutation_attempts > 2 + self.service.requests
+            || active && self.mutation_attempts > (if cfg!(fs_package_bytecount) { attempts } else { 2 }) + self.service.requests
             || self.service.stop == 3 && self.service.requests != 96
             || self.service.state == 3
                 && (self.service.ready != 1

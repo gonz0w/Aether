@@ -140,6 +140,8 @@ impl<B: Backend, C: Clock> Owner<B, C> {
         if parent.node.kind != Kind::Directory {
             return Err(Error::NotDirectory);
         }
+        #[cfg(fs_package_bytecount)]
+        self.package_namespace(parent.node, &operation)?;
         let identity = self.identity.ok_or(Error::Denied)?;
         let (source, destination, removing) = match operation {
             Mutation::Create(value) => (value, None, false),
@@ -396,6 +398,11 @@ impl<B: CreatingBackend, C: Clock> Owner<B, C> {
         if parent.node.kind != Kind::Directory {
             return Err(Error::NotDirectory);
         }
+        #[cfg(fs_package_bytecount)]
+        self.package_namespace(parent.node, &match creation {
+            Creation::File(name) => Mutation::Create(name),
+            Creation::Directory(name) => Mutation::MakeDirectory(name),
+        })?;
         let identity = self.identity.ok_or(Error::Denied)?;
         let (component, kind, initial_size) = match creation {
             Creation::File(value) => (value, Kind::File, 0),

@@ -17,6 +17,8 @@ TERMINFO_SEVEN_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_seven')
 TERMINFO_NINE_PROFILE = (*PROFILE[:-1], 'fs_home_terminfo_nine')
 COLD_REOPEN_PROFILE = (*PROFILE[:-1], 'fs_home_cold_reopen')
 COLD_NOTE_PROFILE = (*PROFILE[:-1], 'fs_home_cold_note')
+PACKAGE_SEED_PROFILE = (*PROFILE[:-1], 'fs_package_bytecount')
+PACKAGE_COLD_PROFILE = (*PACKAGE_SEED_PROFILE, 'fs_package_bytecount_cold')
 DRAIN_CASES = ('file_prefix', 'exec_prefix', 'fork_prefix', 'stream', 'no_ack',
                'partial_ack', 'exit_deadline', 'pending_fragment')
 CRATES = (
@@ -45,13 +47,15 @@ def drain_selection(drain_case):
     return 0 if drain_case == 'none' else DRAIN_CASES.index(drain_case) + 1
 
 
-def select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id):
+def select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id, package=None):
+    if package is not None:
+        return PACKAGE_SEED_PROFILE if package == 'seed' else PACKAGE_COLD_PROFILE
     return (COLD_NOTE_PROFILE if cold_note else COLD_REOPEN_PROFILE if cold_reopen
             else TERMINFO_NINE_PROFILE if terminfo_nine else TERMINFO_SEVEN_PROFILE if terminfo_seven
             else TERMINFO_PROFILE if terminfo_six else DRAIN_PROFILE if case_id else PROFILE)
 
 
-def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False):
+def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False, package=None):
     case_id = drain_selection(drain_case)
     if type(terminfo_six) is not bool or terminfo_six and case_id:
         raise ValueError('AF09 terminfo-six requires its closed non-drain selection')
@@ -63,7 +67,11 @@ def validate_profile(profile, *, drain_case='none', terminfo_six=False, terminfo
         raise ValueError('AF09 cold-reopen requires its closed non-provisioning selection')
     if type(cold_note) is not bool or cold_note and (cold_reopen or terminfo_six or terminfo_seven or terminfo_nine or case_id):
         raise ValueError('AF09 cold note requires its closed selection')
-    selected = select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id)
+    if package is not None and (package not in ('seed', 'cold')
+                                or cold_note or cold_reopen or terminfo_nine
+                                or terminfo_seven or terminfo_six or case_id):
+        raise ValueError('bytecount requires one dedicated package role')
+    selected = select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id, package)
     if tuple(profile) != selected:
         raise ValueError('AF09 profile must match every explicit selected flag')
     return selected
@@ -83,7 +91,7 @@ def validate_symbols(service, launch):
         raise ValueError('AF09 old service/launch symbol')
 
 
-def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False, source_toolchain=None):
+def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_six=False, terminfo_seven=False, terminfo_nine=False, cold_reopen=False, cold_note=False, source_toolchain=None, package=None, package_elf=None):
     """Return service/launch object Paths; caller owns work and cleanup.
 
     This follows the existing five-crate native metadata-service object recipe.
@@ -92,10 +100,20 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
     alternate native-service entry and does not reuse an older service object.
     """
     case_id = drain_selection(drain_case)
-    selected = select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id)
+    selected = select_profile(cold_note, cold_reopen, terminfo_nine, terminfo_seven, terminfo_six, case_id, package)
     profile = validate_profile(selected, drain_case=drain_case, terminfo_six=terminfo_six,
                                terminfo_seven=terminfo_seven, terminfo_nine=terminfo_nine, cold_reopen=cold_reopen,
-                               cold_note=cold_note)
+                               cold_note=cold_note, package=package)
+    if (package is None) != (package_elf is None):
+        raise ValueError('package roles require the matched bytecount ELF')
+    if package is not None and source_toolchain is None:
+        raise ValueError('package roles require the source toolchain')
+    package_bytes = 0
+    if package_elf is not None:
+        package_elf = package_elf.resolve()
+        package_bytes = package_elf.stat().st_size
+        if not 40960 < package_bytes <= 45056:
+            raise ValueError('bytecount seed must consume exactly eleven write chunks')
     folder = work / 'home-engine-rust'
     folder.mkdir()
     if source_toolchain is None:
@@ -104,8 +122,8 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
             raise ValueError('AF09 native Rust dependency manifest')
         pins = json.loads(pins_path.read_text())
     else:
-        if not (terminfo_nine or cold_note):
-            raise ValueError('source toolchain is limited to the two R1 profiles')
+        if not (terminfo_nine or cold_note or package is not None):
+            raise ValueError('source toolchain is limited to the selected R1 profiles')
         pins_path, pins = source_toolchain
     for name in ('rustc', 'clippy-driver', 'lld', 'nm', 'readelf'):
         selected = pins['tools'][name]
@@ -130,6 +148,10 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
     sources = {str(p): sha(p) for p in source_paths}
     inputs = {**sources, **libraries, str(pins_path): sha(pins_path),
         **{tools[name]['path']: tools[name]['sha256'] for name in ('rustc', 'clippy-driver', 'lld', 'nm', 'readelf')}}
+    if package_elf is not None:
+        inputs[str(package_elf)] = sha(package_elf)
+        policy = S / 'package-bytecount-policy.rs'
+        sources[str(policy)] = inputs[str(policy)] = sha(policy)
     retained = record.setdefault('inputs', {})
     for path, digest in inputs.items():
         if not Path(path).is_absolute() or path in retained and retained[path] != digest:
@@ -157,6 +179,11 @@ def build(work, proc, tools, deadline, record, *, drain_case='none', terminfo_si
     if case_id:
         record['home_engine_rust'].update(drain_case=drain_case, drain_case_id=case_id)
     env = proc.clean_env(work)
+    if package_elf is not None:
+        env['AETHER_PACKAGE_BYTECOUNT_BYTES'] = str(package_bytes)
+        record['home_engine_rust']['package'] = dict(
+            role=package, bytes=package_bytes, sha256=inputs[str(package_elf)])
+
 
     def run(label, argv):
         remaining = deadline - time.monotonic()

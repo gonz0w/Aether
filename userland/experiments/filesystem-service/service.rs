@@ -41,7 +41,7 @@ pub const REQUESTS: usize = if cfg!(fs_home_native) {
 } else {
     64
 };
-#[cfg(fs_home_native)]
+#[cfg(all(fs_home_native, not(fs_package_bytecount)))]
 const _: () = assert!(filesystem_policy::MUTATION_LIMIT == 9);
 #[cfg(not(fs_namespace))]
 pub const MAGIC: &[u8; 8] = b"AFSRPC01";
