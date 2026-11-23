@@ -45,18 +45,18 @@ def checker_source(native, omission=None):
     end = scaffold.index('\nvar channels:', start)
     scaffold = scaffold[:start] + 'const Channel=K.Channel;' + scaffold[end:]
     scaffold = scaffold.replace('var channels:[2]Channel', 'var channels:[12]Channel')
-    scaffold = scaffold.replace('var third_bytes:[1]u8=.{0};', 'var third_bytes:[4096]u8=@splat(0);')
+    scaffold = scaffold.replace('var third_bytes:[1]u8=.{0};', 'var third_bytes:[49153]u8=@splat(0);')
     scaffold = scaffold.replace(block(scaffold, 'fn ownedChannel('),
         'fn ownedChannel(owner:usize,cap:u64)?*Channel{for(&channels)|*c|if(c.lookup(owner,cap)!=null)return c;return null;}')
     scaffold = scaffold.replace(block(scaffold, 'fn byte('),
-        'fn byte(_: *State,address:usize,_:bool)?*u8{if(address>=0x1000 and address-0x1000<args_mapped)return &raw_args[address-0x1000];if(address>=0x3000 and address-0x3000<file_mapped)return &raw_file[address-0x3000];if(address>=0x6000 and address-0x6000<app_raw.len)return &app_raw[address-0x6000];return null;}')
+        'fn byte(_: *State,address:usize,_:bool)?*u8{if(address>=0x1000 and address-0x1000<args_mapped)return &raw_args[address-0x1000];if(address>=file_address and address-file_address<file_mapped)return &raw_file[address-file_address];if(address>=0x6000 and address-0x6000<app_raw.len)return &app_raw[address-0x6000];return null;}')
     scaffold = scaffold.replace('fn lookup(value:u64)?usize{return if(value>0 and value<6 and states[value].admitted) @intCast(value) else null;}', 'fn lookup(value:u64)?usize{if(value==100 and states[0].admitted)return 0;return if(value>0 and value<6 and states[value].admitted) @intCast(value) else null;}')
     scaffold = scaffold.replace('fn result(_: *State,value:i64)void{response=value;}',
         'fn result(s:*State,value:i64)void{response=value;s.execution.frame.rax=@bitCast(value);}')
     scaffold = scaffold.replace(block(scaffold, 'fn load('), '''fn load(s:*State,bytes:[]const u8,image:*const elf.Image,_:[]const u8,_:usize)void{
  check((launch.backingPages(image) catch unreachable)<=s.pages.len,"IMAGE_CAPACITY_BEFORE_RESET");
  if(image.entry==0x200180){check(std.mem.allEqual(u8,s.payloadBytes(),0),"OLD_PAYLOAD_ZERO_BEFORE_LOAD");check(std.mem.allEqual(u8,s.recordBytes(),0),"OLD_RECORDS_ZERO_BEFORE_LOAD");}
- loaded_len=bytes.len;loaded_marker=if(bytes.len>384)bytes[384] else 0;loaded_entry=image.entry;mutations+=1;
+ loaded_len=bytes.len;loaded_marker=if(bytes.len>384)bytes[384] else 0;loaded_tail=bytes[bytes.len-1];loaded_entry=image.entry;mutations+=1;
  s.count=launch.backingPages(image) catch unreachable;s.admitted=true;
 }''')
     bodies = '\n'.join(block(native, 'fn ' + name + '(') for name in
@@ -86,8 +86,12 @@ const af09_enabled=false;const af09=struct{const engine_bound=false;};
 fn af09Fail(_:usize,_:i64)void{unreachable;}
 const combined_init=true;const combined_owner_stack=true;const launch_profile=true;const connections_profile=true;
 fn channelCount()usize{return channels.len;}
-var app_raw:[320]u8=@splat(0);var raw_file:[4096]u8=@splat(0);var args_mapped:usize=272;var file_mapped:usize=4096;
-var loaded_len:usize=0;var loaded_marker:u8=0;var loaded_entry:usize=0;
+const opts=@import("build_options");
+const expect_package_bytecount=@hasDecl(opts,"native_package_bytecount") and opts.native_package_bytecount;
+const expected_limit:usize=if(expect_package_bytecount)49152 else 4096;
+const file_address:usize=if(expect_package_bytecount)0x904000 else 0x3000;
+var app_raw:[320]u8=@splat(0);var raw_file:[49152]u8=@splat(0);var args_mapped:usize=272;var file_mapped:usize=4096;
+var loaded_len:usize=0;var loaded_marker:u8=0;var loaded_tail:u8=0;var loaded_entry:usize=0;
 fn put16(at:usize,value:u16)void{std.mem.writeInt(u16,raw_file[at..][0..2],value,.little);}
 fn put32(at:usize,value:u32)void{std.mem.writeInt(u32,raw_file[at..][0..4],value,.little);}
 fn put64(at:usize,value:u64)void{std.mem.writeInt(u64,raw_file[at..][0..8],value,.little);}
@@ -104,7 +108,7 @@ OPTIONS = dict(native_zsh_external=True, native_zsh_terminfo=True, native_tty_mo
 
 CASES = r'''
 fn setup(length:usize)void{
- reset();args_mapped=272;file_mapped=4096;loaded_len=0;loaded_marker=0;loaded_entry=0;
+ reset();args_mapped=272;file_mapped=expected_limit;loaded_len=0;loaded_marker=0;loaded_tail=0;loaded_entry=0;
  for(&channels,0..) |*c,i|{c.identity=i;check(c.createSession(6)>0,"CREATE_OWNED_CHANNEL");}
  const request=channels[10].cap(0);const reply=channels[11].cap(1);
  check(channels[10].transfer(6,request,0) and channels[11].transfer(6,reply,0),"ENGINE_COUNTERPARTS");
@@ -117,18 +121,18 @@ fn setup(length:usize)void{
  raw_file=@splat(0);@memcpy(raw_file[0..8],"\x7fELF\x02\x01\x01\x00");
  put16(16,2);put16(18,62);put32(20,1);put64(24,0x200180);put64(32,64);put16(52,64);put16(54,56);put16(56,4);
  ph(0,1,5,0,0x200000,length,length);ph(1,6,4,64,0x200040,4*56,4*56);
- ph(2,7,4,320,0x200140,1,1);ph(3,0x6474e551,6,0,0,0,0);raw_file[384]=0x5a;
+ ph(2,7,4,320,0x200140,1,1);ph(3,0x6474e551,6,0,0,0,0);raw_file[384]=0x5a;raw_file[length-1]=0xbc;
  app_raw=@splat(0);@memcpy(app_raw[0..8],"AENAP002");std.mem.writeInt(u64,app_raw[8..16],320,.little);app_raw[16]=1;
  std.mem.writeInt(u64,app_raw[288..296],100,.little);std.mem.writeInt(u64,app_raw[296..304],channels[11].cap(0),.little);std.mem.writeInt(u64,app_raw[304..312],channels[10].cap(1),.little);
  third_bytes=@splat(0xa5);
 }
-fn fileFrame(length:usize)Frame{return .{.rax=0x2300b,.rdi=0xa001,.rsi=2,.rdx=0x3000,.r10=6,.r8=0x1000,.r9=length};}
-fn clean()bool{return std.mem.allEqual(u8,&third_bytes,0);}
+fn fileFrame(length:usize)Frame{return .{.rax=0x2300b,.rdi=0xa001,.rsi=2,.rdx=file_address,.r10=6,.r8=0x1000,.r9=length};}
+fn clean()bool{return std.mem.allEqual(u8,third_bytes[0..expected_limit],0) and std.mem.allEqual(u8,third_bytes[expected_limit..],0xa5);}
 fn preserved(before:State)bool{return std.meta.eql(before,states[2]) and mutations==0 and storage[2][0][0]==0xa5 and storage[2][639][4095]==0xa5;}
 fn success()void{
- for([_]usize{512,4096})|length|{
+ for([_]usize{512,expected_limit})|length|{
   setup(length);const old_binding=states[2].app_binding;_=fileExecOperation(&fileFrame(length));
-  check(response==0 and loaded_len==length and loaded_marker==0x5a and loaded_entry==0x200180,"COPIED_FILESYSTEM_IMAGE_LOADED");
+  check(response==0 and loaded_len==length and loaded_marker==0x5a and loaded_tail==0xbc and loaded_entry==0x200180,"COPIED_FILESYSTEM_IMAGE_LOADED");
   check(states[2].image_commit.sequence==6 and states[2].image_commit.image==0xc004 and states[2].image_commit.pending and states[2].frozen and !states[2].ready,"FILESYSTEM_RECEIPT_PENDING");
   check(states[2].generation==8 and std.meta.eql(old_binding,states[2].app_binding) and states[2].tty_signal_owner_generation==null,"LIFETIME_AND_BINDING_RETAINED");
   check(clean() and third_len==1 and third_image.entry==0x200000,"SCRATCH_CLEARED_GLOBAL_METADATA_UNCHANGED");
@@ -156,7 +160,7 @@ fn authority()void{
 fn precommit()void{
  for(0..14)|case|{
   setup(512);var f=fileFrame(512);var expected:i64=-22;
-  switch(case){0=>f.r9=0,1=>f.r9=4097,2=>{f.rdx=std.math.maxInt(u64);expected=-14;},
+  switch(case){0=>f.r9=0,1=>f.r9=expected_limit+1,2=>{f.rdx=std.math.maxInt(u64);expected=-14;},
    3=>{file_mapped=511;expected=-14;},4=>{args_mapped=271;expected=-14;},5=>{f.r8=std.math.maxInt(u64);expected=-14;},
    6=>raw_args[0]=0,7=>{f.r10=5;expected=-9;},8=>{f.r10=0;expected=-9;},
    9=>{states[2].frozen=false;expected=-16;},10=>{states[2].image_commit.pending=true;expected=-16;},
@@ -169,6 +173,12 @@ fn precommit()void{
   switch(case){0=>put32(68,7),1=>put64(64+40,128),2=>put64(24,0x300000),
    3=>put32(64+3*56,1),4=>put64(64+16,0x400000),5=>put32(64+3*56+4,7),else=>unreachable,}
   const before=states[2];_=fileExecOperation(&fileFrame(512));check(response==-8 and preserved(before) and clean(),"ELF_REJECTION_NO_MUTATION");
+ }
+}
+fn exactSource()void{
+ if(expect_package_bytecount){
+  setup(512);var f=fileFrame(512);f.rdx=file_address+1;
+  const before=states[2];_=fileExecOperation(&f);check(response==-14 and preserved(before) and clean(),"EXACT_OWNER_SNAPSHOT_BASE_REQUIRED");
  }
 }
 fn fallback()void{
@@ -187,7 +197,7 @@ fn fallback()void{
  }
 }
 pub fn main()void{
- if(@hasDecl(@import("build_options"),"native_zsh_file_exec") and @import("build_options").native_zsh_file_exec){success();authority();precommit();fallback();}
+ if(@hasDecl(@import("build_options"),"native_zsh_file_exec") and @import("build_options").native_zsh_file_exec){success();authority();precommit();exactSource();fallback();}
  else{setup(512);_=fileExecOperation(&fileFrame(512));check(response==-38 and std.mem.allEqual(u8,&third_bytes,0xa5) and mutations==0,"OLD_PROFILE_UNAVAILABLE_CACHE_UNTOUCHED");}
  std.debug.print("ZSH FILE EXEC MODEL PASS\n",.{});
 }

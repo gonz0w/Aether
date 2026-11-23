@@ -39,6 +39,16 @@ selection, outer and nested formats must match before effects. The owner ABI31,
 AFSRPC09 and AEFW0001 wires are unchanged. No production release or guest is
 selected by this build flag.
 
+The default-off `-Dnative-package-bytecount=true` selector requires the private
+operator and filesystem-exec closure. Its distinct `AENFS008` outer envelope
+selects a 124 KiB Owner RX ceiling for the two closed bytecount trial Owners.
+The Owner retains its existing 128 backing pages. Twelve zeroed RW/NX snapshot
+pages occupy `0x904000..0x910000` with both adjacent pages unmapped. ABI31 data,
+stack and entry values keep their existing layout. The exec operation requires
+the exact snapshot base and copies at most 48 KiB into existing private kernel
+scratch. Full pinned-object validation, file I/O and storage provisioning remain
+required for the [bytecount trial](https://github.com/gonz0w/Aether/issues/18#issuecomment-7101779412).
+
 ## Ownership and failure behavior
 
 Each application retains one authoritative kernel state, its private backing and

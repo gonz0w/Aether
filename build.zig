@@ -40,6 +40,8 @@ pub fn build(b: *std.Build) void {
     options.addOption(bool, "native_zsh_file_exec", native_zsh_file_exec);
     const native_zsh_operator = b.option(bool, "native-zsh-operator", "Private foreground Zsh operator session with a fixed 30000-tick ceiling") orelse false;
     options.addOption(bool, "native_zsh_operator", native_zsh_operator);
+    const native_package_bytecount = b.option(bool, "native-package-bytecount", "Private 48 KiB filesystem exec intake for the pinned bytecount trial") orelse false;
+    options.addOption(bool, "native_package_bytecount", native_package_bytecount);
     const native_zsh_home_redirection = b.option(bool, "native-zsh-home-redirection", "Private parent home redirection with the selected 80 KiB Rust Owner") orelse false;
     options.addOption(bool, "native_zsh_home_redirection", native_zsh_home_redirection);
     const native_zsh_operator_note = b.option(bool, "native-zsh-operator-note", "Private persistent operator note with the selected 88 KiB Rust Owner") orelse false;
@@ -256,6 +258,8 @@ pub fn build(b: *std.Build) void {
         @panic("Zsh external requires its selected terminfo, copy/exec and generation-safe child signal closure");
     if (native_zsh_file_exec and !native_zsh_external)
         @panic("Zsh file exec requires the selected external-Zsh closure");
+    if (native_package_bytecount and (!native_zsh_operator or !native_zsh_file_exec))
+        @panic("package bytecount requires the selected private operator/file-exec closure");
     if (native_zsh_operator and (!native_zsh_file_exec or release_artifact or smp or
         native_c_image == null or !native_fs_session or !native_fs_session_init or
         !native_fs_owner_data or !native_fs_owner_stack or af09_diagnostic or

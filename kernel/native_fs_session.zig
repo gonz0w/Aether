@@ -10,6 +10,7 @@ pub const owner_data_magic = "AENFS004";
 pub const owner_stack_magic = "AENFS005";
 pub const application_magic = "AENFS006";
 pub const operator_note_magic = "AENFS007";
+pub const bytecount_magic = "AENFS008";
 // Outer/header + existing engine + three selected apps + existing ABI31 Owner.
 pub const application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 112 +
     3 * elf.application_limits.file_bytes + roles.owner_stack_code_limit;
@@ -19,6 +20,8 @@ pub const home_redirection_application_envelope_limit: u64 = 48 + elf.large_limi
     3 * elf.application_limits.file_bytes + roles.zsh_home_redirection_owner_code_limit;
 pub const operator_note_application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 112 +
     3 * elf.application_limits.file_bytes + roles.zsh_operator_note_owner_code_limit;
+pub const bytecount_application_envelope_limit: u64 = 48 + elf.large_limits.file_bytes + 112 +
+    3 * elf.application_limits.file_bytes + roles.bytecount_owner_code_limit;
 pub const Error = roles.Error;
 pub const Bundle = struct {
     engine: []const u8,
@@ -52,11 +55,14 @@ pub fn parseHomeRedirectionApplication(raw: []const u8) Error!Bundle {
 pub fn parseOperatorNoteApplication(raw: []const u8) Error!Bundle {
     return parseSelected(raw, .operator_note_application);
 }
-const Profile = enum { conformance, init, owner_data, owner_stack, application, external_application, home_redirection_application, operator_note_application };
+pub fn parseBytecountApplication(raw: []const u8) Error!Bundle {
+    return parseSelected(raw, .bytecount_application);
+}
+const Profile = enum { conformance, init, owner_data, owner_stack, application, external_application, home_redirection_application, operator_note_application, bytecount_application };
 fn parseSelected(raw: []const u8, comptime profile: Profile) Error!Bundle {
     const init_owner = profile != .conformance;
-    const application = profile == .application or profile == .external_application or profile == .home_redirection_application or profile == .operator_note_application;
-    const limit: usize = if (profile == .operator_note_application) roles.zsh_operator_note_owner_code_limit else if (profile == .home_redirection_application) roles.zsh_home_redirection_owner_code_limit else if (profile == .external_application) roles.zsh_external_owner_code_limit else if (profile == .owner_stack or profile == .application) roles.owner_stack_code_limit else if (init_owner) 16384 else roles.controller_limit;
+    const application = profile == .bytecount_application or profile == .application or profile == .external_application or profile == .home_redirection_application or profile == .operator_note_application;
+    const limit: usize = if (profile == .bytecount_application) roles.bytecount_owner_code_limit else if (profile == .operator_note_application) roles.zsh_operator_note_owner_code_limit else if (profile == .home_redirection_application) roles.zsh_home_redirection_owner_code_limit else if (profile == .external_application) roles.zsh_external_owner_code_limit else if (profile == .owner_stack or profile == .application) roles.owner_stack_code_limit else if (init_owner) 16384 else roles.controller_limit;
     const selected_magic = switch (profile) {
         .conformance => magic,
         .init => init_magic,
@@ -64,6 +70,7 @@ fn parseSelected(raw: []const u8, comptime profile: Profile) Error!Bundle {
         .owner_stack => owner_stack_magic,
         .application, .external_application, .home_redirection_application => application_magic,
         .operator_note_application => operator_note_magic,
+        .bytecount_application => bytecount_magic,
     };
     if (raw.len < 48 or !std.mem.eql(u8, raw[0..8], selected_magic)) return error.InvalidComposition;
     const engine: usize = std.mem.readInt(u32, raw[8..12], .little);
@@ -77,7 +84,7 @@ fn parseSelected(raw: []const u8, comptime profile: Profile) Error!Bundle {
     launch.layout(&image) catch return error.InvalidComposition;
     const nested = raw[48 + engine ..];
     if (!std.mem.eql(u8, nested[0..8], if (application) "AENMX011" else if (profile == .owner_stack) "AENMX010" else "AENMX009")) return error.InvalidComposition;
-    const bundle = (if (profile == .operator_note_application) launch.operatorNoteApplicationBundle(nested) else if (profile == .home_redirection_application) launch.homeRedirectionApplicationBundle(nested) else if (profile == .external_application) launch.externalApplicationBundle(nested) else if (profile == .application) launch.applicationBundle(nested) else if (profile == .owner_stack) launch.ownerStackBundle(nested) else launch.pipelineBundle(nested)) catch return error.InvalidComposition;
+    const bundle = (if (profile == .bytecount_application) launch.bytecountApplicationBundle(nested) else if (profile == .operator_note_application) launch.operatorNoteApplicationBundle(nested) else if (profile == .home_redirection_application) launch.homeRedirectionApplicationBundle(nested) else if (profile == .external_application) launch.externalApplicationBundle(nested) else if (profile == .application) launch.applicationBundle(nested) else if (profile == .owner_stack) launch.ownerStackBundle(nested) else launch.pipelineBundle(nested)) catch return error.InvalidComposition;
     if (bundle.supervisor.len > limit) return error.InvalidComposition;
     for (bundle.images) |process_bytes| {
         const process_image = (if (application) elf.parseApplication(process_bytes) else elf.parse(process_bytes)) catch return error.InvalidComposition;
@@ -161,6 +168,25 @@ test "selected outer and nested application admission parses all three image rol
     std.mem.writeInt(u32, larger[12..16], @intCast(larger.len - 48 - 4096), .little);
     std.mem.writeInt(u32, larger[48 + 4096 + 20 ..][0..4], roles.zsh_operator_note_owner_code_limit + 1, .little);
     try std.testing.expectError(error.InvalidComposition, parseOperatorNoteApplication(&larger));
+    var package = [_]u8{0} ** (raw.len - 1 + roles.bytecount_owner_code_limit + 1);
+    @memcpy(package[0..raw.len], &raw);
+    @memcpy(package[0..8], bytecount_magic);
+    const exact = package[0 .. package.len - 1];
+    std.mem.writeInt(u32, exact[12..16], @intCast(exact.len - 48 - 4096), .little);
+    std.mem.writeInt(u32, exact[48 + 4096 + 20 ..][0..4], roles.bytecount_owner_code_limit, .little);
+    _ = try parseBytecountApplication(exact);
+    try std.testing.expectError(error.InvalidComposition, parseOperatorNoteApplication(exact));
+    @memcpy(exact[0..8], operator_note_magic);
+    try std.testing.expectError(error.InvalidComposition, parseOperatorNoteApplication(exact));
+    try std.testing.expectError(error.InvalidComposition, parseBytecountApplication(exact));
+    @memcpy(package[0..8], bytecount_magic);
+    std.mem.writeInt(u32, package[12..16], @intCast(package.len - 48 - 4096), .little);
+    std.mem.writeInt(u32, package[48 + 4096 + 20 ..][0..4], roles.bytecount_owner_code_limit + 1, .little);
+    try std.testing.expectError(error.InvalidComposition, parseBytecountApplication(&package));
+    @memcpy(exact[0..8], application_magic);
+    try std.testing.expectError(error.InvalidComposition, parseApplication(exact));
+    try std.testing.expectError(error.InvalidComposition, parseExternalApplication(exact));
+    try std.testing.expectError(error.InvalidComposition, parseHomeRedirectionApplication(exact));
     @memcpy(raw[0..8], application_magic);
     @memcpy(nested[0..8], "AENMX010");
     try std.testing.expectError(error.InvalidComposition, parseApplication(&raw));
