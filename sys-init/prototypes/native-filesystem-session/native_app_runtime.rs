@@ -1354,7 +1354,7 @@ impl<K: AppControl> Runtime<K> {
         self.zsh_live(child)?;
         #[cfg(not(native_zsh_process))]
         self.mode_peer_live()?;
-        #[cfg(native_zsh_operator_login)]
+        #[cfg(any(native_zsh_operator_login, native_package_bytecount))]
         let remaining = 96u32.checked_sub(self.filesystem_requests).ok_or(-5)?;
         let files = unsafe { self.files.assume_init_mut() };
         files
@@ -1371,11 +1371,11 @@ impl<K: AppControl> Runtime<K> {
             })
             .map_err(fs_errno)?;
         let result = (|| {
-            #[cfg(not(native_zsh_operator_login))]
+            #[cfg(not(any(native_zsh_operator_login, native_package_bytecount)))]
             let mut reply = files
                 .prepare(binding, &header, length, workspace)
                 .map_err(fs_errno)?;
-            #[cfg(native_zsh_operator_login)]
+            #[cfg(any(native_zsh_operator_login, native_package_bytecount))]
             let mut reply = files
                 .prepare_bounded(binding, &header, length, workspace, remaining)
                 .map_err(fs_errno)?;
@@ -2328,7 +2328,9 @@ impl<K: AppControl> Runtime<K> {
                 return result.map(|()| Some(true));
             }
             if frame[..8] == filesystem_readonly::MAGIC[..] {
-                if cfg!(native_filesystem_runner) {
+                if cfg!(native_filesystem_runner)
+                    && !(cfg!(native_package_bytecount) && child)
+                {
                     return Err(-13);
                 }
                 self.file_header.fill(0);

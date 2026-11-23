@@ -244,6 +244,9 @@ impl Harness {
         bytes: &[u8],
         requested: usize,
     ) -> ([u8; 64], Vec<u8>) {
+        self.rpc_budget(binding, op, fd, bytes, requested, u32::MAX)
+    }
+    fn rpc_budget(&mut self, binding: Binding, op: u64, fd: u64, bytes: &[u8], requested: usize, remaining: u32) -> ([u8; 64], Vec<u8>) {
         let files = self.files();
         let mut frame = [0; 64];
         frame[..8].copy_from_slice(MAGIC);
@@ -255,7 +258,7 @@ impl Harness {
         let mut block = [0; PAYLOAD];
         block[..bytes.len()].copy_from_slice(bytes);
         let length = files.body_length(binding, &frame).unwrap();
-        let mut reply = files.prepare(binding, &frame, length, &mut block).unwrap();
+        let mut reply = files.prepare_bounded(binding, &frame, length, &mut block, remaining).unwrap();
         let raw = *reply.header();
         let body = reply.body_mut().to_vec();
         reply.delivered();
@@ -292,7 +295,10 @@ fn seed_exec_real_file_input_and_exact_once_stdout_then_cold_reopen() {
     assert_eq!(word(&denied, 1) as i64, -9);
     let (wrong, _) = seed.rpc(child, 11, 4, b"7\n", 2);
     assert_eq!(word(&wrong, 1) as i64, -9);
-    let (written, receipt) = seed.rpc(child, 11, 4, b"6\n", 2);
+    let (unfunded, _) = seed.rpc_budget(child, 11, 4, b"6\n", 2, 12);
+    assert_eq!(word(&unfunded, 1) as i64, -28);
+    assert_eq!(seed.state.lock().unwrap().mutations, 15);
+    let (written, receipt) = seed.rpc_budget(child, 11, 4, b"6\n", 2, 13);
     assert_eq!((word(&written, 1), word(&written, 4)), (0, 2));
     assert_eq!(word(receipt.as_slice().try_into().unwrap(), 0), 14);
     let (repeat, _) = seed.rpc(child, 11, 4, b"6\n", 2);

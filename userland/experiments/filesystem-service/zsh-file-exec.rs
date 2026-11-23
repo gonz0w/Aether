@@ -421,6 +421,16 @@ impl<T: Channel> Files<T> {
     }
 
     #[cfg(native_package_bytecount)]
+    pub(super) fn package_operation_funded(&self, raw: &[u8; FRAME], remaining: u32) -> bool {
+        match word(raw, 1) {
+            // Retain credit for output, both FILE closes and complete verification.
+            2 => !self.file_exec.output_attempted && remaining >= 14,
+            5 => remaining >= 11,
+            _ => true,
+        }
+    }
+
+    #[cfg(native_package_bytecount)]
     pub(super) fn prepare_package_write<'a>(
         &'a mut self,
         binding: Binding,
@@ -441,7 +451,7 @@ impl<T: Channel> Files<T> {
             && !self.file_exec.output_attempted
             && count == 2
             && &workspace[..2] == b"6\n";
-        if valid && remaining >= 8 {
+        if valid && remaining >= 13 {
             let (_, descriptor) = self
                 .descriptions
                 .binding_in(1, fd)

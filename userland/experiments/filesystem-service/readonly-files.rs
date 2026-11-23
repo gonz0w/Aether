@@ -593,7 +593,7 @@ impl<T: Channel> Files<T> {
     ) -> Result<Reply<'a, T>, Error> {
         self.prepare_inner(binding, raw, received, workspace, u32::MAX)
     }
-    #[cfg(native_zsh_operator_login)]
+    #[cfg(any(native_zsh_operator_login, native_package_bytecount))]
     pub fn prepare_bounded<'a>(
         &'a mut self,
         binding: Binding,
@@ -638,7 +638,9 @@ impl<T: Channel> Files<T> {
         }
         #[cfg(native_zsh_operator_login)]
         let denied = self.operation_budget(view, raw, workspace) > _remaining;
-        #[cfg(not(native_zsh_operator_login))]
+        #[cfg(all(not(native_zsh_operator_login), native_package_bytecount))]
+        let denied = !self.package_operation_funded(raw, _remaining);
+        #[cfg(not(any(native_zsh_operator_login, native_package_bytecount)))]
         let denied = false;
         let (result, body) = if denied {
             (Err(Failure::Source(Error::Remote(-28))), 0)
