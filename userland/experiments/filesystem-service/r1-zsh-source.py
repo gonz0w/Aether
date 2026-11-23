@@ -320,7 +320,7 @@ if [ "$link" = yes ]; then
     return binary, frames
 
 
-def build_helper_profile(label, profile, musl, work, sdk_lib, sdk_inc):
+def build_helper_profile(label, profile, musl, work, sdk_lib, sdk_inc, *, bytecount=False, package_parent=False):
     directory = work / ("helper-" + label)
     provider = directory / "providers"
     provider.mkdir(parents=True)
@@ -329,10 +329,14 @@ def build_helper_profile(label, profile, musl, work, sdk_lib, sdk_inc):
             "-ffile-prefix-map=" + str(ROOT) + "=/src/aether", "-ffile-prefix-map=" + str(BUILD) + "=/build/aether",
             "-fstack-usage", "-nostdinc", "-isystem", str(sdk_inc), "-DAEFD_TERMINAL_CANONICAL_BINDINGS", "-I" + str(F)]
     common = provider_flags(base, profile, helper=True)
+    if bytecount:
+        common.extend(("-DAEFD_PACKAGE_BYTECOUNT", "-DAEFD_ZSH_OPERATOR_NOTE_BINDINGS"))
     providers = []
     for name in (*UNITS, "fd-zsh-external", "fd-tinfo-directory", *PROCESS_UNITS, "fd-zsh-helper-entry"):
         out = provider / (name + ".o")
-        compile_provider(name, F / (name + ".c"), out, common)
+        source = F / ("package-bytecount-launcher.c" if package_parent and name == "fd-zsh-helper-entry"
+                      else name + ".c")
+        compile_provider(name, source, out, common)
         providers.append(out)
     memory = provider / "memory.o"
     compile_provider("memory", ROOT / "user/native-memory/adapter.c", memory,
@@ -356,8 +360,11 @@ def build_helper_profile(label, profile, musl, work, sdk_lib, sdk_inc):
     fork = compile_staged_fork(musl, provider, internal)
 
     helper_main = directory / "helper-main.o"
-    payload = ROOT / "user/native-command/dash-helper-inputs/helper.c"
-    if digest(payload) != "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8":
+    payload = ROOT / ("pkg-mgr/recipes/bytecount/bytecount.c" if bytecount
+                      else "user/native-command/dash-helper-inputs/helper.c")
+    pin = ("257dc3ebecc91aa28d2f6819d27507591331e9256e436c9bcbb1a0f2c740a57e" if bytecount
+           else "3fdea5d515011e49516f35cf8b9abdc214024a226bb3ba560480fa9775cebcf8")
+    if digest(payload) != pin:
         raise SystemExit("pinned Zsh helper payload changed")
     compile_provider("helper-main", payload, helper_main, common)
     entry = provider / "fd-zsh-helper-entry.o"
@@ -555,6 +562,34 @@ fi
     print(f"Retained four linked ELF inputs under {BUILD}; no runtime claim.")
 
 
+def build_bytecount():
+    archive = SOURCE_ARCHIVES / "musl-1.2.6.tar.gz"
+    if digest(archive) != MUSL_ARCHIVE_SHA256:
+        raise SystemExit("pinned musl archive changed")
+    BUILD.mkdir(mode=0o700)
+    src, work = BUILD / "src", BUILD / "work"
+    extract(archive, src)
+    profile = dict(filesystem=True, external=True, home_redirection=True, login_startup=True,
+                   home_cwd=True, home_cwd_exec=True, operator_note=True)
+    binary = build_helper_profile("bytecount", profile, src / "musl-1.2.6", work,
+                                  SDK / "stage/usr/lib", SDK / "stage/usr/include", bytecount=True)
+    pin = "9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7"
+    if binary.stat().st_size > 48 * 1024 or digest(binary) != pin:
+        raise SystemExit("native bytecount differs from the pinned intake candidate")
+    shutil.copyfile(binary, BUILD / "bytecount.elf")
+    parent = build_helper_profile("package-parent", profile, src / "musl-1.2.6", work,
+                                  SDK / "stage/usr/lib", SDK / "stage/usr/include", package_parent=True)
+    shutil.copyfile(parent, BUILD / "parent.elf")
+    (BUILD / "bytecount.json").write_text(json.dumps(dict(
+        bytes=binary.stat().st_size, sha256=pin,
+        source_sha256=digest(ROOT / "pkg-mgr/recipes/bytecount/bytecount.c"),
+        sdk_receipt_sha256=digest(SDK / "sdk.json"),
+        tools={name: digest(path) for name, path in sorted(TOOLS.items())}),
+        indent=2, sort_keys=True) + "\n")
+    shutil.rmtree(src)
+    shutil.rmtree(work)
+
+
 def main():
     global BUILD, SDK, SOURCE_ARCHIVES, TOOLS, LLVM, LLD
     parser = argparse.ArgumentParser(description=__doc__)
@@ -564,7 +599,10 @@ def main():
     parser.add_argument("--tools-lock", required=True, type=Path,
                         help="current hash-pinned host tool manifest")
     parser.add_argument("--out-dir", type=Path, help="retain intermediate source trees and named ELF outputs here")
+    parser.add_argument("--bytecount-only", action="store_true")
     args = parser.parse_args()
+    if args.bytecount_only and args.out_dir is None:
+        parser.error("--bytecount-only requires --out-dir")
     SDK = args.sdk.resolve()
     SOURCE_ARCHIVES = args.sources.resolve()
     if not SOURCE_ARCHIVES.is_dir():
@@ -591,7 +629,10 @@ def main():
         if output.exists():
             raise SystemExit(f"output directory already exists: {output}")
         BUILD = output
-        _main()
+        if args.bytecount_only:
+            build_bytecount()
+        else:
+            _main()
         return
     with tempfile.TemporaryDirectory(prefix="aether-r1-zsh-source-") as temporary:
         BUILD = Path(temporary) / "build"

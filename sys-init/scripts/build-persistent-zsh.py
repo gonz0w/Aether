@@ -38,6 +38,9 @@ PROFILES = {
         'owner_limit': 90112,
     },
 }
+for package_role in ("package-seed", "package-cold"):
+    PROFILES[package_role] = dict(magic=b"AENFS008", owner_limit=124 * 1024)
+
 BOOT_PINS = {
     'limine/BOOTX64.EFI': '17cf42c781afd2d631ca4a06a4f9f6e82af61fc03938180cd1b1d004ecdc7ad2',
     'limine/limine-uefi-cd.bin': 'f2177e5c9fe4fbcbe0ea1e74f14b49c3f7b0fbbc3c50d8d4c2d278ca280de6d6',
@@ -215,7 +218,8 @@ def check_source_geometry(role, work, zig, environment):
         'pub const session=@import("native_fs_session.zig");\n'
         'pub const elf=@import("native_elf.zig");\n'
         'pub const launch=@import("native_launch.zig");\n')
-    parser = 'parseOperatorNoteApplication' if role == 'note' else 'parseHomeRedirectionApplication'
+    parser = ('parseBytecountApplication' if role.startswith('package-') else
+              'parseOperatorNoteApplication' if role == 'note' else 'parseHomeRedirectionApplication')
     check = work / 'check-source-image.zig'
     check.write_text('''
 const std = @import("std");
@@ -296,8 +300,10 @@ def build(args, work, report):
                '--cache-dir', str(work / 'cache'), '--global-cache-dir', str(work / 'global'),
                '-Dsmp=false', f'-Dnative-c-image={packed}']
     command.extend(f'-D{flag}=true' for flag in KERNEL_FLAGS)
-    if args.role == 'note':
+    if args.role == 'note' or args.role.startswith('package-'):
         command.append('-Dnative-zsh-operator-note=true')
+    if args.role.startswith('package-'):
+        command.append('-Dnative-package-bytecount=true')
     report['command'] = command
     run_tool(command, environment, work / 'build.log', timeout=180, cwd=ROOT)
     report['build_child_reaped'] = True

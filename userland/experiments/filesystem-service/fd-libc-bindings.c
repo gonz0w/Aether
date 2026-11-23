@@ -104,6 +104,24 @@ int64_t aefd_shell_role(void)
 {
     return shell.phase == 2 ? (int64_t)shell.identity.slot : -EIO;
 }
+#ifdef AEFD_PACKAGE_BYTECOUNT
+int64_t aefd_shell_bytecount_stdio(void)
+{
+    if (shell.phase != 2 || shell.identity.slot != 2 ||
+        shell.context.note_writers)
+        return -13;
+    const struct aefd_binding input = shell.context.map.slots[0];
+    const struct aefd_binding output = shell.context.map.slots[1];
+    if (input.kind != AEFD_BIND_FILE || input.selector != 3 ||
+        output.kind != AEFD_BIND_FILE || output.selector != 4)
+        return -13;
+    for (unsigned fd = 2; fd < AEFD_BINDINGS_COUNT; ++fd)
+        if (shell.context.map.slots[fd].kind == AEFD_BIND_FILE)
+            return -13;
+    shell.context.note_writers = UINT16_C(1) << 4;
+    return 0;
+}
+#endif
 int64_t aefd_shell_finish(struct aefd_finish *out)
 {
     int saved = errno;

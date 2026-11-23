@@ -433,6 +433,16 @@
       "reference": "userland/docs/proposals/FS-HOME-PREP.md",
       "manual": "excluded-internal",
       "reason": "Bounded offline preparation guards and typed independent reader checks with compact retained attempts; no guest or persistence acceptance."
+    },
+    "sys-init/scripts/run-bytecount.py": {
+      "reference": "sys-init/docs/BYTECOUNT-TRIAL.md",
+      "manual": "excluded-internal",
+      "reason": "Closed issue18 direct bytecount prerequisite with exact native file read/write and cold reopen."
+    },
+    "userland/experiments/filesystem-service/check-package-stdio.py": {
+      "reference": "sys-init/docs/BYTECOUNT-TRIAL.md",
+      "manual": "excluded-internal",
+      "reason": "Closed issue18 direct bytecount prerequisite with exact native file read/write and cold reopen."
     }
   },
   "launch_profiles": {
@@ -450,7 +460,8 @@
     "--files": "docs/NATIVE-FILES.md",
     "--channel": "docs/NATIVE-CHANNEL.md",
     "--init-large": "docs/NATIVE-INIT.md",
-    "--init-composed": "docs/NATIVE-INIT.md"
+    "--init-composed": "docs/NATIVE-INIT.md",
+    "-Dnative-package-bytecount=true": "sys-init/docs/BYTECOUNT-TRIAL.md"
   },
   "test_groups": [
     {
@@ -2855,6 +2866,16 @@
       "invariants": "Copied native argv, stdin and stdout only, one sealed probe, actual post-collection stdout close before runner exit 23.",
       "oracle": "Exact stopped disk handoff, child and parent exit 23, three reclaims, zero-mutation cold export, MODE restoration, clean halt and known host cleanup.",
       "gaps": "Scoped runner checkpoint. Full #20, general runner execution and assembled R1 remain open."
+    },
+    {
+      "id": "native-bytecount-file-trial",
+      "reference": "sys-init/docs/BYTECOUNT-TRIAL.md",
+      "owner": "sys-init and userland, issue18",
+      "budget_seconds": 360,
+      "command": "Build and review the closed package-seed/package-cold roles; run one guarded seed and cold trial with run-bytecount.py.",
+      "invariants": "Exact bytecount, one direct child, seventeen seed mutations and one cold output overwrite, Owner namespace custody, no network, stopped media lineage.",
+      "oracle": "Exact six-byte input and 6 plus LF output, child exit0, complete reclaims, terminal restoration, export and host stop.",
+      "gaps": "Full package scripts, native tool closure and import remain open in issues17/18."
     }
   ]
 }
