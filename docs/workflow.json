@@ -2865,6 +2865,16 @@
       "invariants": "Exact bytecount, one direct child, seventeen seed mutations and one cold output overwrite, Owner namespace custody, no network, stopped media lineage.",
       "oracle": "Exact six-byte input and 6 plus LF output, child exit0, complete reclaims, terminal restoration, export and host stop.",
       "gaps": "Full package scripts, native tool closure and import remain open in issues17/18."
+    },
+    {
+      "id": "package-hash-provider-fit",
+      "reference": "userland/experiments/package-hash-fit/README.md",
+      "owner": "userland with pkg-mgr consumer, issues17/18",
+      "budget_seconds": 600,
+      "command": "From the system root, run python3 -B userland/experiments/package-hash-fit/build.py --sdk SDK --archive PINNED_TOYBOX_ARCHIVE --tools-lock TOOLS_JSON --work FRESH_USERLAND_BUILD_DIRECTORY using the documented guarded source SDK. Run check-read-error.py with the pinned archive, generated SHA config, tools lock and a fresh work directory as documented.",
+      "invariants": "Only pinned dirname and sha256sum applets; existing guarded Aether providers; no guest, new authority, resource increase or substituted runtime.",
+      "oracle": "Eight actual-source host data/EOF/read-fault cases distinguish pristine false-success from patched nonzero/no-digest failure; exact applet selection, defined target linkage, actual kernel ELF geometry and compact measured intake facts. Native operation/error/peak-fit gaps remain explicit.",
+      "gaps": "Current pathname/output bindings and nested process/pipe authority do not qualify the real hash-file script. Full package tool closure/import and R1 remain open."
     }
   ]
 }
