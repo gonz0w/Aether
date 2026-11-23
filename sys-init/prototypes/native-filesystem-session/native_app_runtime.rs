@@ -2550,7 +2550,7 @@ impl<K: AppControl> Runtime<K> {
     fn write_native_oracle(&mut self, workspace: &mut [u8; 4096]) -> Result<(), i64> {
         #[cfg(native_filesystem_runner)]
         let healthy_terminals = self.process.stdout_closed_after_reclaim
-            && matches!(self.observed_terminal[0], Some((24, 1, 1)))
+            && self.observed_terminal[0] == Some((i64::from(RUNNER_EXIT) + 1, 1, 1))
             && matches!(self.observed_terminal[1], Some((1, _, 1)));
         #[cfg(not(native_filesystem_runner))]
         let healthy_terminals = self
