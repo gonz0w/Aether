@@ -10,20 +10,20 @@
       }
     },
     "package-cold": {
-      "envelope": "c5491a88a9b9c978094fbebaff707f49e8e4588fe2064d2e99561a1decee9097",
+      "envelope": "a130ab942aa93cf106c83329f38cfac88ce5c6aff47fecff1463725f5b80efe9",
       "members": {
         "filesystem.elf": "8786c11821cc63d0c9a1a5a20c08b33d530da8bf43bc168f1f448219d84a7d65",
         "helper.elf": "9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7",
-        "owner.bin": "b64e96d0630d9b9327d7db6b941c119794a5c92afdca9836949c57299988e1fd",
+        "owner.bin": "32e7676a5f64340867c747b37935dd9c016a95e3b2b53c2c5bd4935623013bd6",
         "zsh.elf": "6f6c33b9cb9460ffafae6101e94c4a3e2dc332eb0133561d2ec808820686e277"
       }
     },
     "package-seed": {
-      "envelope": "2d764d0fa1b732695f18e56f2eb9b3d98551017eaf7e23daba7978dd895b2970",
+      "envelope": "427d87f4a2005e7abbfec64b64797e3342f67b87346630977e6600f42e0f76e4",
       "members": {
         "filesystem.elf": "9af4b49123079533f5fa1231ada82e6332ecd62f1d34293de104e14b5e834236",
         "helper.elf": "9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7",
-        "owner.bin": "e1169d3da3aaad431e05269fb952e34f2ec95e9c158d60fe8783123eb7b45523",
+        "owner.bin": "56d21059b9fadc21402da2612052fdc913cc91dfd476b9443d2b94222cf98949",
         "zsh.elf": "6f6c33b9cb9460ffafae6101e94c4a3e2dc332eb0133561d2ec808820686e277"
       }
     },
