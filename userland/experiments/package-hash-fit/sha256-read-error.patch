@@ -1,0 +1,5 @@
+--- a/lib/hash.c
++++ b/lib/hash.c
+@@ -359 +359 @@
+-    i = read(fd, libbuf, sizeof(libbuf));
++    i = xread(fd, libbuf, sizeof(libbuf));

@@ -1,0 +1,578 @@
+{
+  "issue": "https://github.com/gonz0w/Aether/issues/17#issuecomment-7102531685",
+  "date": "2026-11-23",
+  "status": "measured; not selected-ready",
+  "scope": "two target provider links and actual kernel parser geometry; no host/native runtime qualification",
+  "source": {
+    "version": "0.8.14",
+    "archive": "build/toybox-0.8.14.tar.gz",
+    "sha256": "827e4cdfd69f5da973e00e2a59b30b3c9857fb7fae74c362fd0b4f96be7929b0",
+    "url": "https://landley.net/toybox/downloads/toybox-0.8.14.tar.gz",
+    "trust": "HTTPS acquisition and local byte pin; independent signature/authenticity and security-fix review pending UL-016",
+    "patches": []
+  },
+  "inputs": {
+    "userland/experiments/package-hash-fit/build.py": "32056bbe04a4a076c305051523b135ae44f6c2b1a22febf02e6f38787133c559",
+    "userland/experiments/filesystem-service/r1-zsh-source.py": "26b7274068d75ade442cc66398642035854bc6d2bacd626b52185dedd641f293",
+    "kernel/native_elf.zig": "50fc61154228fa9623d8ce1a6f552d04536b9788207ca86a5ddacdb3de8ea098",
+    "kernel/native_launch.zig": "9e11b1b2d08519d8f1710232dad0f26ae0f875552b62841e1e5e691eea885789",
+    "kernel/arch/x86_64/native_fs_roles.zig": "5836d8ff8ce90f89e2f26549a374838ddd0d4e4965151b0365d94510bc3264b8",
+    "pkg-mgr/mk/verify-metadata.sh": "e58ecb22378f751caf98f59bcf2a358da8064f83385e59c6624247e0188351f9",
+    "userland/experiments/package-hash-fit/check-read-error.py": "674ff545b4d8ba0e5ceffd942bbf1fe2e0134bc5a93d0cda380f20f020dcb703",
+    "userland/experiments/package-hash-fit/read-fault.c": "ce7d6f8403cbef8b3a5a0d52485f3bce76beaf55292e9b2e38427ffd503cd1cf",
+    "userland/experiments/package-hash-fit/sha256-read-error.patch": "9cf739236d2661b8e14e37da024b715b19d6eefca2668e7e9b41cea3dfbccb96"
+  },
+  "tools": {
+    "clang": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+      "sha256": "625165a3accc542dafef0264b5bbd18721b8e765c7ec819742ec7d7afd2491f6"
+    },
+    "lld": {
+      "path": "/opt/homebrew/Cellar/lld@21/21.1.8_1/bin/ld.lld",
+      "sha256": "c2e13eb403e01855c711c3dec8f1df64a725b51435a865650a47558069eeb5f5"
+    },
+    "ar": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ar",
+      "sha256": "0ae5701cb4be028b9906be4fbe9211800d7aa41b4c049bc72a59eb737409d152"
+    },
+    "ranlib": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-ranlib",
+      "sha256": "0ae5701cb4be028b9906be4fbe9211800d7aa41b4c049bc72a59eb737409d152"
+    },
+    "nm": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-nm",
+      "sha256": "2fdfcd6fe14e1f354d252a70275dbc5bd78e93ba4ae0d0449fc5e90de1983da4"
+    },
+    "objdump": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-objdump",
+      "sha256": "57df889beb6133ffd405ffb84795941c068a13a09dba0a40546d3b740666b9b7"
+    },
+    "objcopy": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/llvm-objcopy",
+      "sha256": "dde686ab38b151eeaf7801b8d8bc829644e43c50a2137b3c075fcf4e5fbdeb09"
+    },
+    "zig": {
+      "path": "/opt/homebrew/Cellar/zig/0.16.0_1/bin/zig",
+      "sha256": "71cc3995a7586753ebf82c66dfb8bef43df446517550678781834586a960f8c9"
+    }
+  },
+  "gsed": {
+    "path": "/opt/homebrew/Cellar/gnu-sed/4.10/bin/gsed",
+    "sha256": "130563b48d1c66445de3d00fe83e352e0447a9f946f042c0164cf8c621e1532b",
+    "version": "4.10"
+  },
+  "sdk_receipt_sha256": "80de91c4b35b7f778885595ac35b283842da8089a161a61f96cec41727878d46",
+  "sdk_stage_sha256": "42d77bdc51cad2eb2f05a5cc39d63f675d5897681d688c37c623024658ff0e14",
+  "sdk_command": "python3 -B userland/experiments/native-c/build.py --io --source-build --tools-lock .deps/source-tools.json --musl-archive .deps/source-inputs/musl-1.2.6.tar.gz --output userland/build/package-hash-provider/sdk",
+  "fit_command": "python3 -B userland/experiments/package-hash-fit/build.py --sdk userland/build/package-hash-provider/sdk --archive .deps/source-inputs/toybox-0.8.14.tar.gz --tools-lock .deps/source-tools.json --work userland/build/package-hash-provider/final",
+  "target_flags": [
+    "--target=x86_64-linux-musl",
+    "-Oz",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-fstack-protector-strong",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fstack-usage",
+    "-funsigned-char",
+    "-fno-strict-aliasing",
+    "-nostdinc",
+    "guarded SDK include only"
+  ],
+  "provider_flags": "unchanged build_helper_profile bytecount=True; exact baseline below",
+  "baseline": {
+    "bytes": 42904,
+    "sha256": "9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7"
+  },
+  "candidates": {
+    "dirname": {
+      "bytes": 103144,
+      "sha256": "7fb5dccc3d3cae21a83d928a2eb216a051395eda613ee7b67409a808d2f4f940",
+      "active_config": [
+        "CONFIG_DIRNAME=y",
+        "CONFIG_TOYBOX_LSM_NONE=y",
+        "CONFIG_TOYBOX_FORK=y"
+      ],
+      "effective_table": "APPLET(dirname)",
+      "config_sha256": "388c107bcafe2006a086715bfd9c7b5b5a4c993ab6ae4504ce3cb4bae329c5b6",
+      "geometry": {
+        "backing_pages": 42,
+        "segments": 4,
+        "stack_bytes": 65536
+      },
+      "undefined_symbols": [],
+      "syscall_instruction_sites": 0,
+      "largest_linked_source_local_frames": [
+        {
+          "function": "aefd_context_init",
+          "bytes": 600,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_startup_start",
+          "bytes": 488,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_context_zsh_vector_write",
+          "bytes": 360,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_client_write",
+          "bytes": 344,
+          "kind": "static"
+        },
+        {
+          "function": "perror_msg",
+          "bytes": 232,
+          "kind": "static"
+        },
+        {
+          "function": "perror_exit",
+          "bytes": 232,
+          "kind": "static"
+        },
+        {
+          "function": "error_exit",
+          "bytes": 216,
+          "kind": "static"
+        },
+        {
+          "function": "help_exit",
+          "bytes": 216,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_client_exchange",
+          "bytes": 200,
+          "kind": "static"
+        },
+        {
+          "function": "get_optflags",
+          "bytes": 168,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_session_init",
+          "bytes": 168,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_write_decode",
+          "bytes": 152,
+          "kind": "static"
+        }
+      ],
+      "stack_limitations": "Source local frames only; no complete musl/indirect-call stack or heap peak proof",
+      "stripped": {
+        "bytes": 78584,
+        "sha256": "b4098552fd7e482e21036c625b5059522a083b070a2193eec76bb7c5926cf44b",
+        "intake_48k_fits": false,
+        "program_headers_identical": true,
+        "tls_bytes_identical": true,
+        "load_byte_changes_only_section_metadata_at": [
+          40,
+          41,
+          60,
+          62
+        ]
+      }
+    },
+    "sha256sum": {
+      "bytes": 119288,
+      "sha256": "e9441d6342415d0140ca1b92fa4d3fc8a53503aec90c3c9529b0c6d45152e62d",
+      "active_config": [
+        "CONFIG_SHA256SUM=y",
+        "CONFIG_TOYBOX_LSM_NONE=y",
+        "CONFIG_TOYBOX_FORK=y"
+      ],
+      "effective_table": "APPLET(sha256sum)",
+      "config_sha256": "99d482b9950a902ea8193eb1facec1fc5215a1f4bc1f85e7cf22ca6ef8c02829",
+      "geometry": {
+        "backing_pages": 46,
+        "segments": 4,
+        "stack_bytes": 65536
+      },
+      "undefined_symbols": [],
+      "syscall_instruction_sites": 0,
+      "largest_linked_source_local_frames": [
+        {
+          "function": "sha2_64_transform",
+          "bytes": 760,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_context_init",
+          "bytes": 600,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_startup_start",
+          "bytes": 488,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_context_zsh_vector_write",
+          "bytes": 360,
+          "kind": "static"
+        },
+        {
+          "function": "hash_by_name",
+          "bytes": 344,
+          "kind": "static"
+        },
+        {
+          "function": "sha2_32_transform",
+          "bytes": 344,
+          "kind": "static"
+        },
+        {
+          "function": "aefd_client_write",
+          "bytes": 344,
+          "kind": "static"
+        },
+        {
+          "function": "perror_msg",
+          "bytes": 232,
+          "kind": "static"
+        },
+        {
+          "function": "perror_exit",
+          "bytes": 232,
+          "kind": "static"
+        },
+        {
+          "function": "error_msg",
+          "bytes": 216,
+          "kind": "static"
+        },
+        {
+          "function": "error_exit",
+          "bytes": 216,
+          "kind": "static"
+        },
+        {
+          "function": "help_exit",
+          "bytes": 216,
+          "kind": "static"
+        }
+      ],
+      "stack_limitations": "Source local frames only; no complete musl/indirect-call stack or heap peak proof",
+      "stripped": {
+        "bytes": 92408,
+        "sha256": "0573f763fa0945717f77569eedf4bce777774fb058d7315f9a9fa911e1ecf917",
+        "intake_48k_fits": false,
+        "program_headers_identical": true,
+        "tls_bytes_identical": true,
+        "load_byte_changes_only_section_metadata_at": [
+          40,
+          41,
+          60,
+          62
+        ]
+      }
+    }
+  },
+  "parser": "native_elf.parseApplication + native_launch.layout + native_launch.backingPages; normal and stripped geometry identical",
+  "limits": {
+    "application_file_bytes": 1572864,
+    "application_parser_pages": 384,
+    "application_role_pages": 640,
+    "current_bytecount_file_intake_bytes": 49152
+  },
+  "source_review": {
+    "dirname": "dirname_main calls puts(dirname(arg)); consumed script paths require parent directory plus newline",
+    "sha256sum": "default do_hash prints 64 lowercase hexadecimal digest, two spaces, filename and newline; hash-file extracts initial digest",
+    "open_error": "loopfiles reports failed open and sets toys.exitval through perror_msg",
+    "stdout_error": "xexit checks fflush(0)/ferror(stdout), reports write error and sets failure before _exit",
+    "read_error": "Actual pinned pristine host source reproduces false-success for initial/partial EIO; selected builtin read-to-xread patch returns1 with no digest for both while data/EOF remain correct. Native error transport remains unrun."
+  },
+  "native_gaps": [
+    "current helper open denies /pkg/input with EACCES",
+    "current child stdout has exact6LF FILE write contract; command substitution needs separately designed Owner-managed pipe",
+    "current exec allowlist selects only /pkg/bytecount, and both candidates exceed48KiB intake",
+    "package helper bootstrap maps only stdin/stdout, without admitted stderr diagnostics",
+    "patched read-error behavior has host actual-source evidence only; native failure/diagnostics remain unrun"
+  ],
+  "unrun": [
+    "native applet execution",
+    "unchanged hash-file composed runtime",
+    "complete stack/heap peak proof",
+    "full import/reboot",
+    "host semantics beyond the scoped SHA data/EOF/read-error witness"
+  ],
+  "attempts": [
+    {
+      "name": "fit",
+      "result": "failed generator setup",
+      "reason": "xcrun warnings merged with SDK pathname; corrected final-line path extraction"
+    },
+    {
+      "name": "fit2",
+      "result": "failed first target compilation",
+      "reason": "unknown-none compiler macro environment omitted sys/statfs.h; selected documented guarded SDK linux-musl source convention"
+    },
+    {
+      "name": "fit3",
+      "result": "passed links/parser; owner-only stack analyzer unavailable",
+      "reason": "owner inspector cannot analyze C ELF readonly indirection; retained source local frames instead"
+    },
+    {
+      "name": "final",
+      "result": "passed exact package baseline, both target links, native syscall-site rejection, normal/stripped actual parser and mapped-byte checks"
+    },
+    {
+      "name": "read-error-pristine",
+      "result": "four actual-source controls reproduce pristine false-success before patch"
+    },
+    {
+      "name": "read-error-checked",
+      "result": "eight pristine/patched actual-source host cases pass"
+    },
+    {
+      "name": "sha-patched",
+      "result": "SHA-only target link/parser/strip checks pass; same SDK; dirname not repeated"
+    },
+    {
+      "name": "normal git diff --check",
+      "result": "failed",
+      "reason": "space-only blank context line in unified patch; no global whitespace exception added"
+    },
+    {
+      "name": "patch-whitespace-check",
+      "result": "passed",
+      "reason": "zero-context one-line patch applied using production helper; exact before/after source hashes unchanged; both scripts parse"
+    }
+  ],
+  "retention": "generated source/SDK/objects belong to this task under userland/build/package-hash-provider; remove after lead review, retaining this compact receipt",
+  "pristine_sha256sum": {
+    "bytes": 119224,
+    "sha256": "1f8c48a07349c0ef462c82b99dd26cf33a3dd35735781919427a3c2c7cab8430",
+    "active_config": [
+      "CONFIG_SHA256SUM=y",
+      "CONFIG_TOYBOX_LSM_NONE=y",
+      "CONFIG_TOYBOX_FORK=y"
+    ],
+    "effective_table": "APPLET(sha256sum)",
+    "config_sha256": "c1340f6f637463dba5530b8213c47c2317afbe76f273857dca9c716777c86608",
+    "geometry": {
+      "backing_pages": 45,
+      "segments": 4,
+      "stack_bytes": 65536
+    },
+    "undefined_symbols": [],
+    "syscall_instruction_sites": 0,
+    "largest_linked_source_local_frames": [
+      {
+        "function": "sha2_64_transform",
+        "bytes": 760,
+        "kind": "static"
+      },
+      {
+        "function": "aefd_context_init",
+        "bytes": 600,
+        "kind": "static"
+      },
+      {
+        "function": "aefd_startup_start",
+        "bytes": 488,
+        "kind": "static"
+      },
+      {
+        "function": "aefd_context_zsh_vector_write",
+        "bytes": 360,
+        "kind": "static"
+      },
+      {
+        "function": "hash_by_name",
+        "bytes": 344,
+        "kind": "static"
+      },
+      {
+        "function": "sha2_32_transform",
+        "bytes": 344,
+        "kind": "static"
+      },
+      {
+        "function": "aefd_client_write",
+        "bytes": 344,
+        "kind": "static"
+      },
+      {
+        "function": "perror_msg",
+        "bytes": 232,
+        "kind": "static"
+      },
+      {
+        "function": "perror_exit",
+        "bytes": 232,
+        "kind": "static"
+      },
+      {
+        "function": "error_msg",
+        "bytes": 216,
+        "kind": "static"
+      },
+      {
+        "function": "error_exit",
+        "bytes": 216,
+        "kind": "static"
+      },
+      {
+        "function": "help_exit",
+        "bytes": 216,
+        "kind": "static"
+      }
+    ],
+    "stack_limitations": "Source local frames only; no complete musl/indirect-call stack or heap peak proof",
+    "stripped": {
+      "bytes": 92376,
+      "sha256": "4debb3ea668ccb05271ad461ab7138799dbc766a1608d6c0eccea011708f341c",
+      "intake_48k_fits": false,
+      "program_headers_identical": true,
+      "tls_bytes_identical": true,
+      "load_byte_changes_only_section_metadata_at": [
+        40,
+        41,
+        60,
+        62
+      ]
+    }
+  },
+  "sha256_read_error_patch": {
+    "before_sha256": "38dac9744df94223f789998eb103873d3831cd4d759381cf00895ebf7e90ff95",
+    "after_sha256": "5909c0d8b76580dff7b5746b84c6635a7fb5d8003fe0fe9063c03d3d16dcc107",
+    "patch_sha256": "9cf739236d2661b8e14e37da024b715b19d6eefca2668e7e9b41cea3dfbccb96",
+    "scope": "builtin loop only, selected SHA source tree; LIBCRYPTO disabled"
+  },
+  "fit_command_patched": "python3 -B userland/experiments/package-hash-fit/build.py --sdk userland/build/package-hash-provider/sdk --archive .deps/source-inputs/toybox-0.8.14.tar.gz --tools-lock .deps/source-tools.json --work userland/build/package-hash-provider/sha-patched --applet sha256sum",
+  "host_check_command": "python3 -B userland/experiments/package-hash-fit/check-read-error.py --archive .deps/source-inputs/toybox-0.8.14.tar.gz --generated userland/build/package-hash-provider/final/sha256sum/toybox-0.8.14/generated --tools-lock .deps/source-tools.json --work userland/build/package-hash-provider/read-error-checked",
+  "host_read_error_check": {
+    "scope": "host actual-source read-fault witness; not native runtime evidence",
+    "status": "passed",
+    "compiler": {
+      "path": "/opt/homebrew/Cellar/llvm@21/21.1.8/bin/clang",
+      "sha256": "625165a3accc542dafef0264b5bbd18721b8e765c7ec819742ec7d7afd2491f6"
+    },
+    "cases": [
+      {
+        "variant": "pristine",
+        "name": "abcdef",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/abcdef"
+        ],
+        "status": 0,
+        "stdout": "bef57ec7f53a6d40beb640a780a639c83bc29ac8a9816f1fc6c5c6dcd93c4721  /private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/abcdef\n",
+        "stderr": "",
+        "observation": "correct digest"
+      },
+      {
+        "variant": "pristine",
+        "name": "empty",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/empty"
+        ],
+        "status": 0,
+        "stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/empty\n",
+        "stderr": "",
+        "observation": "correct digest"
+      },
+      {
+        "variant": "pristine",
+        "name": "initial-eio",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/initial-eio"
+        ],
+        "status": 0,
+        "stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/initial-eio\n",
+        "stderr": "",
+        "observation": "pristine false-success"
+      },
+      {
+        "variant": "pristine",
+        "name": "partial-eio",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/partial-eio"
+        ],
+        "status": 0,
+        "stdout": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  /private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/pristine/partial-eio\n",
+        "stderr": "",
+        "observation": "pristine false-success"
+      },
+      {
+        "variant": "patched",
+        "name": "abcdef",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/abcdef"
+        ],
+        "status": 0,
+        "stdout": "bef57ec7f53a6d40beb640a780a639c83bc29ac8a9816f1fc6c5c6dcd93c4721  /private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/abcdef\n",
+        "stderr": "",
+        "observation": "correct digest"
+      },
+      {
+        "variant": "patched",
+        "name": "empty",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/empty"
+        ],
+        "status": 0,
+        "stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/empty\n",
+        "stderr": "",
+        "observation": "correct digest"
+      },
+      {
+        "variant": "patched",
+        "name": "initial-eio",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/initial-eio"
+        ],
+        "status": 1,
+        "stdout": "",
+        "stderr": "sha256sum: xread: Input/output error\n",
+        "observation": "truthful read failure; no digest"
+      },
+      {
+        "variant": "patched",
+        "name": "partial-eio",
+        "argv": [
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/sha256sum",
+          "/private/tmp/aether18-resume/userland/build/package-hash-provider/read-error-checked/patched/partial-eio"
+        ],
+        "status": 1,
+        "stdout": "",
+        "stderr": "sha256sum: xread: Input/output error\n",
+        "observation": "truthful read failure; no digest"
+      }
+    ],
+    "pristine_host_binary_sha256": "7814cda47c4bb8899d2c8268bae4d303b4f3164b6c19425f21df87148bd7cb1f",
+    "patched_host_binary_sha256": "445a9b4c994ee43eeacae0b33d93d41f962971111b0ee23293779d12c713d259"
+  },
+  "pristine_builder_sha256": "ec9ee606974cbaec1dc8ea1c89181f93801d6797642f7ca476f2a8f33d72f1af",
+  "evidence_builder_sha256_before_patch_format_change": "e2268cb4a6c6b4f8f2b21b96da0d53323c818f17ff5a50c7e65349c1f3cfe791",
+  "evidence_patch_sha256_before_format_change": "2df5030a7860b0e9c1a71b9b3274c0658f65f66f3b7e51d4f22914692d73c994",
+  "evidence_reuse_after_patch_format_change": {
+    "reason": "Only patch context format and its checked digest changed; actual patched hash.c bytes remain identical",
+    "before_source_sha256": "38dac9744df94223f789998eb103873d3831cd4d759381cf00895ebf7e90ff95",
+    "after_source_sha256": "5909c0d8b76580dff7b5746b84c6635a7fb5d8003fe0fe9063c03d3d16dcc107",
+    "reused": [
+      "eight actual-source host controls",
+      "patched SHA target link and actual parser/layout",
+      "stripped-byte comparison",
+      "SDK and unchanged dirname measurements"
+    ],
+    "unrerun": [
+      "SDK build",
+      "target build",
+      "host suite"
+    ]
+  }
+}
