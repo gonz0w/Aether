@@ -332,6 +332,8 @@ def main():
     for name in ('app-seal', 'engine-seal', 'source-inputs'):
         parser.add_argument(f'--{name}', type=Path)
     args = parser.parse_args()
+    if args.role.startswith('package-') and args.source_inputs is None:
+        parser.error('package roles require --source-inputs')
     if args.source_inputs is None:
         if args.app_seal is None or args.engine_seal is None:
             parser.error('supply both seals, or use --source-inputs')

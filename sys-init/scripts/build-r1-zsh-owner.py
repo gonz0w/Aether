@@ -19,7 +19,8 @@ INPUTS = {
     'terminfo': (1268, '512924dc4f0c9d70e6628d63615884aa93fad7d7fc7a9f62ba3536db24702dc1'),
     'probe': (3548, '15d1a20d584543555420effcdb28fac2ca1f188dc2e1a88684e86f177a017de3'),
 }
-CODE_LIMITS = {'seed': 81920, 'note': 90112}
+CODE_LIMITS = {'seed': 81920, 'note': 90112, 'package-seed': 124 * 1024, 'package-cold': 124 * 1024}
+BYTECOUNT = (42904, '9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7')
 LINKER = """ENTRY(_start)
 PHDRS { code PT_LOAD FLAGS(5); }
 SECTIONS {
@@ -38,7 +39,8 @@ def digest(data):
 
 def load_inputs(args):
     result = {}
-    for name, (length, checksum) in INPUTS.items():
+    pins = dict(probe=BYTECOUNT) if args.role.startswith('package-') else INPUTS
+    for name, (length, checksum) in pins.items():
         path = getattr(args, name).resolve(strict=True)
         with path.open('rb') as stream:
             raw = stream.read(length + 1)
@@ -79,8 +81,16 @@ def build(args):
     profiles = json.loads((HERE / 'r1-zsh-owner-profiles.json').read_text())
     shared = {row[0]: row for row in profiles['shared']}
     libraries = {}
-    for row in profiles['roles'][args.role]:
+    package = args.role.startswith('package-')
+    for row in profiles['roles']['seed' if package else args.role]:
         name, source, edition, cfg, dependencies = shared[row] if isinstance(row, str) else row
+        if package and (name in ('filesystem_readonly', 'native_app_runtime') or not name):
+            legacy = {'native_zsh_login_startup', 'native_zsh_home_redirection',
+                      'native_zsh_operator', 'native_zsh_idle_exit'}
+            cfg = [option for option in cfg if option not in legacy]
+            cfg.extend(('native_zsh_cold_reopen', 'native_filesystem_runner', 'native_package_bytecount'))
+            if args.role == 'package-cold':
+                cfg.append('native_package_bytecount_cold')
         output = work / (f'lib{name}.rlib' if name else 'owner.elf')
         argv = [str(rustc), '--edition=' + edition, '-Dwarnings', '-Dunsafe_op_in_unsafe_fn',
                 '--target=x86_64-unknown-none', '-Cpanic=abort', '-Crelocation-model=static',
@@ -137,13 +147,67 @@ pub static LAYOUT: [u64; 2] =
     print(json.dumps(result))
 
 
+def check_package_files(args):
+    if not args.role.startswith('package-'):
+        raise ValueError('package host tests require a package role')
+    work = args.work.resolve()
+    work.mkdir(mode=0o700)
+    environment = {'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'}
+    profiles = json.loads((HERE / 'r1-zsh-owner-profiles.json').read_text())
+    shared = {row[0]: row for row in profiles['shared']}
+    libraries = {}
+    for name in ('filesystem_metadata', 'filesystem_policy', 'filesystem_service', 'filesystem_client', 'abi29_dispatch_core', 'fd_startup', 'fork_streams'):
+        row = shared[name] if name in shared else next(row for row in profiles['roles']['seed'] if not isinstance(row, str) and row[0] == name)
+        _, source, edition, cfg, dependencies = row
+        output = work / ('lib' + name + '.rlib')
+        argv = [str(args.rustc), '--edition=' + edition, '-Dwarnings', '-Ldependency=' + str(work),
+                '--crate-name=' + name, '--crate-type=rlib']
+        for option in cfg:
+            argv.extend(('--cfg', option))
+        for dep in dependencies:
+            argv.extend(('--extern', dep + '=' + str(libraries[dep])))
+        argv.extend((str(ROOT / source), '-o', str(output)))
+        run_tool(argv, environment, work / (name + '.log'), timeout=30, cwd=work)
+        libraries[name] = output
+    row = next(row for row in profiles['roles']['seed'] if not isinstance(row, str) and row[0] == 'filesystem_readonly')
+    cfg = [option for option in row[3] if option not in {'native_zsh_operator', 'native_zsh_home_redirection', 'native_zsh_login_startup', 'native_zsh_idle_exit'}]
+    cfg.extend(('native_zsh_cold_reopen', 'native_filesystem_runner', 'native_package_bytecount'))
+    binary = work / 'package-files-tests'
+    argv = [str(args.rustc), '--edition=2024', '-Dwarnings', '-Ldependency=' + str(work), '--test']
+    for option in cfg:
+        argv.extend(('--cfg', option))
+    for name, library in libraries.items():
+        argv.extend(('--extern', name + '=' + str(library)))
+    argv.extend((str(ROOT / row[1]), '-o', str(binary)))
+    run_tool(argv, environment, work / 'files-build.log', timeout=30, cwd=work)
+    result = run_tool([str(binary), '--test-threads=1'], environment, work / 'files-tests.log', timeout=30, cwd=work)
+    print(result.decode('utf-8'), end='')
+    binary = work / 'package-stream-tests'
+    argv = [str(args.rustc), '--edition=2024', '-Dwarnings', '-Ldependency=' + str(work), '--test']
+    for name in ('abi29_dispatch_core', 'fd_startup', 'fork_streams'):
+        argv.extend(('--extern', name + '=' + str(libraries[name])))
+    argv.extend((str(ROOT / 'sys-init/prototypes/native-filesystem-session/package_exec_streams.rs'), '-o', str(binary)))
+    run_tool(argv, environment, work / 'streams-build.log', timeout=30, cwd=work)
+    result = run_tool([str(binary), '--test-threads=1'], environment, work / 'streams-tests.log', timeout=30, cwd=work)
+    print(result.decode('utf-8'), end='')
+
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('role', choices=CODE_LIMITS)
+    parser.add_argument('--host-tests', action='store_true', help='run package Client/AF09 synthetic-storage controls')
     for name in ('work', 'rustc', 'linker', 'terminfo', 'probe', 'objcopy', 'objdump'):
-        parser.add_argument('--' + name, required=True, type=Path)
+        parser.add_argument('--' + name, required=name in ('work', 'rustc'), type=Path)
     try:
-        build(parser.parse_args())
+        args = parser.parse_args()
+        if args.host_tests:
+            check_package_files(args)
+        else:
+            for name in ('linker', 'terminfo', 'probe', 'objcopy', 'objdump'):
+                if getattr(args, name) is None:
+                    parser.error('--' + name + ' is required for a target build')
+            build(args)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(1, f'Owner build failed: {error}\n')
 

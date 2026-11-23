@@ -11,12 +11,18 @@ use core::mem::MaybeUninit;
 mod zsh_namespace;
 #[cfg(native_zsh_filesystem)]
 use zsh_namespace::Namespace;
-#[cfg(native_zsh_filesystem)]
+#[cfg(all(native_zsh_filesystem, not(native_package_bytecount)))]
 const TERMINFO: &[u8] = include_bytes!(env!("AETHER_ZSH_TERMINFO"));
 #[cfg(native_zsh_file_exec)]
 const FILE_EXEC_ELF: &[u8] = include_bytes!(env!("AETHER_ZSH_FILE_EXEC_ELF"));
-#[cfg(native_zsh_file_exec)]
+#[cfg(all(native_zsh_file_exec, not(native_package_bytecount)))]
 const _: () = assert!(!FILE_EXEC_ELF.is_empty() && FILE_EXEC_ELF.len() <= 4096);
+#[cfg(native_package_bytecount)]
+const _: () = assert!(FILE_EXEC_ELF.len() == 42_904);
+#[cfg(native_package_bytecount)]
+const PACKAGE_EXEC_SNAPSHOT: usize = 0x904000;
+#[cfg(native_package_bytecount)]
+const PACKAGE_EXEC_BYTES: usize = 48 * 1024;
 #[cfg(all(
     native_zsh_filesystem,
     not(all(
@@ -31,6 +37,9 @@ use filesystem_service::channel::Io;
 use fork_streams::{Caller, Outcome, SessionPipe, State};
 pub use owner_control::AppControl;
 use owner_control::{Control, Deadline, Observation, Status};
+#[cfg(native_package_bytecount)]
+#[path = "package_exec_streams.rs"]
+mod package_exec_streams;
 #[path = "stream_transport.rs"]
 mod stream_transport;
 #[cfg(native_tty_mode_probe)]
@@ -205,7 +214,7 @@ compile_error!("operator session requires the selected idle exit profile");
 compile_error!("filesystem runner requires the cold external file-exec profile");
 
 #[cfg(native_filesystem_runner)]
-const RUNNER_EXIT: i32 = 23;
+const RUNNER_EXIT: i32 = if cfg!(native_package_bytecount) { 0 } else { 23 };
 #[cfg(native_filesystem_runner)]
 const RUNNER_WAIT_STATUS: i32 = RUNNER_EXIT << 8;
 
@@ -295,8 +304,8 @@ impl<K: AppControl> ZshProcess<K> {
             self.epoch == 1
         }) && self.committed
             && self.exec_ready
-            && self.terminal == Some(5888)
-            && self.wait_status == Some(5888)
+            && self.terminal == Some(if cfg!(native_package_bytecount) { 0 } else { 5888 })
+            && self.wait_status == Some(if cfg!(native_package_bytecount) { 0 } else { 5888 })
             && self.reclaimed
             && self.lease == ReadLease::Parent
             && self.binding.is_none()
@@ -738,18 +747,21 @@ impl<K: AppControl> Runtime<K> {
                 }
                 Err(error) => return Err(fs_errno(error.error)),
             }
-            #[cfg(not(native_zsh_cold_reopen))]
+            #[cfg(all(not(native_zsh_cold_reopen), not(native_package_bytecount)))]
             self.with_files(|files| files.provision(TERMINFO, workspace))?;
-            #[cfg(native_zsh_cold_reopen)]
+            #[cfg(all(native_zsh_cold_reopen, not(native_package_bytecount)))]
             self.with_files(|files| files.reopen(TERMINFO, workspace))?;
-            #[cfg(all(native_zsh_file_exec, not(native_zsh_cold_reopen)))]
+            #[cfg(all(all(native_zsh_file_exec, not(native_zsh_cold_reopen)), not(native_package_bytecount)))]
             self.with_files(|files| files.provision_file_exec(FILE_EXEC_ELF))?;
-            #[cfg(native_zsh_cold_reopen)]
+            #[cfg(all(native_zsh_cold_reopen, not(native_package_bytecount)))]
             self.with_files(|files| files.reopen_file_exec(FILE_EXEC_ELF, workspace))?;
-            #[cfg(native_zsh_home_redirection_reader)]
+            #[cfg(all(native_zsh_home_redirection_reader, not(native_package_bytecount)))]
             self.with_files(|files| files.reopen_note(workspace))?;
-            #[cfg(native_zsh_operator_login)]
+            #[cfg(all(native_zsh_operator_login, not(native_package_bytecount)))]
             self.with_files(|files| files.initialize_home_cwd(workspace))?;
+            #[cfg(native_package_bytecount)]
+            self.with_files(|files| files.stage_package_bytecount(
+                FILE_EXEC_ELF, workspace, !cfg!(native_package_bytecount_cold)))?;
         }
         let mut bindings = [Binding::default(); 16];
         bindings[1] = Binding {
@@ -1805,7 +1817,11 @@ impl<K: AppControl> Runtime<K> {
         self.zsh_validate_files(true, snapshot.raw())?;
         let path = &request[368..400];
         #[cfg(native_zsh_file_exec)]
-        let rejection = if !path.starts_with(b"/home/probe\0")
+        let rejection = if !(if cfg!(native_package_bytecount) {
+            path.starts_with(b"/pkg/bytecount\0")
+        } else {
+            path.starts_with(b"/home/probe\0")
+        })
             || !zsh_helper_arguments((&request[400..672]).try_into().unwrap())
         {
             -13
@@ -1839,12 +1855,28 @@ impl<K: AppControl> Runtime<K> {
             #[cfg(native_zsh_file_exec)]
             {
                 let binding = self.process.binding.ok_or(-9)?;
-                #[cfg(native_zsh_repeat_exec)]
+                #[cfg(all(native_zsh_repeat_exec, not(native_package_bytecount)))]
                 if binding.epoch == 2 || (cfg!(native_zsh_operator_login) && binding.epoch > 2) {
                     self.with_files(|files| {
                         files.revalidate_file_exec(binding, FILE_EXEC_ELF, workspace)
                     })?;
                 }
+                #[cfg(native_package_bytecount)]
+                {
+                    // SAFETY: the selected kernel maps this exclusive guarded Owner
+                    // span before ABI31 entry. It is disjoint from Runtime and workspace.
+                    let image = unsafe {
+                        &mut *(PACKAGE_EXEC_SNAPSHOT as *mut [u8; PACKAGE_EXEC_BYTES])
+                    };
+                    let size = self.with_files(|files| files.acquire_package_bytecount(
+                        binding, FILE_EXEC_ELF, image, workspace))?;
+                    let result = self.bound.before(&mut self.kernel).map(|()| self.kernel.exec_file(
+                        expected.identity.handle, freeze, arguments, &image[..size]));
+                    image.fill(0);
+                    result?
+                }
+                #[cfg(not(native_package_bytecount))]
+                {
                 let size = self.with_files(|files| files.acquire_file_exec(binding, workspace))?;
                 self.bound.before(&mut self.kernel)?;
                 self.kernel.exec_file(
@@ -1853,6 +1885,7 @@ impl<K: AppControl> Runtime<K> {
                     arguments,
                     &workspace[..size],
                 )
+                }
             }
             #[cfg(not(native_zsh_file_exec))]
             self.kernel
@@ -1889,6 +1922,10 @@ impl<K: AppControl> Runtime<K> {
         {
             return Err(-5);
         }
+        #[cfg(native_package_bytecount)]
+        package_exec_streams::commit_files_only(&mut self.streams, self.process.caller()?, &mut plan)
+            .map_err(i64::from)?;
+        #[cfg(not(native_package_bytecount))]
         self.streams
             .commit_exec(self.process.caller()?, &mut plan)
             .map_err(i64::from)?;
@@ -1900,7 +1937,14 @@ impl<K: AppControl> Runtime<K> {
             .ok_or(-28)?;
         let binding = self.with_files(|files| files.exec_child(old, generation))?;
         self.process.binding = Some(binding);
+        #[cfg(native_package_bytecount)]
+        self.with_files(|files| files.bind_package_stdio(binding))?;
         let raw: &mut [u8; 336] = (&mut workspace[32..368]).try_into().unwrap();
+        #[cfg(native_package_bytecount)]
+        {
+            raw[112..116].copy_from_slice(&[3, 3, 0, 0]);
+            raw[116..120].copy_from_slice(&[3, 4, 0, 0]);
+        }
         zsh_exec_snapshot(raw)?;
         zsh_rebind_snapshot(raw, expected.identity, expected.parent, generation)?;
         // Publish cannot be inferred from a returning exec or a fake READY.
@@ -2471,6 +2515,8 @@ impl<K: AppControl> Runtime<K> {
         self.cleanup_mode()?;
         #[cfg(native_zsh_filesystem)]
         {
+            #[cfg(native_package_bytecount)]
+            self.with_files(|files| files.verify_package_output(workspace))?;
             let engine = self.engine;
             self.with_files(|files| {
                 files
@@ -2549,7 +2595,9 @@ impl<K: AppControl> Runtime<K> {
         let no_child = false;
         #[cfg(native_zsh_process)]
         {
-            let status = if cfg!(native_zsh_file_exec) {
+            let status = if cfg!(native_package_bytecount) {
+                0
+            } else if cfg!(native_zsh_file_exec) {
                 5888
             } else if cfg!(native_zsh_home_write) {
                 0
@@ -2599,8 +2647,10 @@ impl<K: AppControl> Runtime<K> {
         } else {
             files.file_exec_size().ok_or(-5)?
         };
-        #[cfg(native_filesystem_runner)]
+        #[cfg(all(native_filesystem_runner, not(native_package_bytecount)))]
         const ROW: &[u8] = b"\nAETHER RUNNER OWNER v=1 requests=00 child_status=5888 parent_status=23 stdout_closed_after_reclaim=1 file_exec_bytes=0000 mode_cleanup=0\n";
+        #[cfg(native_package_bytecount)]
+        const ROW: &[u8] = b"\nAETHER BYTECOUNT OWNER v=1 requests=00 child_status=0 exec_ready=1 child_reclaimed=1 file_exec_bytes=00000 output_verified=1 mode_cleanup=0\n";
         #[cfg(all(native_zsh_file_exec, not(native_filesystem_runner)))]
         const ROW: &[u8] = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=0000 file_exec_closed=1 image_receipt=49156 mode_cleanup=0\n";
         #[cfg(all(
@@ -2619,7 +2669,9 @@ impl<K: AppControl> Runtime<K> {
         #[cfg(not(native_zsh_idle_exit))]
         let row = ROW;
         workspace[..row.len()].copy_from_slice(row);
-        let requests_at = if cfg!(native_filesystem_runner) {
+        let requests_at = if cfg!(native_package_bytecount) {
+            37
+        } else if cfg!(native_filesystem_runner) {
             34
         } else {
             31
@@ -2628,11 +2680,18 @@ impl<K: AppControl> Runtime<K> {
         workspace[requests_at + 1] = b'0' + (self.filesystem_requests % 10) as u8;
         #[cfg(native_zsh_file_exec)]
         if !no_child {
-            #[cfg(native_filesystem_runner)]
+            #[cfg(all(native_filesystem_runner, not(native_package_bytecount)))]
             const AT: usize = b"\nAETHER RUNNER OWNER v=1 requests=00 child_status=5888 parent_status=23 stdout_closed_after_reclaim=1 file_exec_bytes=".len();
             #[cfg(not(native_filesystem_runner))]
             const AT: usize = b"\nAETHER ZSH OWNER v=4 requests=00 child_status=5888 exec_ready=1 child_reclaimed=1 parent_lease=1 file_exec_bytes=".len();
-            for (index, divisor) in [1000, 100, 10, 1].into_iter().enumerate() {
+            #[cfg(native_package_bytecount)]
+            const AT: usize = b"\nAETHER BYTECOUNT OWNER v=1 requests=00 child_status=0 exec_ready=1 child_reclaimed=1 file_exec_bytes=".len();
+            let divisors: &[usize] = if cfg!(native_package_bytecount) {
+                &[10000, 1000, 100, 10, 1]
+            } else {
+                &[1000, 100, 10, 1]
+            };
+            for (index, divisor) in divisors.iter().enumerate() {
                 workspace[AT + index] = b'0' + ((file_exec_size / divisor) % 10) as u8;
             }
         }
@@ -2774,7 +2833,7 @@ impl<K: AppControl> Runtime<K> {
 #[cfg(native_zsh_process)]
 fn zsh_stream_plan(raw: &[u8; 336], expected: zsh_process_frames::Expected) -> Result<Plan, i64> {
     zsh_process_frames::snapshot(raw, expected).map_err(i64::from)?;
-    if cfg!(native_filesystem_runner)
+    if cfg!(all(native_filesystem_runner, not(native_package_bytecount)))
         && (raw[112..120] != [4, 0, 0, 0, 4, 1, 0, 0] || raw[120..176] != [0; 56])
     {
         return Err(-13);
@@ -3040,7 +3099,7 @@ fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
         && raw[48..54] == *b"status"
         && raw[54..] == [0; 218]
 }
-#[cfg(native_filesystem_runner)]
+#[cfg(all(native_filesystem_runner, not(native_package_bytecount)))]
 fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
     u64::from_le_bytes(raw[..8].try_into().unwrap()) == 1
         && u64::from_le_bytes(raw[8..16].try_into().unwrap()) == 1
@@ -3055,6 +3114,16 @@ fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
         && raw[8..16] == [0; 8]
         && raw[16..27] == *b"/home/probe"
         && raw[27..] == [0; 245]
+}
+#[cfg(native_package_bytecount)]
+fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {
+    let mut expected = [0u8; 272];
+    expected[0] = 2;
+    expected[8] = 1;
+    expected[16..30].copy_from_slice(b"/pkg/bytecount");
+    expected[48..57].copy_from_slice(b"--decimal");
+    expected[144..152].copy_from_slice(b"LC_ALL=C");
+    raw == &expected
 }
 #[cfg(native_zsh_home_write)]
 fn zsh_helper_arguments(raw: &[u8; 272]) -> bool {

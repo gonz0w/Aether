@@ -9,6 +9,24 @@
         "zsh.elf": "d3c40cdebb69861515df9c4ea9b516ea59b170c49cfdc20eafd6d111933db1f5"
       }
     },
+    "package-cold": {
+      "envelope": "d7dc033707a7276432e0af2ea97864729b809240acc9198ed91c48ab3ee0ac3b",
+      "members": {
+        "filesystem.elf": "8786c11821cc63d0c9a1a5a20c08b33d530da8bf43bc168f1f448219d84a7d65",
+        "helper.elf": "9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7",
+        "owner.bin": "6346367f101be13fc31dd01e7e2f8ba88e09398d50eb83207e3d0c16ea9fd9c5",
+        "zsh.elf": "6f6c33b9cb9460ffafae6101e94c4a3e2dc332eb0133561d2ec808820686e277"
+      }
+    },
+    "package-seed": {
+      "envelope": "6348efc74bc4718d37d37136c04b5e703ef4a2f29182c0745a682162366d8182",
+      "members": {
+        "filesystem.elf": "9af4b49123079533f5fa1231ada82e6332ecd62f1d34293de104e14b5e834236",
+        "helper.elf": "9be898e042f8770aaf58fd93ce6e1d04acf9b4721e8acf31651634017f6870f7",
+        "owner.bin": "721464d3a11ea9566788a5e661d73cc3f1a96b5ab2f0cc88c85691d084dc94f9",
+        "zsh.elf": "6f6c33b9cb9460ffafae6101e94c4a3e2dc332eb0133561d2ec808820686e277"
+      }
+    },
     "seed": {
       "envelope": "dc8dd5a7880699530ca4d85bf83f62d2a5f7446c1b8c7cdb561699d8eb41a7b1",
       "members": {
