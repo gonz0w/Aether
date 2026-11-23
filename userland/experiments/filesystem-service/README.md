@@ -1373,3 +1373,23 @@ The owning issue137 records actual focused consumer/constructor/profile checks,
 compiled artifact fit, retained failures and remaining resource/native gates.
 Private recipes and dependencies are necessary for full replay. No image, prompt,
 login, external-command or release claim follows from the source alone.
+
+## Dedicated bytecount engine roles
+
+The R1 source engine builder accepts `package-seed` and `package-cold`
+with `--package-elf FILE`. Supply the support, SDK, runtime and toolchain
+arguments documented in [R1 source builds](../../../sys-init/docs/R1-ZSH-SOURCE.md).
+The engine report binds the selected ELF digest and byte length.
+
+Seed delegates the actual `/pkg` directory through the existing AFSRPC09
+attachment. Its ledger admits exactly the ordered directory creation, three
+file creations, eleven contiguous executable writes, the six-byte input write,
+and the two-byte output write. The supervisor compares the complete executable
+before execution. Cold reopens the three known files and admits one output
+overwrite after verifying the existing `6\n` bytes.
+
+Run `python3 -B experiments/filesystem-service/home_engine_build_tests.py`
+from userland for builder-selection controls. The dedicated policy tests are
+in `package-bytecount-policy.rs` and run through the actual Owner under
+`fs_package_bytecount` and `fs_package_bytecount_cold`. Set
+`AETHER_PACKAGE_BYTECOUNT_BYTES` to the exact selected ELF byte length.

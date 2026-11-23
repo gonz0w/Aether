@@ -216,6 +216,9 @@ fn run(state: &mut HomeLaunchState) -> i32 {
         || cfg!(fs_home_terminfo_six) && home.mutation_attempts != 6
         || cfg!(fs_home_terminfo_seven) && home.mutation_attempts != 7
         || cfg!(fs_home_terminfo_nine) && home.mutation_attempts != 9
+        || cfg!(fs_package_bytecount) && (home.mutation_attempts
+            != if cfg!(fs_package_bytecount_cold) { 1 } else { 17 }
+            || service.state != 2 || service.bytes_staged != 2)
         || cfg!(fs_af09_drain) && (home.mutation_attempts != 2 || service.requests != 3)
         || home.flags != expected_flags
         || service.ready != 1

@@ -12,6 +12,9 @@ pub const controller_limit = 8192;
 // Selected only by the separate ABI30 boot owner; no dynamic allocation grant.
 pub const owner_data_base = 0x900000;
 pub const owner_data_bytes = 8192;
+pub const bytecount_snapshot_base = 0x904000;
+pub const bytecount_snapshot_bytes = 48 * 1024;
+pub const bytecount_owner_code_limit = 124 * 1024;
 // Complete ABI31 owner measured at39,376 bytes; twelve RX pages give about25% headroom.
 // Old profile limits remain in their exact selectors.
 pub const owner_stack_code_limit = 49152;

@@ -943,13 +943,13 @@ fn select() *const Frame {
 pub fn start(pbase: u64, vbase: u64, envelope: []const u8, hhdm: u64, map: *const @import("../../limine.zig").MemoryResponse) noreturn {
     // Reject the selected complete composition before reservation or device setup.
     if (combined_application_profile) {
-        _ = (if (combined_operator_note) FsSession.parseOperatorNoteApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else FsSession.parseApplication(envelope)) catch @panic("invalid filesystem application envelope");
+        _ = (if (@hasDecl(@import("build_options"), "native_package_bytecount") and @import("build_options").native_package_bytecount) FsSession.parseBytecountApplication(envelope) else if (combined_operator_note) FsSession.parseOperatorNoteApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else FsSession.parseApplication(envelope)) catch @panic("invalid filesystem application envelope");
     }
     require(envelope.len > 40);
     if (mktemp_reader) require(std.mem.eql(u8, envelope[0..8], "AENBD002"));
     const service_block = @import("build_options").native_service_block;
     const service_channel = @import("build_options").native_service_channel;
-    const service_magic = if (combined_profile) (if (combined_operator_note) FsSession.operator_note_magic else if (combined_application_profile) FsSession.application_magic else if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
+    const service_magic = if (combined_profile) (if (@hasDecl(@import("build_options"), "native_package_bytecount") and @import("build_options").native_package_bytecount) FsSession.bytecount_magic else if (combined_operator_note) FsSession.operator_note_magic else if (combined_application_profile) FsSession.application_magic else if (combined_owner_stack) FsSession.owner_stack_magic else if (combined_owner_data) FsSession.owner_data_magic else if (combined_init) FsSession.init_magic else FsSession.magic) else storageMagic();
     if (service_memory) require(std.mem.eql(u8, envelope[0..8], if (service_channel) service_magic else if (service_block) "AENBD002" else "AENSUP01"));
     const direct_native = std.mem.eql(u8, envelope[0..8], "AENATC01") or
         std.mem.eql(u8, envelope[0..8], "AENSUP01") or
@@ -2241,11 +2241,23 @@ fn auditOwnerStack(s: *State, code_pages: usize) void {
     require(byte(s, base - 4096, false) == null and byte(s, 0x802000, false) == null);
     require(s.context().frame.rdi == 31 and s.context().frame.rsp == 0x802000 - 8);
 }
+fn mapBytecountSnapshot(s: *State) void {
+    require(combined_application_profile and combined_owner_stack and s == &states[supervisorSlot()]);
+    const base = FsRoles.bytecount_snapshot_base;
+    const end = base + FsRoles.bytecount_snapshot_bytes;
+    require(s.count + FsRoles.bytecount_snapshot_bytes / 4096 <= s.backing.len);
+    require(byte(s, base - 4096, false) == null and byte(s, end, false) == null);
+    for (0..FsRoles.bytecount_snapshot_bytes / 4096) |i| {
+        require(s.count < s.backing.len);
+        @memset(&s.backing[s.count], 0);
+        addPage(s, base + i * 4096, 7 | nx);
+    }
+}
 fn startSupervised(envelope: []const u8) noreturn {
     require(envelope.len >= 48);
     var supervisor_code: []const u8 = undefined;
     if (combined_profile) {
-        const bundle = (if (combined_operator_note) FsSession.parseOperatorNoteApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
+        const bundle = (if (@hasDecl(@import("build_options"), "native_package_bytecount") and @import("build_options").native_package_bytecount) FsSession.parseBytecountApplication(envelope) else if (combined_operator_note) FsSession.parseOperatorNoteApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_home_redirection") and @import("build_options").native_zsh_home_redirection) FsSession.parseHomeRedirectionApplication(envelope) else if (@hasDecl(@import("build_options"), "native_zsh_external") and @import("build_options").native_zsh_external) FsSession.parseExternalApplication(envelope) else if (combined_application_profile) FsSession.parseApplication(envelope) else if (combined_owner_stack) FsSession.parseOwnerStack(envelope) else if (combined_owner_data) FsSession.parseOwnerData(envelope) else FsSession.parseProfile(envelope, combined_init)) catch @panic("invalid filesystem SESSION envelope");
         engine_len = bundle.engine.len;
         @memcpy(engine_bytes[0..engine_len], bundle.engine);
         engine_image = parseStartup(engine_bytes[0..engine_len]) catch @panic("invalid filesystem engine ELF");
@@ -2300,6 +2312,8 @@ fn startSupervised(envelope: []const u8) noreturn {
     s.context().frame = .{ .rip = 0x400000, .rsp = 0x801000 - 8, .cs = 0x23, .ss = 0x1b, .flags = 0x202, .rdi = if (combined_profile) (if (combined_init) 29 else 28) else if (storageLifetime()) 27 else if (@import("build_options").native_service_channel_wait) 26 else if (@import("build_options").native_service_channel) 25 else if (session_lifecycle) 24 else if (sustained) 22 else if (pipeline_session and pipeline_console) 23 else if (pipeline_session) 21 else if (pipeline_console) 20 else if (pipeline_capacity) 19 else if (connections_console) 18 else if (connections_large) 17 else if (init_composed) 16 else if (init_large) 15 else if (block_regions) 14 else if (block_profile) 13 else if (console_relay) 12 else if (console_handoff) 11 else if (console_profile) 10 else if (connections_profile) 9 else if (program_profile) 8 else if (coexist_profile) 7 else if (init_profile) 6 else if (file_profile) 5 else if (channel_profile) 4 else if (launch_profile) 3 else if (io_profile) 2 else 1, .rsi = 0xa001, .rdx = if (block_profile) 0xf101 else if (console_profile and !console_relay and !connections_console and !pipeline_console) 0xf001 else if (launch_profile) 0xc001 else 0, .rcx = if (launch_profile) 0xc002 else 0, .r8 = if (channel_profile) 0xd001 else 0, .r9 = if (storageLifetime()) 0xe002 else if (program_profile) 0xc003 else if (init_profile) 0xe001 else 0 };
     ownerDataStartup(&s.context().frame);
     auditOwnerStack(s, (supervisor_code.len + 4095) / 4096);
+    if (@hasDecl(@import("build_options"), "native_package_bytecount") and @import("build_options").native_package_bytecount)
+        mapBytecountSnapshot(s);
     std.mem.writeInt(u16, s.context().fp[0..2], 0x037f, .little);
     std.mem.writeInt(u32, s.context().fp[24..28], 0x1f80, .little);
     s.admitted = true;
@@ -3371,7 +3385,8 @@ fn fileExecOperation(f: *const Frame) *const Frame {
     }
     // All boot-cache consumers are denied under this selector. This scratch is
     // never published or mapped into a user domain, including on rejection.
-    const scratch = third_bytes[0..4096];
+    const package_bytecount = @hasDecl(@import("build_options"), "native_package_bytecount") and @import("build_options").native_package_bytecount;
+    const scratch = third_bytes[0..if (package_bytecount) FsRoles.bytecount_snapshot_bytes else 4096];
     @memset(scratch, 0);
     defer @memset(scratch, 0);
     if (active != supervisorSlot() or !caller.admitted or caller.terminal or f.rdi != 0xa001) {
@@ -3422,6 +3437,10 @@ fn fileExecOperation(f: *const Frame) *const Frame {
     }
     if (f.r9 == 0 or f.r9 > scratch.len) {
         result(caller, -22);
+        return select();
+    }
+    if (package_bytecount and f.rdx != FsRoles.bytecount_snapshot_base) {
+        result(caller, -14);
         return select();
     }
     const length: usize = @intCast(f.r9);

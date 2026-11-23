@@ -84,7 +84,7 @@ compile_error!("home CWD exec requires the complete cold home CWD profile");
 #[cfg(native_zsh_home_redirection)]
 #[path = "zsh-home-redirection.rs"]
 mod home_redirection;
-pub const MAGIC: &[u8; 8] = if cfg!(native_zsh_home_cwd) {
+pub const MAGIC: &[u8; 8] = if cfg!(any(native_zsh_home_cwd, native_package_bytecount)) {
     b"AEFP0007"
 } else if cfg!(native_zsh_home_redirection) {
     b"AEFP0006"
@@ -558,6 +558,8 @@ impl<T: Channel> Files<T> {
                         && c == 0o600
                         && d == 0
                 }
+                #[cfg(native_package_bytecount)]
+                11 => fd(a) && b == 2 && c == 0 && d == 0,
                 #[cfg(native_zsh_home_write)]
                 11 => fd(a) && (1..=PAYLOAD as u64).contains(&b) && c == 0 && d == 0,
                 #[cfg(native_zsh_home_write)]
@@ -571,7 +573,7 @@ impl<T: Channel> Files<T> {
         Ok(
             if matches!(word(raw, 1), 1 | 8 | 10)
                 || (cfg!(native_zsh_home_cwd) && word(raw, 1) == 13)
-                || ((cfg!(native_zsh_home_write) || cfg!(native_zsh_home_redirection))
+                || ((cfg!(native_zsh_home_write) || cfg!(native_zsh_home_redirection) || cfg!(native_package_bytecount))
                     && matches!(word(raw, 1), 11 | 12))
             {
                 (b as usize).div_ceil(FRAME) * FRAME
@@ -591,7 +593,7 @@ impl<T: Channel> Files<T> {
     ) -> Result<Reply<'a, T>, Error> {
         self.prepare_inner(binding, raw, received, workspace, u32::MAX)
     }
-    #[cfg(native_zsh_operator_login)]
+    #[cfg(any(native_zsh_operator_login, native_package_bytecount))]
     pub fn prepare_bounded<'a>(
         &'a mut self,
         binding: Binding,
@@ -618,6 +620,10 @@ impl<T: Channel> Files<T> {
             return Err(Error::Protocol);
         }
         let view = self.view(binding).ok_or(Error::Protocol)?;
+        #[cfg(native_package_bytecount)]
+        if word(raw, 1) == 11 {
+            return self.prepare_package_write(binding, raw, workspace, _remaining);
+        }
         #[cfg(native_zsh_home_write)]
         if word(raw, 1) == 11 {
             return self.prepare_home_write(binding, raw, workspace);
@@ -632,7 +638,9 @@ impl<T: Channel> Files<T> {
         }
         #[cfg(native_zsh_operator_login)]
         let denied = self.operation_budget(view, raw, workspace) > _remaining;
-        #[cfg(not(native_zsh_operator_login))]
+        #[cfg(all(not(native_zsh_operator_login), native_package_bytecount))]
+        let denied = !self.package_operation_funded(raw, _remaining);
+        #[cfg(not(any(native_zsh_operator_login, native_package_bytecount)))]
         let denied = false;
         let (result, body) = if denied {
             (Err(Failure::Source(Error::Remote(-28))), 0)
@@ -690,6 +698,11 @@ impl<T: Channel> Files<T> {
         let b = word(raw, 5);
         let c = word(raw, 6);
         let mut body = 0;
+        #[cfg(native_package_bytecount)]
+        if !matches!(word(raw, 1), 2 | 5 | 6) {
+            workspace.fill(0);
+            return (Err(Failure::BadFd), 0);
+        }
         let result = match word(raw, 1) {
             #[cfg(native_zsh_home_write)]
             12 => {
@@ -1014,6 +1027,10 @@ fn errno(error: Failure<Error>) -> i64 {
 }
 #[cfg(test)]
 extern crate std;
-#[cfg(test)]
+#[cfg(all(test, not(native_package_bytecount)))]
 #[path = "readonly-files-tests.rs"]
 mod tests;
+
+#[cfg(all(test, native_package_bytecount))]
+#[path = "package-bytecount-files-tests.rs"]
+mod package_tests;

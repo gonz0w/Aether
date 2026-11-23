@@ -152,7 +152,7 @@ class Transfer:
             return
 
 
-def run_session(transfer, started, deadline, manual, failure, inputs, pending_signal):
+def run_session(transfer, started, deadline, manual, failure, inputs, pending_signal, ready_marker=PROMPT):
     record = transfer.record
     prompt_by = started + FIRST_PROMPT_SECONDS
     active_until = min(deadline, started + SESSION_SECONDS) - STOP_SECONDS
@@ -183,20 +183,20 @@ def run_session(transfer, started, deadline, manual, failure, inputs, pending_si
         if not transfer.sources or exited(transfer.child):
             raise RuntimeError('emulator exited before terminal marker')
 
-        prompt = raw.find(PROMPT, prompt_cursor)
+        prompt = raw.find(ready_marker, prompt_cursor)
         if prompt >= 0:
             if failure:
                 raise RuntimeError('unexpected prompt during storage startup failure')
             if 'first_prompt_offset' not in record:
                 record.update(first_prompt_offset=prompt, first_prompt_seconds=now - started)
             if stage < len(inputs):
-                if transfer.pending or raw.find(PROMPT, prompt + len(PROMPT)) >= 0:
+                if transfer.pending or raw.find(ready_marker, prompt + len(ready_marker)) >= 0:
                     raise RuntimeError('guest prompt repeated before input was accepted')
                 record['input_stages'].append({'prompt_offset': prompt, 'uart_offset': len(raw),
                                                'input_bytes': len(inputs[stage]), 'accepted_bytes': 0})
                 transfer.pending = inputs[stage]
                 stage += 1
-            prompt_cursor = prompt + len(PROMPT)
+            prompt_cursor = prompt + len(ready_marker)
         until = active_until if 'first_prompt_offset' in record else min(active_until, prompt_by)
         transfer.pump(until, operator_input=manual and 'first_prompt_offset' in record)
 
@@ -241,7 +241,7 @@ def stop(child, transfer, record, owned, deadline):
             transfer.pump(deadline)
 
 
-def capture(argv, *, file_limit, manual=False, failure=False, inputs=()):
+def capture(argv, *, file_limit, manual=False, failure=False, inputs=(), ready_marker=PROMPT):
     """Run one reviewed command. Return observed UART and host transport facts."""
     if (manual and failure) or ((manual or failure) and inputs):
         raise ValueError('select one serial input mode')
@@ -274,7 +274,7 @@ def capture(argv, *, file_limit, manual=False, failure=False, inputs=()):
                     raise RuntimeError('emulator did not enter its own group and session')
                 if child.stdin is not None:
                     os.set_blocking(child.stdin.fileno(), False)
-                record['terminal'] = run_session(transfer, started, deadline, manual, failure, inputs, pending_signal)
+                record['terminal'] = run_session(transfer, started, deadline, manual, failure, inputs, pending_signal, ready_marker)
             except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
                 record['error'] = str(error)
             finally:

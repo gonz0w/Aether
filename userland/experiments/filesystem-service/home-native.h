@@ -9,6 +9,17 @@
 #error "Cold reopen and cold note are separate selections"
 #endif
 
+#if defined(AETHER_FS_PACKAGE_BYTECOUNT_COLD) && !defined(AETHER_FS_PACKAGE_BYTECOUNT)
+#error "Cold bytecount requires the dedicated package engine"
+#endif
+#if defined(AETHER_FS_PACKAGE_BYTECOUNT_COLD)
+#define AETHER_FS_HOME_MUTATION_LIMIT 1
+#elif defined(AETHER_FS_PACKAGE_BYTECOUNT)
+#define AETHER_FS_HOME_MUTATION_LIMIT 17
+#else
+#define AETHER_FS_HOME_MUTATION_LIMIT 9
+#endif
+
 struct aether_fs_bootstrap_receipt {
     uint64_t provider, returned, error_kind;
     int64_t error_value, returned_error;
@@ -167,7 +178,8 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 h->error_kind <= 16 &&
                 (h->error_kind == 10 || !h->error_value) &&
                 h->error_value >= INT32_MIN && h->error_value <= INT32_MAX &&
-                h->mutation_attempts <= 9 && h->mutation_attempts >= calls &&
+                h->mutation_attempts <= AETHER_FS_HOME_MUTATION_LIMIT &&
+                h->mutation_attempts >= calls &&
                 (!close_attempted || accepted) &&
                 (!accepted || (entered && close_attempted)) && callback &&
                 entered && (h->phase ? h->error_kind != 0 : h->error_kind == 0);
@@ -177,7 +189,13 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 h->flags == 48 && !close_attempted &&
                 !h->service.reader_close && !h->service.writer_close;
     }
-#if !defined(AETHER_FS_HOME_COLD_REOPEN) && !defined(AETHER_FS_HOME_COLD_NOTE)
+#if defined(AETHER_FS_PACKAGE_BYTECOUNT_COLD)
+    valid = valid && !h->mkdir.provider && !h->mkdir.returned &&
+            !h->create.provider && !h->create.returned;
+#elif defined(AETHER_FS_PACKAGE_BYTECOUNT)
+    valid = valid && !h->create.provider && !h->create.returned &&
+            (!active || h->mkdir.returned == 1);
+#elif !defined(AETHER_FS_HOME_COLD_REOPEN) && !defined(AETHER_FS_HOME_COLD_NOTE)
     if (h->create.returned || active)
         valid = valid && h->mkdir.returned == 1;
 #else
@@ -204,14 +222,18 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
 #endif
     if (active)
         valid = valid && accepted &&
-#if !defined(AETHER_FS_HOME_COLD_REOPEN) && !defined(AETHER_FS_HOME_COLD_NOTE)
+#if !defined(AETHER_FS_HOME_COLD_REOPEN) && !defined(AETHER_FS_HOME_COLD_NOTE) && !defined(AETHER_FS_PACKAGE_BYTECOUNT)
                 h->create.returned == 1 &&
 #endif
                 (h->phase == 0 || h->phase == 9) && h->service.ready <= 1 &&
                 h->service.requests <= 96 && h->service.stop <= 6 &&
                 h->service.bytes_staged <= 4096 && h->service.state <= 3 &&
                 (h->service.ready || !h->service.requests) &&
+#if defined(AETHER_FS_PACKAGE_BYTECOUNT)
+                h->mutation_attempts <= calls + h->service.requests &&
+#else
                 h->mutation_attempts <= 2 + h->service.requests &&
+#endif
                 (h->service.stop != 3 || h->service.requests == 96) &&
                 (h->phase == 9 ? h->service.stop == 4 : h->service.stop != 4);
     if (h->service.state != 0)
@@ -228,7 +250,7 @@ aether_fs_home_order_required(const struct aether_fs_home_result *h,
                 (h->service.stop == 2 || h->service.stop == 5) &&
                 h->service.error && !h->service.txg && !h->service.bytes_staged;
     }
-#if defined(AETHER_FS_HOME_COLD_REOPEN) || defined(AETHER_FS_HOME_COLD_NOTE)
+#if defined(AETHER_FS_HOME_COLD_REOPEN) || defined(AETHER_FS_HOME_COLD_NOTE) || defined(AETHER_FS_PACKAGE_BYTECOUNT_COLD)
     if (accepted) {
         switch (h->phase) {
         case 0:

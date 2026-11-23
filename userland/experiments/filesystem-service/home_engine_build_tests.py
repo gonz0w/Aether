@@ -15,6 +15,18 @@ LAUNCH = '0000000000000000 T main\n0000000000000010 T aether_fs_home_launch_serv
 
 
 class NativeBuildContract(unittest.TestCase):
+    def test_package_roles_require_disjoint_closed_selections(self):
+        seed = (*PROFILE[:-1], 'fs_package_bytecount')
+        cold = (*seed, 'fs_package_bytecount_cold')
+        for role, profile in [('seed', seed), ('cold', cold)]:
+            self.assertEqual(builder['validate_profile'](profile, package=role), profile)
+            for legacy in ('cold_note', 'terminfo_nine', 'terminfo_six'):
+                with self.subTest(role=role, legacy=legacy), self.assertRaises(ValueError):
+                    builder['validate_profile'](profile, package=role, **{legacy: True})
+        for role, profile in [('cold', seed), ('seed', cold), ('writer', seed), (True, seed)]:
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                builder['validate_profile'](profile, package=role)
+
     def test_terminfo_nine_is_closed_without_raising_the_mutation_ceiling(self):
         expected=(*PROFILE[:-1], 'fs_home_terminfo_nine')
         self.assertEqual(builder['TERMINFO_NINE_PROFILE'],expected)

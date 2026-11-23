@@ -6,6 +6,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    'native-package-bytecount',  # Approved private 48 KiB intake and 124 KiB Owner.
+    'native-zsh-operator-note',  # Approved private 88 KiB Owner.
     'native-zsh-home-redirection',  # Approved issue158-only80KiB Owner under operator/file-exec; default-off.
     'native-zsh-file-exec',  # Approved Owner-only sealed filesystem ELF exec; default-off.
     'native-zsh-operator',  # Approved private foreground session; fixed30000-tick limit.

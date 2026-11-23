@@ -2855,6 +2855,16 @@
       "invariants": "Copied native argv, stdin and stdout only, one sealed probe, actual post-collection stdout close before runner exit 23.",
       "oracle": "Exact stopped disk handoff, child and parent exit 23, three reclaims, zero-mutation cold export, MODE restoration, clean halt and known host cleanup.",
       "gaps": "Scoped runner checkpoint. Full #20, general runner execution and assembled R1 remain open."
+    },
+    {
+      "id": "native-bytecount-file-trial",
+      "reference": "sys-init/docs/BYTECOUNT-TRIAL.md",
+      "owner": "sys-init and userland, issue18",
+      "budget_seconds": 360,
+      "command": "Run python3 -B userland/experiments/filesystem-service/check-package-stdio.py and the affected sys-init test_bytecount_run.py/image tests. Build and review closed package-seed/package-cold roles, then run one guarded seed and cold trial with sys-init/scripts/run-bytecount.py.",
+      "invariants": "Exact bytecount, one direct child, seventeen seed mutations and one cold output overwrite, Owner namespace custody, no network, stopped media lineage.",
+      "oracle": "Exact six-byte input and 6 plus LF output, child exit0, complete reclaims, terminal restoration, export and host stop.",
+      "gaps": "Full package scripts, native tool closure and import remain open in issues17/18."
     }
   ]
 }

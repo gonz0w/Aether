@@ -115,13 +115,14 @@ def start_preflight_source(*, omit=False):
         prefix = prefix.replace(guard, '', 1)
         prefix += '    _ = combined_application_profile; _ = envelope;\n'
     prefix = prefix.replace('@import("build_options")', 'O')
+    note = '' if omit else '    const combined_operator_note=@hasDecl(O,"native_zsh_operator_note") and O.native_zsh_operator_note;\n'
     prefix = prefix.replace('@panic("invalid filesystem application envelope")', 'return false')
     return r'''const std=@import("std");const FsSession=@import("session");
 var effects:usize=0;
 fn check(ok:bool,comptime label:[]const u8)void{if(!ok){std.debug.print("{s}\n",.{label});std.process.exit(91);}}
 fn early(comptime O:type,envelope:[]const u8)bool{
     const combined_application_profile=O.application;
-''' + prefix + r'''
+''' + note + prefix + r'''
     effects+=1;return true;
 }
 fn expect(comptime O:type,raw:[]const u8,allowed:bool,comptime label:[]const u8)void{
@@ -172,10 +173,12 @@ fn accept(comptime O:type,size:u64)bool{const native=struct{size:u64}{.size=size
 ''' + gate + r'''
 return true;}
 pub fn main()void{
+ const Package=struct{pub const native_package_bytecount=true;pub const native_fs_application_profile=true;pub const native_image_large=true;};
  const External=struct{pub const native_zsh_external=true;pub const native_fs_application_profile=true;pub const native_image_large=true;};
  const Old=struct{pub const native_fs_application_profile=true;pub const native_image_large=true;};
  const Large=struct{pub const native_fs_application_profile=false;pub const native_image_large=true;};
  const Ordinary=struct{pub const native_fs_application_profile=false;pub const native_image_large=false;};
+ check(accept(Package,13234336) and !accept(Package,13234337),"BYTECOUNT_BOOT_BOUND");
  check(accept(External,13181088) and !accept(External,13181089),"EXTERNAL_BOOT_BOUND");
  check(accept(Old,13156512) and !accept(Old,13156513) and !accept(Old,13181088),"OLD_BOOT_BOUND");
  check(accept(Large,8392752) and !accept(Large,8392753) and !accept(Large,9081744),"LARGE_BOOT_BOUND");
@@ -208,7 +211,7 @@ fn pte(s:*State,address:usize)u64{for(s.pt_index[0..s.pt_count],0..)|n,i|if(n==a
 def mapping_source(*, external, owner_stack=True, omission=None, code_bytes=None):
     native = (ROOT/'kernel/arch/x86_64/native_c.zig').read_text()
     bodies = '\n'.join(block(native, name) for name in (
-        'fn addPage(', 'fn byte(', 'fn mapOwnerStack(', 'fn mapOwnerData(', 'fn ownerDataStartup(', 'fn auditOwnerStack('))
+        'fn addPage(', 'fn byte(', 'fn mapOwnerStack(', 'fn mapOwnerData(', 'fn ownerDataStartup(', 'fn auditOwnerStack(', 'fn mapBytecountSnapshot('))
     if omission is not None:
         before, after = omission
         if before not in bodies:
@@ -238,7 +241,20 @@ pub fn main()void{
  for(states[0..6])|*peer|check(peer.count==0,"OWNER_ONLY_MAPPING");
  check(s.count<=try_pages() and FsRoles.application_backing_pages==11520,"UNCHANGED_BACKING");
  check(s.memory_cap==0 and s.pt_count<=32,"NO_ALLOCATOR_GRANT");
- auditOwnerStack(s,CODE_PAGES);std.debug.print("MAPPING_CAPACITY_PASS\n",.{});
+ auditOwnerStack(s,CODE_PAGES);
+ if(@hasDecl(O,"native_package_bytecount") and O.native_package_bytecount)mapBytecountSnapshot(s);
+ const package=@hasDecl(O,"native_package_bytecount") and O.native_package_bytecount;
+ check(s.count==CODE_PAGES+STACK_PAGES+2+@as(usize,if(package)12 else 0),"BYTECOUNT_PAGE_COUNT");
+ for(0..12)|i|{
+  const address=0x904000+i*4096;
+  const index=CODE_PAGES+STACK_PAGES+2+i;
+  check(pte(s,address)==(if(package)backingFrame(s,index)|7|nx else 0),"BYTECOUNT_OWNER_RW_NX");
+  if(package)for(s.backing[index])|v|{check(v==0,"BYTECOUNT_SNAPSHOT_ZERO");};
+  for(states[0..6])|*peer|check(pte(peer,address)==0,"BYTECOUNT_PEER_UNMAPPED");
+ }
+ check(pte(s,0x903000)==0 and pte(s,0x910000)==0,"BYTECOUNT_SNAPSHOT_GUARDS");
+ check(s.count<=try_pages() and s.memory_cap==0 and s.pt_count<=32,"BYTECOUNT_WITHIN_EXISTING_BACKING");
+ std.debug.print("MAPPING_CAPACITY_PASS\n",.{});
 }
 fn try_pages()usize{return FsRoles.applicationPages(6) catch unreachable;}
 '''

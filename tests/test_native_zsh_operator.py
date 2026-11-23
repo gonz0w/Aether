@@ -31,8 +31,13 @@ class ZshOperatorBuild(unittest.TestCase):
             base = {'smp': 'false', 'native-c-image': str(image),
                     **dict.fromkeys(flags, 'true')}
             selected = {**base, 'native-zsh-operator': 'true'}
+            package = {**selected, 'native-package-bytecount': 'true'}
             cases = [('default', {}, False), ('old-file-exec', base, False),
                      ('operator', selected, False),
+                     ('package', package, False),
+                     ('package-without-operator', {**package, 'native-zsh-operator': 'false'}, True),
+                     ('package-without-file-exec', {**package, 'native-zsh-file-exec': 'false'}, True),
+                     ('package-release', {**package, 'release-artifact': 'true'}, True),
                      ('missing-file-exec', {**selected, 'native-zsh-file-exec': 'false'}, True),
                      ('not-private', {**selected, 'release-artifact': 'true'}, True),
                      ('smp', {**selected, 'smp': 'true'}, True),

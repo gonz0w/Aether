@@ -9,9 +9,16 @@
 #endif
 extern int __real_main(int, char **);
 _Noreturn void __real__exit(int);
+#ifdef AEFD_PACKAGE_BYTECOUNT
+extern int64_t aefd_shell_bytecount_stdio(void);
+#endif
 int __wrap_main(int argc, char **argv)
 {
-    if (aefd_shell_start() || aefd_shell_role() != 2 || aefd_shell_ready())
+    if (aefd_shell_start() || aefd_shell_role() != 2 ||
+#ifdef AEFD_PACKAGE_BYTECOUNT
+        aefd_shell_bytecount_stdio() ||
+#endif
+        aefd_shell_ready())
         __real__exit(143);
     /* CRT arguments/environment come from the exact committed exec record. */
     __wrap__exit(__real_main(argc, argv));

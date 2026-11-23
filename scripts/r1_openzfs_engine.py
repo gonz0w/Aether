@@ -40,6 +40,9 @@ def need(condition, message):
 def build(args):
     work, support, sdk, runtime, lock = (getattr(args, name).resolve() for name in
                                          ('work', 'support', 'sdk', 'runtime', 'toolchain'))
+    package_role = {'package-seed': 'seed', 'package-cold': 'cold'}.get(args.role)
+    need((args.package_elf is None) == (package_role is None),
+         'package engine roles require --package-elf')
     need(sha(sdk / 'lib/libc.a') == SDK_SHA, 'SDK libc differs')
     need(sha(runtime / 'libaether_runtime.a') == RUNTIME_SHA, 'source runtime differs')
     support_receipt = support / 'support.json'
@@ -97,7 +100,7 @@ def build(args):
     frontend_record = {}
     frontend(work, proc, dict(tools), started + 300, frontend_record,
              terminfo_nine=args.role == 'seed', cold_note=args.role == 'note',
-             source_toolchain=(lock, pins))
+             source_toolchain=(lock, pins), package=package_role, package_elf=args.package_elf)
 
     normal = [f'-ffile-prefix-map={roots[key]}={value}' for key, value in
               (('work', '/build/aether/openzfs'), ('support', '/build/aether/support'),
@@ -108,7 +111,12 @@ def build(args):
             group, source, target = row
             destination = Path(expand(target))
             destination.parent.mkdir(parents=True, exist_ok=True)
-            argv = [tools['clang']['path'], *normal, *map(expand, recipe['flags'][group]),
+            package_flags = []
+            if package_role is not None and index in (0, 1):
+                package_flags.append('-DAETHER_FS_PACKAGE_BYTECOUNT=1')
+                if package_role == 'cold':
+                    package_flags.append('-DAETHER_FS_PACKAGE_BYTECOUNT_COLD=1')
+            argv = [tools['clang']['path'], *normal, *package_flags, *map(expand, recipe['flags'][group]),
                     '-c', expand(source), '-o', str(destination)]
         else:
             name, flags = row
@@ -128,13 +136,16 @@ def build(args):
     result = dict(role=args.role, engine_sha256=sha(elf), bytes=elf.stat().st_size,
                   actions=len(actions), generated=generated,
                   frame_units=sorted(frames))
+    if package_role is not None:
+        result['package'] = frontend_record['home_engine_rust']['package']
     (work / 'engine.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({key: value for key, value in result.items() if key != 'generated'}))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('role', choices=('seed', 'note'))
+    parser.add_argument('role', choices=('seed', 'note', 'package-seed', 'package-cold'))
+    parser.add_argument('--package-elf', type=Path)
     for name in ('work', 'support', 'sdk', 'runtime', 'toolchain'):
         parser.add_argument('--' + name, type=Path, required=True)
     try:
