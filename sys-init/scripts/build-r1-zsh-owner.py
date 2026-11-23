@@ -84,7 +84,7 @@ def build(args):
     package = args.role.startswith('package-')
     for row in profiles['roles']['seed' if package else args.role]:
         name, source, edition, cfg, dependencies = shared[row] if isinstance(row, str) else row
-        if package and (name in ('filesystem_readonly', 'native_app_runtime') or not name):
+        if package and (name in ('filesystem_readonly', 'native_app_runtime', 'owner_control') or not name):
             legacy = {'native_zsh_login_startup', 'native_zsh_home_redirection',
                       'native_zsh_operator', 'native_zsh_idle_exit'}
             cfg = [option for option in cfg if option not in legacy]
@@ -156,7 +156,7 @@ def check_package_files(args):
     profiles = json.loads((HERE / 'r1-zsh-owner-profiles.json').read_text())
     shared = {row[0]: row for row in profiles['shared']}
     libraries = {}
-    for name in ('filesystem_metadata', 'filesystem_policy', 'filesystem_service', 'filesystem_client', 'abi29_dispatch_core', 'fd_startup', 'fork_streams'):
+    for name in ('filesystem_metadata', 'filesystem_policy', 'filesystem_service', 'filesystem_client', 'abi29_dispatch_core', 'fd_startup', 'fork_streams', 'af07_transport'):
         row = shared[name] if name in shared else next(row for row in profiles['roles']['seed'] if not isinstance(row, str) and row[0] == name)
         _, source, edition, cfg, dependencies = row
         output = work / ('lib' + name + '.rlib')
@@ -182,6 +182,20 @@ def check_package_files(args):
     run_tool(argv, environment, work / 'files-build.log', timeout=30, cwd=work)
     result = run_tool([str(binary), '--test-threads=1'], environment, work / 'files-tests.log', timeout=30, cwd=work)
     print(result.decode('utf-8'), end='')
+    row = shared['owner_control']
+    for package_cfg in (False, True):
+        label = 'package-control' if package_cfg else 'default-control'
+        binary = work / (label + '-tests')
+        argv = [str(args.rustc), '--edition=2024', '-Dwarnings', '-Ldependency=' + str(work),
+                '--test', '--cfg', 'owner_control_host_trap']
+        for option in row[3] + (['native_package_bytecount'] if package_cfg else []):
+            argv.extend(('--cfg', option))
+        argv.extend(('--extern', 'af07_transport=' + str(libraries['af07_transport']),
+                     str(ROOT / row[1]), '-o', str(binary)))
+        run_tool(argv, environment, work / (label + '-build.log'), timeout=30, cwd=work)
+        result = run_tool([str(binary), '--test-threads=1'], environment,
+                          work / (label + '-tests.log'), timeout=30, cwd=work)
+        print(result.decode('utf-8'), end='')
     binary = work / 'package-stream-tests'
     argv = [str(args.rustc), '--edition=2024', '-Dwarnings', '-Ldependency=' + str(work), '--test']
     for name in ('abi29_dispatch_core', 'fd_startup', 'fork_streams'):

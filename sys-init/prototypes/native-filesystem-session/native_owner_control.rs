@@ -26,6 +26,36 @@ fn call(op: u64, args: [u64; 6]) -> Status {
 fn call(op: u64, args: [u64; 6]) -> Status {
     super::host_trap::call(op, args)
 }
+// Scalar counterpart of the complete synchronous image borrow below. Keeping
+// validation here also lets host-trap tests check the fixed native address
+// without manufacturing an invalid Rust slice or mapping guest addresses.
+pub(super) fn exec_file_snapshot(
+    process: u64,
+    token: u64,
+    arguments: &[u8; 272],
+    address: u64,
+    length: usize,
+) -> i64 {
+    #[cfg(native_package_bytecount)]
+    let valid = address == 0x904000 && (1..=48 * 1024).contains(&length);
+    #[cfg(not(native_package_bytecount))]
+    let valid = (1..=4096).contains(&length);
+    if !valid {
+        return -22;
+    }
+    call(
+        0x2300b,
+        [
+            0xa001,
+            process,
+            address,
+            token,
+            arguments.as_ptr() as u64,
+            length as u64,
+        ],
+    )
+    .0
+}
 impl Control for Native {
     #[cfg(native_tty_signal_probe)]
     fn terminal_sigint(&mut self, target: u64, post: bool) -> i64 {
@@ -59,23 +89,15 @@ impl Control for Native {
         .0
     }
     fn exec_file(&mut self, process: u64, token: u64, arguments: &[u8; 272], image: &[u8]) -> i64 {
-        if image.is_empty() || image.len() > 4096 {
-            return -22;
-        }
         // Both disjoint immutable borrows remain live synchronously until the
         // kernel copies them. No user pointer survives this returning call.
-        call(
-            0x2300b,
-            [
-                0xa001,
-                process,
-                image.as_ptr() as u64,
-                token,
-                arguments.as_ptr() as u64,
-                image.len() as u64,
-            ],
+        exec_file_snapshot(
+            process,
+            token,
+            arguments,
+            image.as_ptr() as u64,
+            image.len(),
         )
-        .0
     }
     fn receipt(&mut self, process: u64) -> Status {
         call(0x23008, [0xa001, process, 0, 0, 0, 0])

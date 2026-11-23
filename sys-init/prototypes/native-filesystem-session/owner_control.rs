@@ -169,6 +169,7 @@ mod host_trap {
         native.observe_events();
         LAST.with(|cell| assert_eq!(*cell.borrow(), Some((0x2a000, [0xe002, 0, 0, 0, 0, 0]))));
     }
+    #[cfg(not(native_package_bytecount))]
     #[test]
     fn actual_native_file_exec_copies_complete_typed_snapshot_arguments() {
         let mut native = Native;
@@ -196,6 +197,51 @@ mod host_trap {
             assert_eq!(native.exec_file(0xb0000103, 101, &args, bad), -22);
             LAST.with(|last| assert_eq!(*last.borrow(), None, "NO_INVALID_SNAPSHOT_TRAP"));
         }
+    }
+    #[cfg(native_package_bytecount)]
+    #[test]
+    fn actual_package_file_exec_checks_fixed_snapshot_and_selected_bounds() {
+        let args = [0u8; 272];
+        for length in [1, 4096, 4097, 42904, 49152] {
+            assert_eq!(
+                native::exec_file_snapshot(0xb0000103, 101, &args, 0x904000, length),
+                0
+            );
+            LAST.with(|last| {
+                assert_eq!(
+                    *last.borrow(),
+                    Some((
+                        0x2300b,
+                        [
+                            0xa001,
+                            0xb0000103,
+                            0x904000,
+                            101,
+                            args.as_ptr() as u64,
+                            length as u64
+                        ]
+                    ))
+                )
+            });
+        }
+        for (address, length) in [
+            (0x904000, 0),
+            (0x904000, 49153),
+            (0x904001, 42904),
+            (0x903fff, 42904),
+            (0x900000, 4096),
+        ] {
+            LAST.with(|last| *last.borrow_mut() = None);
+            assert_eq!(
+                native::exec_file_snapshot(0xb0000103, 101, &args, address, length),
+                -22
+            );
+            LAST.with(|last| assert_eq!(*last.borrow(), None, "NO_INVALID_PACKAGE_SNAPSHOT_TRAP"));
+        }
+        let mut native = Native;
+        LAST.with(|last| *last.borrow_mut() = None);
+        assert_eq!(native.exec_file(0xb0000103, 101, &args, &[0u8; 4096]), -22);
+        LAST.with(|last| assert_eq!(*last.borrow(), None, "NO_HEAP_PACKAGE_SNAPSHOT_TRAP"));
     }
     #[test]
     fn actual_native_app_launch_uses_exact_record_and_four_endpoint_seam() {
